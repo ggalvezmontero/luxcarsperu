@@ -18,12 +18,14 @@ import {
   getVehicleTypeConfig,
   type ImportEstimate,
 } from "@/lib/calculator";
+import type { PlanKey } from "@/lib/pricingConfig";
 import { buildWhatsappLink } from "@/lib/whatsapp";
 import { Button } from "./Button";
 import { SectionHeading } from "./SectionHeading";
 import { Tooltip } from "./Tooltip";
 import { VehicleIcon, TaxIcon, MoneyIcon } from "./Icons";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
+import Image from "next/image";
 
 const BRAND_OPTIONS = [
   "Porsche",
@@ -50,7 +52,7 @@ type FormState = {
   year: string;
   price: string;
   peruPrice: string;
-  preferredPlan: "fast" | "standard";
+  preferredPlan: PlanKey;
 };
 
 const INITIAL_FORM: FormState = {
@@ -165,7 +167,7 @@ export function CalculatorSection() {
 
     setIsCalculating(true);
     try {
-      const nextEstimate = calculateImportCosts(parsed);
+      const nextEstimate = calculateImportCosts(parsed, form.preferredPlan);
       setEstimate(nextEstimate);
       setStatus(
         "Listo. Este es tu precio estimado puesto en Lima. Puedes compartirlo en WhatsApp o agendar una llamada.",
@@ -185,10 +187,38 @@ export function CalculatorSection() {
     });
   }, [estimate, form.preferredPlan]);
 
+  const planAdjustmentPercent =
+    estimate && estimate.freightAdjustment
+      ? Math.round((estimate.freightAdjustment - 1) * 100)
+      : 0;
+
+  const freightLabel =
+    estimate && planAdjustmentPercent > 0
+      ? `Flete según categoría (+${planAdjustmentPercent}% Fast Track)`
+      : "Flete según categoría";
+
+  const freightTooltip =
+    estimate && planAdjustmentPercent > 0
+      ? `Flete base ${formatCurrency(estimate.freightBase)} ajustado con +${planAdjustmentPercent}% vía Fast Track.`
+      : "El flete estimado se calcula según volumen y tipo de vehículo.";
+
+  const freightSummary =
+    estimate && planAdjustmentPercent > 0
+      ? `Flete base ${formatCurrency(estimate.freightBase)} ajustado +${planAdjustmentPercent}% Fast Track → ${formatCurrency(estimate.freight)}.`
+      : estimate
+        ? `Flete estimado según categoría: ${formatCurrency(estimate.freight)}.`
+        : "";
+
+  const varianceLabel = formatPercentage(
+    LUXCARS_CONFIG.services.finalRangeVariance,
+  );
+
   return (
-    <section className="rounded-[40px] border border-white/10 bg-black/60 px-6 py-20 backdrop-blur lg:px-14">
+    <section
+      id="calculator"
+      className="scroll-mt-32 rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950/95 via-black/80 to-neutral-900 px-6 py-20 backdrop-blur lg:px-14"
+    >
       <SectionHeading
-        id="calculadora"
         eyebrow="Calculadora pública"
         title="Calcula tu importación premium en menos de un minuto"
         description="Selecciona el tipo de vehículo, ingresa tu precio en Miami y obtén un estimado completo con flete, seguros, impuestos SUNAT y honorarios LuxCars."
@@ -354,51 +384,66 @@ export function CalculatorSection() {
             vehículo y determinación de SUNAT.
           </p>
         </form>
-        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/70 to-neutral-950/80 p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
-          {estimate ? (
-            <div className="grid gap-8">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full border border-[#f5d072]/40 bg-[#f5d072]/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#fbe5a4]">
-                    {estimate.vehicleType.label}
-                  </span>
-                  <span className="text-xs uppercase tracking-[0.3em] text-white/40">
-                    ISC {formatPercentage(estimate.iscRate)}
-                  </span>
+        <div className="space-y-6 rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/70 to-neutral-950/80 p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
+          <Image
+            src="/images/calculator/dashboard.jpg"
+            alt="Dashboard de costos de importación de autos de lujo"
+            width={640}
+            height={360}
+            className="h-48 w-full rounded-2xl border border-white/10 object-cover"
+          />
+            {estimate ? (
+              <div className="grid gap-8">
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="rounded-full border border-[#f5d072]/40 bg-[#f5d072]/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#fbe5a4]">
+                      {estimate.vehicleType.label}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                      {estimate.planConfig.label}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                      Timeline {estimate.planConfig.timelineLabel}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                      ISC {formatPercentage(estimate.iscRate)}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">
+                      Resultado premium
+                    </h3>
+                    <p className="mt-2 text-sm text-white/60">
+                      Plan {estimate.planConfig.label} · Timeline {estimate.planConfig.timelineLabel}.{" "}
+                      {freightSummary}
+                    </p>
+                    {status ? (
+                      <div className="mt-4 rounded-2xl border border-[#f5d072]/30 bg-[#f5d072]/10 px-4 py-3 text-sm text-[#fbe5a4]">
+                        {status}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-white">
-                    Resultado premium
-                  </h3>
-                  <p className="mt-2 text-sm text-white/60">
-                    Desglose completo con CIF, impuestos SUNAT, State Compliance
-                    Fee y Broker Fee incluidos. Ajustado con un rango del ±2.5%.
-                  </p>
-                  {status ? (
-                    <div className="mt-4 rounded-2xl border border-[#f5d072]/30 bg-[#f5d072]/10 px-4 py-3 text-sm text-[#fbe5a4]">
-                      {status}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-              <div className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-[0.35em] text-white/50">
-                    Precio final estimado
-                  </span>
-                  <span className="text-2xl font-semibold text-white">
-                    {formatCurrency(estimate.finalEstimate)}
-                  </span>
-                </div>
-                <div className="grid gap-2 text-sm text-white/60">
-                  <div className="flex items-center justify-between">
-                    <span>Rango probable (±2.5%)</span>
+                <div className="grid gap-3 rounded-3xl border border-white/10 bg-white/5 p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs uppercase tracking-[0.35em] text-white/50">
+                      Precio final estimado Lima
+                    </span>
+                    <span className="text-2xl font-semibold text-white">
+                      {formatCurrency(estimate.finalEstimate)}
+                      <span className="ml-2 text-base font-medium text-white/70">
+                        ± {varianceLabel}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-white/60">
+                    <span>Rango estimado</span>
                     <span className="font-medium text-white">
-                      {formatCurrency(estimate.finalRange.min)} -{" "}
+                      {formatCurrency(estimate.finalRange.min)} –{" "}
                       {formatCurrency(estimate.finalRange.max)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between text-sm text-white/60">
                     <span>Ahorro estimado vs Perú</span>
                     <span
                       className={cn(
@@ -411,93 +456,94 @@ export function CalculatorSection() {
                       {formatCurrency(estimate.savingsVsPeru)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between text-sm text-white/60">
                     <span>Referencia de mercado en Perú</span>
-                    <span className="font-medium text-white/80">
+                    <span className="font-medium text-white">
                       {formatCurrency(estimate.peruMarketReference)}
                     </span>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid gap-3 text-sm text-white/65">
-                <BreakdownItem
-                  label="Precio Miami"
-                  amount={estimate.input.price}
-                  icon={<MoneyIcon size={16} />}
-                />
-                <BreakdownItem
-                  label="Flete según categoría"
-                  amount={estimate.freight}
-                  icon={<TaxIcon size={16} />}
-                  tooltip="El flete no depende del valor del auto. Se calcula según volumen y tipo de vehículo."
-                />
-                <BreakdownItem
-                  label="Seguro marítimo 1.5%"
-                  amount={estimate.insurance}
-                  icon={<TaxIcon size={16} />}
-                />
-                <BreakdownItem
-                  label="CIF (auto + flete + seguro)"
-                  amount={estimate.cif}
-                />
-                <BreakdownItem
-                  label="Ad Valorem 6%"
-                  amount={estimate.adValorem}
-                />
-                <BreakdownItem
-                  label={`ISC ${formatPercentage(estimate.iscRate)}`}
-                  amount={estimate.isc}
-                  tooltip={
-                    estimate.vehicleType.tooltip ??
-                    "ISC estimado según categoría seleccionada."
-                  }
-                />
-                <BreakdownItem label="IGV 18%" amount={estimate.igv} />
-                <BreakdownItem
-                  label="State Compliance Fee (7%)"
-                  amount={estimate.stateComplianceFee}
-                  tooltip="State Compliance Fee: cubre verificación legal, validación de documentos, compliance en USA y gestión administrativa del vehículo."
-                />
-                <BreakdownItem
-                  label="Broker Fee (10%)"
-                  amount={estimate.brokerFee}
-                  tooltip="Broker Fee: incluye negociación, inspección del vehículo, CarFax, AutoCheck, coordinación logística y servicio concierge completo."
-                />
-                {estimate.localFixedCosts.map((cost) => (
+                <div className="grid gap-3 text-sm text-white/65">
                   <BreakdownItem
-                    key={cost.id}
-                    label={cost.label}
-                    amount={cost.amount}
+                    label="Precio Miami"
+                    amount={estimate.input.price}
+                    icon={<MoneyIcon size={16} />}
                   />
-                ))}
-                <BreakdownItem
-                  label="Costos locales fijos"
-                  amount={estimate.localFixedTotal}
-                />
-                <BreakdownItem
-                  label="Precio final estimado Lima"
-                  amount={estimate.finalEstimate}
-                />
-              </div>
-              {whatsappLink ? (
-                <div className="space-y-3">
-                  <Button
-                    href={whatsappLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    size="lg"
-                  >
-                    Enviar estimado por WhatsApp
-                  </Button>
-                  <p className="text-xs text-white/40">
-                    Abriremos una conversación con nuestros especialistas con
-                    toda la información precargada.
-                  </p>
+                  <BreakdownItem
+                    label={freightLabel}
+                    amount={estimate.freight}
+                    icon={<TaxIcon size={16} />}
+                    tooltip={freightTooltip}
+                  />
+                  <BreakdownItem
+                    label="Seguro marítimo 1.5%"
+                    amount={estimate.insurance}
+                    icon={<TaxIcon size={16} />}
+                  />
+                  <BreakdownItem
+                    label="CIF (auto + flete + seguro)"
+                    amount={estimate.cif}
+                    tooltip="Costo, seguro y flete (CIF) utilizados para el cálculo tributario."
+                  />
+                  <BreakdownItem
+                    label="Ad Valorem 6%"
+                    amount={estimate.adValorem}
+                  />
+                  <BreakdownItem
+                    label={`ISC ${formatPercentage(estimate.iscRate)}`}
+                    amount={estimate.isc}
+                    tooltip={estimate.iscTooltip}
+                  />
+                  <BreakdownItem label="IGV 18%" amount={estimate.igv} />
+                  <BreakdownItem
+                    label="State Compliance Fee (7%)"
+                    amount={estimate.stateComplianceFee}
+                    tooltip="State Compliance Fee: cubre verificación legal, validación de documentos, compliance en USA y gestión administrativa del vehículo."
+                  />
+                  <BreakdownItem
+                    label="Broker Fee (10%)"
+                    amount={estimate.brokerFee}
+                    tooltip="Broker Fee: incluye negociación, inspección del vehículo, CarFax, AutoCheck, coordinación logística y servicio concierge completo."
+                  />
+                  {estimate.localFixedFees.map((fee) => (
+                    <BreakdownItem
+                      key={fee.key}
+                      label={fee.label}
+                      amount={fee.amount}
+                    />
+                  ))}
+                  {estimate.documentHandlingFee > 0 ? (
+                    <BreakdownItem
+                      label="Gestión documental Fast Track"
+                      amount={estimate.documentHandlingFee}
+                      tooltip="Fast Track añade gestión documental prioritaria y coordinación acelerada en Miami."
+                    />
+                  ) : null}
+                  <BreakdownItem
+                    label="Precio final estimado Lima"
+                    amount={estimate.finalEstimate}
+                    tooltip={`Incluye todos los conceptos listados. Variación estimada ± ${varianceLabel}.`}
+                  />
                 </div>
-              ) : null}
-            </div>
-          ) : (
+                {whatsappLink ? (
+                  <div className="space-y-3">
+                    <Button
+                      href={whatsappLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="lg"
+                    >
+                      Enviar estimado por WhatsApp
+                    </Button>
+                    <p className="text-xs text-white/40">
+                      Abriremos una conversación con nuestros especialistas con
+                      toda la información precargada.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
             <div className="grid gap-6 text-white/60">
               <h3 className="flex items-center gap-2 text-xl font-semibold text-white">
                 <MoneyIcon size={18} />
@@ -537,15 +583,15 @@ type BreakdownItemProps = {
 
 function BreakdownItem({ label, amount, tooltip, icon }: BreakdownItemProps) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
-      <div className="flex items-center gap-3 text-white/70">
+    <div className="flex items-start justify-between gap-4 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
+      <div className="flex items-start gap-3 text-white/70">
         {icon ? <span className="flex-none">{icon}</span> : null}
         <span>{label}</span>
         {tooltip ? (
           <Tooltip content={tooltip} placement="bottom" />
         ) : null}
       </div>
-      <span className="font-medium text-white">
+      <span className="text-right font-medium text-white tabular-nums">
         {formatCurrency(amount)}
       </span>
     </div>

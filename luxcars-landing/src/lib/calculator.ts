@@ -5,13 +5,18 @@ import {
 } from "./config";
 import {
   PRICING_CONFIG,
-  type LocalFixedCost,
+  LOCAL_FIXED_FEE_ORDER,
+  type LocalFixedFee,
+  type PlanConfig,
+  type PlanKey,
 } from "./pricingConfig";
 
 type VehicleTypeConfig = (typeof LUXCARS_CONFIG.vehicleTypes)[number];
 
 export type LogisticsBreakdown = {
+  freightBase: number;
   freight: number;
+  freightAdjustment: number;
   insurance: number;
   cif: number;
 };
@@ -20,15 +25,19 @@ export type FeeBreakdown = {
   adValorem: number;
   isc: number;
   iscRate: number;
+  iscTooltip: string;
   igv: number;
   stateComplianceFee: number;
   brokerFee: number;
-  localFixedCosts: readonly LocalFixedCost[];
+  documentHandlingFee: number;
+  localFixedFees: LocalFixedFee[];
   localFixedTotal: number;
   finalEstimate: number;
   finalRange: { min: number; max: number };
   peruMarketReference: number;
   savingsVsPeru: number;
+  planKey: PlanKey;
+  planConfig: PlanConfig;
 };
 
 export type ImportEstimate = LogisticsBreakdown &
@@ -49,36 +58,56 @@ export function getVehicleTypeConfig(
 export function calculateLogistics(
   priceMiami: number,
   vehicleType: VehicleTypeConfig,
+  plan: PlanConfig,
 ): LogisticsBreakdown {
-  const freight =
+  const freightBase =
     PRICING_CONFIG.freightByType[vehicleType.id as VehicleTypeId] ?? 2000;
+  const freight = freightBase * plan.fleteAdjustment;
   const insurance =
     (priceMiami + freight) * PRICING_CONFIG.insuranceRate;
   const cif = priceMiami + freight + insurance;
 
-  return { freight, insurance, cif };
+  return {
+    freightBase,
+    freight,
+    freightAdjustment: plan.fleteAdjustment,
+    insurance,
+    cif,
+  };
 }
 
 export function calculateFees(
   priceMiami: number,
   vehicleType: VehicleTypeConfig,
   logistics: LogisticsBreakdown,
+  planKey: PlanKey,
+  planConfig: PlanConfig,
   peruPrice?: number,
 ): FeeBreakdown {
   const { services } = LUXCARS_CONFIG;
+  const iscRule = PRICING_CONFIG.iscRules[vehicleType.id as VehicleTypeId];
+  const iscRate = iscRule?.rate ?? vehicleType.iscRate ?? 0;
+  const iscTooltip =
+    iscRule?.reason ??
+    vehicleType.tooltip ??
+    "ISC estimado según categoría seleccionada.";
 
   const adValorem = logistics.cif * PRICING_CONFIG.adValoremRate;
-  const isc = logistics.cif * vehicleType.iscRate;
+  const isc = logistics.cif * iscRate;
   const igv =
     (logistics.cif + adValorem + isc) * PRICING_CONFIG.igvRate;
   const stateComplianceFee =
     priceMiami * PRICING_CONFIG.stateComplianceRate;
   const brokerFee = priceMiami * PRICING_CONFIG.brokerFeeRate;
 
-  const localFixedTotal = PRICING_CONFIG.localFixedCosts.reduce(
-    (total, cost) => total + cost.amount,
+  const localFixedFees = LOCAL_FIXED_FEE_ORDER.map(
+    (key) => PRICING_CONFIG.localFixedFees[key],
+  );
+  const localFixedTotal = localFixedFees.reduce(
+    (total, fee) => total + fee.amount,
     0,
   );
+  const documentHandlingFee = planConfig.documentHandlingFee;
 
   const finalEstimate =
     logistics.cif +
@@ -87,7 +116,8 @@ export function calculateFees(
     igv +
     stateComplianceFee +
     brokerFee +
-    localFixedTotal;
+    localFixedTotal +
+    documentHandlingFee;
 
   const variance = services.finalRangeVariance;
   const finalRange = {
@@ -105,26 +135,43 @@ export function calculateFees(
   return {
     adValorem,
     isc,
-    iscRate: vehicleType.iscRate,
+    iscRate,
+    iscTooltip,
     igv,
     stateComplianceFee,
     brokerFee,
-    localFixedCosts: PRICING_CONFIG.localFixedCosts,
+    documentHandlingFee,
+    localFixedFees,
     localFixedTotal,
     finalEstimate,
     finalRange,
     peruMarketReference,
     savingsVsPeru,
+    planKey,
+    planConfig,
   };
 }
 
-export function calculateImportCosts(input: CalculatorInput): ImportEstimate {
+export function calculateImportCosts(
+  input: CalculatorInput,
+  requestedPlanKey: PlanKey = "fast",
+): ImportEstimate {
   const vehicleType = getVehicleTypeConfig(input.vehicleType);
-  const logistics = calculateLogistics(input.price, vehicleType);
+  const planConfig =
+    PRICING_CONFIG.planConfigs[requestedPlanKey] ??
+    PRICING_CONFIG.planConfigs.fast;
+  const planKey = planConfig.key;
+  const logistics = calculateLogistics(
+    input.price,
+    vehicleType,
+    planConfig,
+  );
   const fees = calculateFees(
     input.price,
     vehicleType,
     logistics,
+    planKey,
+    planConfig,
     input.peruPrice,
   );
 

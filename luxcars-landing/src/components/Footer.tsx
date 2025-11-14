@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { Button } from "./Button";
 import { formatNumber } from "@/lib/utils";
@@ -27,6 +28,18 @@ export function Footer() {
               </span>
             ))}
           </div>
+        </div>
+        <div className="mt-10 grid gap-3 sm:grid-cols-4 sm:items-center">
+          {["porsche", "ferrari", "lamborghini", "rollsroyce"].map((brand) => (
+            <Image
+              key={brand}
+              src={`/images/brands/${brand}.png`}
+              alt={`Logo ${brand}`}
+              width={160}
+              height={80}
+              className="h-16 w-full rounded-2xl border border-white/10 bg-white/5 object-cover p-2"
+            />
+          ))}
         </div>
         <div className="space-y-4">
           <p className="text-xs uppercase tracking-[0.4em] text-white/40">

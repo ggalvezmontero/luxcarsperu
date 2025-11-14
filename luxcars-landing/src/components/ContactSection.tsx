@@ -7,6 +7,7 @@ import { LUXCARS_CONFIG } from "@/lib/config";
 import { buildWhatsappLink } from "@/lib/whatsapp";
 import type { ImportEstimate } from "@/lib/calculator";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
+import Image from "next/image";
 
 type FormState = {
   name: string;
@@ -131,7 +132,10 @@ export function ContactSection() {
   };
 
   return (
-    <section className="rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950 via-black to-neutral-900 px-6 py-20 lg:px-14">
+    <section
+      id="contact"
+      className="scroll-mt-32 rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950 via-black to-neutral-900 px-6 py-20 lg:px-14"
+    >
       <SectionHeading
         eyebrow="Contacto premium"
         title="Listo para importar tu siguiente auto de lujo"
@@ -230,44 +234,57 @@ export function ContactSection() {
           <Button type="submit" size="lg" disabled={isSending}>
             {isSending ? "Abriendo WhatsApp..." : "Enviar ahora por WhatsApp"}
           </Button>
-          <p className="text-xs text-white/40">
-            Al enviar, abriremos WhatsApp con toda la información precargada
-            para que converses con nuestro concierge inmediatamente.
-          </p>
-        </form>
-        <div className="space-y-6 rounded-[28px] border border-white/10 bg-white/[0.05] p-8 text-sm text-white/70 shadow-[0_25px_100px_rgba(0,0,0,0.35)]">
-          <h3 className="text-2xl font-semibold text-white">
-            Concierge dedicado en Miami & Lima
-          </h3>
-          <p>
-            Tu consultor personal te envía fotos, videos, contratos y cualquier
-            documentación que necesites. Reporte cada 48 horas durante el tránsito
-            marítimo.
-          </p>
-          <div className="rounded-3xl border border-white/10 bg-black/70 p-6 text-white/80">
-            <h4 className="text-lg font-semibold text-white">
-              ¿Qué incluye tu primera llamada?
-            </h4>
-            <ul className="mt-4 space-y-3 text-sm">
-              <li>• Revisión del estimado y ajustes según versión o upgrades.</li>
-              <li>• Curaduría de inventario real en tiempo real.</li>
-              <li>• Estrategia de negociación y verificación de historial.</li>
-              <li>• Agenda de próximos pasos y documentación requerida.</li>
-            </ul>
-          </div>
-          <div className="rounded-3xl border border-[#f5d072]/30 bg-[#f5d072]/10 p-6 text-sm text-[#fbe5a4]">
-            <p>
-              WhatsApp oficial:{" "}
-              <span className="font-semibold">
-                +{LUXCARS_CONFIG.contact.whatsappNumber}
+            <p className="text-xs text-white/40">
+              Al enviar, abriremos WhatsApp con toda la información precargada
+              para que converses con nuestro concierge inmediatamente.
+            </p>
+          </form>
+          <div className="space-y-6 rounded-[28px] border border-white/10 bg-white/[0.05] p-8 text-sm text-white/70 shadow-[0_25px_100px_rgba(0,0,0,0.35)]">
+            <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10">
+              <Image
+                src="/images/contact/concierge.jpg"
+                alt="Concierge LuxCars coordinando importación"
+                fill
+                sizes="(min-width: 1024px) 320px, 100vw"
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <span className="absolute left-4 top-4 inline-flex items-center rounded-full border border-[#f5d072]/30 bg-[#f5d072]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-[#fbe5a4]">
+                Concierge
               </span>
+            </div>
+            <h3 className="text-2xl font-semibold text-white">
+              Concierge dedicado en Miami & Lima
+            </h3>
+            <p>
+              Tu consultor personal te envía fotos, videos, contratos y cualquier
+              documentación que necesites. Reporte cada 48 horas durante el tránsito
+              marítimo.
             </p>
-            <p className="mt-2 text-xs uppercase tracking-[0.3em]">
-              LuxCars.pe · Importación premium
-            </p>
+            <div className="rounded-3xl border border-white/10 bg-black/70 p-6 text-white/80">
+              <h4 className="text-lg font-semibold text-white">
+                ¿Qué incluye tu primera llamada?
+              </h4>
+              <ul className="mt-4 space-y-3 text-sm">
+                <li>• Revisión del estimado y ajustes según versión o upgrades.</li>
+                <li>• Curaduría de inventario real en tiempo real.</li>
+                <li>• Estrategia de negociación y verificación de historial.</li>
+                <li>• Agenda de próximos pasos y documentación requerida.</li>
+              </ul>
+            </div>
+            <div className="rounded-3xl border border-[#f5d072]/30 bg-[#f5d072]/10 p-6 text-sm text-[#fbe5a4]">
+              <p>
+                WhatsApp oficial:{" "}
+                <span className="font-semibold">
+                  +{LUXCARS_CONFIG.contact.whatsappNumber}
+                </span>
+              </p>
+              <p className="mt-2 text-xs uppercase tracking-[0.3em]">
+                LuxCars.pe · Importación premium
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
-  );
+      </section>
+    );
 }

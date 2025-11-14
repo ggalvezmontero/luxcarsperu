@@ -74,8 +74,8 @@ export const LUXCARS_CONFIG = {
     { day: "Entrega", title: "Entrega final certificada" },
   ],
   deliveryWindows: {
-    fastTrack: { label: "Fast Track", days: [30, 35] as [number, number] },
-    standard: { label: "Estándar", days: [40, 50] as [number, number] },
+    fastTrack: { label: "Fast Track", days: [30, 40] as [number, number] },
+    standard: { label: "Estándar", days: [40, 60] as [number, number] },
   },
   faq: [
     {

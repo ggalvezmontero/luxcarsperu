@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { Button } from "./Button";
 
@@ -9,12 +10,24 @@ const HERO_BULLETS = [
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden rounded-[40px] border border-white/10 bg-gradient-to-br from-black via-neutral-900 to-black px-6 py-20 shadow-[inset_0_0_80px_rgba(255,255,255,0.05)] sm:px-12 lg:px-20 lg:py-28">
+    <section
+      id="hero"
+      className="relative overflow-hidden rounded-[40px] border border-white/10 bg-neutral-950/90 px-6 py-24 shadow-[inset_0_0_90px_rgba(255,255,255,0.08)] backdrop-blur-xl sm:px-12 lg:px-20 lg:py-32"
+    >
       <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-10 rounded-[32px] bg-[radial-gradient(circle_at_top,rgba(212,175,55,0.08),transparent_60%)]" />
-        <div className="absolute -right-20 top-10 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(245,208,114,0.25),transparent_70%)] blur-2xl" />
+        <Image
+          src="/images/hero/main.jpg"
+          alt="SUV de lujo en estudio con iluminación dorada"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-black/80 to-neutral-950/95" />
+        <div className="absolute -left-32 top-32 h-72 w-72 rounded-full bg-[#f5d072]/20 blur-3xl" />
+        <div className="absolute -right-24 bottom-16 h-72 w-72 rounded-full bg-[#b68b2d]/30 blur-3xl" />
       </div>
-      <div className="mx-auto grid max-w-5xl gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+      <div className="mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div>
           <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.35em] text-white/60">
             {LUXCARS_CONFIG.brandVariants.slice(0, 3).map((variant) => (
@@ -35,7 +48,7 @@ export function Hero() {
             un proceso seguro, guiado y 100% premium.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Button href="#calculadora" size="lg">
+            <Button href="#calculator" size="lg">
               Calcular precio
             </Button>
             <Button
@@ -93,6 +106,61 @@ export function Hero() {
                     {item.value}
                   </span>
                 </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-black/50 p-8 backdrop-blur">
+          <div className="absolute inset-0 bg-gradient-to-bl from-white/10 via-transparent to-transparent opacity-40" />
+          <div className="relative space-y-6">
+            <Image
+              src="/images/hero/main.jpg"
+              alt="LuxCars concierge importando autos de lujo desde Miami"
+              width={640}
+              height={360}
+              className="h-48 w-full rounded-3xl border border-white/10 object-cover"
+              priority
+            />
+            <p className="text-sm text-white/70">
+              Concierge bilingüe en Miami y Lima coordinando adquisición,
+              inspecciones ASE, logística marítima y nacionalización con
+              transparencia total.
+            </p>
+            <div className="grid gap-3 text-sm text-white/70">
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#f5d072]/30 bg-[#f5d072]/15 text-xs font-semibold text-[#fbe5a4]">
+                  01
+                </span>
+                <div>
+                  <p className="font-semibold text-white">Broker independiente</p>
+                  <p className="text-xs text-white/60">
+                    Representamos tus intereses, no el inventario de un dealer.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#f5d072]/30 bg-[#f5d072]/15 text-xs font-semibold text-[#fbe5a4]">
+                  02
+                </span>
+                <div>
+                  <p className="font-semibold text-white">Inventario mundial</p>
+                  <p className="text-xs text-white/60">
+                    Acceso a marcas exóticas, ediciones limitadas y subastas
+                    privadas.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4 rounded-3xl border border-white/10 bg-black/60 px-4 py-4">
+              {["porsche", "bmw", "lamborghini"].map((brand) => (
+                <Image
+                  key={brand}
+                  src={`/images/brands/${brand}.png`}
+                  alt={`${brand} logo`}
+                  width={160}
+                  height={80}
+                  className="h-16 w-full rounded-2xl border border-white/10 bg-white/5 object-cover p-2"
+                />
               ))}
             </div>
           </div>

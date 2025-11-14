@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { SectionHeading } from "./SectionHeading";
 
@@ -18,7 +19,10 @@ const HIGHLIGHTS = [
 
 export function DeliveryTimesSection() {
   return (
-    <section className="rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/75 to-neutral-900/80 px-6 py-20 lg:px-14">
+    <section
+      id="services"
+      className="scroll-mt-32 rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/75 to-neutral-900/80 px-6 py-20 lg:px-14"
+    >
       <SectionHeading
         eyebrow="Tiempo de entrega"
         title="Llegada garantizada con seguimiento profesional"
@@ -31,10 +35,20 @@ export function DeliveryTimesSection() {
           return (
             <article
               key={item.title}
-              className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] p-8 shadow-[0_35px_120px_rgba(0,0,0,0.3)]"
+              className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] p-8 shadow-[0_35px_120px_rgba(0,0,0,0.3)] transition hover:-translate-y-1 hover:border-[#f5d072]/60 hover:shadow-[0_35px_140px_rgba(245,208,114,0.25)]"
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,208,114,0.15),transparent_65%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,208,114,0.25),transparent_65%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
               <div className="relative space-y-4">
+                <div className="relative h-36 overflow-hidden rounded-2xl border border-white/10">
+                  <Image
+                    src="/images/timeline/journey.jpg"
+                    alt={`Plan ${item.title} timeline`}
+                    fill
+                    sizes="(min-width: 1024px) 320px, 100vw"
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                </div>
                 <span className="inline-flex items-center rounded-full border border-[#f5d072]/30 bg-[#f5d072]/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-[#fbe5a4]">
                   {item.title}
                 </span>
