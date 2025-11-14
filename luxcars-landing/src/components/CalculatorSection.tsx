@@ -13,10 +13,7 @@ import {
   type ImportCalculatorInput,
   type PremiumImportQuote,
 } from "@/core/pricing/priceCalculator";
-import {
-  PRICING_CONFIG,
-  type PlanKey,
-} from "@/core/pricing/pricingConfig";
+import { type PlanKey } from "@/core/pricing/pricingConfig";
 import {
   getVehicleCategory,
   VEHICLE_CATEGORIES,
@@ -29,7 +26,6 @@ import { Tooltip } from "./Tooltip";
 import { VehicleIcon, TaxIcon, MoneyIcon } from "./Icons";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 
 const BRAND_OPTIONS = [
   "Porsche",
@@ -469,7 +465,7 @@ export function CalculatorSection() {
                     tooltip="IGV 18% aplicado a CIF + Ad Valorem + ISC."
                   />
                   <BreakdownItem
-                    label="State Compliance Fee"
+                    label="State Compliance Fee (5%)"
                     amount={estimate.stateComplianceFee}
                     tooltip="State Compliance Fee (5%): verificación legal, validación documental y compliance integral en USA."
                   />
@@ -519,18 +515,17 @@ export function CalculatorSection() {
                 obtén un estimado instantáneo sin costos ocultos. Transparencia
                 total en impuestos, logística y honorarios.
               </p>
-              <ul className="grid gap-3 text-sm">
-                <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
-                  Calculadora exclusiva para vehículos desde USD 50,000.
-                </li>
-                <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
-                  ISC diferenciado por tipo (EV, híbridos, SUVs, deportivos,
-                  pickups).
-                </li>
-                <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
-                  Incluye flete, seguro, IGV, State Compliance Fee y Broker Fee.
-                </li>
-              </ul>
+                <ul className="grid gap-3 text-sm">
+                  <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
+                    Calculadora exclusiva para vehículos desde USD 50,000.
+                  </li>
+                  <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
+                    ISC diferenciado para gasolina, híbridos HEV/PHEV, diésel y EV.
+                  </li>
+                  <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
+                    Incluye flete, seguro, IGV, State Compliance Fee y Broker Fee.
+                  </li>
+                </ul>
             </div>
           )}
         </div>

@@ -1,12 +1,11 @@
 import type { VehicleCategoryId } from "./vehicleCategories";
 
 const FREIGHT_ESTIMATES: Record<VehicleCategoryId, number> = {
-  "suv-premium": 2000,
-  deportivo: 2800,
-  pickup: 2300,
+  gasolina: 2100,
+  hev: 1900,
+  diesel: 2400,
   ev: 2200,
-  phev: 1700,
-  hev: 1700,
+  phev: 2000,
 };
 
 export const PRICING_CONFIG = {

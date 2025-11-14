@@ -10,46 +10,39 @@ export type VehicleCategoryId =
 
 export const VEHICLE_CATEGORIES: readonly VehicleCategory[] = [
   {
-    id: "suv-premium",
-    label: "SUV Premium / Lujo",
-    iscRate: 0.3,
+    id: "gasolina",
+    label: "Gasolina",
+    iscRate: 0.1,
     tooltip:
-      "Las SUVs de lujo generalmente tienen un ISC aproximado del 30% según tablas SUNAT.",
+      "Vehículos a gasolina con ISC oficial del 10% sobre el CIF.",
   },
   {
-    id: "deportivo",
-    label: "Deportivo / Superdeportivo",
+    id: "hev",
+    label: "Híbrido HEV",
+    iscRate: 0.1,
+    tooltip:
+      "Híbridos HEV mantienen ISC referencial del 10% aplicado al CIF.",
+  },
+  {
+    id: "diesel",
+    label: "Diésel",
     iscRate: 0.4,
     tooltip:
-      "Los superdeportivos y autos de alta cilindrada suelen tener un ISC cercano al 40%.",
+      "Vehículos diésel tributan un ISC de referencia del 40% sobre el CIF.",
   },
   {
     id: "ev",
     label: "Eléctrico (EV)",
     iscRate: 0,
     tooltip:
-      "Los vehículos 100% eléctricos están exonerados del ISC (0%).",
+      "Vehículos eléctricos (EV) están exonerados del ISC (0%).",
   },
   {
     id: "phev",
-    label: "Híbrido Enchufable (PHEV)",
-    iscRate: 0.02,
+    label: "Híbrido enchufable PHEV",
+    iscRate: 0,
     tooltip:
-      "Los híbridos enchufables tienen un ISC preferencial aproximado del 2%.",
-  },
-  {
-    id: "hev",
-    label: "Híbrido (HEV)",
-    iscRate: 0.1,
-    tooltip:
-      "Los híbridos no enchufables suelen tributar un ISC estimado del 10%.",
-  },
-  {
-    id: "pickup",
-    label: "Pickup / Camioneta",
-    iscRate: 0.2,
-    tooltip:
-      "ISC estimado para camionetas o pickups orientadas a uso mixto.",
+      "Híbridos enchufables PHEV cuentan con ISC 0% en la normativa vigente.",
   },
 ] as const;
 
