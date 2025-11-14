@@ -1,6 +1,6 @@
-## LuxCars Perú · Landing Premium
+## LuxCars.pe · Landing Premium
 
-Landing page corporativa desarrollada con Next.js 16 (App Router), TypeScript y Tailwind CSS v4. El diseño refuerza el posicionamiento de LuxCars Perú como broker boutique de importación de autos de lujo y exóticos entre Miami y Lima.
+Landing page corporativa desarrollada con Next.js 16 (App Router), TypeScript y Tailwind CSS v4. El diseño refuerza el posicionamiento de LuxCars.pe como broker boutique de importación de autos de lujo y exóticos entre Miami y Lima.
 
 ### 🚀 Inicio rápido
 
@@ -14,28 +14,30 @@ npm run dev
 
 - `src/app/page.tsx`: composición de todas las secciones de la landing.
 - `src/components/*`: componentes modulares reutilizables (hero, calculadora, timeline, FAQs, etc.).
-- `src/lib/config.ts`: configuración central (tasas, contactos, textos corporativos).
-- `src/lib/pricingConfig.ts`: tabla de fletes por tipo, porcentajes de seguros/impuestos y costos fijos locales.
-- `src/lib/calculator.ts`: lógica para estimar flete, seguros, impuestos SUNAT, honorarios y ahorro.
+- `src/lib/config.ts`: configuración central (contactos, contenidos corporativos, timelines).
+- `src/core/pricing/*`: motor modular de la calculadora.
+  - `pricingConfig.ts`: ajustes globales (fletes base, tasas de seguro, IGV, State Compliance 5%, Broker 10%, planes).
+  - `vehicleCategories.ts`: tabla de categorías ISC (Gasolina, Híbrido HEV, Diésel, Eléctrico EV, Híbrido enchufable PHEV).
+  - `feeStrategies.ts`: utilidades para logística e impuestos.
+  - `priceCalculator.ts`: orquestador que combina módulos y devuelve el estimado premium.
+- `src/core/modules/*`: módulos desacoplados (broker, compliance, fast-track, insurance) para escalar futuros escenarios.
 - `src/lib/whatsapp.ts`: generación dinámica del mensaje y enlace a WhatsApp.
 
 ### ⚙️ Cómo actualizar tasas, impuestos y honorarios
 
-Edita `src/lib/config.ts`:
+Edita `src/lib/config.ts` para:
 
 - `services.minimumVehiclePrice`: ticket mínimo permitido.
 - `services.finalRangeVariance`: variación para calcular el rango estimado (±2.5% por defecto).
-- `services.localMarketMarkup`: factor usado para estimar el precio equivalente en Perú.
 - `vehicleTypes`: tabla de tipos de vehículo con sus porcentajes de ISC y tooltips.
 - `deliveryWindows`: días estimados para Fast Track y Estándar.
 - `timeline`, `brandShowcase`, `sourcingPlatforms`, `differentiators`, `faq`: contenidos de cada sección.
 
-Edita `src/lib/pricingConfig.ts` para actualizar tarifas específicas:
+Edita `src/core/pricing/pricingConfig.ts` para actualizar tarifas específicas:
 
-- `freightByType`: flete estimado por categoría (SUV, SPORT, PICKUP, SEDAN/PHEV/HEV, EV).
+- `freightByCategory`: flete estimado por categoría (Gasolina, Híbrido HEV, Diésel, EV, PHEV).
 - `insuranceRate`: porcentaje del seguro marítimo (1.5%).
-- `adValoremRate`, `igvRate`, `stateComplianceRate`, `brokerFeeRate`.
-- `localFixedCosts`: revisión técnica, placas y gestoría (mantenidos como montos fijos).
+- `adValoremRate`, `igvRate`, `stateComplianceRate` (5%), `brokerFeeRate` (10%).
 
 > Cualquier ajuste se refleja automáticamente en la calculadora y en las secciones informativas.
 
@@ -50,15 +52,15 @@ La calculadora y el formulario reutilizan estos datos para generar el enlace dir
 
 ### 🧮 Funcionamiento de la calculadora
 
-1. Solicita tipo de vehículo (con ISC asociado), marca, modelo, año, precio Miami, precio de referencia en Perú (opcional) y plan de entrega.
-2. Calcula automáticamente flete (según tipo), seguro (1.5%), CIF, Ad Valorem 6%, ISC según categoría, IGV, State Compliance Fee (7%), Broker Fee (10%) y costos locales fijos.
-3. Muestra rango estimado (±2.5%), ahorro vs. precio en Perú (si fue ingresado) y desglose completo.
+1. Solicita tipo de vehículo (con ISC asociado), marca, modelo, año, precio Miami y plan de entrega.
+2. Calcula automáticamente flete (según categoría), seguro (1.5%), CIF, Ad Valorem 6%, ISC con la nueva tabla oficial, IGV, State Compliance Fee (5%), Broker Fee (10%) y Fast Track (si aplica).
+3. Muestra rango estimado (±2.5%) y desglose completo.
 4. Guarda el resultado en `localStorage` y lo comparte con la sección de formulario concierge.
-5. Permite abrir WhatsApp con todos los datos precargados —incluyendo tipo de vehículo, ISC aplicado y desglose— para contacto inmediato.
+5. Permite abrir WhatsApp con todos los datos precargados —incluyendo categoría seleccionada e ISC aplicado— para contacto inmediato.
 
 ### 🎨 Paleta y estilo
 
-- Colores: negro profundo, grafito, dorados metálicos (`#f5d072`, `#d4af37`) y acentos plata.
+- Colores: blanco cálido (#FCFCFC), negro carbón (#0F0F0F), grafito (#1C1C1C), humo (#D9D9D9), dorado satinado (#D7B977) y dorado resplandor (#F1D387).
 - Tipografía: Geist Sans (Next.js font) para un look minimalista premium.
 - Componentes con bordes redondeados, gradientes suaves y destellos dorados para transmitir lujo.
 

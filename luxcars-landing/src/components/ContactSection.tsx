@@ -5,7 +5,7 @@ import { Button } from "./Button";
 import { SectionHeading } from "./SectionHeading";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { buildWhatsappLink } from "@/lib/whatsapp";
-import type { ImportEstimate } from "@/lib/calculator";
+import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 import Image from "next/image";
 
@@ -26,7 +26,7 @@ const INITIAL_FORM: FormState = {
 };
 
 type StoredPayload = {
-  estimate: ImportEstimate;
+  estimate: PremiumImportQuote;
   preferredPlan: "fast" | "standard";
 };
 
@@ -34,9 +34,8 @@ const STORAGE_KEY = "luxcars:last-estimate";
 
 export function ContactSection() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
-  const [latestEstimate, setLatestEstimate] = useState<ImportEstimate | null>(
-    null,
-  );
+  const [latestEstimate, setLatestEstimate] =
+    useState<PremiumImportQuote | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -79,7 +78,7 @@ export function ContactSection() {
   useEffect(() => {
     if (!latestEstimate) return;
     setFeedback(
-      `Último cálculo cargado: ${latestEstimate.input.brand} ${latestEstimate.input.model} ${latestEstimate.input.year} · ${latestEstimate.vehicleType.label} (ISC ${formatPercentage(latestEstimate.iscRate)}) — ${formatCurrency(latestEstimate.finalEstimate)}`,
+        `Último cálculo cargado: ${latestEstimate.input.brand} ${latestEstimate.input.model} ${latestEstimate.input.year} · ${latestEstimate.vehicleCategory.label} (ISC ${formatPercentage(latestEstimate.iscRate)}) — ${formatCurrency(latestEstimate.finalEstimate)}`,
     );
   }, [latestEstimate]);
 

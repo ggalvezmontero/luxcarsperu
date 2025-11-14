@@ -9,16 +9,16 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import {
-  LUXCARS_CONFIG,
-  type CalculatorInput,
-  type VehicleTypeId,
-} from "@/lib/config";
+  calculateImportQuote,
+  type ImportCalculatorInput,
+  type PremiumImportQuote,
+} from "@/core/pricing/priceCalculator";
+import { type PlanKey } from "@/core/pricing/pricingConfig";
 import {
-  calculateImportCosts,
-  getVehicleTypeConfig,
-  type ImportEstimate,
-} from "@/lib/calculator";
-import type { PlanKey } from "@/lib/pricingConfig";
+  getVehicleCategory,
+  VEHICLE_CATEGORIES,
+} from "@/core/pricing/vehicleCategories";
+import { LUXCARS_CONFIG, type VehicleTypeId } from "@/lib/config";
 import { buildWhatsappLink } from "@/lib/whatsapp";
 import { Button } from "./Button";
 import { SectionHeading } from "./SectionHeading";
@@ -51,7 +51,6 @@ type FormState = {
   model: string;
   year: string;
   price: string;
-  peruPrice: string;
   preferredPlan: PlanKey;
 };
 
@@ -61,7 +60,6 @@ const INITIAL_FORM: FormState = {
   model: "",
   year: "",
   price: "",
-  peruPrice: "",
   preferredPlan: "fast",
 };
 
@@ -80,15 +78,17 @@ function toNumber(value: string) {
 
 export function CalculatorSection() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
-  const [estimate, setEstimate] = useState<ImportEstimate | null>(null);
+  const [estimate, setEstimate] = useState<PremiumImportQuote | null>(
+    null,
+  );
   const [status, setStatus] = useState<string | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const minPrice = LUXCARS_CONFIG.services.minimumVehiclePrice;
-  const vehicleTypeOptions = LUXCARS_CONFIG.vehicleTypes;
+  const vehicleTypeOptions = VEHICLE_CATEGORIES;
   const selectedVehicleType = form.vehicleType
-    ? getVehicleTypeConfig(form.vehicleType)
+    ? getVehicleCategory(form.vehicleType)
     : null;
 
   useEffect(() => {
@@ -109,10 +109,10 @@ export function CalculatorSection() {
   const handleFieldChange =
     (field: keyof FormState) =>
     (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value =
-        field === "price" || field === "peruPrice"
-          ? sanitizeNumber(event.target.value)
-          : event.target.value;
+        const value =
+          field === "price"
+            ? sanitizeNumber(event.target.value)
+            : event.target.value;
       setForm((prev) => ({
         ...prev,
         [field]: value,
@@ -154,20 +154,20 @@ export function CalculatorSection() {
       return;
     }
 
-    const peruReference = toNumber(form.peruPrice);
-
-    const parsed: CalculatorInput = {
+    const parsed: ImportCalculatorInput = {
       brand: form.brand.trim(),
       model: form.model.trim(),
       year: form.year.trim(),
-      price: priceMiami,
+      priceMiami,
       vehicleType: form.vehicleType,
-      peruPrice: Number.isNaN(peruReference) ? undefined : peruReference,
     };
 
     setIsCalculating(true);
     try {
-      const nextEstimate = calculateImportCosts(parsed, form.preferredPlan);
+      const nextEstimate = calculateImportQuote(
+        parsed,
+        form.preferredPlan,
+      );
       setEstimate(nextEstimate);
       setStatus(
         "Listo. Este es tu precio estimado puesto en Lima. Puedes compartirlo en WhatsApp o agendar una llamada.",
@@ -191,11 +191,6 @@ export function CalculatorSection() {
     estimate && estimate.freightAdjustment
       ? Math.round((estimate.freightAdjustment - 1) * 100)
       : 0;
-
-  const freightLabel =
-    estimate && planAdjustmentPercent > 0
-      ? `Flete según categoría (+${planAdjustmentPercent}% Fast Track)`
-      : "Flete según categoría";
 
   const freightTooltip =
     estimate && planAdjustmentPercent > 0
@@ -318,20 +313,6 @@ export function CalculatorSection() {
               />
             </label>
           </div>
-          <label className="grid gap-2 text-sm text-white/70">
-            Precio de mercado en Perú (opcional)
-            <div className="flex items-center gap-2">
-              <input
-                value={form.peruPrice}
-                onChange={handleFieldChange("peruPrice")}
-                placeholder="Ingresa tu referencia en Perú"
-                inputMode="decimal"
-                className="h-12 flex-1 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40"
-              />
-              <Tooltip content="Ingresa el precio que encontraste en Perú para calcular el ahorro exacto. Si lo dejas vacío usaremos un estimado de mercado." />
-            </div>
-          </label>
-
   <div className="grid gap-2 text-sm text-white/70">
             Plan estimado de entrega
             <div className="grid gap-3 sm:grid-cols-2">
@@ -396,8 +377,8 @@ export function CalculatorSection() {
               <div className="grid gap-8">
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="rounded-full border border-[#f5d072]/40 bg-[#f5d072]/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#fbe5a4]">
-                      {estimate.vehicleType.label}
+                      <span className="rounded-full border border-[#f5d072]/40 bg-[#f5d072]/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#fbe5a4]">
+                        {estimate.vehicleCategory.label}
                     </span>
                     <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
                       {estimate.planConfig.label}
@@ -405,8 +386,8 @@ export function CalculatorSection() {
                     <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
                       Timeline {estimate.planConfig.timelineLabel}
                     </span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
-                      ISC {formatPercentage(estimate.iscRate)}
+                      <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                        ISC {formatPercentage(estimate.iscRate)}
                     </span>
                   </div>
                   <div>
@@ -443,79 +424,59 @@ export function CalculatorSection() {
                       {formatCurrency(estimate.finalRange.max)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm text-white/60">
-                    <span>Ahorro estimado vs Perú</span>
-                    <span
-                      className={cn(
-                        "font-medium",
-                        estimate.input.peruPrice && estimate.savingsVsPeru > 0
-                          ? "text-emerald-300"
-                          : "text-white",
-                      )}
-                    >
-                      {formatCurrency(estimate.savingsVsPeru)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-white/60">
-                    <span>Referencia de mercado en Perú</span>
-                    <span className="font-medium text-white">
-                      {formatCurrency(estimate.peruMarketReference)}
-                    </span>
-                  </div>
                 </div>
 
                 <div className="grid gap-3 text-sm text-white/65">
+                    <BreakdownItem
+                      label="Precio Miami"
+                      amount={estimate.input.priceMiami}
+                      icon={<MoneyIcon size={16} />}
+                    />
                   <BreakdownItem
-                    label="Precio Miami"
-                    amount={estimate.input.price}
-                    icon={<MoneyIcon size={16} />}
-                  />
-                  <BreakdownItem
-                    label={freightLabel}
+                    label="Flete"
                     amount={estimate.freight}
                     icon={<TaxIcon size={16} />}
                     tooltip={freightTooltip}
                   />
                   <BreakdownItem
-                    label="Seguro marítimo 1.5%"
+                    label="Seguro"
                     amount={estimate.insurance}
                     icon={<TaxIcon size={16} />}
+                    tooltip="Seguro marítimo 1.5% calculado sobre el CIF."
                   />
                   <BreakdownItem
-                    label="CIF (auto + flete + seguro)"
+                    label="CIF"
                     amount={estimate.cif}
                     tooltip="Costo, seguro y flete (CIF) utilizados para el cálculo tributario."
                   />
                   <BreakdownItem
-                    label="Ad Valorem 6%"
+                    label="Ad Valorem"
                     amount={estimate.adValorem}
+                    tooltip="Ad Valorem 6% calculado sobre el CIF."
                   />
                   <BreakdownItem
-                    label={`ISC ${formatPercentage(estimate.iscRate)}`}
+                    label="ISC"
                     amount={estimate.isc}
-                    tooltip={estimate.iscTooltip}
+                    tooltip={`${formatPercentage(estimate.iscRate)} · ${estimate.iscTooltip}`}
                   />
-                  <BreakdownItem label="IGV 18%" amount={estimate.igv} />
                   <BreakdownItem
-                    label="State Compliance Fee (7%)"
+                    label="IGV"
+                    amount={estimate.igv}
+                    tooltip="IGV 18% aplicado a CIF + Ad Valorem + ISC."
+                  />
+                  <BreakdownItem
+                    label="State Compliance Fee (5%)"
                     amount={estimate.stateComplianceFee}
-                    tooltip="State Compliance Fee: cubre verificación legal, validación de documentos, compliance en USA y gestión administrativa del vehículo."
+                    tooltip="State Compliance Fee (5%): verificación legal, validación documental y compliance integral en USA."
                   />
                   <BreakdownItem
-                    label="Broker Fee (10%)"
+                    label="Broker Fee"
                     amount={estimate.brokerFee}
-                    tooltip="Broker Fee: incluye negociación, inspección del vehículo, CarFax, AutoCheck, coordinación logística y servicio concierge completo."
+                    tooltip="Broker Fee (10%): asesoría estratégica, negociación avanzada, inspección certificada y logística concierge."
                   />
-                  {estimate.localFixedFees.map((fee) => (
-                    <BreakdownItem
-                      key={fee.key}
-                      label={fee.label}
-                      amount={fee.amount}
-                    />
-                  ))}
                   {estimate.documentHandlingFee > 0 ? (
                     <BreakdownItem
-                      label="Gestión documental Fast Track"
+                      label="Extra FastTrack"
                       amount={estimate.documentHandlingFee}
                       tooltip="Fast Track añade gestión documental prioritaria y coordinación acelerada en Miami."
                     />
@@ -554,18 +515,17 @@ export function CalculatorSection() {
                 obtén un estimado instantáneo sin costos ocultos. Transparencia
                 total en impuestos, logística y honorarios.
               </p>
-              <ul className="grid gap-3 text-sm">
-                <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
-                  Calculadora exclusiva para vehículos desde USD 50,000.
-                </li>
-                <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
-                  ISC diferenciado por tipo (EV, híbridos, SUVs, deportivos,
-                  pickups).
-                </li>
-                <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
-                  Incluye flete, seguro, IGV, State Compliance Fee y Broker Fee.
-                </li>
-              </ul>
+                <ul className="grid gap-3 text-sm">
+                  <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
+                    Calculadora exclusiva para vehículos desde USD 50,000.
+                  </li>
+                  <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
+                    ISC diferenciado para gasolina, híbridos HEV/PHEV, diésel y EV.
+                  </li>
+                  <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
+                    Incluye flete, seguro, IGV, State Compliance Fee y Broker Fee.
+                  </li>
+                </ul>
             </div>
           )}
         </div>
