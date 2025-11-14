@@ -21,3 +21,15 @@ export function formatNumber(value: number, locale: string = "es-PE") {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+export function formatPercentage(
+  value: number,
+  locale: string = "es-PE",
+  digits: number = 0,
+) {
+  return new Intl.NumberFormat(locale, {
+    style: "percent",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}

@@ -1,49 +1,74 @@
-import { LUXCARS_CONFIG, type CalculatorInput } from "./config";
+import {
+  LUXCARS_CONFIG,
+  type CalculatorInput,
+  type VehicleTypeId,
+} from "./config";
 
-export type ImportEstimate = {
-  input: CalculatorInput;
-  shippingInsurance: number;
-  adValorem: number;
-  isc: number;
-  igv: number;
-  adminFee: number;
-  brokerFee: number;
+type VehicleTypeConfig = (typeof LUXCARS_CONFIG.vehicleTypes)[number];
+
+export type LogisticsBreakdown = {
+  shipping: number;
+  insurance: number;
   cif: number;
+};
+
+export type FeeBreakdown = {
+  isc: number;
+  iscRate: number;
+  igv: number;
+  stateComplianceFee: number;
+  brokerFee: number;
   finalEstimate: number;
   finalRange: { min: number; max: number };
   peruMarketReference: number;
   savingsVsPeru: number;
-  iscLabel: string;
 };
 
-export function calculateImportCosts(input: CalculatorInput): ImportEstimate {
-  const { services, iscByBrand, iscDefault } = LUXCARS_CONFIG;
-  const normalizedBrand = input.brand.toLowerCase();
+export type ImportEstimate = LogisticsBreakdown &
+  FeeBreakdown & {
+    input: CalculatorInput;
+    vehicleType: VehicleTypeConfig;
+  };
 
-  const iscConfig =
-    Object.entries(iscByBrand).find(([key]) => normalizedBrand.includes(key))
-      ?.[1] ?? iscDefault;
-
-  const shippingInsurance = Math.max(
-    services.shippingInsuranceBase,
-    input.price * services.shippingInsuranceRate,
+export function getVehicleTypeConfig(
+  vehicleType: VehicleTypeId,
+): VehicleTypeConfig {
+  return (
+    LUXCARS_CONFIG.vehicleTypes.find(({ id }) => id === vehicleType) ??
+    LUXCARS_CONFIG.vehicleTypes[0]
   );
+}
 
-  const cif = input.price + shippingInsurance;
-  const adValorem = cif * services.adValoremRate;
-  const isc = cif * iscConfig.rate;
-  const igv = (cif + adValorem + isc) * services.igvRate;
-  const adminFee = input.price * services.adminFeeRate;
-  const brokerFee = input.price * services.brokerFeeRate;
+export function calculateLogistics(priceMiami: number): LogisticsBreakdown {
+  const { services } = LUXCARS_CONFIG;
+  const shipping = Math.max(
+    services.shippingBase,
+    priceMiami * services.shippingRate,
+  );
+  const insurance = Math.max(
+    services.insuranceMinimum,
+    priceMiami * services.insuranceRate,
+  );
+  const cif = priceMiami + shipping + insurance;
+
+  return { shipping, insurance, cif };
+}
+
+export function calculateFees(
+  priceMiami: number,
+  vehicleType: VehicleTypeConfig,
+  logistics: LogisticsBreakdown,
+  peruPrice?: number,
+): FeeBreakdown {
+  const { services } = LUXCARS_CONFIG;
+
+  const isc = logistics.cif * vehicleType.iscRate;
+  const igv = (logistics.cif + isc) * services.igvRate;
+  const stateComplianceFee = priceMiami * services.stateComplianceRate;
+  const brokerFee = priceMiami * services.brokerFeeRate;
 
   const finalEstimate =
-    input.price +
-    shippingInsurance +
-    adValorem +
-    isc +
-    igv +
-    adminFee +
-    brokerFee;
+    logistics.cif + isc + igv + stateComplianceFee + brokerFee;
 
   const variance = services.finalRangeVariance;
   const finalRange = {
@@ -51,22 +76,40 @@ export function calculateImportCosts(input: CalculatorInput): ImportEstimate {
     max: finalEstimate * (1 + variance),
   };
 
-  const peruMarketReference = input.price * (1 + services.localMarketMarkup);
+  const peruMarketReference =
+    typeof peruPrice === "number" && !Number.isNaN(peruPrice)
+      ? peruPrice
+      : priceMiami * (1 + services.localMarketMarkup);
+
   const savingsVsPeru = peruMarketReference - finalEstimate;
 
   return {
-    input,
-    shippingInsurance,
-    adValorem,
     isc,
+    iscRate: vehicleType.iscRate,
     igv,
-    adminFee,
+    stateComplianceFee,
     brokerFee,
-    cif,
     finalEstimate,
     finalRange,
     peruMarketReference,
     savingsVsPeru,
-    iscLabel: iscConfig.label,
+  };
+}
+
+export function calculateImportCosts(input: CalculatorInput): ImportEstimate {
+  const vehicleType = getVehicleTypeConfig(input.vehicleType);
+  const logistics = calculateLogistics(input.price);
+  const fees = calculateFees(
+    input.price,
+    vehicleType,
+    logistics,
+    input.peruPrice,
+  );
+
+  return {
+    input,
+    vehicleType,
+    ...logistics,
+    ...fees,
   };
 }

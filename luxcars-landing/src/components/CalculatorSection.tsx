@@ -1,18 +1,29 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+import type { ReactNode } from "react";
 import {
   LUXCARS_CONFIG,
   type CalculatorInput,
+  type VehicleTypeId,
 } from "@/lib/config";
 import {
   calculateImportCosts,
+  getVehicleTypeConfig,
   type ImportEstimate,
 } from "@/lib/calculator";
 import { buildWhatsappLink } from "@/lib/whatsapp";
 import { Button } from "./Button";
 import { SectionHeading } from "./SectionHeading";
-import { cn, formatCurrency } from "@/lib/utils";
+import { Tooltip } from "./Tooltip";
+import { VehicleIcon, TaxIcon, MoneyIcon } from "./Icons";
+import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 
 const BRAND_OPTIONS = [
   "Porsche",
@@ -33,22 +44,37 @@ const BRAND_OPTIONS = [
 ];
 
 type FormState = {
+  vehicleType: VehicleTypeId | "";
   brand: string;
   model: string;
   year: string;
   price: string;
+  peruPrice: string;
   preferredPlan: "fast" | "standard";
 };
 
 const INITIAL_FORM: FormState = {
+  vehicleType: "",
   brand: "",
   model: "",
   year: "",
   price: "",
+  peruPrice: "",
   preferredPlan: "fast",
 };
 
 const STORAGE_KEY = "luxcars:last-estimate";
+
+function sanitizeNumber(value: string) {
+  const cleaned = value.replace(/[^0-9.]/g, "");
+  return cleaned;
+}
+
+function toNumber(value: string) {
+  const sanitized = sanitizeNumber(value);
+  if (!sanitized) return NaN;
+  return Number(sanitized);
+}
 
 export function CalculatorSection() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
@@ -58,6 +84,10 @@ export function CalculatorSection() {
   const [error, setError] = useState<string | null>(null);
 
   const minPrice = LUXCARS_CONFIG.services.minimumVehiclePrice;
+  const vehicleTypeOptions = LUXCARS_CONFIG.vehicleTypes;
+  const selectedVehicleType = form.vehicleType
+    ? getVehicleTypeConfig(form.vehicleType)
+    : null;
 
   useEffect(() => {
     if (!estimate) return;
@@ -74,41 +104,64 @@ export function CalculatorSection() {
     }
   }, [estimate, form.preferredPlan]);
 
-  const handleChange = (field: keyof FormState) => (value: string) => {
+  const handleFieldChange =
+    (field: keyof FormState) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const value =
+        field === "price" || field === "peruPrice"
+          ? sanitizeNumber(event.target.value)
+          : event.target.value;
+      setForm((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    };
+
+  const handleVehicleTypeSelect = (vehicleType: VehicleTypeId) => {
     setForm((prev) => ({
       ...prev,
-      [field]: value,
+      vehicleType,
     }));
   };
 
-  const handleCalculate = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCalculate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatus(null);
     setError(null);
 
-    const parsed: CalculatorInput = {
-      brand: form.brand.trim(),
-      model: form.model.trim(),
-      year: form.year.trim(),
-      price: Number(form.price.replace(/[^0-9.]/g, "")),
-    };
-
-    if (!parsed.brand || !parsed.model || !parsed.year || !parsed.price) {
-      setError("Completa todos los campos para obtener tu estimado premium.");
+    if (!form.vehicleType) {
+      setError("Selecciona el tipo de vehículo para aplicar el ISC correcto.");
       return;
     }
 
-    if (Number.isNaN(parsed.price) || parsed.price <= 0) {
+    const priceMiami = toNumber(form.price);
+    if (Number.isNaN(priceMiami) || priceMiami <= 0) {
       setError("Ingresa un precio válido del auto en Miami en USD.");
       return;
     }
 
-    if (parsed.price < minPrice) {
+    if (priceMiami < minPrice) {
       setError(
         `Trabajamos con vehículos premium desde ${formatCurrency(minPrice)}. Ingresa un monto igual o superior.`,
       );
       return;
     }
+
+    if (!form.brand.trim() || !form.model.trim() || !form.year.trim()) {
+      setError("Completa marca, modelo y año del vehículo.");
+      return;
+    }
+
+    const peruReference = toNumber(form.peruPrice);
+
+    const parsed: CalculatorInput = {
+      brand: form.brand.trim(),
+      model: form.model.trim(),
+      year: form.year.trim(),
+      price: priceMiami,
+      vehicleType: form.vehicleType,
+      peruPrice: Number.isNaN(peruReference) ? undefined : peruReference,
+    };
 
     setIsCalculating(true);
     try {
@@ -138,20 +191,61 @@ export function CalculatorSection() {
         id="calculadora"
         eyebrow="Calculadora pública"
         title="Calcula tu importación premium en menos de un minuto"
-        description="Ingresa los datos reales del auto que deseas en Miami. Nosotros estimamos fletes, impuestos SUNAT y honorarios para mostrarte un precio final sin sorpresas."
+        description="Selecciona el tipo de vehículo, ingresa tu precio en Miami y obtén un estimado completo con flete, seguros, impuestos SUNAT y honorarios LuxCars."
         align="center"
       />
       <div className="mt-16 grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
         <form
           onSubmit={handleCalculate}
-          className="grid gap-6 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]"
+          className="grid gap-7 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]"
         >
+          <div className="grid gap-3 text-sm text-white/70">
+            <div className="flex items-center gap-2 text-white">
+              <VehicleIcon size={18} />
+              <span className="font-semibold tracking-wide">
+                Tipo de vehículo & ISC
+              </span>
+              <Tooltip
+                content={
+                  selectedVehicleType
+                    ? selectedVehicleType.tooltip
+                    : "Elige el tipo de vehículo para aplicar el porcentaje ISC estimado según SUNAT."
+                }
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {vehicleTypeOptions.map((option) => {
+                const isSelected = form.vehicleType === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => handleVehicleTypeSelect(option.id)}
+                    className={cn(
+                      "flex flex-col items-start gap-2 rounded-2xl border px-5 py-4 text-left transition",
+                      isSelected
+                        ? "border-[#f5d072]/80 bg-[#f5d072]/10 text-white shadow-[0_15px_60px_rgba(245,208,114,0.2)]"
+                        : "border-white/10 bg-black/40 text-white/60 hover:border-white/20 hover:text-white",
+                    )}
+                  >
+                    <span className="text-sm font-semibold text-white">
+                      {option.label}
+                    </span>
+                    <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-white/40">
+                      <TaxIcon size={14} /> {formatPercentage(option.iscRate)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm text-white/70">
               Marca
               <select
                 value={form.brand}
-                onChange={(event) => handleChange("brand")(event.target.value)}
+                onChange={handleFieldChange("brand")}
                 className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40"
               >
                 <option value="">Selecciona</option>
@@ -166,34 +260,49 @@ export function CalculatorSection() {
               Modelo
               <input
                 value={form.model}
-                onChange={(event) => handleChange("model")(event.target.value)}
+                onChange={handleFieldChange("model")}
                 placeholder="Ej. 911 Turbo S"
                 className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40"
               />
             </label>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <label className="grid gap-2 text-sm text-white/70">
               Año
               <input
                 value={form.year}
-                onChange={(event) => handleChange("year")(event.target.value)}
+                onChange={handleFieldChange("year")}
                 placeholder="Ej. 2024"
                 inputMode="numeric"
                 className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40"
               />
             </label>
-            <label className="grid gap-2 text-sm text-white/70">
+            <label className="grid gap-2 text-sm text-white/70 sm:col-span-2">
               Precio en Miami (USD)
               <input
                 value={form.price}
-                onChange={(event) => handleChange("price")(event.target.value)}
+                onChange={handleFieldChange("price")}
                 placeholder="Ej. 265000"
+                inputMode="decimal"
                 className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40"
               />
             </label>
           </div>
-          <div className="grid gap-2 text-sm text-white/70">
+          <label className="grid gap-2 text-sm text-white/70">
+            Precio de mercado en Perú (opcional)
+            <div className="flex items-center gap-2">
+              <input
+                value={form.peruPrice}
+                onChange={handleFieldChange("peruPrice")}
+                placeholder="Ingresa tu referencia en Perú"
+                inputMode="decimal"
+                className="h-12 flex-1 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40"
+              />
+              <Tooltip content="Ingresa el precio que encontraste en Perú para calcular el ahorro exacto. Si lo dejas vacío usaremos un estimado de mercado." />
+            </div>
+          </label>
+
+  <div className="grid gap-2 text-sm text-white/70">
             Plan estimado de entrega
             <div className="grid gap-3 sm:grid-cols-2">
               {([
@@ -240,27 +349,37 @@ export function CalculatorSection() {
             {isCalculating ? "Calculando..." : "Generar precio estimado"}
           </Button>
           <p className="text-xs text-white/40">
-            Estimados referenciales con fines informativos. Nuestras cifras
-            consideran tarifas promedio de importación vigentes y pueden variar
-            según modelo, tipo de cambio y políticas SUNAT.
+            Este es un estimado basado en rangos reales de importación. El valor
+            final puede variar según la partida arancelaria, condición del
+            vehículo y determinación de SUNAT.
           </p>
         </form>
         <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/70 to-neutral-950/80 p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
           {estimate ? (
             <div className="grid gap-8">
-              <div>
-                <h3 className="text-xl font-semibold text-white">
-                  Resultado premium
-                </h3>
-                <p className="mt-2 text-sm text-white/60">
-                  Flete + impuestos calculados sobre tu vehículo. Incluimos
-                  honorarios de LuxCars y rango estimado realista.
-                </p>
-                {status ? (
-                  <div className="mt-4 rounded-2xl border border-[#f5d072]/30 bg-[#f5d072]/10 px-4 py-3 text-sm text-[#fbe5a4]">
-                    {status}
-                  </div>
-                ) : null}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="rounded-full border border-[#f5d072]/40 bg-[#f5d072]/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#fbe5a4]">
+                    {estimate.vehicleType.label}
+                  </span>
+                  <span className="text-xs uppercase tracking-[0.3em] text-white/40">
+                    ISC {formatPercentage(estimate.iscRate)}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-white">
+                    Resultado premium
+                  </h3>
+                  <p className="mt-2 text-sm text-white/60">
+                    Desglose completo con CIF, impuestos SUNAT, State Compliance
+                    Fee y Broker Fee incluidos. Ajustado con un rango del ±2.5%.
+                  </p>
+                  {status ? (
+                    <div className="mt-4 rounded-2xl border border-[#f5d072]/30 bg-[#f5d072]/10 px-4 py-3 text-sm text-[#fbe5a4]">
+                      {status}
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <div className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-6">
                 <div className="flex items-center justify-between">
@@ -273,7 +392,7 @@ export function CalculatorSection() {
                 </div>
                 <div className="grid gap-2 text-sm text-white/60">
                   <div className="flex items-center justify-between">
-                    <span>Rango probable</span>
+                    <span>Rango probable (±2.5%)</span>
                     <span className="font-medium text-white">
                       {formatCurrency(estimate.finalRange.min)} -{" "}
                       {formatCurrency(estimate.finalRange.max)}
@@ -284,7 +403,7 @@ export function CalculatorSection() {
                     <span
                       className={cn(
                         "font-medium",
-                        estimate.savingsVsPeru > 0
+                        estimate.input.peruPrice && estimate.savingsVsPeru > 0
                           ? "text-emerald-300"
                           : "text-white",
                       )}
@@ -293,7 +412,7 @@ export function CalculatorSection() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Precio de mercado en Perú</span>
+                    <span>Referencia de mercado en Perú</span>
                     <span className="font-medium text-white/80">
                       {formatCurrency(estimate.peruMarketReference)}
                     </span>
@@ -305,31 +424,44 @@ export function CalculatorSection() {
                 <BreakdownItem
                   label="Precio Miami"
                   amount={estimate.input.price}
+                  icon={<MoneyIcon size={16} />}
                 />
                 <BreakdownItem
-                  label="Flete + seguro estimado"
-                  amount={estimate.shippingInsurance}
+                  label="Flete estimado"
+                  amount={estimate.shipping}
+                  icon={<TaxIcon size={16} />}
                 />
                 <BreakdownItem
-                  label="Ad Valorem 6%"
-                  amount={estimate.adValorem}
+                  label="Seguro estimado"
+                  amount={estimate.insurance}
+                  icon={<TaxIcon size={16} />}
                 />
                 <BreakdownItem
-                  label={`ISC (${estimate.iscLabel})`}
+                  label="CIF (auto + flete + seguro)"
+                  amount={estimate.cif}
+                />
+                <BreakdownItem
+                  label={`ISC ${formatPercentage(estimate.iscRate)}`}
                   amount={estimate.isc}
+                  tooltip={
+                    estimate.vehicleType.tooltip ??
+                    "ISC estimado según categoría seleccionada."
+                  }
                 />
                 <BreakdownItem label="IGV 18%" amount={estimate.igv} />
                 <BreakdownItem
-                  label="Administrative fee 7%"
-                  amount={estimate.adminFee}
+                  label="State Compliance Fee (7%)"
+                  amount={estimate.stateComplianceFee}
+                  tooltip="State Compliance Fee: cubre verificación legal, validación de documentos, compliance en USA y gestión administrativa del vehículo."
                 />
                 <BreakdownItem
-                  label="Broker fee 10%"
+                  label="Broker Fee (10%)"
                   amount={estimate.brokerFee}
+                  tooltip="Broker Fee: incluye negociación, inspección del vehículo, CarFax, AutoCheck, coordinación logística y servicio concierge completo."
                 />
                 <BreakdownItem
-                  label="CIF (auto + flete)"
-                  amount={estimate.cif}
+                  label="Precio final estimado Lima"
+                  amount={estimate.finalEstimate}
                 />
               </div>
               {whatsappLink ? (
@@ -351,23 +483,25 @@ export function CalculatorSection() {
             </div>
           ) : (
             <div className="grid gap-6 text-white/60">
-              <h3 className="text-xl font-semibold text-white">
+              <h3 className="flex items-center gap-2 text-xl font-semibold text-white">
+                <MoneyIcon size={18} />
                 Desglose premium
               </h3>
               <p>
-                Ingresa los datos de tu auto de lujo y te mostraremos el precio
-                final puesto en Lima con impuestos SUNAT, flete y honorarios
-                incluidos.
+                Selecciona el tipo de vehículo, ingresa tu precio en Miami y
+                obtén un estimado instantáneo sin costos ocultos. Transparencia
+                total en impuestos, logística y honorarios.
               </p>
               <ul className="grid gap-3 text-sm">
                 <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
-                  Transparencia total: cero costos ocultos.
+                  Calculadora exclusiva para vehículos desde USD 50,000.
                 </li>
                 <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
-                  Datos reales actualizados según tarifas promedio.
+                  ISC diferenciado por tipo (EV, híbridos, SUVs, deportivos,
+                  pickups).
                 </li>
                 <li className="rounded-2xl border border-white/5 bg-white/5 px-5 py-3">
-                  Calculadora diseñada para autos desde USD 50,000.
+                  Incluye flete, seguro, IGV, State Compliance Fee y Broker Fee.
                 </li>
               </ul>
             </div>
@@ -381,13 +515,23 @@ export function CalculatorSection() {
 type BreakdownItemProps = {
   label: string;
   amount: number;
+  tooltip?: string;
+  icon?: ReactNode;
 };
 
-function BreakdownItem({ label, amount }: BreakdownItemProps) {
+function BreakdownItem({ label, amount, tooltip, icon }: BreakdownItemProps) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
-      <span>{label}</span>
-      <span className="font-medium text-white">{formatCurrency(amount)}</span>
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
+      <div className="flex items-center gap-3 text-white/70">
+        {icon ? <span className="flex-none">{icon}</span> : null}
+        <span>{label}</span>
+        {tooltip ? (
+          <Tooltip content={tooltip} placement="bottom" />
+        ) : null}
+      </div>
+      <span className="font-medium text-white">
+        {formatCurrency(amount)}
+      </span>
     </div>
   );
 }

@@ -22,12 +22,12 @@ npm run dev
 
 Edita `src/lib/config.ts`:
 
-- `services.shippingInsuranceBase`: monto base del flete + seguro.
-- `services.shippingInsuranceRate`: % aplicado sobre el precio Miami.
-- `services.adValoremRate`, `services.igvRate`, `services.adminFeeRate`, `services.brokerFeeRate`.
-- `services.finalRangeVariance`: variación para calcular el rango estimado.
+- `services.shippingBase`, `services.shippingRate`: cálculo del flete estimado.
+- `services.insuranceMinimum`, `services.insuranceRate`: cálculo del seguro marítimo.
+- `services.igvRate`, `services.stateComplianceRate`, `services.brokerFeeRate`.
+- `services.finalRangeVariance`: variación para calcular el rango estimado (±2.5% por defecto).
 - `services.localMarketMarkup`: factor usado para estimar el precio equivalente en Perú.
-- `iscByBrand`: tasas ISC estimadas por marca/categoría (puedes ajustar o añadir nuevas marcas).
+- `vehicleTypes`: tabla de tipos de vehículo con sus porcentajes de ISC y tooltips.
 - `deliveryWindows`: días estimados para Fast Track y Estándar.
 - `timeline`, `brandShowcase`, `sourcingPlatforms`, `differentiators`, `faq`: contenidos de cada sección.
 
@@ -44,11 +44,11 @@ La calculadora y el formulario reutilizan estos datos para generar el enlace dir
 
 ### 🧮 Funcionamiento de la calculadora
 
-1. Solicita marca, modelo, año, precio Miami y plan de entrega.
-2. Calcula automáticamente flete + seguro, Ad Valorem, ISC, IGV, honorarios administrativos y broker.
-3. Muestra rango estimado, ahorro vs. precio de mercado en Perú y desglose completo.
-4. Guarda el resultado en `localStorage` y lo comparte con la sección de formulario.
-5. Permite abrir WhatsApp con todos los datos precargados para contacto inmediato.
+1. Solicita tipo de vehículo (con ISC asociado), marca, modelo, año, precio Miami, precio de referencia en Perú (opcional) y plan de entrega.
+2. Calcula automáticamente flete, seguro, CIF, ISC según categoría, IGV, State Compliance Fee (7%) y Broker Fee (10%).
+3. Muestra rango estimado (±2.5%), ahorro vs. precio en Perú (si fue ingresado) y desglose completo.
+4. Guarda el resultado en `localStorage` y lo comparte con la sección de formulario concierge.
+5. Permite abrir WhatsApp con todos los datos precargados —incluyendo tipo de vehículo, ISC aplicado y desglose— para contacto inmediato.
 
 ### 🎨 Paleta y estilo
 

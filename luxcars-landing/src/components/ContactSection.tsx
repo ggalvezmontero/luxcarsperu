@@ -6,7 +6,7 @@ import { SectionHeading } from "./SectionHeading";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { buildWhatsappLink } from "@/lib/whatsapp";
 import type { ImportEstimate } from "@/lib/calculator";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 
 type FormState = {
   name: string;
@@ -78,7 +78,7 @@ export function ContactSection() {
   useEffect(() => {
     if (!latestEstimate) return;
     setFeedback(
-      `Último cálculo cargado: ${latestEstimate.input.brand} ${latestEstimate.input.model} ${latestEstimate.input.year} — ${formatCurrency(latestEstimate.finalEstimate)}`,
+      `Último cálculo cargado: ${latestEstimate.input.brand} ${latestEstimate.input.model} ${latestEstimate.input.year} · ${latestEstimate.vehicleType.label} (ISC ${formatPercentage(latestEstimate.iscRate)}) — ${formatCurrency(latestEstimate.finalEstimate)}`,
     );
   }, [latestEstimate]);
 
