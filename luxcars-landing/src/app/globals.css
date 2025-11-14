@@ -1,15 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #050505;
-  --foreground: #f7f7f7;
+  --background: #0f0f0f;
+  --foreground: #fcfcfc;
+  --accent-gold-soft: #d7b977;
+  --accent-gold-bright: #f1d387;
+  --graphite: #1c1c1c;
+  --smoke: #d9d9d9;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-brand: #f5d072;
-  --color-brand-alt: #d4af37;
+  --color-brand: var(--accent-gold-bright);
+  --color-brand-alt: var(--accent-gold-soft);
   --color-muted: #8f8f91;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -21,8 +25,10 @@ html {
 
 body {
   min-height: 100vh;
-  background: radial-gradient(circle at top, rgba(245, 208, 114, 0.08), transparent 55%),
-    radial-gradient(circle at bottom, rgba(42, 42, 44, 0.8), #050505 65%);
+  background:
+    radial-gradient(1200px at 20% 10%, rgba(241, 211, 135, 0.12), transparent 55%),
+    radial-gradient(900px at 80% 0%, rgba(215, 185, 119, 0.18), transparent 60%),
+    linear-gradient(160deg, #121212 0%, #161616 45%, rgba(25, 25, 27, 0.92) 70%, #0b0b0b 100%);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
@@ -38,6 +44,6 @@ a:hover {
 }
 
 ::selection {
-  background: rgba(245, 208, 114, 0.3);
-  color: #050505;
+  background: rgba(241, 211, 135, 0.35);
+  color: #0f0f0f;
 }

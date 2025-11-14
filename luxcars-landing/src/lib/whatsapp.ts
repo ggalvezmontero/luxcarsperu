@@ -1,6 +1,6 @@
 import { LUXCARS_CONFIG } from "./config";
 import { formatCurrency, formatPercentage } from "./utils";
-import type { ImportEstimate } from "./calculator";
+import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
 
 export type WhatsappPayload = {
   name?: string;
@@ -11,7 +11,7 @@ export type WhatsappPayload = {
 };
 
 export function buildWhatsappLink(
-  estimate: ImportEstimate,
+  estimate: PremiumImportQuote,
   contact: WhatsappPayload,
 ) {
   const { contact: contactConfig, services } = LUXCARS_CONFIG;
@@ -26,45 +26,33 @@ export function buildWhatsappLink(
       ? `Flete aplicado: ${formatCurrency(estimate.freight)} (base ${formatCurrency(estimate.freightBase)} +${adjustmentPercent}% Fast Track)`
       : `Flete aplicado: ${formatCurrency(estimate.freight)}`;
   const varianceLabel = formatPercentage(services.finalRangeVariance);
-  const peruPriceProvided =
-    typeof estimate.input.peruPrice === "number" &&
-    !Number.isNaN(estimate.input.peruPrice);
 
   const lines = [
     "Hola LuxCars, quiero avanzar con la importación de un auto premium.",
     contact.name ? `Nombre: ${contact.name}` : undefined,
     contact.phone ? `Teléfono: ${contact.phone}` : undefined,
     contact.email ? `Email: ${contact.email}` : undefined,
-    `Tipo de vehículo: ${estimate.vehicleType.label}`,
+    `Categoría seleccionada: ${estimate.vehicleCategory.label}`,
     `Plan seleccionado: ${planConfig.label}`,
     `Timeline estimado: ${timelineLabel}`,
     `Marca: ${estimate.input.brand}`,
     `Modelo: ${estimate.input.model}`,
     `Año: ${estimate.input.year}`,
-    `Precio Miami: ${formatCurrency(estimate.input.price)}`,
+    `Precio Miami: ${formatCurrency(estimate.input.priceMiami)}`,
     freightAppliedLine,
-      `Seguro (1.5%): ${formatCurrency(estimate.insurance)}`,
+    `Seguro 1.5%: ${formatCurrency(estimate.insurance)}`,
     `CIF (auto + flete + seguro): ${formatCurrency(estimate.cif)}`,
     `Ad Valorem 6%: ${formatCurrency(estimate.adValorem)}`,
     `ISC aplicado (${formatPercentage(estimate.iscRate)}): ${formatCurrency(estimate.isc)}`,
     `IGV 18%: ${formatCurrency(estimate.igv)}`,
-    `State Compliance Fee (7%): ${formatCurrency(estimate.stateComplianceFee)}`,
-    `Broker fee (10%): ${formatCurrency(estimate.brokerFee)}`,
-    ...estimate.localFixedFees.map(
-      (fee) => `${fee.label}: ${formatCurrency(fee.amount)}`,
-    ),
-      estimate.documentHandlingFee > 0
-        ? `Extra FastTrack: ${formatCurrency(estimate.documentHandlingFee)}`
-        : undefined,
+    `State Compliance Fee (5%): ${formatCurrency(estimate.stateComplianceFee)}`,
+    `Broker Fee (10%): ${formatCurrency(estimate.brokerFee)}`,
+    estimate.documentHandlingFee > 0
+      ? `Extra FastTrack: ${formatCurrency(estimate.documentHandlingFee)}`
+      : undefined,
     `Precio final estimado Lima: ${formatCurrency(estimate.finalEstimate)} ± ${varianceLabel}`,
     `Rango estimado: ${formatCurrency(estimate.finalRange.min)} - ${formatCurrency(estimate.finalRange.max)}`,
-    peruPriceProvided
-      ? `Precio referencia Perú: ${formatCurrency(estimate.input.peruPrice!)}`
-      : undefined,
-    peruPriceProvided
-      ? `Ahorro estimado vs Perú: ${formatCurrency(estimate.savingsVsPeru)}`
-      : undefined,
-    `ISC utilizado: ${formatPercentage(estimate.iscRate)} · ${estimate.iscTooltip}`,
+    `ISC de referencia: ${formatPercentage(estimate.iscRate)} · ${estimate.iscTooltip}`,
     "Estimado sujeto a verificación de partida arancelaria y determinación SUNAT.",
     contact.notes ? `Notas: ${contact.notes}` : undefined,
   ].filter(Boolean);

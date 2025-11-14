@@ -1,3 +1,6 @@
+import { IMPORTER_RULES } from "@/core/pricing/importerRules";
+import { VEHICLE_CATEGORIES } from "@/core/pricing/vehicleCategories";
+
 export const LUXCARS_CONFIG = {
   brandName: "LuxCars Perú",
   brandVariants: [
@@ -16,54 +19,10 @@ export const LUXCARS_CONFIG = {
     email: "concierge@luxcars.pe",
   },
   services: {
-    minimumVehiclePrice: 50000,
-    finalRangeVariance: 0.025,
-    localMarketMarkup: 0.45,
+    minimumVehiclePrice: IMPORTER_RULES.minimumVehiclePrice,
+    finalRangeVariance: IMPORTER_RULES.finalRangeVariance,
   },
-  vehicleTypes: [
-    {
-      id: "suv-premium",
-      label: "SUV Premium / Lujo",
-      iscRate: 0.3,
-      tooltip:
-        "Las SUVs de lujo generalmente tienen un ISC aproximado del 30% según tablas SUNAT.",
-    },
-    {
-      id: "deportivo",
-      label: "Deportivo / Superdeportivo",
-      iscRate: 0.4,
-      tooltip:
-        "Los superdeportivos y autos de alta cilindrada suelen tener un ISC cercano al 40%.",
-    },
-    {
-      id: "ev",
-      label: "Eléctrico (EV)",
-      iscRate: 0,
-      tooltip:
-        "Los vehículos 100% eléctricos están exonerados del ISC (0%).",
-    },
-    {
-      id: "phev",
-      label: "Híbrido Enchufable (PHEV)",
-      iscRate: 0.02,
-      tooltip:
-        "Los híbridos enchufables tienen un ISC preferencial aproximado del 2%.",
-    },
-    {
-      id: "hev",
-      label: "Híbrido (HEV)",
-      iscRate: 0.1,
-      tooltip:
-        "Los híbridos no enchufables suelen tributar un ISC estimado del 10%.",
-    },
-    {
-      id: "pickup",
-      label: "Pickup / Camioneta",
-      iscRate: 0.2,
-      tooltip:
-        "ISC estimado para camionetas o pickups orientadas a uso mixto.",
-    },
-  ] as const,
+  vehicleTypes: VEHICLE_CATEGORIES,
   timeline: [
     { day: "Día 1", title: "Búsqueda & negociación" },
     { day: "Día 2-4", title: "Inspección + CarFax + AutoCheck" },
@@ -182,12 +141,3 @@ export const LUXCARS_CONFIG = {
 
 export type VehicleTypeId =
   (typeof LUXCARS_CONFIG.vehicleTypes)[number]["id"];
-
-export type CalculatorInput = {
-  brand: string;
-  model: string;
-  year: string;
-  price: number;
-  vehicleType: VehicleTypeId;
-  peruPrice?: number;
-};
