@@ -192,11 +192,6 @@ export function CalculatorSection() {
       ? Math.round((estimate.freightAdjustment - 1) * 100)
       : 0;
 
-  const freightLabel =
-    estimate && planAdjustmentPercent > 0
-      ? `Flete según categoría (+${planAdjustmentPercent}% Fast Track)`
-      : "Flete según categoría";
-
   const freightTooltip =
     estimate && planAdjustmentPercent > 0
       ? `Flete base ${formatCurrency(estimate.freightBase)} ajustado con +${planAdjustmentPercent}% vía Fast Track.`
@@ -471,40 +466,46 @@ export function CalculatorSection() {
                     icon={<MoneyIcon size={16} />}
                   />
                   <BreakdownItem
-                    label={freightLabel}
+                    label="Flete"
                     amount={estimate.freight}
                     icon={<TaxIcon size={16} />}
                     tooltip={freightTooltip}
                   />
                   <BreakdownItem
-                    label="Seguro marítimo 1.5%"
+                    label="Seguro"
                     amount={estimate.insurance}
                     icon={<TaxIcon size={16} />}
+                    tooltip="Seguro marítimo 1.5% calculado sobre el CIF."
                   />
                   <BreakdownItem
-                    label="CIF (auto + flete + seguro)"
+                    label="CIF"
                     amount={estimate.cif}
                     tooltip="Costo, seguro y flete (CIF) utilizados para el cálculo tributario."
                   />
                   <BreakdownItem
-                    label="Ad Valorem 6%"
+                    label="Ad Valorem"
                     amount={estimate.adValorem}
+                    tooltip="Ad Valorem 6% calculado sobre el CIF."
                   />
                   <BreakdownItem
-                    label={`ISC ${formatPercentage(estimate.iscRate)}`}
+                    label="ISC"
                     amount={estimate.isc}
-                    tooltip={estimate.iscTooltip}
+                    tooltip={`${formatPercentage(estimate.iscRate)} · ${estimate.iscTooltip}`}
                   />
-                  <BreakdownItem label="IGV 18%" amount={estimate.igv} />
                   <BreakdownItem
-                    label="State Compliance Fee (7%)"
+                    label="IGV"
+                    amount={estimate.igv}
+                    tooltip="IGV 18% aplicado a CIF + Ad Valorem + ISC."
+                  />
+                  <BreakdownItem
+                    label="State Compliance Fee"
                     amount={estimate.stateComplianceFee}
-                    tooltip="State Compliance Fee: cubre verificación legal, validación de documentos, compliance en USA y gestión administrativa del vehículo."
+                    tooltip="State Compliance Fee (7%): cubre verificación legal, validación de documentos, compliance en USA y gestión administrativa del vehículo."
                   />
                   <BreakdownItem
-                    label="Broker Fee (10%)"
+                    label="Broker Fee"
                     amount={estimate.brokerFee}
-                    tooltip="Broker Fee: incluye negociación, inspección del vehículo, CarFax, AutoCheck, coordinación logística y servicio concierge completo."
+                    tooltip="Broker Fee (10%): incluye negociación, inspección del vehículo, CarFax, AutoCheck, coordinación logística y servicio concierge completo."
                   />
                   {estimate.localFixedFees.map((fee) => (
                     <BreakdownItem
@@ -515,7 +516,7 @@ export function CalculatorSection() {
                   ))}
                   {estimate.documentHandlingFee > 0 ? (
                     <BreakdownItem
-                      label="Gestión documental Fast Track"
+                      label="Extra FastTrack"
                       amount={estimate.documentHandlingFee}
                       tooltip="Fast Track añade gestión documental prioritaria y coordinación acelerada en Miami."
                     />

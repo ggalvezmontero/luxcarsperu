@@ -43,7 +43,7 @@ export function buildWhatsappLink(
     `Año: ${estimate.input.year}`,
     `Precio Miami: ${formatCurrency(estimate.input.price)}`,
     freightAppliedLine,
-    `Seguro marítimo (1.5%): ${formatCurrency(estimate.insurance)}`,
+      `Seguro (1.5%): ${formatCurrency(estimate.insurance)}`,
     `CIF (auto + flete + seguro): ${formatCurrency(estimate.cif)}`,
     `Ad Valorem 6%: ${formatCurrency(estimate.adValorem)}`,
     `ISC aplicado (${formatPercentage(estimate.iscRate)}): ${formatCurrency(estimate.isc)}`,
@@ -53,9 +53,9 @@ export function buildWhatsappLink(
     ...estimate.localFixedFees.map(
       (fee) => `${fee.label}: ${formatCurrency(fee.amount)}`,
     ),
-    estimate.documentHandlingFee > 0
-      ? `Gestión documental Fast Track: ${formatCurrency(estimate.documentHandlingFee)}`
-      : undefined,
+      estimate.documentHandlingFee > 0
+        ? `Extra FastTrack: ${formatCurrency(estimate.documentHandlingFee)}`
+        : undefined,
     `Precio final estimado Lima: ${formatCurrency(estimate.finalEstimate)} ± ${varianceLabel}`,
     `Rango estimado: ${formatCurrency(estimate.finalRange.min)} - ${formatCurrency(estimate.finalRange.max)}`,
     peruPriceProvided

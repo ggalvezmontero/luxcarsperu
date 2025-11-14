@@ -43,11 +43,6 @@ export const PRICING_CONFIG = {
       label: "Placas e inscripción",
       amount: 160,
     },
-    gestor: {
-      key: "gestor",
-      label: "Gestoría y trámites locales",
-      amount: 320,
-    },
   } as const,
   iscRules: {
     ev: {
@@ -89,5 +84,4 @@ export type LocalFixedFee =
 export const LOCAL_FIXED_FEE_ORDER: LocalFixedFeeKey[] = [
   "revisionTecnica",
   "placas",
-  "gestor",
 ];

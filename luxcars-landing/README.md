@@ -35,7 +35,7 @@ Edita `src/lib/pricingConfig.ts` para actualizar tarifas específicas:
 - `freightByType`: flete estimado por categoría (SUV, SPORT, PICKUP, SEDAN/PHEV/HEV, EV).
 - `insuranceRate`: porcentaje del seguro marítimo (1.5%).
 - `adValoremRate`, `igvRate`, `stateComplianceRate`, `brokerFeeRate`.
-- `localFixedCosts`: revisión técnica, placas y gestoría (mantenidos como montos fijos).
+- `localFixedCosts`: revisión técnica y placas (mantenidos como montos fijos).
 
 > Cualquier ajuste se refleja automáticamente en la calculadora y en las secciones informativas.
 
