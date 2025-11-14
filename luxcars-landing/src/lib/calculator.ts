@@ -3,21 +3,28 @@ import {
   type CalculatorInput,
   type VehicleTypeId,
 } from "./config";
+import {
+  PRICING_CONFIG,
+  type LocalFixedCost,
+} from "./pricingConfig";
 
 type VehicleTypeConfig = (typeof LUXCARS_CONFIG.vehicleTypes)[number];
 
 export type LogisticsBreakdown = {
-  shipping: number;
+  freight: number;
   insurance: number;
   cif: number;
 };
 
 export type FeeBreakdown = {
+  adValorem: number;
   isc: number;
   iscRate: number;
   igv: number;
   stateComplianceFee: number;
   brokerFee: number;
+  localFixedCosts: readonly LocalFixedCost[];
+  localFixedTotal: number;
   finalEstimate: number;
   finalRange: { min: number; max: number };
   peruMarketReference: number;
@@ -39,19 +46,17 @@ export function getVehicleTypeConfig(
   );
 }
 
-export function calculateLogistics(priceMiami: number): LogisticsBreakdown {
-  const { services } = LUXCARS_CONFIG;
-  const shipping = Math.max(
-    services.shippingBase,
-    priceMiami * services.shippingRate,
-  );
-  const insurance = Math.max(
-    services.insuranceMinimum,
-    priceMiami * services.insuranceRate,
-  );
-  const cif = priceMiami + shipping + insurance;
+export function calculateLogistics(
+  priceMiami: number,
+  vehicleType: VehicleTypeConfig,
+): LogisticsBreakdown {
+  const freight =
+    PRICING_CONFIG.freightByType[vehicleType.id as VehicleTypeId] ?? 2000;
+  const insurance =
+    (priceMiami + freight) * PRICING_CONFIG.insuranceRate;
+  const cif = priceMiami + freight + insurance;
 
-  return { shipping, insurance, cif };
+  return { freight, insurance, cif };
 }
 
 export function calculateFees(
@@ -62,13 +67,27 @@ export function calculateFees(
 ): FeeBreakdown {
   const { services } = LUXCARS_CONFIG;
 
+  const adValorem = logistics.cif * PRICING_CONFIG.adValoremRate;
   const isc = logistics.cif * vehicleType.iscRate;
-  const igv = (logistics.cif + isc) * services.igvRate;
-  const stateComplianceFee = priceMiami * services.stateComplianceRate;
-  const brokerFee = priceMiami * services.brokerFeeRate;
+  const igv =
+    (logistics.cif + adValorem + isc) * PRICING_CONFIG.igvRate;
+  const stateComplianceFee =
+    priceMiami * PRICING_CONFIG.stateComplianceRate;
+  const brokerFee = priceMiami * PRICING_CONFIG.brokerFeeRate;
+
+  const localFixedTotal = PRICING_CONFIG.localFixedCosts.reduce(
+    (total, cost) => total + cost.amount,
+    0,
+  );
 
   const finalEstimate =
-    logistics.cif + isc + igv + stateComplianceFee + brokerFee;
+    logistics.cif +
+    adValorem +
+    isc +
+    igv +
+    stateComplianceFee +
+    brokerFee +
+    localFixedTotal;
 
   const variance = services.finalRangeVariance;
   const finalRange = {
@@ -84,11 +103,14 @@ export function calculateFees(
   const savingsVsPeru = peruMarketReference - finalEstimate;
 
   return {
+    adValorem,
     isc,
     iscRate: vehicleType.iscRate,
     igv,
     stateComplianceFee,
     brokerFee,
+    localFixedCosts: PRICING_CONFIG.localFixedCosts,
+    localFixedTotal,
     finalEstimate,
     finalRange,
     peruMarketReference,
@@ -98,7 +120,7 @@ export function calculateFees(
 
 export function calculateImportCosts(input: CalculatorInput): ImportEstimate {
   const vehicleType = getVehicleTypeConfig(input.vehicleType);
-  const logistics = calculateLogistics(input.price);
+  const logistics = calculateLogistics(input.price, vehicleType);
   const fees = calculateFees(
     input.price,
     vehicleType,

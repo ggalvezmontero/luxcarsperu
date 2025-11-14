@@ -15,21 +15,27 @@ npm run dev
 - `src/app/page.tsx`: composición de todas las secciones de la landing.
 - `src/components/*`: componentes modulares reutilizables (hero, calculadora, timeline, FAQs, etc.).
 - `src/lib/config.ts`: configuración central (tasas, contactos, textos corporativos).
-- `src/lib/calculator.ts`: lógica para estimar flete, impuestos SUNAT, honorarios y ahorro.
+- `src/lib/pricingConfig.ts`: tabla de fletes por tipo, porcentajes de seguros/impuestos y costos fijos locales.
+- `src/lib/calculator.ts`: lógica para estimar flete, seguros, impuestos SUNAT, honorarios y ahorro.
 - `src/lib/whatsapp.ts`: generación dinámica del mensaje y enlace a WhatsApp.
 
 ### ⚙️ Cómo actualizar tasas, impuestos y honorarios
 
 Edita `src/lib/config.ts`:
 
-- `services.shippingBase`, `services.shippingRate`: cálculo del flete estimado.
-- `services.insuranceMinimum`, `services.insuranceRate`: cálculo del seguro marítimo.
-- `services.igvRate`, `services.stateComplianceRate`, `services.brokerFeeRate`.
+- `services.minimumVehiclePrice`: ticket mínimo permitido.
 - `services.finalRangeVariance`: variación para calcular el rango estimado (±2.5% por defecto).
 - `services.localMarketMarkup`: factor usado para estimar el precio equivalente en Perú.
 - `vehicleTypes`: tabla de tipos de vehículo con sus porcentajes de ISC y tooltips.
 - `deliveryWindows`: días estimados para Fast Track y Estándar.
 - `timeline`, `brandShowcase`, `sourcingPlatforms`, `differentiators`, `faq`: contenidos de cada sección.
+
+Edita `src/lib/pricingConfig.ts` para actualizar tarifas específicas:
+
+- `freightByType`: flete estimado por categoría (SUV, SPORT, PICKUP, SEDAN/PHEV/HEV, EV).
+- `insuranceRate`: porcentaje del seguro marítimo (1.5%).
+- `adValoremRate`, `igvRate`, `stateComplianceRate`, `brokerFeeRate`.
+- `localFixedCosts`: revisión técnica, placas y gestoría (mantenidos como montos fijos).
 
 > Cualquier ajuste se refleja automáticamente en la calculadora y en las secciones informativas.
 
@@ -45,7 +51,7 @@ La calculadora y el formulario reutilizan estos datos para generar el enlace dir
 ### 🧮 Funcionamiento de la calculadora
 
 1. Solicita tipo de vehículo (con ISC asociado), marca, modelo, año, precio Miami, precio de referencia en Perú (opcional) y plan de entrega.
-2. Calcula automáticamente flete, seguro, CIF, ISC según categoría, IGV, State Compliance Fee (7%) y Broker Fee (10%).
+2. Calcula automáticamente flete (según tipo), seguro (1.5%), CIF, Ad Valorem 6%, ISC según categoría, IGV, State Compliance Fee (7%), Broker Fee (10%) y costos locales fijos.
 3. Muestra rango estimado (±2.5%), ahorro vs. precio en Perú (si fue ingresado) y desglose completo.
 4. Guarda el resultado en `localStorage` y lo comparte con la sección de formulario concierge.
 5. Permite abrir WhatsApp con todos los datos precargados —incluyendo tipo de vehículo, ISC aplicado y desglose— para contacto inmediato.

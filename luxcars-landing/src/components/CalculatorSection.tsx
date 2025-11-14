@@ -427,18 +427,23 @@ export function CalculatorSection() {
                   icon={<MoneyIcon size={16} />}
                 />
                 <BreakdownItem
-                  label="Flete estimado"
-                  amount={estimate.shipping}
+                  label="Flete según categoría"
+                  amount={estimate.freight}
                   icon={<TaxIcon size={16} />}
+                  tooltip="El flete no depende del valor del auto. Se calcula según volumen y tipo de vehículo."
                 />
                 <BreakdownItem
-                  label="Seguro estimado"
+                  label="Seguro marítimo 1.5%"
                   amount={estimate.insurance}
                   icon={<TaxIcon size={16} />}
                 />
                 <BreakdownItem
                   label="CIF (auto + flete + seguro)"
                   amount={estimate.cif}
+                />
+                <BreakdownItem
+                  label="Ad Valorem 6%"
+                  amount={estimate.adValorem}
                 />
                 <BreakdownItem
                   label={`ISC ${formatPercentage(estimate.iscRate)}`}
@@ -458,6 +463,17 @@ export function CalculatorSection() {
                   label="Broker Fee (10%)"
                   amount={estimate.brokerFee}
                   tooltip="Broker Fee: incluye negociación, inspección del vehículo, CarFax, AutoCheck, coordinación logística y servicio concierge completo."
+                />
+                {estimate.localFixedCosts.map((cost) => (
+                  <BreakdownItem
+                    key={cost.id}
+                    label={cost.label}
+                    amount={cost.amount}
+                  />
+                ))}
+                <BreakdownItem
+                  label="Costos locales fijos"
+                  amount={estimate.localFixedTotal}
                 />
                 <BreakdownItem
                   label="Precio final estimado Lima"

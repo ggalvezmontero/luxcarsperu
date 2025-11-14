@@ -17,13 +17,6 @@ export const LUXCARS_CONFIG = {
   },
   services: {
     minimumVehiclePrice: 50000,
-    shippingBase: 3200,
-    shippingRate: 0.028,
-    insuranceMinimum: 900,
-    insuranceRate: 0.017,
-    igvRate: 0.18,
-    stateComplianceRate: 0.07,
-    brokerFeeRate: 0.1,
     finalRangeVariance: 0.025,
     localMarketMarkup: 0.45,
   },
