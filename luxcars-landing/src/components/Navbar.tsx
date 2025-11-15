@@ -1,21 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
-import { Button } from "./Button";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { cn } from "@/lib/utils";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Button } from "./Button";
 
 const NAV_LINKS = [
-  { label: "Inicio", href: "#hero" },
-  { label: "Calculadora", href: "#calculator" },
-  { label: "Marcas", href: "#brands" },
-  { label: "Cómo Funciona", href: "#how-it-works" },
-  { label: "Servicios", href: "#services" },
-  { label: "Webs", href: "#websites" },
-  { label: "FAQ", href: "#faq" },
-  { label: "Contacto", href: "#contact" },
+  { label: "Inicio", href: "/" },
+  { label: "Calculadora", href: "/#calculator" },
+  { label: "Cómo Funciona", href: "/como-funciona" },
 ];
 
 export function Navbar() {
@@ -60,20 +55,20 @@ export function Navbar() {
     >
       <nav
         data-navbar-root
-        className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-8 lg:px-0"
+        className="flex w-full items-center justify-between px-6 py-4 sm:px-12"
       >
         <Link
           href="#hero"
           onClick={handleLinkClick}
           className="flex items-center gap-3"
         >
-          <span className="relative inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5">
+          <span className="relative inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-gradient-to-br from-[#f5d072]/10 to-[#d4af37]/5">
             <Image
-              src="/images/brands/lamborghini.png"
+              src="/images/logo.png"
               alt="LuxCars insignia"
               width={44}
               height={44}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain p-1"
               priority
             />
           </span>
@@ -86,6 +81,26 @@ export function Navbar() {
             </span>
           </span>
         </Link>
+
+        <div className="hidden flex-1 items-center justify-center gap-6 text-xs font-medium uppercase tracking-[0.35em] text-white/70 sm:flex">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={handleLinkClick}
+              className="group relative transition hover:text-white"
+            >
+              {link.label}
+              <span className="absolute inset-x-0 -bottom-2 h-px scale-x-0 bg-gradient-to-r from-[#d4af37] via-[#f5d072] to-[#b68b2d] transition-transform duration-300 group-hover:scale-x-100" />
+            </Link>
+          ))}
+        </div>
+
+        <div className="hidden sm:flex">
+          <Button href="#contact" size="md" className="shadow-lg">
+            Cotizar ahora
+          </Button>
+        </div>
 
         <button
           onClick={() => setIsMenuOpen((prev) => !prev)}
@@ -115,26 +130,6 @@ export function Navbar() {
             />
           </span>
         </button>
-
-        <div className="hidden items-center gap-8 text-sm font-medium uppercase tracking-[0.35em] text-white/70 sm:flex">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={handleLinkClick}
-              className="group relative transition hover:text-white"
-            >
-              {link.label}
-              <span className="absolute inset-x-0 -bottom-2 h-px scale-x-0 bg-gradient-to-r from-[#d4af37] via-[#f5d072] to-[#b68b2d] transition-transform duration-300 group-hover:scale-x-100" />
-            </Link>
-          ))}
-        </div>
-
-        <div className="hidden sm:flex">
-          <Button href="#contact" size="md" className="shadow-lg">
-            Cotizar ahora
-          </Button>
-        </div>
       </nav>
 
       <div
@@ -144,7 +139,7 @@ export function Navbar() {
           isMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
         )}
       >
-        <div className="mx-4 mb-4 space-y-3 rounded-3xl border border-white/10 bg-black/80 px-6 py-4 text-sm uppercase tracking-[0.35em] text-white/70 transition-all">
+        <div className="mx-4 mb-4 space-y-3 rounded-3xl border border-white/10 bg-black/80 px-6 py-4 text-xs uppercase tracking-[0.35em] text-white/70 transition-all">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}

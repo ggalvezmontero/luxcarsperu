@@ -35,22 +35,19 @@ export function BrandsSection() {
         {BRAND_LOGOS.map((brand) => (
           <article
             key={brand.name}
-            className="group relative flex flex-col items-center justify-center gap-6 overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-neutral-950/85 via-black/70 to-neutral-900/90 p-6 text-center shadow-[0_25px_90px_rgba(0,0,0,0.4)] transition hover:-translate-y-1 hover:border-[#f5d072]/60 hover:shadow-[0_35px_140px_rgba(245,208,114,0.25)]"
+            className="group relative flex flex-col items-center justify-center gap-4 overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-neutral-950/85 via-black/70 to-neutral-900/90 p-8 text-center shadow-[0_25px_90px_rgba(0,0,0,0.4)] transition hover:-translate-y-1 hover:border-[#f5d072]/60 hover:shadow-[0_35px_140px_rgba(245,208,114,0.25)]"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,208,114,0.3),transparent_70%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-            <Image
-              src={`/images/brands/${brand.file}`}
-              alt={`Logo ${brand.name}`}
-              width={180}
-              height={100}
-              className="relative h-20 w-full rounded-2xl border border-white/10 bg-white/5 object-cover p-4"
-            />
-            <div className="relative flex flex-col items-center gap-2 text-sm">
-              <p className="text-base font-semibold text-white">{brand.name}</p>
-              <span className="text-xs uppercase tracking-[0.35em] text-white/45">
-                Miami · Lima
-              </span>
+            <div className="relative flex h-24 w-full items-center justify-center rounded-2xl border border-white/10 bg-white p-4">
+              <Image
+                src={`/images/brands/${brand.file}`}
+                alt={`Logo ${brand.name}`}
+                width={180}
+                height={100}
+                className="h-full w-full object-contain"
+              />
             </div>
+            <p className="relative text-sm font-semibold text-white/80">{brand.name}</p>
           </article>
         ))}
       </div>
