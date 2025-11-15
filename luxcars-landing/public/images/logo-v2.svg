@@ -1,0 +1,48 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gold Gradient -->
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f5d072;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#d4af37;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#b68b2d;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Radial Gradient for Glow -->
+    <radialGradient id="glow">
+      <stop offset="0%" style="stop-color:#f5d072;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#d4af37;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Glow Effect -->
+  <circle cx="200" cy="200" r="150" fill="url(#glow)"/>
+  
+  <!-- Main Circle Border -->
+  <circle cx="200" cy="200" r="180" fill="none" stroke="url(#gold)" stroke-width="4" opacity="0.3"/>
+  <circle cx="200" cy="200" r="170" fill="none" stroke="url(#gold)" stroke-width="2"/>
+  
+  <!-- Stylized "LC" Monogram -->
+  <g transform="translate(200, 200)">
+    <!-- Letter L -->
+    <path d="M -60 -70 L -60 50 L -40 50 L -40 -50 L -20 -50 L -20 -70 Z" 
+          fill="url(#gold)" stroke="url(#gold)" stroke-width="1"/>
+    
+    <!-- Letter C -->
+    <path d="M 10 -50 Q 10 -70 30 -70 L 60 -70 L 60 -50 L 35 -50 Q 30 -50 30 -45 L 30 25 Q 30 30 35 30 L 60 30 L 60 50 L 30 50 Q 10 50 10 30 Z" 
+          fill="url(#gold)" stroke="url(#gold)" stroke-width="1"/>
+    
+    <!-- Decorative Line -->
+    <line x1="-70" y1="0" x2="70" y2="0" stroke="url(#gold)" stroke-width="1.5" opacity="0.4"/>
+    
+    <!-- Small Accent Diamonds -->
+    <circle cx="-75" cy="0" r="3" fill="#f5d072"/>
+    <circle cx="75" cy="0" r="3" fill="#f5d072"/>
+  </g>
+  
+  <!-- Decorative Corner Elements -->
+  <path d="M 50 200 L 70 200 L 70 180" stroke="url(#gold)" stroke-width="2" fill="none" opacity="0.5"/>
+  <path d="M 350 200 L 330 200 L 330 180" stroke="url(#gold)" stroke-width="2" fill="none" opacity="0.5"/>
+  <path d="M 50 200 L 70 200 L 70 220" stroke="url(#gold)" stroke-width="2" fill="none" opacity="0.5"/>
+  <path d="M 350 200 L 330 200 L 330 220" stroke="url(#gold)" stroke-width="2" fill="none" opacity="0.5"/>
+</svg>
+
