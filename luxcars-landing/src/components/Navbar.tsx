@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { label: "Inicio", href: "/" },
   { label: "Calculadora", href: "/#calculator" },
   { label: "Cómo Funciona", href: "/como-funciona" },
+  { label: "FAQ", href: "/faq" },
 ];
 
 export function Navbar() {
@@ -58,17 +59,17 @@ export function Navbar() {
         className="flex w-full items-center justify-between px-6 py-4 sm:px-12"
       >
         <Link
-          href="#hero"
+          href="/"
           onClick={handleLinkClick}
           className="flex items-center gap-3"
         >
-          <span className="relative inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-gradient-to-br from-[#f5d072]/10 to-[#d4af37]/5">
+          <span className="relative inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-gradient-to-br from-white/10 to-white/5">
             <Image
-              src="/images/logo.png"
+              src="/images/logo-clean.svg"
               alt="LuxCars insignia"
               width={44}
               height={44}
-              className="h-full w-full object-contain p-1"
+              className="h-full w-full object-contain"
               priority
             />
           </span>
@@ -91,13 +92,13 @@ export function Navbar() {
               className="group relative transition hover:text-white"
             >
               {link.label}
-              <span className="absolute inset-x-0 -bottom-2 h-px scale-x-0 bg-gradient-to-r from-[#d4af37] via-[#f5d072] to-[#b68b2d] transition-transform duration-300 group-hover:scale-x-100" />
+              <span className="absolute inset-x-0 -bottom-2 h-px scale-x-0 bg-white transition-transform duration-300 group-hover:scale-x-100" />
             </Link>
           ))}
         </div>
 
         <div className="hidden sm:flex">
-          <Button href="#contact" size="md" className="shadow-lg">
+          <Button href="/#contact" size="md" className="shadow-lg !text-black">
             Cotizar ahora
           </Button>
         </div>
@@ -145,12 +146,12 @@ export function Navbar() {
               key={link.href}
               href={link.href}
               onClick={handleLinkClick}
-              className="block rounded-2xl border border-transparent px-4 py-3 text-center transition hover:border-[#f5d072]/50 hover:bg-[#f5d072]/10 hover:text-white"
+              className="block rounded-2xl border border-transparent px-4 py-3 text-center transition hover:border-white/30 hover:bg-white/10 hover:text-white"
             >
               {link.label}
             </Link>
           ))}
-          <Button href="#contact" size="md" className="w-full">
+          <Button href="/#contact" size="md" className="w-full !text-black">
             WhatsApp Concierge
           </Button>
         </div>

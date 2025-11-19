@@ -1,0 +1,23 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Jeep Logo -->
+  <defs>
+    <style>
+      .jeep-green { fill: #154734; }
+      .jeep-text { fill: #154734; font-family: Arial, sans-serif; font-weight: bold; font-size: 24px; }
+    </style>
+  </defs>
+  
+  <!-- Grille slots (7 vertical bars) -->
+  <g transform="translate(14, 20)">
+    <rect x="0" y="0" width="8" height="30" class="jeep-green" rx="2"/>
+    <rect x="14" y="0" width="8" height="30" class="jeep-green" rx="2"/>
+    <rect x="28" y="0" width="8" height="30" class="jeep-green" rx="2"/>
+    <rect x="42" y="0" width="8" height="30" class="jeep-green" rx="2"/>
+    <rect x="56" y="0" width="8" height="30" class="jeep-green" rx="2"/>
+    <rect x="70" y="0" width="8" height="30" class="jeep-green" rx="2"/>
+    <rect x="84" y="0" width="8" height="30" class="jeep-green" rx="2"/>
+  </g>
+  
+  <!-- JEEP text -->
+  <text x="64" y="80" text-anchor="middle" class="jeep-text">JEEP</text>
+</svg>

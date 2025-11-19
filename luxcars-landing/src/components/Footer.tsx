@@ -11,18 +11,18 @@ const FOOTER_LINKS = {
     { label: "Calculadora de Importación", href: "/#calculator" },
     { label: "Cómo Funciona", href: "/como-funciona" },
     { label: "Marcas Disponibles", href: "/como-funciona#brands" },
-    { label: "Tiempos de Entrega", href: "/como-funciona#delivery" },
+    { label: "Timeline de Entrega", href: "/#timeline" },
   ],
   company: [
-    { label: "Por Qué Nosotros", href: "/como-funciona#services" },
+    { label: "Por Qué Nosotros", href: "/como-funciona#why-us" },
     { label: "Sitios de Búsqueda", href: "/como-funciona#websites" },
-    { label: "Preguntas Frecuentes", href: "/como-funciona#faq" },
+    { label: "Preguntas Frecuentes", href: "/faq" },
     { label: "Contacto", href: "/#contact" },
   ],
   legal: [
-    { label: "Términos y Condiciones", href: "#" },
-    { label: "Política de Privacidad", href: "#" },
-    { label: "Política de Cookies", href: "#" },
+    { label: "Términos y Condiciones", href: "/terminos" },
+    { label: "Política de Privacidad", href: "/privacidad" },
+    { label: "Política de Cookies", href: "/cookies" },
   ],
 };
 
@@ -67,16 +67,16 @@ const SOCIAL_LINKS = [
 
 export function Footer() {
   return (
-    <footer className="mt-20 w-full border-t border-white/10 bg-black">
+    <footer className="w-full border-t border-white/10 bg-black">
       {/* Main Footer Content */}
       <div className="w-full px-6 py-12 sm:px-12 lg:py-16">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12">
           {/* Brand Section */}
           <div className="lg:col-span-4">
             <div className="flex items-center gap-3 mb-6">
-              <div className="relative h-12 w-12 rounded-full border border-white/15 bg-gradient-to-br from-[#f5d072]/10 to-[#d4af37]/5 p-1">
+              <div className="relative h-12 w-12 rounded-full border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-1">
                 <Image
-                  src="/images/logo.png"
+                  src="/images/logo-clean.svg"
                   alt="LuxCars Logo"
                   width={48}
                   height={48}
@@ -101,7 +101,7 @@ export function Footer() {
                 <span className="text-white/50">Email:</span>{" "}
                 <a
                   href={`mailto:${LUXCARS_CONFIG.contact.email}`}
-                  className="text-white hover:text-[#f5d072] transition"
+                  className="text-white hover:text-white/80 transition"
                 >
                   {LUXCARS_CONFIG.contact.email}
                 </a>
@@ -112,7 +112,7 @@ export function Footer() {
                   href={`https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-white hover:text-[#f5d072] transition"
+                  className="text-white hover:text-white/80 transition"
                 >
                   +{LUXCARS_CONFIG.contact.whatsappNumber}
                 </a>
@@ -133,7 +133,7 @@ export function Footer() {
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-sm text-white/60 hover:text-[#f5d072] transition"
+                        className="text-sm text-white/60 hover:text-white transition"
                       >
                         {link.label}
                       </Link>
@@ -152,7 +152,7 @@ export function Footer() {
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-sm text-white/60 hover:text-[#f5d072] transition"
+                        className="text-sm text-white/60 hover:text-white transition"
                       >
                         {link.label}
                       </Link>
@@ -171,7 +171,7 @@ export function Footer() {
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-sm text-white/60 hover:text-[#f5d072] transition"
+                        className="text-sm text-white/60 hover:text-white transition"
                       >
                         {link.label}
                       </Link>
@@ -193,7 +193,7 @@ export function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-white/60 hover:text-[#f5d072] transition"
+                  className="text-white/60 hover:text-white transition"
                   aria-label={social.label}
                 >
                   {social.icon}
@@ -217,15 +217,15 @@ export function Footer() {
               © {CURRENT_YEAR} {LUXCARS_CONFIG.brandName}. Todos los derechos reservados.
             </p>
             <div className="flex flex-wrap gap-4 text-xs text-white/50">
-              <Link href="#" className="hover:text-white/70 transition">
+              <Link href="/terminos" className="hover:text-white/70 transition">
                 Términos
               </Link>
               <span>·</span>
-              <Link href="#" className="hover:text-white/70 transition">
+              <Link href="/privacidad" className="hover:text-white/70 transition">
                 Privacidad
               </Link>
               <span>·</span>
-              <Link href="#" className="hover:text-white/70 transition">
+              <Link href="/cookies" className="hover:text-white/70 transition">
                 Cookies
               </Link>
             </div>

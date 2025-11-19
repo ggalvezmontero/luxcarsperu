@@ -48,8 +48,8 @@ export function Hero() {
             un proceso seguro, guiado y 100% premium.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Button href="#calculator" size="lg">
-              Calcular precio
+            <Button href="/#calculator" size="lg" className="!text-black">
+              Calcular
             </Button>
             <Button
               href={`https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}`}
@@ -58,7 +58,7 @@ export function Hero() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Hablar por WhatsApp
+              WhatsApp
             </Button>
           </div>
           <ul className="mt-12 grid gap-3 text-sm text-white/65 sm:grid-cols-2">
