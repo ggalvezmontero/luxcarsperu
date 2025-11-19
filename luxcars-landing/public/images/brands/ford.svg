@@ -1,0 +1,19 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Ford Logo -->
+  <defs>
+    <style>
+      .ford-blue { fill: #003478; }
+      .ford-white { fill: #FFFFFF; }
+      .ford-text { fill: #FFFFFF; font-family: 'Times New Roman', serif; font-style: italic; font-weight: bold; font-size: 32px; }
+    </style>
+  </defs>
+  
+  <!-- Blue oval background -->
+  <ellipse cx="64" cy="64" rx="58" ry="34" class="ford-blue"/>
+  
+  <!-- White border -->
+  <ellipse cx="64" cy="64" rx="56" ry="32" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  
+  <!-- Ford script text -->
+  <text x="64" y="74" text-anchor="middle" class="ford-text">Ford</text>
+</svg>

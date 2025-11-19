@@ -22,7 +22,7 @@ const baseStyles =
 
 const variants = {
     primary:
-      "bg-gradient-to-r from-[#d7b977] via-[#f1d387] to-[#d7b977] text-[#0f0f0f] shadow-[0_10px_45px_rgba(241,211,135,0.35)] hover:shadow-[0_14px_55px_rgba(241,211,135,0.55)]",
+      "bg-white text-black shadow-[0_10px_45px_rgba(255,255,255,0.25)] hover:shadow-[0_14px_55px_rgba(255,255,255,0.35)] hover:bg-white/95",
     secondary:
       "border border-white/25 bg-white/10 text-white hover:bg-white/20 hover:border-white/40",
     ghost: "text-white/80 hover:text-white hover:bg-white/5",

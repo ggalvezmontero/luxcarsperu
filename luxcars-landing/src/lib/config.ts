@@ -25,11 +25,11 @@ export const LUXCARS_CONFIG = {
   vehicleTypes: VEHICLE_CATEGORIES,
   timeline: [
     { day: "Día 1", title: "Búsqueda & negociación" },
-    { day: "Día 2-4", title: "Inspección + CarFax + AutoCheck" },
-    { day: "Día 5", title: "Reserva y transporte interno" },
-    { day: "Día 6-20", title: "Tránsito marítimo Miami → Callao" },
-    { day: "Día 21-28", title: "Aduanas SUNAT y nacionalización" },
-    { day: "Día 29-35", title: "Revisión técnica, inscripción y placas" },
+    { day: "Día 2-4", title: "Inspección certificada" },
+    { day: "Día 5", title: "Reserva & transporte" },
+    { day: "Día 6-20", title: "Tránsito marítimo" },
+    { day: "Día 21-28", title: "Aduanas & nacionalización" },
+    { day: "Día 29-35", title: "Revisión técnica & placas" },
     { day: "Entrega", title: "Entrega final certificada" },
   ],
   deliveryWindows: {
@@ -55,7 +55,7 @@ export const LUXCARS_CONFIG = {
     {
       question: "¿Cuál es la inversión mínima?",
       answer:
-        "Trabajamos únicamente con vehículos premium y exóticos desde USD 50,000 hacia arriba para asegurar calidad y exclusividad.",
+        "Trabajamos únicamente con vehículos premium y exóticos desde USD 40,000 hacia arriba para asegurar calidad y exclusividad.",
     },
     {
       question: "¿Qué pasa si no encuentro el auto ideal?",
@@ -79,6 +79,10 @@ export const LUXCARS_CONFIG = {
     "Cadillac",
     "Aston Martin",
     "Dodge SRT",
+    "Toyota",
+    "Jeep",
+    "Ford",
+    "Chevrolet",
   ],
   sourcingPlatforms: [
     "Cars.com",
@@ -104,7 +108,7 @@ export const LUXCARS_CONFIG = {
     {
       title: "Ticket premium",
       description:
-        "Solo trabajamos con autos desde USD 50,000 para garantizar exclusividad real.",
+        "Solo trabajamos con autos desde USD 40,000 para garantizar exclusividad real.",
     },
     {
       title: "Servicio concierge Miami → Perú",

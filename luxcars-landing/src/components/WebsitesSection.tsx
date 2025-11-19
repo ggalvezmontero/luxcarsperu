@@ -10,9 +10,9 @@ const WEBSITE_LOGOS = [
   { name: "eBay Motors", file: "ebaymotors.png" },
   { name: "AutoTempest", file: "autotempest.png" },
   { name: "Facebook Marketplace", file: "marketplace.png" },
-  { name: "Porsche Certified", file: "porsche.png" },
-  { name: "BMW USA", file: "bmw.png" },
-  { name: "Tesla Inventory", file: "tesla.png" },
+  { name: "Porsche Certified", file: "porsche.svg" },
+  { name: "BMW USA", file: "bmw.svg" },
+  { name: "Tesla Inventory", file: "tesla.svg" },
 ];
 
 export function WebsitesSection() {

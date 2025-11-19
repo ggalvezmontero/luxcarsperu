@@ -17,6 +17,10 @@ const BRAND_LOGOS = [
   { name: "Aston Martin", file: "astonmartin.png" },
   { name: "Rolls-Royce", file: "rollsroyce.png" },
   { name: "Bentley", file: "bentley.png" },
+  { name: "Toyota", file: "toyota.svg" },
+  { name: "Jeep", file: "jeep.svg" },
+  { name: "Ford", file: "ford.svg" },
+  { name: "Chevrolet", file: "chevrolet.svg" },
 ];
 
 export function BrandsSection() {

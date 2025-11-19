@@ -230,7 +230,7 @@ export function ContactSection() {
               {feedback}
             </div>
           ) : null}
-          <Button type="submit" size="lg" disabled={isSending}>
+          <Button type="submit" size="lg" disabled={isSending} className="!text-black">
             {isSending ? "Abriendo WhatsApp..." : "Enviar ahora por WhatsApp"}
           </Button>
             <p className="text-xs text-white/40">
