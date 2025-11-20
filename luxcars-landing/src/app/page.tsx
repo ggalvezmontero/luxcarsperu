@@ -6,11 +6,8 @@ import { Footer } from "@/components/Footer";
 import { Hero } from "@/components/Hero";
 import { Navbar } from "@/components/Navbar";
 import { TimelineSection } from "@/components/TimelineSection";
-import { useScrollSpy } from "@/hooks/useScrollSpy";
 
 export default function Home() {
-  // Actualizar el hash según la sección visible
-  useScrollSpy(['calculator', 'timeline', 'contact']);
 
   return (
     <div className="flex min-h-screen flex-col">
