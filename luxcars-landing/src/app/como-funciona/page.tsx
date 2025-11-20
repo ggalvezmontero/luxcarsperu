@@ -8,11 +8,8 @@ import { WebsitesSection } from "@/components/WebsitesSection";
 import { DeliveryTimesSection } from "@/components/DeliveryTimesSection";
 import { FAQSection } from "@/components/FAQSection";
 import { Footer } from "@/components/Footer";
-import { useScrollSpy } from "@/hooks/useScrollSpy";
 
 export default function ComoFuncionaPage() {
-  // Actualizar el hash según la sección visible
-  useScrollSpy(['how-it-works', 'brands', 'why-us', 'websites', 'services', 'faq']);
 
   return (
     <div className="flex min-h-screen flex-col">

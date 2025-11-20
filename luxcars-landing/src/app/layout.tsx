@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { CookieBanner } from "@/components/CookieBanner";
-import { ScrollPrevention } from "@/components/ScrollPrevention";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -63,7 +62,6 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-neutral-950 text-white`}
       >
-        <ScrollPrevention />
         {children}
         <CookieBanner />
       </body>
