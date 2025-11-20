@@ -243,7 +243,7 @@ export function ContactSection() {
             </div>
           ) : null}
           <Button type="submit" size="lg" disabled={isSending} className="!text-black">
-            {isSending ? "Abriendo WhatsApp..." : "Enviar ahora por WhatsApp"}
+            {isSending ? "Abriendo WhatsApp..." : "Enviar ahora"}
           </Button>
           <p className="text-xs text-white/40">
             Al enviar, abriremos WhatsApp con toda la información precargada
