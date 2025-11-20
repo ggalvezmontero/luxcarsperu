@@ -54,7 +54,7 @@ export function WebsitesSection() {
         </div>
         <div className="space-y-6 rounded-[28px] border border-white/10 bg-gradient-to-br from-neutral-950 via-black/70 to-neutral-900 p-8 shadow-[0_25px_100px_rgba(0,0,0,0.35)]">
           <Image
-            src="/images/timeline/journey.jpg"
+            src="/images/how/search.jpg"
             alt="Selección de autos de lujo en marketplaces premium"
             width={640}
             height={360}

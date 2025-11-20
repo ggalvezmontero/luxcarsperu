@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import Image from "next/image";
 import { Button } from "./Button";
 
 const HERO_BULLETS = [
@@ -11,7 +11,6 @@ const HERO_BULLETS = [
 export function Hero() {
   return (
     <section
-      id="hero"
       className="relative overflow-hidden rounded-[40px] border border-white/10 bg-neutral-950/90 px-6 py-24 shadow-[inset_0_0_90px_rgba(255,255,255,0.08)] backdrop-blur-xl sm:px-12 lg:px-20 lg:py-32"
     >
       <div className="absolute inset-0 -z-10">
@@ -29,17 +28,7 @@ export function Hero() {
       </div>
       <div className="mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
-          <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.35em] text-white/60">
-            {LUXCARS_CONFIG.brandVariants.slice(0, 3).map((variant) => (
-              <span
-                key={variant}
-                className="rounded-full border border-white/10 px-4 py-1 backdrop-blur"
-              >
-                {variant}
-              </span>
-            ))}
-          </div>
-          <h1 className="mt-6 text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+          <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
             Importamos tu auto de lujo desde Miami con transparencia absoluta.
           </h1>
           <p className="mt-6 max-w-xl text-pretty text-lg text-white/70 lg:text-xl">
@@ -49,7 +38,7 @@ export function Hero() {
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <Button href="/#calculator" size="lg" className="!text-black">
-              Calcular
+              Calcular Ahora
             </Button>
             <Button
               href={`https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}`}
@@ -91,7 +80,7 @@ export function Hero() {
             </div>
             <div className="grid gap-4">
               {[
-                { label: "Autos cubiertos", value: "USD 50K - 1M+" },
+                { label: "Autos cubiertos", value: "USD 40K - 1M+" },
                 { label: "Reporte técnico", value: "Inspección ASE + Scanner" },
                 { label: "Clientes por mes", value: "Cupos limitados" },
               ].map((item) => (

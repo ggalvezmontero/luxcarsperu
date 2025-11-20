@@ -25,8 +25,6 @@ export function buildWhatsappLink(
     adjustmentPercent > 0
       ? `Flete aplicado: ${formatCurrency(estimate.freight)} (base ${formatCurrency(estimate.freightBase)} +${adjustmentPercent}% Fast Track)`
       : `Flete aplicado: ${formatCurrency(estimate.freight)}`;
-  const varianceLabel = formatPercentage(services.finalRangeVariance);
-
   const lines = [
     "Hola LuxCars, quiero avanzar con la importación de un auto premium.",
     contact.name ? `Nombre: ${contact.name}` : undefined,
@@ -50,8 +48,7 @@ export function buildWhatsappLink(
     estimate.documentHandlingFee > 0
       ? `Extra FastTrack: ${formatCurrency(estimate.documentHandlingFee)}`
       : undefined,
-    `Precio final estimado Lima: ${formatCurrency(estimate.finalEstimate)} ± ${varianceLabel}`,
-    `Rango estimado: ${formatCurrency(estimate.finalRange.min)} - ${formatCurrency(estimate.finalRange.max)}`,
+    `Precio final estimado Lima: ${formatCurrency(estimate.finalEstimate)}`,
     `ISC de referencia: ${formatPercentage(estimate.iscRate)} · ${estimate.iscTooltip}`,
     "Estimado sujeto a verificación de partida arancelaria y determinación SUNAT.",
     contact.notes ? `Notas: ${contact.notes}` : undefined,
