@@ -17,6 +17,8 @@ export const LUXCARS_CONFIG = {
   contact: {
     whatsappNumber: "51987654321",
     email: "concierge@luxcars.pe",
+    phone: "+51 987 654 321",
+    address: "Av. Javier Prado Este 4200, San Borja, Lima, Perú",
   },
   services: {
     minimumVehiclePrice: IMPORTER_RULES.minimumVehiclePrice,

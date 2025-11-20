@@ -10,8 +10,8 @@ import { Button } from "./Button";
 const NAV_LINKS = [
   { label: "Inicio", href: "/" },
   { label: "Calculadora", href: "/#calculator" },
+  { label: "Etapas", href: "/#timeline" },
   { label: "Cómo Funciona", href: "/como-funciona" },
-  { label: "FAQ", href: "/faq" },
 ];
 
 export function Navbar() {
@@ -99,7 +99,7 @@ export function Navbar() {
 
         <div className="hidden sm:flex">
           <Button href="/#contact" size="md" className="shadow-lg !text-black">
-            Cotizar ahora
+            Contáctenos
           </Button>
         </div>
 
@@ -140,7 +140,7 @@ export function Navbar() {
           isMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
         )}
       >
-        <div className="mx-4 mb-4 space-y-3 rounded-3xl border border-white/10 bg-black/80 px-6 py-4 text-xs uppercase tracking-[0.35em] text-white/70 transition-all">
+        <div className="mx-4 mb-4 space-y-3 rounded-3xl border border-white/10 bg-black/80 px-4 py-4 text-xs uppercase tracking-[0.35em] text-white/70 transition-all">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -151,9 +151,11 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Button href="/#contact" size="md" className="w-full !text-black">
-            WhatsApp Concierge
-          </Button>
+          <div className="px-2">
+            <Button href="/#contact" size="md" className="w-full !text-black">
+              Contáctenos
+            </Button>
+          </div>
         </div>
       </div>
     </header>

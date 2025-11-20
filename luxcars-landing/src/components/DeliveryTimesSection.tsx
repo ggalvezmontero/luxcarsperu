@@ -8,12 +8,14 @@ const HIGHLIGHTS = [
     key: "fastTrack" as const,
     description:
       "Prioridad en inspección, booking de nave y liberación en Callao. Ideal para lanzamientos, coleccionistas o entregas urgentes.",
+    image: "/images/how/shipping.jpg", // Imagen de envío rápido
   },
   {
     title: "Estándar",
     key: "standard" as const,
     description:
       "Proceso regular con ahorro logístico. Supervisión diaria con reportes de avance semana a semana.",
+    image: "/images/timeline/journey.jpg", // Imagen de proceso estándar
   },
 ];
 
@@ -41,7 +43,7 @@ export function DeliveryTimesSection() {
               <div className="relative space-y-4">
                 <div className="relative h-36 overflow-hidden rounded-2xl border border-white/10">
                   <Image
-                    src="/images/timeline/journey.jpg"
+                    src={item.image}
                     alt={`Plan ${item.title} timeline`}
                     fill
                     sizes="(min-width: 1024px) 320px, 100vw"

@@ -2,12 +2,19 @@ import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { SectionHeading } from "./SectionHeading";
 
-const WHY_US_IMAGES = [
-  { label: "Transparencia total", file: "transparency.jpg" },
-  { label: "Concierge 360°", file: "concierge.jpg" },
-  { label: "Autos exóticos", file: "exotics.jpg" },
-  { label: "Asesoría Experta", file: "advisory.jpg" },
-];
+// Mapeo de imágenes específicas para cada diferenciador
+// Cada diferenciador tiene su propia imagen única
+const WHY_US_IMAGE_MAP: Record<string, string> = {
+  "Transparencia total": "transparency.jpg",
+  "Calculadora pública": "calculator/dashboard.jpg",
+  "Ticket premium": "exotics.jpg",
+  "Servicio concierge Miami → Perú": "concierge.jpg",
+  "Somos tu broker": "how/purchase.jpg", // Negociación y broker
+  "Inspección certificada": "how/inspection.jpg",
+  "Asesoría de búsqueda": "how/search.jpg",
+  "Cupos limitados": "advisory.jpg", // Asesoría personalizada
+  "Precio final sin sorpresas": "calculator/dashboard.jpg", // Calculadora para precios sin sorpresas
+};
 
 export function WhyUsSection() {
   return (
@@ -21,8 +28,12 @@ export function WhyUsSection() {
         description="Nuestro equipo opera como tu departamento de compras internacional. Transparencia total, gestión personalizada y acceso a inventario que no se publica abiertamente."
       />
       <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {LUXCARS_CONFIG.differentiators.map((item, index) => {
-          const image = WHY_US_IMAGES[index % WHY_US_IMAGES.length];
+        {LUXCARS_CONFIG.differentiators.map((item) => {
+          const imageFile = WHY_US_IMAGE_MAP[item.title] || "advisory.jpg";
+          const imagePath = imageFile.startsWith("how/") || imageFile.startsWith("calculator/")
+            ? `/images/${imageFile}`
+            : `/images/whyus/${imageFile}`;
+          
           return (
             <article
               key={item.title}
@@ -32,8 +43,8 @@ export function WhyUsSection() {
               <div className="relative space-y-4">
                 <div className="relative h-28 overflow-hidden rounded-2xl border border-white/10">
                   <Image
-                    src={`/images/whyus/${image.file}`}
-                    alt={image.label}
+                    src={imagePath}
+                    alt={item.title}
                     fill
                     sizes="(min-width: 1280px) 280px, (min-width: 1024px) 240px, 100vw"
                     className="object-cover"
@@ -63,7 +74,7 @@ export function WhyUsSection() {
         </p>
         <div className="flex items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-4">
           <Image
-            src="/images/whyus/concierge.jpg"
+            src="/images/contact/concierge.jpg"
             alt="Asesoría concierge LuxCars"
             width={120}
             height={80}

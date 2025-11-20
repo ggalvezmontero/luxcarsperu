@@ -1,13 +1,13 @@
 'use client';
 
+import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
+import { LUXCARS_CONFIG } from "@/lib/config";
+import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
+import { buildWhatsappLink } from "@/lib/whatsapp";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Button } from "./Button";
 import { SectionHeading } from "./SectionHeading";
-import { LUXCARS_CONFIG } from "@/lib/config";
-import { buildWhatsappLink } from "@/lib/whatsapp";
-import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
-import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
-import Image from "next/image";
 
 type FormState = {
   name: string;
@@ -78,7 +78,7 @@ export function ContactSection() {
   useEffect(() => {
     if (!latestEstimate) return;
     setFeedback(
-        `Último cálculo cargado: ${latestEstimate.input.brand} ${latestEstimate.input.model} ${latestEstimate.input.year} · ${latestEstimate.vehicleCategory.label} (ISC ${formatPercentage(latestEstimate.iscRate)}) — ${formatCurrency(latestEstimate.finalEstimate)}`,
+      `Último cálculo cargado: ${latestEstimate.input.brand} ${latestEstimate.input.model} ${latestEstimate.input.year} · ${latestEstimate.vehicleCategory.label} (ISC ${formatPercentage(latestEstimate.iscRate)}) — ${formatCurrency(latestEstimate.finalEstimate)}`,
     );
   }, [latestEstimate]);
 
@@ -152,7 +152,10 @@ export function ContactSection() {
                 value={form.name}
                 onChange={handleChange("name")}
                 placeholder="Ej. Diego Salazar"
-                className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30"
+                className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
+                style={{
+                  fontSize: '16px', // Prevenir zoom automático en móviles
+                }}
               />
             </label>
             <label className="grid gap-2 text-sm text-white/70">
@@ -161,7 +164,10 @@ export function ContactSection() {
                 value={form.phone}
                 onChange={handleChange("phone")}
                 placeholder="+51 999 999 999"
-                className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30"
+                className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
+                style={{
+                  fontSize: '16px', // Prevenir zoom automático en móviles
+                }}
               />
             </label>
           </div>
@@ -171,7 +177,10 @@ export function ContactSection() {
               value={form.email}
               onChange={handleChange("email")}
               placeholder="Ej. concierge@luxcars.pe"
-              className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30"
+              className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
+              style={{
+                fontSize: '16px', // Prevenir zoom automático en móviles
+              }}
             />
           </label>
           <label className="grid gap-2 text-sm text-white/70">
@@ -181,7 +190,10 @@ export function ContactSection() {
               onChange={handleChange("notes")}
               rows={4}
               placeholder="¿Quieres blindaje, upgrades de performance o detalles específicos?"
-              className="rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30"
+              className="rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
+              style={{
+                fontSize: '16px', // Prevenir zoom automático en móviles
+              }}
             />
           </label>
           <div className="grid gap-2 text-sm text-white/70">
@@ -233,57 +245,67 @@ export function ContactSection() {
           <Button type="submit" size="lg" disabled={isSending} className="!text-black">
             {isSending ? "Abriendo WhatsApp..." : "Enviar ahora por WhatsApp"}
           </Button>
-            <p className="text-xs text-white/40">
-              Al enviar, abriremos WhatsApp con toda la información precargada
-              para que converses con nuestro concierge inmediatamente.
-            </p>
-          </form>
-          <div className="space-y-6 rounded-[28px] border border-white/10 bg-white/[0.05] p-8 text-sm text-white/70 shadow-[0_25px_100px_rgba(0,0,0,0.35)]">
-            <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10">
-              <Image
-                src="/images/contact/concierge.jpg"
-                alt="Concierge LuxCars coordinando importación"
-                fill
-                sizes="(min-width: 1024px) 320px, 100vw"
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              <span className="absolute left-4 top-4 inline-flex items-center rounded-full border border-[#f5d072]/30 bg-[#f5d072]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-[#fbe5a4]">
-                Concierge
-              </span>
-            </div>
-            <h3 className="text-2xl font-semibold text-white">
-              Concierge dedicado en Miami & Lima
-            </h3>
+          <p className="text-xs text-white/40">
+            Al enviar, abriremos WhatsApp con toda la información precargada
+            para que converses con nuestro concierge inmediatamente.
+          </p>
+        </form>
+        <div className="space-y-6 rounded-[28px] border border-white/10 bg-white/[0.05] p-8 text-sm text-white/70 shadow-[0_25px_100px_rgba(0,0,0,0.35)]">
+          <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10">
+            <Image
+              src="/images/contact/concierge.jpg"
+              alt="Concierge LuxCars coordinando importación"
+              fill
+              sizes="(min-width: 1024px) 320px, 100vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+            <span className="absolute left-4 top-4 inline-flex items-center rounded-full border border-[#f5d072]/30 bg-[#f5d072]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-[#fbe5a4]">
+              Concierge
+            </span>
+          </div>
+          <h3 className="text-2xl font-semibold text-white">
+            Concierge dedicado en Miami & Lima
+          </h3>
+          <p>
+            Tu consultor personal te envía fotos, videos, contratos y cualquier
+            documentación que necesites. Reporte cada 48 horas durante el tránsito
+            marítimo.
+          </p>
+          <div className="rounded-3xl border border-white/10 bg-black/70 p-6 text-white/80">
+            <h4 className="text-lg font-semibold text-white">
+              ¿Qué incluye tu primera llamada?
+            </h4>
+            <ul className="mt-4 space-y-3 text-sm">
+              <li>• Revisión del estimado y ajustes según versión o upgrades.</li>
+              <li>• Curaduría de inventario real en tiempo real.</li>
+              <li>• Estrategia de negociación y verificación de historial.</li>
+              <li>• Agenda de próximos pasos y documentación requerida.</li>
+            </ul>
+          </div>
+          <div className="rounded-3xl border border-[#f5d072]/30 bg-[#f5d072]/10 p-6 text-sm text-[#fbe5a4]">
             <p>
-              Tu consultor personal te envía fotos, videos, contratos y cualquier
-              documentación que necesites. Reporte cada 48 horas durante el tránsito
-              marítimo.
+              WhatsApp oficial:{" "}
+              <span className="font-semibold">
+                +{LUXCARS_CONFIG.contact.whatsappNumber}
+              </span>
             </p>
-            <div className="rounded-3xl border border-white/10 bg-black/70 p-6 text-white/80">
-              <h4 className="text-lg font-semibold text-white">
-                ¿Qué incluye tu primera llamada?
-              </h4>
-              <ul className="mt-4 space-y-3 text-sm">
-                <li>• Revisión del estimado y ajustes según versión o upgrades.</li>
-                <li>• Curaduría de inventario real en tiempo real.</li>
-                <li>• Estrategia de negociación y verificación de historial.</li>
-                <li>• Agenda de próximos pasos y documentación requerida.</li>
-              </ul>
-            </div>
-            <div className="rounded-3xl border border-[#f5d072]/30 bg-[#f5d072]/10 p-6 text-sm text-[#fbe5a4]">
-              <p>
-                WhatsApp oficial:{" "}
-                <span className="font-semibold">
-                  +{LUXCARS_CONFIG.contact.whatsappNumber}
-                </span>
-              </p>
-              <p className="mt-2 text-xs uppercase tracking-[0.3em]">
-                LuxCars.pe · Importación premium
-              </p>
-            </div>
+            <p className="mt-4">
+              <span className="font-semibold">Oficina para reuniones presenciales:</span>
+              <br />
+              <span className="mt-1 block">
+                {LUXCARS_CONFIG.contact.address}
+              </span>
+              <span className="mt-2 block text-xs italic text-[#f5d072]/80">
+                Con cita previa
+              </span>
+            </p>
+            <p className="mt-4 text-xs uppercase tracking-[0.3em]">
+              LuxCars.pe · Importación premium
+            </p>
           </div>
         </div>
-      </section>
-    );
+      </div>
+    </section>
+  );
 }

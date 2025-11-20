@@ -1,7 +1,6 @@
-import { Navbar } from "@/components/Navbar";
 import { FAQSection } from "@/components/FAQSection";
-import { ContactSection } from "@/components/ContactSection";
 import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
 
 export default function FAQPage() {
   return (
@@ -21,9 +20,6 @@ export default function FAQPage() {
 
           {/* Preguntas Frecuentes */}
           <FAQSection />
-
-          {/* Contacto - CTA Final */}
-          <ContactSection />
         </div>
       </main>
       <Footer />
