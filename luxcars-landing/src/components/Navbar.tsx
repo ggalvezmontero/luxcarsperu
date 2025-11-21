@@ -137,7 +137,9 @@ export function Navbar() {
         id="mobile-menu"
         className={cn(
           "sm:hidden",
-          isMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
+          isMenuOpen
+            ? "max-h-96 opacity-100 pointer-events-auto"
+            : "max-h-0 opacity-0 pointer-events-none",
         )}
       >
         <div className="mx-4 mb-4 space-y-3 rounded-3xl border border-white/10 bg-black/80 px-4 py-4 text-xs uppercase tracking-[0.35em] text-white/70 transition-all">

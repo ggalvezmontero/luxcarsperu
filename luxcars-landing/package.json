@@ -12,6 +12,7 @@
     "next": "16.0.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "framer-motion": "^11.11.17",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.3"
   },

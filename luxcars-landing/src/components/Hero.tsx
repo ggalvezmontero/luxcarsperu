@@ -11,6 +11,7 @@ const HERO_BULLETS = [
 export function Hero() {
   return (
     <section
+      id="hero"
       className="relative overflow-hidden rounded-[40px] border border-white/10 bg-neutral-950/90 px-6 py-24 shadow-[inset_0_0_90px_rgba(255,255,255,0.08)] backdrop-blur-xl sm:px-12 lg:px-20 lg:py-32"
     >
       <div className="absolute inset-0 -z-10">

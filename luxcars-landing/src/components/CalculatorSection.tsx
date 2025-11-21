@@ -58,11 +58,16 @@ type FormState = {
   preferredPlan: PlanKey;
 };
 
+const getInitialYear = () => {
+  const currentYear = new Date().getFullYear();
+  return (currentYear - 1).toString();
+};
+
 const INITIAL_FORM: FormState = {
   vehicleType: "",
   brand: "",
   model: "",
-  year: "",
+  year: getInitialYear(),
   price: "",
   preferredPlan: "fast",
 };
@@ -137,7 +142,7 @@ export function CalculatorSection() {
 
     if (priceMiami < minPrice) {
       setError(
-        `Trabajamos con vehículos premium desde ${formatCurrency(minPrice)}. Ingresa un monto igual o superior.`,
+        `El valor mínimo para nuestro servicio de importación es ${formatCurrency(minPrice)}. Por favor, ingresa un monto igual o superior.`,
       );
       return;
     }
@@ -279,10 +284,8 @@ export function CalculatorSection() {
 
         if (field === "price") {
           value = sanitizeNumber(value);
-        } else if (field === "year") {
-          // Solo permite números y limita a 4 dígitos
-          value = value.replace(/[^0-9]/g, "").slice(0, 4);
         }
+        // El campo year ahora es un select, no necesita validación adicional
 
         setForm((prev) => ({
           ...prev,
@@ -410,17 +413,32 @@ export function CalculatorSection() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm text-white/70">
-                Año
-                <input
+                <div className="flex items-center gap-2">
+                  <span>Año</span>
+                  <span className="text-xs text-white/40">
+                    (hasta 2 años de antigüedad)
+                  </span>
+                </div>
+                <select
                   value={form.year}
                   onChange={handleFieldChange("year")}
-                  placeholder="Ej. 2024"
-                  inputMode="numeric"
-                  className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base"
+                  className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 pr-10 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base"
                   style={{
+                    colorScheme: 'dark',
                     fontSize: '16px', // Prevenir zoom automático en móviles
                   }}
-                />
+                >
+                  <option value="" className="bg-neutral-900 text-white/60">Selecciona</option>
+                  {(() => {
+                    const currentYear = new Date().getFullYear();
+                    const years = [currentYear, currentYear - 1];
+                    return years.map((year) => (
+                      <option key={year} value={year.toString()} className="bg-neutral-900 text-white">
+                        {year}
+                      </option>
+                    ));
+                  })()}
+                </select>
               </label>
               <label className="grid gap-2 text-sm text-white/70">
                 Precio en Miami (USD)
@@ -496,22 +514,27 @@ export function CalculatorSection() {
           <div className="flex flex-col rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/70 to-neutral-950/80 p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
             {estimate ? (
               <div className="flex flex-col gap-6 h-full">
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
-                      {estimate.vehicleCategory.label}
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
-                      {estimate.planConfig.label}
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
-                      ISC {formatPercentage(estimate.iscRate)}
-                    </span>
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                        {estimate.vehicleCategory.label}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                        {estimate.planConfig.label}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                        ISC {formatPercentage(estimate.iscRate)}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-semibold text-white">
+                        Estimado de Importación
+                      </h3>
+                      <p className="mt-1 text-sm text-white/50">
+                        {estimate.input.brand} {estimate.input.model} {estimate.input.year}
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-semibold text-white">
-                    Estimado de Importación
-                  </h3>
-                </div>
 
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
