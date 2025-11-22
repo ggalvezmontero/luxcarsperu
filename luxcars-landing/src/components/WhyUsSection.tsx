@@ -2,18 +2,18 @@ import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { SectionHeading } from "./SectionHeading";
 
-// Mapeo de imágenes específicas para cada diferenciador
-// Cada diferenciador tiene su propia imagen única
+// Mapeo de imágenes únicas para cada diferenciador
+// IMPORTANTE: Cada diferenciador usa su PROPIA imagen sin duplicados y CONTEXTUALMENTE APROPIADA
 const WHY_US_IMAGE_MAP: Record<string, string> = {
-  "Transparencia total": "transparency.jpg",
-  "Calculadora pública": "calculator/dashboard.jpg",
-  "Ticket premium": "exotics.jpg",
-  "Servicio concierge Miami → Perú": "concierge.jpg",
-  "Somos tu broker": "how/purchase.jpg", // Negociación y broker
-  "Inspección certificada": "how/inspection.jpg",
-  "Asesoría de búsqueda": "how/search.jpg",
-  "Cupos limitados": "advisory.jpg", // Asesoría personalizada
-  "Precio final sin sorpresas": "calculator/dashboard.jpg", // Calculadora para precios sin sorpresas
+  "Transparencia total": "whyus/transparency.jpg",           // Documentos claros y transparencia
+  "Calculadora pública": "calculator/dashboard.jpg",          // Screenshot de calculadora
+  "Ticket premium": "whyus/exotics.jpg",                     // Autos premium/exóticos
+  "Servicio concierge Miami → Perú": "whyus/concierge.jpg",  // Servicio personalizado
+  "Somos tu broker": "whyus/broker.jpg",                     // Professional broker / advisor
+  "Inspección certificada": "whyus/inspection-certified.jpg", // Mecánico inspeccionando auto
+  "Asesoría de búsqueda": "whyus/search-advisory.jpg",       // Búsqueda online de autos
+  "Cupos limitados": "whyus/advisory.jpg",                   // Reunión VIP exclusiva
+  "Precio final sin sorpresas": "hero/main.jpg",             // Auto de lujo - resultado final
 };
 
 export function WhyUsSection() {
@@ -29,9 +29,10 @@ export function WhyUsSection() {
       />
       <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {LUXCARS_CONFIG.differentiators.map((item) => {
-          const imageFile = WHY_US_IMAGE_MAP[item.title] || "advisory.jpg";
-          const imagePath = imageFile.startsWith("how/") || imageFile.startsWith("calculator/")
-            ? `/images/${imageFile}`
+          const imageFile = WHY_US_IMAGE_MAP[item.title] || "whyus/advisory.jpg";
+          // Si ya incluye un directorio (contiene /), usar tal cual, si no agregar whyus/
+          const imagePath = imageFile.includes('/') 
+            ? `/images/${imageFile}` 
             : `/images/whyus/${imageFile}`;
           
           return (
