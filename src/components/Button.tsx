@@ -35,17 +35,20 @@ export function Button(props: ButtonProps | LinkProps) {
     props;
   const classes = cn(baseStyles, variants[variant], sizes[size], className);
 
-  if ("href" in rest && rest.href) {
-    const { onClick, ...linkProps } = rest;
+  if ("href" in props && props.href) {
+    // TypeScript now knows this is LinkProps
+    const linkProps = rest as Omit<LinkProps, "variant" | "size" | "className" | "children">;
     return (
-      <Link {...linkProps} className={classes} onClick={onClick}>
+      <Link {...linkProps} className={classes}>
         {children}
       </Link>
     );
   }
 
+  // TypeScript now knows this is ButtonProps
+  const buttonProps = rest as Omit<ButtonProps, "variant" | "size" | "className" | "children">;
   return (
-    <button {...rest} className={classes}>
+    <button {...buttonProps} className={classes}>
       {children}
     </button>
   );

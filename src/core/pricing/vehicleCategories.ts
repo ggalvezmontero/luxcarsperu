@@ -1,12 +1,16 @@
+export type VehicleCategoryId =
+  | "gasolina"
+  | "hev"
+  | "diesel"
+  | "ev"
+  | "phev";
+
 export type VehicleCategory = {
   id: VehicleCategoryId;
   label: string;
   iscRate: number;
   tooltip: string;
 };
-
-export type VehicleCategoryId =
-  (typeof VEHICLE_CATEGORIES)[number]["id"];
 
 export const VEHICLE_CATEGORIES: readonly VehicleCategory[] = [
   {
