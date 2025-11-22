@@ -133,26 +133,26 @@ export function ContactSection() {
   return (
     <section
       id="contact"
-      className="scroll-mt-32 rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950 via-black to-neutral-900 px-6 py-20 lg:px-14"
+      className="scroll-mt-32 rounded-3xl md:rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950 via-black to-neutral-900 px-4 py-12 md:px-6 md:py-20 lg:px-14"
     >
       <SectionHeading
         eyebrow="Contacto premium"
         title="Listo para importar tu siguiente auto de lujo"
         description="Déjanos tus datos y llévate una asesoría personalizada basada en tu cálculo real. Abriremos WhatsApp con toda la información precargada."
       />
-      <div className="mt-12 grid gap-10 lg:grid-cols-2">
+      <div className="mt-8 md:mt-12 grid gap-6 md:gap-10 lg:grid-cols-2">
         <form
           onSubmit={handleSubmit}
-          className="grid gap-5 rounded-[28px] border border-white/10 bg-white/[0.05] p-8 shadow-[0_25px_100px_rgba(0,0,0,0.35)]"
+          className="grid gap-4 md:gap-5 rounded-2xl md:rounded-[28px] border border-white/10 bg-white/[0.05] p-5 md:p-8 shadow-[0_25px_100px_rgba(0,0,0,0.35)]"
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm text-white/70">
               Nombre completo
               <input
                 value={form.name}
                 onChange={handleChange("name")}
                 placeholder="Ej. Diego Salazar"
-                className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
+                className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
                 style={{
                   fontSize: '16px', // Prevenir zoom automático en móviles
                 }}
@@ -164,7 +164,7 @@ export function ContactSection() {
                 value={form.phone}
                 onChange={handleChange("phone")}
                 placeholder="+51 999 999 999"
-                className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
+                className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
                 style={{
                   fontSize: '16px', // Prevenir zoom automático en móviles
                 }}
@@ -177,7 +177,7 @@ export function ContactSection() {
               value={form.email}
               onChange={handleChange("email")}
               placeholder="Ej. concierge@luxcars.pe"
-              className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
+              className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
               style={{
                 fontSize: '16px', // Prevenir zoom automático en móviles
               }}
@@ -188,9 +188,9 @@ export function ContactSection() {
             <textarea
               value={form.notes}
               onChange={handleChange("notes")}
-              rows={4}
-              placeholder="¿Quieres blindaje, upgrades de performance o detalles específicos?"
-              className="rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
+              rows={3}
+              placeholder="¿Quieres blindaje, upgrades o detalles específicos?"
+              className="rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 py-2.5 md:py-3 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/30 text-base"
               style={{
                 fontSize: '16px', // Prevenir zoom automático en móviles
               }}
@@ -198,7 +198,7 @@ export function ContactSection() {
           </label>
           <div className="grid gap-2 text-sm text-white/70">
             Plan preferido
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 md:gap-3 sm:grid-cols-2">
               {([
                 {
                   key: "fast",
@@ -216,7 +216,7 @@ export function ContactSection() {
                   type="button"
                   onClick={() => handlePlanChange(option.key)}
                   className={cn(
-                    "rounded-2xl border px-5 py-4 text-left transition",
+                    "rounded-xl md:rounded-2xl border px-4 md:px-5 py-3 md:py-4 text-left transition",
                     form.preferredPlan === option.key
                       ? "border-[#f5d072]/80 bg-[#f5d072]/10 text-white"
                       : "border-white/10 bg-black/50 text-white/60 hover:border-white/20 hover:text-white",
@@ -225,7 +225,7 @@ export function ContactSection() {
                   <span className="text-xs uppercase tracking-[0.3em] text-white/50">
                     {option.label}
                   </span>
-                  <p className="mt-2 text-lg font-medium text-white">
+                  <p className="mt-1.5 md:mt-2 text-base md:text-lg font-medium text-white">
                     {option.days[0]} - {option.days[1]} días
                   </p>
                 </button>
@@ -233,12 +233,12 @@ export function ContactSection() {
             </div>
           </div>
           {error ? (
-            <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-5 py-3 text-sm text-red-200">
+            <div className="rounded-xl md:rounded-2xl border border-red-400/40 bg-red-500/10 px-4 md:px-5 py-2.5 md:py-3 text-sm text-red-200">
               {error}
             </div>
           ) : null}
           {feedback ? (
-            <div className="rounded-2xl border border-[#f5d072]/30 bg-[#f5d072]/10 px-5 py-3 text-sm text-[#fbe5a4]">
+            <div className="rounded-xl md:rounded-2xl border border-[#f5d072]/30 bg-[#f5d072]/10 px-4 md:px-5 py-2.5 md:py-3 text-sm text-[#fbe5a4]">
               {feedback}
             </div>
           ) : null}
@@ -250,8 +250,8 @@ export function ContactSection() {
             para que converses con nuestro concierge inmediatamente.
           </p>
         </form>
-        <div className="space-y-6 rounded-[28px] border border-white/10 bg-white/[0.05] p-8 text-sm text-white/70 shadow-[0_25px_100px_rgba(0,0,0,0.35)]">
-          <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10">
+        <div className="space-y-4 md:space-y-6 rounded-2xl md:rounded-[28px] border border-white/10 bg-white/[0.05] p-5 md:p-8 text-sm text-white/70 shadow-[0_25px_100px_rgba(0,0,0,0.35)]">
+          <div className="relative h-36 md:h-44 overflow-hidden rounded-xl md:rounded-2xl border border-white/10">
             <Image
               src="/images/contact/concierge.jpg"
               alt="Concierge LuxCars coordinando importación"
@@ -264,26 +264,26 @@ export function ContactSection() {
               Concierge
             </span>
           </div>
-          <h3 className="text-2xl font-semibold text-white">
+          <h3 className="text-xl md:text-2xl font-semibold text-white">
             Concierge dedicado en Miami & Lima
           </h3>
-          <p>
+          <p className="text-sm leading-relaxed">
             Tu consultor personal te envía fotos, videos, contratos y cualquier
             documentación que necesites. Reporte cada 48 horas durante el tránsito
             marítimo.
           </p>
-          <div className="rounded-3xl border border-white/10 bg-black/70 p-6 text-white/80">
-            <h4 className="text-lg font-semibold text-white">
+          <div className="rounded-2xl md:rounded-3xl border border-white/10 bg-black/70 p-4 md:p-6 text-white/80">
+            <h4 className="text-base md:text-lg font-semibold text-white">
               ¿Qué incluye tu primera llamada?
             </h4>
-            <ul className="mt-4 space-y-3 text-sm">
+            <ul className="mt-3 md:mt-4 space-y-2 md:space-y-3 text-sm">
               <li>• Revisión del estimado y ajustes según versión o upgrades.</li>
               <li>• Curaduría de inventario real en tiempo real.</li>
               <li>• Estrategia de negociación y verificación de historial.</li>
               <li>• Agenda de próximos pasos y documentación requerida.</li>
             </ul>
           </div>
-          <div className="rounded-3xl border border-[#f5d072]/30 bg-[#f5d072]/10 p-6 text-sm text-[#fbe5a4]">
+          <div className="rounded-2xl md:rounded-3xl border border-[#f5d072]/30 bg-[#f5d072]/10 p-4 md:p-6 text-sm text-[#fbe5a4]">
             <p>
               WhatsApp oficial:{" "}
               <span className="font-semibold">

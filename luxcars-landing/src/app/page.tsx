@@ -18,7 +18,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1 w-full">
-        <div className="mx-auto max-w-6xl flex flex-col gap-20 px-4 pb-20 pt-16 sm:px-8 lg:px-0">
+        <div className="mx-auto max-w-6xl flex flex-col gap-12 md:gap-20 px-3 md:px-4 pb-12 md:pb-20 pt-12 md:pt-16 sm:px-8 lg:px-0">
           {/* Hero - Impacto inicial */}
           <ScrollAnimation variant="fadeIn">
             <Hero />

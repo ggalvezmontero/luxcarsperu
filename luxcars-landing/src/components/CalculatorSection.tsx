@@ -325,7 +325,7 @@ export function CalculatorSection() {
   return (
     <section
       id="calculator"
-      className="scroll-mt-32 rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950/95 via-black/80 to-neutral-900 px-6 py-20 backdrop-blur lg:px-14"
+      className="scroll-mt-32 rounded-[40px] md:rounded-[40px] rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/95 via-black/80 to-neutral-900 px-4 md:px-6 py-12 md:py-20 backdrop-blur lg:px-14"
     >
       <SectionHeading
         eyebrow="Calculadora pública"
@@ -335,12 +335,12 @@ export function CalculatorSection() {
       />
       {!showResults ? (
         /* FORMULARIO */
-        <div className="mt-16 max-w-3xl mx-auto">
-          <div className="grid gap-7 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
-            <div className="grid gap-3 text-sm text-white/70">
+        <div className="mt-8 md:mt-16 max-w-3xl mx-auto">
+          <div className="grid gap-5 md:gap-7 rounded-2xl md:rounded-3xl border border-white/10 bg-white/5 p-4 md:p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
+            <div className="grid gap-2.5 md:gap-3 text-sm text-white/70">
               <div className="flex items-center gap-2 text-white">
                 <VehicleIcon size={18} />
-                <span className="font-semibold tracking-wide">
+                <span className="font-semibold tracking-wide text-sm md:text-base">
                   Tipo de vehículo & ISC
                 </span>
                 <Tooltip
@@ -351,7 +351,7 @@ export function CalculatorSection() {
                   }
                 />
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-2.5 md:gap-3 md:grid-cols-2">
                 {vehicleTypeOptions.map((option) => {
                   const isSelected = form.vehicleType === option.id;
                   return (
@@ -360,7 +360,7 @@ export function CalculatorSection() {
                       type="button"
                       onClick={() => handleVehicleTypeSelect(option.id)}
                       className={cn(
-                        "flex flex-col items-start gap-2 rounded-2xl border px-5 py-4 text-left transition",
+                        "flex flex-col items-start gap-1.5 md:gap-2 rounded-xl md:rounded-2xl border px-4 md:px-5 py-3 md:py-4 text-left transition",
                         isSelected
                           ? "border-[#f5d072]/80 bg-[#f5d072]/10 text-white shadow-[0_15px_60px_rgba(245,208,114,0.2)]"
                           : "border-white/10 bg-black/40 text-white/60 hover:border-white/20 hover:text-white",
@@ -378,13 +378,13 @@ export function CalculatorSection() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm text-white/70">
                 Marca
                 <select
                   value={form.brand}
                   onChange={handleFieldChange("brand")}
-                  className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 pr-10 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base"
+                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 pr-10 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base"
                   style={{
                     colorScheme: 'dark',
                     fontSize: '16px', // Prevenir zoom automático en móviles
@@ -404,25 +404,25 @@ export function CalculatorSection() {
                   value={form.model}
                   onChange={handleFieldChange("model")}
                   placeholder="Ej. 911 Turbo S"
-                  className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base"
+                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base"
                   style={{
                     fontSize: '16px', // Prevenir zoom automático en móviles
                   }}
                 />
               </label>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm text-white/70">
                 <div className="flex items-center gap-2">
                   <span>Año</span>
                   <span className="text-xs text-white/40">
-                    (hasta 2 años de antigüedad)
+                    (hasta 2 años)
                   </span>
                 </div>
                 <select
                   value={form.year}
                   onChange={handleFieldChange("year")}
-                  className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 pr-10 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base"
+                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 pr-10 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base"
                   style={{
                     colorScheme: 'dark',
                     fontSize: '16px', // Prevenir zoom automático en móviles
@@ -447,7 +447,7 @@ export function CalculatorSection() {
                   onChange={handleFieldChange("price")}
                   placeholder="Ej. 265000"
                   inputMode="decimal"
-                  className="h-12 rounded-2xl border border-white/10 bg-black/60 px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base"
+                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base"
                   style={{
                     fontSize: '16px', // Prevenir zoom automático en móviles
                   }}
@@ -456,7 +456,7 @@ export function CalculatorSection() {
             </div>
             <div className="grid gap-2 text-sm text-white/70">
               Plan estimado de entrega
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2.5 md:gap-3 sm:grid-cols-2">
                 {([
                   {
                     key: "fast",
@@ -476,7 +476,7 @@ export function CalculatorSection() {
                       setForm((prev) => ({ ...prev, preferredPlan: option.key }))
                     }
                     className={cn(
-                      "rounded-2xl border px-5 py-4 text-left transition",
+                      "rounded-xl md:rounded-2xl border px-4 md:px-5 py-3 md:py-4 text-left transition",
                       form.preferredPlan === option.key
                         ? "border-[#f5d072]/80 bg-[#f5d072]/10 text-white"
                         : "border-white/10 bg-black/50 text-white/60 hover:border-white/20 hover:text-white",
@@ -485,7 +485,7 @@ export function CalculatorSection() {
                     <span className="text-xs uppercase tracking-[0.3em] text-white/50">
                       {option.label}
                     </span>
-                    <p className="mt-2 text-lg font-medium text-white">
+                    <p className="mt-1.5 md:mt-2 text-base md:text-lg font-medium text-white">
                       {option.days[0]} - {option.days[1]} días
                     </p>
                   </button>
@@ -493,7 +493,7 @@ export function CalculatorSection() {
               </div>
             </div>
             {error ? (
-              <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-5 py-3 text-sm text-red-200">
+              <div className="rounded-xl md:rounded-2xl border border-red-400/40 bg-red-500/10 px-4 md:px-5 py-2.5 md:py-3 text-sm text-red-200">
                 {error}
               </div>
             ) : null}
@@ -502,7 +502,7 @@ export function CalculatorSection() {
               Calcular Estimado
             </Button>
 
-            <p className="text-xs text-white/40">
+            <p className="text-xs text-white/40 leading-relaxed">
               Este es un estimado de importación. El valor final puede variar según
               la partida arancelaria, condición del vehículo y determinación de SUNAT.
             </p>
@@ -510,24 +510,24 @@ export function CalculatorSection() {
         </div>
       ) : (
         /* RESULTADOS */
-        <div ref={resultsRef} className="mt-16 max-w-4xl mx-auto">
-          <div className="flex flex-col rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/70 to-neutral-950/80 p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
+        <div ref={resultsRef} className="mt-8 md:mt-16 max-w-4xl mx-auto">
+          <div className="flex flex-col rounded-2xl md:rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/70 to-neutral-950/80 p-4 md:p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
             {estimate ? (
-              <div className="flex flex-col gap-6 h-full">
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+              <div className="flex flex-col gap-4 md:gap-6 h-full">
+                  <div className="space-y-3 md:space-y-4">
+                    <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
                         {estimate.vehicleCategory.label}
                       </span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
                         {estimate.planConfig.label}
                       </span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
                         ISC {formatPercentage(estimate.iscRate)}
                       </span>
                     </div>
                     <div>
-                      <h3 className="text-2xl font-semibold text-white">
+                      <h3 className="text-xl md:text-2xl font-semibold text-white">
                         Estimado de Importación
                       </h3>
                       <p className="mt-1 text-sm text-white/50">
@@ -536,13 +536,13 @@ export function CalculatorSection() {
                     </div>
                   </div>
 
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                  <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-                    <div className="space-y-3 flex-1">
+                <div className="rounded-2xl md:rounded-3xl border border-white/10 bg-white/5 p-4 md:p-6">
+                  <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4">
+                    <div className="space-y-2 md:space-y-3 flex-1">
                       <span className="text-xs uppercase tracking-[0.35em] text-white/50">
                         Precio final estimado Lima
                       </span>
-                      <div className="text-3xl font-bold text-white">
+                      <div className="text-2xl md:text-3xl font-bold text-white">
                         {formatCurrency(estimate.finalEstimate)}
                       </div>
                     </div>
@@ -569,7 +569,7 @@ export function CalculatorSection() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-2 text-sm">
+                <div className="flex-1 overflow-y-auto space-y-1.5 md:space-y-2 text-sm">
                   <BreakdownItem
                     label="Precio Miami"
                     amount={estimate.input.priceMiami}
@@ -608,8 +608,8 @@ export function CalculatorSection() {
                 </div>
 
                 {whatsappLink && (
-                  <div className="pt-4 border-t border-white/10">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="pt-3 md:pt-4 border-t border-white/10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-3">
                       <Button
                         href={whatsappLink}
                         target="_blank"
@@ -649,13 +649,13 @@ type BreakdownItemProps = {
 
 function BreakdownItem({ label, amount, tooltip, icon }: BreakdownItemProps) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-2.5">
-      <div className="flex items-center gap-2">
-        {icon && <span className="text-white/40">{icon}</span>}
-        <span className="text-white/70">{label}</span>
+    <div className="flex items-center justify-between gap-3 md:gap-4 rounded-lg md:rounded-xl border border-white/5 bg-white/[0.03] px-3 md:px-4 py-2 md:py-2.5">
+      <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+        {icon && <span className="text-white/40 flex-shrink-0">{icon}</span>}
+        <span className="text-white/70 text-sm truncate">{label}</span>
         {tooltip && <Tooltip content={tooltip} placement="top" />}
       </div>
-      <span className="font-semibold text-white tabular-nums">
+      <span className="font-semibold text-white tabular-nums text-sm md:text-base flex-shrink-0">
         {formatCurrency(amount)}
       </span>
     </div>
