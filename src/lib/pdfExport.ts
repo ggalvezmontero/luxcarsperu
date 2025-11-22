@@ -26,6 +26,7 @@ const BRAND_LOGOS: Record<string, string> = {
   'Jeep': '/images/brands/jeep.svg',
   'Ford': '/images/brands/ford.svg',
   'Chevrolet': '/images/brands/chevrolet.svg',
+  'Chrysler': '/images/brands/chrysler.png',
 };
 
 // Función mejorada para convertir imagen a base64 con dimensiones

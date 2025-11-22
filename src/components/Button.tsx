@@ -36,8 +36,9 @@ export function Button(props: ButtonProps | LinkProps) {
   const classes = cn(baseStyles, variants[variant], sizes[size], className);
 
   if ("href" in rest && rest.href) {
+    const { onClick, ...linkProps } = rest;
     return (
-      <Link {...rest} className={classes}>
+      <Link {...linkProps} className={classes} onClick={onClick}>
         {children}
       </Link>
     );

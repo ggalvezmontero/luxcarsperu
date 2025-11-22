@@ -1,3 +1,5 @@
+'use client';
+
 import { LUXCARS_CONFIG } from "@/lib/config";
 import Image from "next/image";
 import { Button } from "./Button";
@@ -9,6 +11,23 @@ const HERO_BULLETS = [
 ];
 
 export function Hero() {
+  const handleCalculateClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const calculatorElement = document.getElementById('calculator');
+    if (calculatorElement) {
+      // Obtener la altura del navbar sticky (aproximadamente 80-100px)
+      const navbar = document.querySelector('header');
+      const navbarHeight = navbar ? navbar.offsetHeight + 20 : 100; // 20px extra de padding
+      const elementPosition = calculatorElement.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - navbarHeight;
+
+      window.scrollTo({
+        top: Math.max(0, offsetPosition),
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <section
       id="hero"
@@ -38,7 +57,7 @@ export function Hero() {
             un proceso seguro, guiado y 100% premium.
           </p>
           <div className="mt-8 md:mt-10 flex flex-wrap items-center gap-3 md:gap-4">
-            <Button href="/#calculator" size="lg" className="!text-black">
+            <Button href="/#calculator" size="lg" className="!text-black" onClick={handleCalculateClick}>
               Calcular Ahora
             </Button>
             <Button
