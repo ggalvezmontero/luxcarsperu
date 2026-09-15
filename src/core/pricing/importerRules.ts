@@ -1,5 +1,5 @@
 export const IMPORTER_RULES = {
-  minimumVehiclePrice: 40000,
+  minimumVehiclePrice: 30000,
   finalRangeVariance: 0.025,
 } as const;
 

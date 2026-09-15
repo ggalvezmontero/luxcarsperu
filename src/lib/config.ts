@@ -57,7 +57,7 @@ export const LUXCARS_CONFIG = {
     {
       question: "¿Cuál es la inversión mínima?",
       answer:
-        "Trabajamos únicamente con vehículos premium y exóticos desde USD 40,000 hacia arriba para asegurar calidad y exclusividad.",
+        `Trabajamos únicamente con vehículos premium y exóticos desde USD ${IMPORTER_RULES.minimumVehiclePrice.toLocaleString("en-US")} hacia arriba para asegurar calidad y exclusividad.`,
     },
     {
       question: "¿Qué pasa si no encuentro el auto ideal?",
@@ -110,7 +110,7 @@ export const LUXCARS_CONFIG = {
     {
       title: "Ticket premium",
       description:
-        "Solo trabajamos con autos desde USD 40,000 para garantizar exclusividad real.",
+        `Solo trabajamos con autos desde USD ${IMPORTER_RULES.minimumVehiclePrice.toLocaleString("en-US")} para garantizar exclusividad real.`,
     },
     {
       title: "Servicio concierge Miami → Perú",

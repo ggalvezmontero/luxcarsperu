@@ -100,7 +100,10 @@ export function Hero() {
             </div>
             <div className="grid gap-2.5 md:gap-4">
               {[
-                { label: "Autos cubiertos", value: "USD 40K - 1M+" },
+                {
+                  label: "Autos cubiertos",
+                  value: `USD ${LUXCARS_CONFIG.services.minimumVehiclePrice / 1000}K - 1M+`,
+                },
                 { label: "Reporte técnico", value: "Inspección ASE + Scanner" },
                 { label: "Clientes por mes", value: "Cupos limitados" },
               ].map((item) => (
