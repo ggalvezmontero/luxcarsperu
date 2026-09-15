@@ -1,5 +1,11 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+// jspdf-autotable no aumenta los tipos de jsPDF (su propio d.ts declara el
+// documento como `any`), así que describimos aquí lo único que usamos de él.
+type DocWithAutoTable = jsPDF & {
+  lastAutoTable: { finalY: number };
+};
 import type { PremiumImportQuote } from '@/core/pricing/priceCalculator';
 import { formatCurrency, formatPercentage } from './utils';
 import { LUXCARS_CONFIG } from './config';
@@ -379,7 +385,7 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
     margin: { left: margin, right: margin },
   });
 
-  yPos = (doc as any).lastAutoTable.finalY + 6;
+  yPos = (doc as DocWithAutoTable).lastAutoTable.finalY + 6;
 
   // Timeline y nota en una línea compacta
   doc.setFontSize(8);
