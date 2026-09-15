@@ -9,6 +9,7 @@ import { Button } from "./Button";
 
 const NAV_LINKS = [
   { label: "Inicio", href: "/" },
+  { label: "Más buscados", href: "/#mas-buscados" },
   { label: "Calculadora", href: "/#calculator" },
   { label: "Etapas", href: "/#timeline" },
   { label: "Cómo Funciona", href: "/como-funciona" },

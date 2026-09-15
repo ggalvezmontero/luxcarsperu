@@ -1,0 +1,92 @@
+[
+  {
+    "id": "ford-bronco-raptor",
+    "name": "Ford Bronco Raptor",
+    "detail": "Todoterreno de alto desempeño; muy buscado para importación a Lima.",
+    "segment": "SUV · gasolina",
+    "priceMinUsd": 85000,
+    "priceMaxUsd": 118000,
+    "imageSrc": "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=1200&q=80",
+    "imageAlt": "Vehículo todoterreno en paisaje abierto"
+  },
+  {
+    "id": "mercedes-amg-g63",
+    "name": "Mercedes-AMG G 63",
+    "detail": "Clase G; referencia absoluta en SUVs de lujo.",
+    "segment": "SUV · gasolina",
+    "priceMinUsd": 195000,
+    "priceMaxUsd": 285000,
+    "imageSrc": "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=1200&q=80",
+    "imageAlt": "SUV de lujo estilo todoterreno"
+  },
+  {
+    "id": "toyota-tundra",
+    "name": "Toyota Tundra",
+    "detail": "TRD Pro / i-FORCE MAX; cabina amplia y fiabilidad.",
+    "segment": "Pickup · gasolina / HEV",
+    "priceMinUsd": 58000,
+    "priceMaxUsd": 78000,
+    "imageSrc": "https://images.unsplash.com/photo-1619405399517-d7fce0f13302?auto=format&fit=crop&w=1200&q=80",
+    "imageAlt": "Pickup Toyota en escenario urbano"
+  },
+  {
+    "id": "tesla-model-x",
+    "name": "Tesla Model X",
+    "detail": "Plaid y versiones largo alcance; alta rotación en importación.",
+    "segment": "SUV · eléctrico",
+    "priceMinUsd": 72000,
+    "priceMaxUsd": 112000,
+    "imageSrc": "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=1200&q=80",
+    "imageAlt": "Tesla Model X en exterior"
+  },
+  {
+    "id": "tesla-cybertruck",
+    "name": "Tesla Cybertruck",
+    "detail": "Listados recientes en inventario USA; precio según versión.",
+    "segment": "Pickup · eléctrico",
+    "priceMinUsd": 92000,
+    "priceMaxUsd": 132000,
+    "imageSrc": "https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=1200&q=80",
+    "imageAlt": "Vehículo Tesla en exhibición"
+  },
+  {
+    "id": "lamborghini-urus",
+    "name": "Lamborghini Urus",
+    "detail": "SUV de performance; consultas constantes desde Perú.",
+    "segment": "SUV · gasolina",
+    "priceMinUsd": 238000,
+    "priceMaxUsd": 335000,
+    "imageSrc": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
+    "imageAlt": "SUV deportivo de lujo"
+  },
+  {
+    "id": "lamborghini-huracan-sterrato",
+    "name": "Lamborghini Huracán Sterrato",
+    "detail": "Última evolución V10; nicho exclusivo con fuerte interés.",
+    "segment": "Superdeportivo · gasolina",
+    "priceMinUsd": 305000,
+    "priceMaxUsd": 395000,
+    "imageSrc": "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?auto=format&fit=crop&w=1200&q=80",
+    "imageAlt": "Superdeportivo Lamborghini"
+  },
+  {
+    "id": "chevrolet-corvette",
+    "name": "Chevrolet Corvette",
+    "detail": "C8 Stingray y derivados; deportivo americano muy consultado en Lima.",
+    "segment": "Coupé · gasolina",
+    "priceMinUsd": 72000,
+    "priceMaxUsd": 98000,
+    "imageSrc": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80",
+    "imageAlt": "Chevrolet Corvette deportivo"
+  },
+  {
+    "id": "ferrari-296-gtb",
+    "name": "Ferrari 296 GTB",
+    "detail": "V6 híbrido enchufable; entre los Ferrari más consultados (también Roma, F8).",
+    "segment": "Coupé · PHEV",
+    "priceMinUsd": 285000,
+    "priceMaxUsd": 385000,
+    "imageSrc": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=1200&q=80",
+    "imageAlt": "Deportivo de alta gama en carretera"
+  }
+]

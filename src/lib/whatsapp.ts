@@ -58,3 +58,34 @@ export function buildWhatsappLink(
 
   return `https://wa.me/${contactConfig.whatsappNumber}?text=${message}`;
 }
+
+export type IncompleteCalculatorWhatsappParams = {
+  vehicleTypeLabel?: string;
+  brand: string;
+  model: string;
+  missingYearAndPrice: boolean;
+  preferredPlanLabel: string;
+};
+
+export function buildIncompleteCalculatorWhatsappLink(
+  params: IncompleteCalculatorWhatsappParams,
+) {
+  const { contact: contactConfig } = LUXCARS_CONFIG;
+  const lines = [
+    "Hola LuxCars, quiero orientación para importar un vehículo premium.",
+    "No cuento con todos los datos para completar la calculadora:",
+    params.missingYearAndPrice
+      ? "• No tengo el año ni el precio en Miami (USD)"
+      : undefined,
+    params.vehicleTypeLabel
+      ? `Tipo de vehículo / ISC: ${params.vehicleTypeLabel}`
+      : undefined,
+    params.brand.trim() ? `Marca: ${params.brand.trim()}` : undefined,
+    params.model.trim() ? `Modelo: ${params.model.trim()}` : undefined,
+    `Plan de entrega de interés: ${params.preferredPlanLabel}`,
+    "¿Podrían asesorarme para ofrecerme las mejores opciones?",
+  ].filter(Boolean);
+
+  const message = encodeURIComponent(lines.join("\n"));
+  return `https://wa.me/${contactConfig.whatsappNumber}?text=${message}`;
+}

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "ford-bronco-raptor",
+    "brand": "Ford",
+    "model": "Bronco Raptor",
+    "vehicleType": "gasolina",
+    "priceUsd": 101500,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "mercedes-amg-g63",
+    "brand": "Mercedes-Benz",
+    "model": "AMG G 63",
+    "vehicleType": "gasolina",
+    "priceUsd": 240000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "toyota-tundra",
+    "brand": "Toyota",
+    "model": "Tundra TRD Pro",
+    "vehicleType": "hev",
+    "priceUsd": 68000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "tesla-model-x",
+    "brand": "Tesla",
+    "model": "Model X",
+    "vehicleType": "ev",
+    "priceUsd": 92000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "tesla-cybertruck",
+    "brand": "Tesla",
+    "model": "Cybertruck",
+    "vehicleType": "ev",
+    "priceUsd": 112000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "lamborghini-urus",
+    "brand": "Lamborghini",
+    "model": "Urus",
+    "vehicleType": "gasolina",
+    "priceUsd": 286500,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "lamborghini-huracan-sterrato",
+    "brand": "Lamborghini",
+    "model": "Huracán Sterrato",
+    "vehicleType": "gasolina",
+    "priceUsd": 350000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "chevrolet-corvette",
+    "brand": "Chevrolet",
+    "model": "Corvette Stingray",
+    "vehicleType": "gasolina",
+    "priceUsd": 85000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "ferrari-296-gtb",
+    "brand": "Ferrari",
+    "model": "296 GTB",
+    "vehicleType": "phev",
+    "priceUsd": 335000,
+    "preferredPlan": "fast"
+  }
+]

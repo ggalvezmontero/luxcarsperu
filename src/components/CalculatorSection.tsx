@@ -10,12 +10,18 @@ import {
   getVehicleCategory,
   VEHICLE_CATEGORIES,
 } from "@/core/pricing/vehicleCategories";
+import { getTrendingVehicleById } from "@/data/trendingVehicles";
 import { LUXCARS_CONFIG, type VehicleTypeId } from "@/lib/config";
 import { generatePDF } from "@/lib/pdfExport";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
-import { buildWhatsappLink } from "@/lib/whatsapp";
+import {
+  buildIncompleteCalculatorWhatsappLink,
+  buildWhatsappLink,
+} from "@/lib/whatsapp";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import {
+  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -57,6 +63,7 @@ type FormState = {
   year: string;
   price: string;
   preferredPlan: PlanKey;
+  missingYearAndPrice: boolean;
 };
 
 const getInitialYear = () => {
@@ -71,6 +78,7 @@ const INITIAL_FORM: FormState = {
   year: getInitialYear(),
   price: "",
   preferredPlan: "fast",
+  missingYearAndPrice: false,
 };
 
 const STORAGE_KEY = "luxcars:last-estimate";
@@ -87,7 +95,10 @@ function toNumber(value: string) {
   return Number(sanitized);
 }
 
-export function CalculatorSection() {
+function CalculatorSectionInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   // Cargar estado inicial desde localStorage
   const loadFormFromStorage = (): FormState => {
     if (typeof window === 'undefined') return INITIAL_FORM;
@@ -95,7 +106,11 @@ export function CalculatorSection() {
     try {
       const stored = window.localStorage.getItem(FORM_STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as FormState;
+        const parsed = JSON.parse(stored) as Partial<FormState> & {
+          // Compatibilidad con estados guardados antes de unificar ambos flags
+          missingYear?: boolean;
+          missingPrice?: boolean;
+        };
         // Validar que tenga la estructura correcta
         if (parsed && typeof parsed === 'object') {
           return {
@@ -105,6 +120,11 @@ export function CalculatorSection() {
             year: parsed.year || INITIAL_FORM.year,
             price: parsed.price || INITIAL_FORM.price,
             preferredPlan: parsed.preferredPlan || INITIAL_FORM.preferredPlan,
+            missingYearAndPrice: Boolean(
+              parsed.missingYearAndPrice ??
+                parsed.missingYear ??
+                parsed.missingPrice,
+            ),
           };
         }
       }
@@ -129,6 +149,10 @@ export function CalculatorSection() {
 
   const handleCalculate = () => {
     setError(null);
+
+    if (form.missingYearAndPrice) {
+      return;
+    }
 
     if (!form.vehicleType) {
       setError("Selecciona el tipo de vehículo para aplicar el ISC correcto.");
@@ -178,7 +202,6 @@ export function CalculatorSection() {
     setShowResults(false);
     setEstimate(null);
     setError(null);
-    // Limpiar el estimate guardado pero mantener el formulario
     try {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(STORAGE_KEY);
@@ -186,6 +209,7 @@ export function CalculatorSection() {
     } catch (err) {
       console.warn("No se pudo limpiar el cálculo guardado", err);
     }
+    router.replace("/", { scroll: false });
   };
 
   // Guardar formulario en localStorage cada vez que cambie
@@ -207,10 +231,23 @@ export function CalculatorSection() {
     // Pequeño delay para asegurar que el formulario se haya cargado desde localStorage
     const timer = setTimeout(() => {
       try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("simular")) {
+          return;
+        }
+
         const stored = window.localStorage.getItem(STORAGE_KEY);
         const currentForm = loadFormFromStorage();
 
-        if (stored && currentForm.vehicleType && currentForm.brand && currentForm.model && currentForm.year && currentForm.price) {
+        if (
+          stored &&
+          currentForm.vehicleType &&
+          currentForm.brand &&
+          currentForm.model &&
+          currentForm.year &&
+          currentForm.price &&
+          !currentForm.missingYearAndPrice
+        ) {
           const payload = JSON.parse(stored);
           if (payload?.estimate && payload?.preferredPlan === currentForm.preferredPlan) {
             // Verificar que el estimate corresponde al formulario actual
@@ -237,6 +274,61 @@ export function CalculatorSection() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Solo ejecutar una vez al montar
+
+  const simularPresetId = searchParams.get("simular");
+
+  useEffect(() => {
+    if (!simularPresetId) {
+      return;
+    }
+    const preset = getTrendingVehicleById(simularPresetId);
+    if (!preset) {
+      return;
+    }
+
+    const c = preset.calculator;
+    const simYear = getInitialYear();
+    const priceStr = String(Math.round(c.priceUsd));
+    const preferredPlan = c.preferredPlan ?? "fast";
+
+    const nextForm: FormState = {
+      vehicleType: c.vehicleType,
+      brand: c.brand,
+      model: c.model,
+      year: simYear,
+      price: priceStr,
+      preferredPlan,
+      missingYearAndPrice: false,
+    };
+
+    setForm(nextForm);
+    setError(null);
+
+    const parsed: ImportCalculatorInput = {
+      brand: c.brand.trim(),
+      model: c.model.trim(),
+      year: simYear,
+      priceMiami: c.priceUsd,
+      vehicleType: c.vehicleType,
+    };
+
+    try {
+      const nextEstimate = calculateImportQuote(parsed, preferredPlan);
+      setEstimate(nextEstimate);
+      setShowResults(true);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo cargar la simulación de ejemplo. Intenta de nuevo.");
+      setShowResults(false);
+      setEstimate(null);
+    }
+
+    requestAnimationFrame(() => {
+      document
+        .getElementById("calculator")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [simularPresetId]);
 
   // Guardar estimate cuando cambie
   useEffect(() => {
@@ -301,12 +393,48 @@ export function CalculatorSection() {
     }));
   };
 
+  const handleMissingYearAndPriceToggle = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const checked = event.target.checked;
+    if (checked) {
+      setError(null);
+    }
+    setForm((prev) => ({
+      ...prev,
+      missingYearAndPrice: checked,
+      year: checked ? "" : prev.year || getInitialYear(),
+      price: checked ? "" : prev.price,
+    }));
+  };
+
   const whatsappLink = useMemo(() => {
     if (!estimate) return null;
     return buildWhatsappLink(estimate, {
       preferredPlan: form.preferredPlan,
     });
   }, [estimate, form.preferredPlan]);
+
+  const incompleteDataWhatsappLink = useMemo(() => {
+    if (!form.missingYearAndPrice) return null;
+    const planLabel =
+      form.preferredPlan === "fast"
+        ? LUXCARS_CONFIG.deliveryWindows.fastTrack.label
+        : LUXCARS_CONFIG.deliveryWindows.standard.label;
+    return buildIncompleteCalculatorWhatsappLink({
+      vehicleTypeLabel: selectedVehicleType?.label,
+      brand: form.brand,
+      model: form.model,
+      missingYearAndPrice: form.missingYearAndPrice,
+      preferredPlanLabel: planLabel,
+    });
+  }, [
+    form.brand,
+    form.model,
+    form.missingYearAndPrice,
+    form.preferredPlan,
+    selectedVehicleType?.label,
+  ]);
 
   const handleDownloadPDF = async () => {
     if (!estimate) return;
@@ -331,7 +459,7 @@ export function CalculatorSection() {
       <SectionHeading
         eyebrow="Calculadora pública"
         title="Calcula tu importación premium en menos de un minuto"
-        description="Selecciona el tipo de vehículo, ingresa tu precio en Miami y obtén un estimado completo con flete, seguros, impuestos SUNAT y honorarios LuxCars."
+        description="Selecciona el tipo de vehículo, ingresa tu precio en Miami y obtén un estimado completo con flete, seguros, impuestos SUNAT y honorarios LuxCars. Si no tienes año ni precio, indícalo y te contactamos para asesorarte."
         align="center"
       />
       {!showResults ? (
@@ -413,7 +541,7 @@ export function CalculatorSection() {
               </label>
             </div>
             <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm text-white/70">
+              <div className="grid gap-2 text-sm text-white/70">
                 <div className="flex items-center gap-2">
                   <span>Año</span>
                   <span className="text-xs text-white/40">
@@ -421,9 +549,12 @@ export function CalculatorSection() {
                   </span>
                 </div>
                 <select
+                  id="calc-year"
+                  aria-label="Año del vehículo"
                   value={form.year}
                   onChange={handleFieldChange("year")}
-                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 pr-10 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base"
+                  disabled={form.missingYearAndPrice}
+                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 pr-10 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base disabled:cursor-not-allowed disabled:opacity-50"
                   style={{
                     colorScheme: 'dark',
                     fontSize: '16px', // Prevenir zoom automático en móviles
@@ -440,19 +571,38 @@ export function CalculatorSection() {
                     ));
                   })()}
                 </select>
-              </label>
-              <label className="grid gap-2 text-sm text-white/70">
-                Precio en Miami (USD)
+              </div>
+              <div className="grid gap-2 text-sm text-white/70">
+                <label htmlFor="calc-price" className="text-sm text-white/70">
+                  Precio en Miami (USD)
+                </label>
                 <input
+                  id="calc-price"
                   value={form.price}
                   onChange={handleFieldChange("price")}
                   placeholder="Ej. 265000"
                   inputMode="decimal"
-                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base"
+                  disabled={form.missingYearAndPrice}
+                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base disabled:cursor-not-allowed disabled:opacity-50"
                   style={{
                     fontSize: '16px', // Prevenir zoom automático en móviles
                   }}
                 />
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 -mt-1">
+              <input
+                id="calc-missing-year-price"
+                type="checkbox"
+                checked={form.missingYearAndPrice}
+                onChange={handleMissingYearAndPriceToggle}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-black/60 text-[#f5d072] focus:ring-[#f5d072]/40"
+              />
+              <label
+                htmlFor="calc-missing-year-price"
+                className="cursor-pointer text-xs leading-snug text-white/55"
+              >
+                No tengo el año ni el precio — quiero que me asesoren
               </label>
             </div>
             <div className="grid gap-2 text-sm text-white/70">
@@ -499,9 +649,34 @@ export function CalculatorSection() {
               </div>
             ) : null}
 
-            <Button onClick={handleCalculate} size="lg" className="!text-black">
-              Calcular Estimado
-            </Button>
+            {form.missingYearAndPrice ? (
+              <div className="grid gap-3">
+                <div className="rounded-xl md:rounded-2xl border border-[#f5d072]/25 bg-[#f5d072]/5 px-4 md:px-5 py-3 md:py-4 text-sm text-white/75">
+                  <p className="font-medium text-white">
+                    Te ayudamos con lo que falta
+                  </p>
+                  <p className="mt-1.5 text-white/65">
+                    Completa lo que sepas (tipo de vehículo, marca, modelo) y
+                    escríbenos. Prepararemos opciones a tu medida según tu caso.
+                  </p>
+                </div>
+                {incompleteDataWhatsappLink ? (
+                  <Button
+                    href={incompleteDataWhatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="lg"
+                    className="!text-black w-full"
+                  >
+                    Pedir asesoría por WhatsApp
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <Button onClick={handleCalculate} size="lg" className="!text-black">
+                Calcular Estimado
+              </Button>
+            )}
 
             <p className="text-xs text-white/40 leading-relaxed">
               Este es un estimado de importación. El valor final puede variar según
@@ -660,5 +835,26 @@ function BreakdownItem({ label, amount, tooltip, icon }: BreakdownItemProps) {
         {formatCurrency(amount)}
       </span>
     </div>
+  );
+}
+
+function CalculatorSectionFallback() {
+  return (
+    <section
+      id="calculator"
+      className="scroll-mt-32 rounded-[40px] md:rounded-[40px] rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/95 via-black/80 to-neutral-900 px-4 md:px-6 py-12 md:py-20 backdrop-blur lg:px-14"
+    >
+      <div className="mx-auto max-w-3xl py-16 text-center text-sm text-white/50">
+        Cargando calculadora…
+      </div>
+    </section>
+  );
+}
+
+export function CalculatorSection() {
+  return (
+    <Suspense fallback={<CalculatorSectionFallback />}>
+      <CalculatorSectionInner />
+    </Suspense>
   );
 }

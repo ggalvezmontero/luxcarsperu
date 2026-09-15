@@ -2,6 +2,7 @@
 
 import { CalculatorSection } from "@/components/CalculatorSection";
 import { ContactSection } from "@/components/ContactSection";
+import { MostSoughtVehiclesSection } from "@/components/MostSoughtVehiclesSection";
 import { Footer } from "@/components/Footer";
 import { Hero } from "@/components/Hero";
 import { Navbar } from "@/components/Navbar";
@@ -11,7 +12,7 @@ import { useActiveSection } from "@/hooks/useActiveSection";
 
 export default function Home() {
   // Secciones de la página de inicio
-  const sectionIds = ["calculator", "timeline", "contact"];
+  const sectionIds = ["mas-buscados", "calculator", "timeline", "contact"];
   useActiveSection(sectionIds);
 
   return (
@@ -22,6 +23,10 @@ export default function Home() {
           {/* Hero - Impacto inicial */}
           <ScrollAnimation variant="fadeIn">
             <Hero />
+          </ScrollAnimation>
+
+          <ScrollAnimation delay={0.05}>
+            <MostSoughtVehiclesSection />
           </ScrollAnimation>
 
           {/* Calculadora - CTA Principal */}
