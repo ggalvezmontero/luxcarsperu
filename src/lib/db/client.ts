@@ -8,6 +8,11 @@
  * build de Vercel y la página entera; un `null` solo apaga una sección.
  */
 
+// Candado: este módulo lee SUPABASE_SERVICE_ROLE_KEY, que salta RLS. Si un
+// componente cliente lo importa, el build FALLA en vez de arrastrarlo al
+// navegador. Lo que sí puede usar el cliente vive en `db/storage.ts`.
+import "server-only";
+
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /** Lectura de env a prueba de bundle de navegador (donde `process` puede no existir). */
@@ -32,14 +37,8 @@ const SUPABASE_ANON_KEY =
 
 const SUPABASE_SERVICE_ROLE_KEY = readEnv("SUPABASE_SERVICE_ROLE_KEY");
 
-/**
- * Bucket de Supabase Storage con las fotos del stock. El nombre `vehiculos` es
- * el que crea la migración `20260915090300_vehicle_photos.sql`; solo cambia si
- * cambia esa migración.
- */
-export const VEHICLE_PHOTOS_BUCKET =
-  (process.env.NEXT_PUBLIC_SUPABASE_VEHICLE_PHOTOS_BUCKET ?? "").trim() ||
-  "vehiculos";
+export { VEHICLE_PHOTOS_BUCKET, getPublicStorageUrl } from "./storage";
+import { VEHICLE_PHOTOS_BUCKET } from "./storage";
 
 function isUsableUrl(value: string): boolean {
   if (!value) return false;
@@ -147,13 +146,6 @@ export function getSupabaseAdminClient(): SupabaseClient | null {
   return serviceClient;
 }
 
-/** URL pública de una foto guardada en Storage. `null` si no hay configuración. */
-export function getPublicStorageUrl(storagePath: string): string | null {
-  if (!HAS_PUBLIC_CONFIG || !storagePath) return null;
-  const base = SUPABASE_URL.replace(/\/+$/, "");
-  const cleanPath = storagePath.replace(/^\/+/, "");
-  return `${base}/storage/v1/object/public/${VEHICLE_PHOTOS_BUCKET}/${cleanPath}`;
-}
 
 const warnedKeys = new Set<string>();
 

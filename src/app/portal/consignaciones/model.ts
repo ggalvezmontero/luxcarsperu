@@ -21,25 +21,29 @@
  * sesión del equipo.
  */
 
-import type { Currency } from "@/lib/db/types";
+import {
+  CONSIGNMENT_STATUSES,
+  type CommissionType,
+  type ConsignmentRow,
+  type ConsignmentStatus,
+  type Currency,
+} from "@/lib/db/types";
 
-/** `public.estado_consignacion`. */
-export type ConsignmentStatus =
-  | "activa"
-  | "pausada"
-  | "vendida_por_luxcars"
-  | "vendida_por_dueno"
-  | "retirada"
-  | "vencida";
-
-export const CONSIGNMENT_STATUSES: readonly ConsignmentStatus[] = [
-  "activa",
-  "pausada",
-  "vendida_por_luxcars",
-  "vendida_por_dueno",
-  "retirada",
-  "vencida",
-];
+/**
+ * FUENTE DE VERDAD DE LOS TIPOS DE ESQUEMA: `src/lib/db/types.ts`.
+ *
+ * `ConsignmentStatus`, `CommissionType` y `ConsignmentRow` son espejo de
+ * `public.estado_consignacion`, `public.tipo_comision` y `public.consignments`.
+ * Vivían acá y se movieron al módulo de tipos para que exista UNA sola
+ * definición por enum de Postgres en todo el proyecto. Se reexportan para que
+ * `queries.ts`, `ConsignmentsScreen.tsx` y `ConsignmentsTable.tsx` sigan
+ * importando de `./model` sin cambios.
+ *
+ * Si agregas un estado, agrégalo en la migración y en `src/lib/db/types.ts`.
+ * NO lo declares acá: dos listas del mismo enum terminan discrepando.
+ */
+export { CONSIGNMENT_STATUSES };
+export type { CommissionType, ConsignmentRow, ConsignmentStatus };
 
 export const CONSIGNMENT_STATUS_LABEL: Record<ConsignmentStatus, string> = {
   activa: "Activa",
@@ -65,9 +69,6 @@ export const MANAGEABLE_CONSIGNMENT_STATUSES: readonly ConsignmentStatus[] = [
   "retirada",
   "vencida",
 ];
-
-/** `public.tipo_comision`. */
-export type CommissionType = "porcentaje" | "monto_fijo";
 
 /** Estados en los que ya no hay nada que gestionar. */
 const CLOSED_STATUSES: readonly ConsignmentStatus[] = [
@@ -169,43 +170,6 @@ export function emptyConsignmentCounts(): Record<ConsignmentStatus, number> {
 /* ========================================================================== */
 /* Fila cruda y mapeo                                                         */
 /* ========================================================================== */
-
-/** Fila de `public.consignments`. Columnas en español, como el esquema. */
-export type ConsignmentRow = {
-  id: string;
-  propietario_nombre: string;
-  propietario_documento: string | null;
-  propietario_tipo_documento: string | null;
-  propietario_telefono: string;
-  propietario_email: string | null;
-  vehicle_id: string | null;
-  marca: string;
-  modelo: string;
-  anio: number;
-  version: string | null;
-  placa: string | null;
-  kilometraje_km: number | null;
-  color: string | null;
-  precio_pedido: number | string;
-  precio_minimo: number | string | null;
-  moneda: string | null;
-  tasacion_luxcars: number | string | null;
-  tipo_comision: string;
-  comision_porcentaje: number | string | null;
-  comision_monto: number | string | null;
-  fecha_inicio: string;
-  fecha_fin: string | null;
-  estado: string;
-  sin_exclusividad: boolean | null;
-  vendido_por_dueno: boolean | null;
-  vendido_por_dueno_en: string | null;
-  vendido_por_dueno_notas: string | null;
-  precio_venta_final: number | string | null;
-  comision_cobrada: number | string | null;
-  vendido_en: string | null;
-  notas_internas: string | null;
-  created_at: string;
-};
 
 function toNumber(
   value: number | string | null | undefined,

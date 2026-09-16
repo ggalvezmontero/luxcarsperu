@@ -40,7 +40,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { VEHICLE_PHOTOS_BUCKET, getPublicStorageUrl } from "@/lib/db/client";
+import { VEHICLE_PHOTOS_BUCKET, getPublicStorageUrl } from "@/lib/db/storage";
 
 /* ========================================================================== */
 /* Tipos                                                                      */

@@ -232,6 +232,29 @@ export type CreateLeadResult =
     };
 
 /* ========================================================================== */
+/* Consignaciones — espejo de public.consignments                             */
+/* ========================================================================== */
+
+/**
+ * `public.estado_consignacion`.
+ *
+ * `vendida_por_dueno` NO es una fuga ni un incumplimiento: la consignación es
+ * SIN CONTRATO DE EXCLUSIVIDAD, así que el dueño vendiendo su propio auto es un
+ * desenlace previsto y cierra con comisión CERO. No modelar penalidades sobre
+ * este estado.
+ */
+export type ConsignmentStatus =
+  | "activa"
+  | "pausada"
+  | "vendida_por_luxcars"
+  | "vendida_por_dueno"
+  | "retirada"
+  | "vencida";
+
+/** `public.tipo_comision`. */
+export type CommissionType = "porcentaje" | "monto_fijo";
+
+/* ========================================================================== */
 /* Filas crudas de Postgres (snake_case, en español)                          */
 /* ========================================================================== */
 
@@ -301,6 +324,52 @@ export type LeadRow = {
   created_at: string;
 };
 
+/**
+ * Fila de `public.consignments`. Columnas en español, como el esquema.
+ *
+ * Los montos llegan como `string` cuando PostgREST serializa `numeric`: por eso
+ * cada columna de dinero admite `number | string`. La conversión vive en el
+ * mapeador de `src/app/portal/consignaciones/model.ts`, en un solo lugar.
+ *
+ * `precio_minimo` es el piso autorizado por el dueño: RESERVADO, jamás se
+ * muestra al comprador.
+ */
+export type ConsignmentRow = {
+  id: string;
+  propietario_nombre: string;
+  propietario_documento: string | null;
+  propietario_tipo_documento: string | null;
+  propietario_telefono: string;
+  propietario_email: string | null;
+  vehicle_id: string | null;
+  marca: string;
+  modelo: string;
+  anio: number;
+  version: string | null;
+  placa: string | null;
+  kilometraje_km: number | null;
+  color: string | null;
+  precio_pedido: number | string;
+  precio_minimo: number | string | null;
+  moneda: string | null;
+  tasacion_luxcars: number | string | null;
+  tipo_comision: string;
+  comision_porcentaje: number | string | null;
+  comision_monto: number | string | null;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  estado: string;
+  sin_exclusividad: boolean | null;
+  vendido_por_dueno: boolean | null;
+  vendido_por_dueno_en: string | null;
+  vendido_por_dueno_notas: string | null;
+  precio_venta_final: number | string | null;
+  comision_cobrada: number | string | null;
+  vendido_en: string | null;
+  notas_internas: string | null;
+  created_at: string;
+};
+
 /* ========================================================================== */
 /* Constantes de validación (espejo de los enums de Postgres)                 */
 /* ========================================================================== */
@@ -349,6 +418,20 @@ export const LEAD_STATUSES: readonly LeadStatus[] = [
   "negociacion",
   "ganado",
   "perdido",
+];
+
+export const CONSIGNMENT_STATUSES: readonly ConsignmentStatus[] = [
+  "activa",
+  "pausada",
+  "vendida_por_luxcars",
+  "vendida_por_dueno",
+  "retirada",
+  "vencida",
+];
+
+export const COMMISSION_TYPES: readonly CommissionType[] = [
+  "porcentaje",
+  "monto_fijo",
 ];
 
 /**

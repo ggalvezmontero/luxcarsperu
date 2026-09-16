@@ -12,9 +12,19 @@
  * Este guard existe para el OTRO caso, el que sí es peligroso: un Route Handler
  * o un componente de servidor que lea o escriba con `SUPABASE_SERVICE_ROLE_KEY`.
  * Esa llave salta TODAS las políticas, así que una ruta así sin control de
- * acceso es el inventario y los leads del dueño abiertos a un `curl`. Hoy leen
- * con `service_role` `src/app/portal/leads/data.ts` y
- * `src/app/portal/vehiculos/data.ts` (ver la nota del layout del portal).
+ * acceso es el inventario y los leads del dueño abiertos a un `curl`.
+ *
+ * ESTADO AL 2026-09-15 (verificado con grep en toda `src/`): NINGUNA pantalla
+ * del portal usa ya `service_role`. Los archivos que sí lo hacían
+ * (`portal/leads/data.ts` y `portal/vehiculos/data.ts`) fueron BORRADOS y sus
+ * pantallas reescritas para leer desde el navegador con la sesión del equipo.
+ * El único consumidor de la llave de servicio en todo el proyecto es
+ * `createLead()` en `src/lib/db/leads.ts`, que es escritura desde el servidor
+ * para un formulario público sin cuenta — el caso para el que la llave existe.
+ *
+ * Por eso este guard hoy NO tiene consumidores: queda listo para el primer
+ * Route Handler que necesite privilegios de servidor. No lo borres pensando que
+ * es código muerto sin leer antes este párrafo.
  *
  * DECISIÓN DELIBERADA: sin `PORTAL_ADMIN_TOKEN` configurado, en producción esto
  * NIEGA (503) en vez de dejar pasar. Un portal que no funciona hasta definir una

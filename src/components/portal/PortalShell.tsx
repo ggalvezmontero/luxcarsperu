@@ -53,13 +53,15 @@ function Icon({ path }: { path: string }) {
 }
 
 /**
- * Las rutas apuntan a donde OTRO EQUIPO está construyendo cada pantalla
- * (`src/app/portal/vehiculos/`, `src/app/portal/leads/`). Hoy esas carpetas
- * tienen su capa de datos pero todavía no un `page.tsx`, así que van con
- * `ready: false` y se pintan como pendientes en vez de llevar a un 404.
+ * `ready: false` pinta la entrada como "pronto" en vez de llevar a un 404.
+ * Al crear el `page.tsx` de una sección hay que ponerla en `true`: es el único
+ * cambio necesario, la barra lateral no requiere nada más.
  *
- * TODO(nav): al crear cada `page.tsx`, poner `ready: true` en su entrada. Es
- * el único cambio necesario; la barra lateral no requiere nada más.
+ * ESTADO AL 2026-09-15 (integración): las cuatro secciones existen y compilan
+ * (`next build` las prerenderiza), así que las cuatro van en `true`. Vehículos
+ * se quedó en `false` por descuido — la pantalla ya estaba hecha y la barra
+ * lateral seguía diciendo "pronto", así que no había forma de llegar a ella
+ * salvo escribiendo la URL a mano. Corregido al integrar.
  */
 const NAV_ITEMS: NavItem[] = [
   {
@@ -73,7 +75,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/portal/vehiculos",
     label: "Vehículos",
     hint: "Stock, alta por VIN y fotos",
-    ready: false,
+    ready: true,
     icon: (
       <Icon path="M3 13l2-5a2 2 0 0 1 1.9-1.3h10.2A2 2 0 0 1 19 8l2 5v5h-3v-2H6v2H3v-5Zm3 2h2m8 0h2" />
     ),

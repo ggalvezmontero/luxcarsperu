@@ -17,6 +17,28 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type {
+  ConsignmentStatus,
+  LeadStatus,
+  VehicleStatus,
+} from "@/lib/db/types";
+
+/**
+ * Los estados se tipan contra los enums espejo de `src/lib/db/types.ts` en vez
+ * de escribirse como strings sueltos dentro de cada `.eq()`.
+ *
+ * Motivo concreto: si alguien renombra una etiqueta del enum en una migración,
+ * un string suelto sigue compilando y el indicador pasa a devolver CERO en
+ * silencio — un tablero que miente sin que nadie se entere. Tipado, deja de
+ * compilar, que es el fallo que sí se nota.
+ */
+const ESTADO_DISPONIBLE: VehicleStatus = "disponible";
+const ESTADO_RESERVADO: VehicleStatus = "reservado";
+const ESTADO_VENDIDO: VehicleStatus = "vendido";
+const ESTADO_EN_TRANSITO: VehicleStatus = "en_transito";
+const LEAD_NUEVO: LeadStatus = "nuevo";
+const CONSIGNACION_ACTIVA: ConsignmentStatus = "activa";
+
 /** Lo que el dueño mira todos los días, en el orden en que le importa. */
 export type PortalMetrics = {
   /** `vehicles.estado = 'disponible'`: unidades listas para vender. */
@@ -90,7 +112,7 @@ const COUNT_SPECS: CountSpec[] = [
       c
         .from("vehicles")
         .select("id", { count: "exact", head: true })
-        .eq("estado", "disponible"),
+        .eq("estado", ESTADO_DISPONIBLE),
   },
   {
     key: "reservados",
@@ -99,7 +121,7 @@ const COUNT_SPECS: CountSpec[] = [
       c
         .from("vehicles")
         .select("id", { count: "exact", head: true })
-        .eq("estado", "reservado"),
+        .eq("estado", ESTADO_RESERVADO),
   },
   {
     key: "vendidosDelMes",
@@ -108,7 +130,7 @@ const COUNT_SPECS: CountSpec[] = [
       c
         .from("vehicles")
         .select("id", { count: "exact", head: true })
-        .eq("estado", "vendido")
+        .eq("estado", ESTADO_VENDIDO)
         // Una unidad vendida sin `vendido_en` no cuenta: sin fecha no se puede
         // atribuir a un mes. Al cerrar una venta, registra siempre la fecha.
         .gte("vendido_en", firstDayOfCurrentMonth()),
@@ -120,7 +142,7 @@ const COUNT_SPECS: CountSpec[] = [
       c
         .from("leads")
         .select("id", { count: "exact", head: true })
-        .eq("estado", "nuevo"),
+        .eq("estado", LEAD_NUEVO),
   },
   {
     key: "consignacionesActivas",
@@ -129,7 +151,7 @@ const COUNT_SPECS: CountSpec[] = [
       c
         .from("consignments")
         .select("id", { count: "exact", head: true })
-        .eq("estado", "activa"),
+        .eq("estado", CONSIGNACION_ACTIVA),
   },
   {
     key: "enTransito",
@@ -138,7 +160,7 @@ const COUNT_SPECS: CountSpec[] = [
       c
         .from("vehicles")
         .select("id", { count: "exact", head: true })
-        .eq("estado", "en_transito"),
+        .eq("estado", ESTADO_EN_TRANSITO),
   },
   {
     key: "sinPublicar",
@@ -147,7 +169,7 @@ const COUNT_SPECS: CountSpec[] = [
       c
         .from("vehicles")
         .select("id", { count: "exact", head: true })
-        .eq("estado", "disponible")
+        .eq("estado", ESTADO_DISPONIBLE)
         .eq("publicado", false),
   },
 ];

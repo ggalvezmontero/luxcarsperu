@@ -12,6 +12,16 @@
  * nombre del token al que corresponden.
  *
  * Si cambias un color en globals.css, cambialo tambien aqui. No al reves.
+ *
+ * ESTO YA SE DESINCRONIZO UNA VEZ (2026-09-15). La auditoria de accesibilidad
+ * subio --color-ink-3 de #8E8E96 a #9E9EA6 para cumplir el contraste AA, pero
+ * esta copia se quedo con el valor viejo: la imagen social y el PDF seguian
+ * usando el gris que NO pasa. Se corrigio al integrar.
+ *
+ * Para detectarlo sin leer los dos archivos:
+ *   node scripts/verificar-paleta.mjs
+ * Devuelve 1 y lista las diferencias si algun valor de aqui no coincide con su
+ * token en globals.css.
  * -------------------------------------------------------------------------- */
 
 export const BRAND_PALETTE = {
@@ -26,7 +36,7 @@ export const BRAND_PALETTE = {
   /** --color-ink */
   ink: "#FFFFFF",
   /** --color-ink-3 */
-  ink3: "#8E8E96",
+  ink3: "#9E9EA6",
   /** --color-silver */
   silver: "#C0C0C0",
   /** --color-silver-bright */

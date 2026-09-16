@@ -37,10 +37,16 @@ import { PortalShell } from "@/components/portal/PortalShell";
  * Con leads eso significa nombres, teléfonos y correos: Ley 29733.
  *
  * Es decir: una pantalla de servidor con `service_role` queda EXPUESTA aunque
- * el portal tenga login. Hoy leen con `service_role`
- * `src/app/portal/leads/data.ts` y `src/app/portal/vehiculos/data.ts`. Antes de
- * publicar sus `page.tsx` hay que cerrar la puerta en el servidor. Tres
- * caminos, en orden de solidez:
+ * el portal tenga login.
+ *
+ * ESTADO AL 2026-09-15: ese agujero está CERRADO. Los dos archivos que leían
+ * con `service_role` (`portal/leads/data.ts` y `portal/vehiculos/data.ts`) ya
+ * no existen; leads, consignaciones, vehículos y fotos leen desde el navegador
+ * con la sesión del equipo, así que el candado es RLS. Lo que queda abierto es
+ * la CÁSCARA: `curl /portal/leads` devuelve 200 con el HTML vacío, sin datos.
+ *
+ * La regla para la próxima pantalla sigue en pie. Tres caminos, en orden de
+ * solidez:
  *
  *   A) Instalar `@supabase/ssr` (hoy NO está en package.json: es decisión del
  *      dueño) y agregar un `middleware.ts` que valide la sesión y redirija a
