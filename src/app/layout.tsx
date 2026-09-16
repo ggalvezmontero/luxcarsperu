@@ -1,6 +1,7 @@
 import { CookieBanner } from "@/components/CookieBanner";
 import { ScrollPrevention } from "@/components/ScrollPrevention";
-import { LUXCARS_CONFIG } from "@/lib/config";
+import { SkipLink } from "@/components/SkipLink";
+import { BRAND_THEME_COLOR, LUXCARS_CONFIG } from "@/lib/config";
 import {
   autoDealerSchema,
   faqSchema,
@@ -10,10 +11,28 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+/* ---------------------------------------------------------------------------
+   FUENTES
+   ---------------------------------------------------------------------------
+   Geist y Geist Mono son fuentes VARIABLES. Declarar `weight: [...]` obligaba
+   a next/font a bajar una instancia estática por peso —cuatro archivos woff2
+   para el sans— en lugar del único archivo variable que cubre todo el eje
+   100–900.
+
+   Además era un error funcional: el proyecto usa `font-light` (300) en ocho
+   sitios y 300 no estaba en la lista, así que el navegador lo sintetizaba
+   desde 400 en vez de usar el peso real.
+
+   Sin `weight` se descarga la variable y se acabaron los dos problemas.
+   `display: "swap"` va en las dos: el texto se pinta de inmediato con la
+   fuente de respaldo y cambia al cargar la real. Sin eso hay un bloque
+   invisible que castiga LCP.
+
+   `subsets: ["latin"]` es lo único que hace falta para es-PE.
+   ------------------------------------------------------------------------- */
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -71,27 +90,24 @@ export const metadata: Metadata = {
     title: `${LUXCARS_CONFIG.brandName} · Importación y compra venta premium`,
     description:
       "Broker boutique de autos de lujo en Lima. Importación a pedido desde Miami, stock propio, tasación y consignación sin exclusividad.",
-    images: [
-      {
-        url: "/brand/social-1024.png",
-        width: 1024,
-        height: 1024,
-        alt: LUXCARS_CONFIG.brandName,
-      },
-    ],
+    // Sin `images` a proposito: apuntaba a /brand/social-1024.png, un archivo
+    // que no existe en public/, asi que toda vista previa compartida salia en
+    // blanco. Al omitir la clave, Next toma la imagen de la convencion de
+    // archivo src/app/opengraph-image.tsx, que se genera y no se puede romper
+    // por un borrado o un rename.
   },
   twitter: {
     card: "summary_large_image",
     title: `${LUXCARS_CONFIG.brandName} | Autos de lujo en Perú`,
     description:
       "Importación, compra y venta de autos premium. Calculadora pública de impuestos de importación.",
-    images: ["/brand/social-1024.png"],
+    // Idem: hereda la imagen generada en src/app/opengraph-image.tsx.
   },
   category: "automotive",
 };
 
 export const viewport = {
-  themeColor: "#050505",
+  themeColor: BRAND_THEME_COLOR,
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -115,6 +131,9 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {/* Primer elemento enfocable del documento: tiene que ir antes que
+            cualquier otra cosa para que la primera tabulación lo alcance. */}
+        <SkipLink />
         <ScrollPrevention />
         {children}
         <CookieBanner />

@@ -36,7 +36,11 @@ export function Hero() {
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/hero/main.jpg"
-          alt="SUV de lujo en estudio con iluminación dorada"
+          // La foto es un Audi R8 gris mate de tres cuartos trasero en una
+          // carretera de montaña al atardecer. El alt anterior decía "SUV de
+          // lujo en estudio con iluminación dorada": ni SUV, ni estudio, ni
+          // dorado. Describe lo que se ve.
+          alt="Audi R8 gris mate visto de tres cuartos trasero sobre una carretera de montaña al atardecer"
           fill
           priority
           sizes="100vw"

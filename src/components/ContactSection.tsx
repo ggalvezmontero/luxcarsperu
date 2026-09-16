@@ -4,9 +4,9 @@ import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 import { buildWhatsappLink } from "@/lib/whatsapp";
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "./Button";
+import { PlaceholderGrafico } from "./PlaceholderGrafico";
 import { SectionHeading } from "./SectionHeading";
 
 type FormState = {
@@ -32,8 +32,13 @@ type StoredPayload = {
 
 const STORAGE_KEY = "luxcars:last-estimate";
 
+/* SIN `focus:outline-none`. Lo tenía, y lo único que quedaba como indicador de
+   foco era el cambio de color de un borde de 1 px (`focus:border-silver-bright`):
+   no llega al indicador de foco visible que exige WCAG 2.4.7 y desaparecía por
+   completo en modo de alto contraste. El anillo de foco global de globals.css
+   vuelve a aplicarse; el cambio de borde se conserva como refuerzo visual. */
 const fieldClasses =
-  "w-full rounded-lux border border-line-strong bg-surface-3 text-ink transition-colors duration-200 placeholder:text-ink-3 hover:border-silver-dim focus:border-silver-bright focus:outline-none";
+  "w-full rounded-lux border border-line-strong bg-surface-3 text-ink transition-colors duration-200 placeholder:text-ink-3 hover:border-silver-dim focus:border-silver-bright";
 
 export function ContactSection() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
@@ -42,6 +47,13 @@ export function ContactSection() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  /* Para llevar el foco AL CAMPO que falta cuando la validación falla. Con
+     `role="alert"` el mensaje se anuncia, pero el foco se queda en el botón
+     "Enviar", al final del formulario: había que retroceder a ciegas hasta
+     encontrar el campo vacío. WCAG 3.3.1 pide identificar el error; llevar el
+     foco es lo que lo hace accionable. */
+  const nameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function loadFromStorage() {
@@ -107,6 +119,7 @@ export function ContactSection() {
 
     if (!form.name || !form.phone) {
       setError("Completa al menos tu nombre y un teléfono de contacto.");
+      (form.name ? phoneRef : nameRef).current?.focus();
       return;
     }
 
@@ -146,15 +159,23 @@ export function ContactSection() {
       <div className="mt-8 md:mt-12 grid gap-6 md:gap-10 lg:grid-cols-2">
         <form
           onSubmit={handleSubmit}
-          className="grid gap-4 md:gap-5 rounded-lux-lg border border-line bg-surface p-5 md:p-8 shadow-[0_24px_70px_rgba(0,0,0,0.55)]"
+          className="grid gap-4 md:gap-5 rounded-lux-lg border border-line bg-surface p-5 md:p-8 shadow-[var(--lux-shadow-lg)]"
         >
           <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm text-ink-2">
               Nombre completo
               <input
+                ref={nameRef}
                 value={form.name}
                 onChange={handleChange("name")}
                 placeholder="Ej. Diego Salazar"
+                /* `autoComplete` no es cosmético: WCAG 1.3.5 (Identify Input
+                   Purpose) pide declarar el propósito de los campos que piden
+                   datos del propio usuario, para que las ayudas de
+                   autocompletado y los lectores de pantalla los rellenen. */
+                autoComplete="name"
+                aria-required="true"
+                aria-invalid={Boolean(error) && !form.name}
                 className={cn(fieldClasses, "h-11 md:h-12 px-3 md:px-4 text-base")}
                 style={{
                   fontSize: '16px', // Prevenir zoom automático en móviles
@@ -164,6 +185,12 @@ export function ContactSection() {
             <label className="grid gap-2 text-sm text-ink-2">
               Teléfono / WhatsApp
               <input
+                ref={phoneRef}
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                aria-required="true"
+                aria-invalid={Boolean(error) && !form.phone}
                 value={form.phone}
                 onChange={handleChange("phone")}
                 placeholder="+51 999 999 999"
@@ -177,6 +204,9 @@ export function ContactSection() {
           <label className="grid gap-2 text-sm text-ink-2">
             Email (opcional)
             <input
+              type="email"
+              inputMode="email"
+              autoComplete="email"
               value={form.email}
               onChange={handleChange("email")}
               placeholder="Ej. concierge@luxcars.pe"
@@ -199,9 +229,18 @@ export function ContactSection() {
               }}
             />
           </label>
+          {/* "Plan preferido" era texto suelto dentro de un <div>: se veía como
+              etiqueta pero no lo era para nadie más. Quien navega con lector de
+              pantalla oía dos botones de alternancia sin saber de qué grupo son
+              ni qué eligen. `role="group"` + `aria-labelledby` lo convierte en
+              un grupo con nombre de verdad (WCAG 1.3.1). */}
           <div className="grid gap-2 text-sm text-ink-2">
-            Plan preferido
-            <div className="grid gap-2.5 md:gap-3 sm:grid-cols-2">
+            <span id="contacto-plan-etiqueta">Plan preferido</span>
+            <div
+              role="group"
+              aria-labelledby="contacto-plan-etiqueta"
+              className="grid gap-2.5 md:gap-3 sm:grid-cols-2"
+            >
               {([
                 {
                   key: "fast",
@@ -261,19 +300,20 @@ export function ContactSection() {
             para que converses con nuestro concierge inmediatamente.
           </p>
         </form>
-        <div className="space-y-4 md:space-y-6 rounded-lux-lg border border-line bg-surface p-5 md:p-8 text-sm text-ink-2 shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
-          <div className="relative h-36 md:h-44 overflow-hidden rounded-lux border border-line">
-            <Image
-              src="/images/contact/concierge.jpg"
-              alt="Concierge de LuxCars coordinando una importación desde Miami"
-              fill
-              sizes="(min-width: 1024px) 320px, 100vw"
-              className="object-cover"
+        <div className="space-y-4 md:space-y-6 rounded-lux-lg border border-line bg-surface p-5 md:p-8 text-sm text-ink-2 shadow-[var(--lux-shadow-lg)]">
+          {/* Aquí había /images/contact/concierge.jpg con el alt "Concierge de
+              LuxCars coordinando una importación desde Miami". La foto era
+              stock: dos oficinistas desconocidos chocando las manos, sin auto y
+              sin relación con LuxCars. Presentar stock como "nuestro equipo"
+              miente sobre quién atiende al cliente. Va tratamiento gráfico
+              hasta tener la foto real del equipo (docs/IMAGENES.md). */}
+          <div className="relative h-36 overflow-hidden rounded-lux border border-line md:h-44">
+            <PlaceholderGrafico
+              titulo="Concierge"
+              nota="Pendiente: retrato real del equipo que atiende Miami y Lima."
+              icono="asesor"
+              className="h-full w-full border-0"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-void/85 via-void/30 to-transparent" />
-            <span className="absolute left-4 top-4 inline-flex items-center rounded-full border border-silver/40 bg-void/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-silver-bright">
-              Concierge
-            </span>
           </div>
           <h3 className="text-xl md:text-2xl font-semibold tracking-tight text-ink">
             Concierge dedicado en Miami &amp; Lima

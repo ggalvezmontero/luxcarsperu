@@ -9,6 +9,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const fijas: MetadataRoute.Sitemap = [
     { url: `${BASE}/`, lastModified: ahora, changeFrequency: "weekly", priority: 1 },
+    // Una URL por línea de negocio: son las páginas que capturan la búsqueda
+    // comercial ("comprar auto de lujo en Lima", "importar auto de EE. UU.",
+    // "vender mi auto en consignación"), no solo la de importación.
+    { url: `${BASE}/comprar`, lastModified: ahora, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${BASE}/importar`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
+    { url: `${BASE}/vender`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
     { url: `${BASE}/como-funciona`, lastModified: ahora, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/faq`, lastModified: ahora, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/terminos`, lastModified: ahora, changeFrequency: "yearly", priority: 0.3 },

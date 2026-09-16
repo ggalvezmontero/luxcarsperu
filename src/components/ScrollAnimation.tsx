@@ -1,29 +1,61 @@
-"use client";
+import type { CSSProperties, ReactNode } from "react";
 
-import { motion, useInView } from "framer-motion";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+/* ---------------------------------------------------------------------------
+   SCROLL ANIMATION — animación de entrada con CERO JavaScript
+   ---------------------------------------------------------------------------
+   Antes esto era un componente cliente con framer-motion. Costaba 112 KB de
+   JS (sin comprimir) en la carga inicial de la home, y la home monta NUEVE
+   instancias. Peor para Core Web Vitals: `motion.div` serializa
+   `style="opacity:0"` en el HTML del servidor, así que la portada —el
+   elemento LCP— nacía invisible y no se pintaba hasta que framer-motion
+   terminaba de hidratar. El LCP quedaba atado al JS.
+
+   Además el componente anterior duplicaba la detección tres veces sobre el
+   mismo nodo: `useInView` de framer, un listener de scroll y un
+   IntersectionObserver propio, más dos setTimeout. Nueve copias de eso en la
+   home.
+
+   Ahora es un componente de servidor: no viaja NADA al cliente. La animación
+   vive en `globals.css` y la conduce `animation-timeline: view()`, el
+   timeline de scroll nativo del navegador.
+
+   POR QUÉ ESTO NO REPITE EL PROBLEMA DE LCP
+   El estado base del elemento es VISIBLE. La opacidad 0 solo existe dentro
+   del keyframe, y el keyframe solo corre donde el navegador soporta el
+   timeline. Un elemento que ya está dentro del viewport en el primer pintado
+   está más allá del rango `entry`, así que con `animation-fill-mode: both`
+   se pinta directamente en su estado final. La portada nunca parpadea.
+
+   DEGRADACIÓN
+   Donde no hay soporte de `animation-timeline` (o donde el usuario pidió
+   `prefers-reduced-motion: reduce`) simplemente no hay animación y el
+   contenido se ve. Nunca al revés. Esa es la regla: si la animación no puede
+   correr, el contenido se muestra, no se esconde.
+
+   La API pública es idéntica a la anterior (`variant`, `delay`, `className`)
+   porque `src/app/page.tsx` y `src/app/como-funciona/Contenido.tsx` la
+   consumen y no se tocan.
+   ------------------------------------------------------------------------- */
 
 type ScrollAnimationProps = {
   children: ReactNode;
+  /** Escalonado, en segundos, como en la API anterior de framer-motion. */
   delay?: number;
   className?: string;
   variant?: "fadeUp" | "fadeIn" | "scale";
 };
 
-const variants = {
-  fadeUp: {
-    initial: { opacity: 0, y: 40 },
-    animate: { opacity: 1, y: 0 },
-  },
-  fadeIn: {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
-  },
-  scale: {
-    initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1 },
-  },
-};
+/**
+ * El `delay` en segundos no tiene equivalente directo en una animación
+ * conducida por scroll: no avanza con el tiempo, avanza con la posición. Se
+ * traduce a píxeles de scroll, que es el mismo efecto de escalonado. El tope
+ * de 150 px evita que una tarjeta del final de una fila quede notoriamente
+ * más apagada que la primera.
+ */
+function staggerOffset(delay: number): string {
+  if (!Number.isFinite(delay) || delay <= 0) return "0px";
+  return `${Math.min(Math.round(delay * 200), 150)}px`;
+}
 
 export function ScrollAnimation({
   children,
@@ -31,82 +63,14 @@ export function ScrollAnimation({
   className,
   variant = "fadeUp",
 }: ScrollAnimationProps) {
-  const variantConfig = variants[variant];
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const checkVisibility = () => {
-      if (!ref.current) return;
-
-      const rect = ref.current.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      const margin = 100;
-
-      const isInViewport =
-        rect.top < windowHeight + margin &&
-        rect.bottom > -margin;
-
-      if (isInViewport) {
-        setIsVisible(true);
-      }
-    };
-
-    // Verificar inmediatamente al montar
-    checkVisibility();
-
-    // Verificar después de un delay para capturar scrolls programáticos
-    const timeout1 = setTimeout(checkVisibility, 100);
-    const timeout2 = setTimeout(checkVisibility, 500);
-
-    // Escuchar scrolls para detectar scrolls programáticos
-    window.addEventListener("scroll", checkVisibility, { passive: true });
-    
-    // También usar un IntersectionObserver como respaldo
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsVisible(true);
-          }
-        });
-      },
-      {
-        rootMargin: "-100px",
-        threshold: 0,
-      }
-    );
-
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => {
-      clearTimeout(timeout1);
-      clearTimeout(timeout2);
-      window.removeEventListener("scroll", checkVisibility);
-      observer.disconnect();
-    };
-  }, []);
-
-  // Usar isVisible o isInView para determinar si debe animar
-  const shouldAnimate = isVisible || isInView;
+  const style =
+    delay > 0
+      ? ({ "--lux-reveal-stagger": staggerOffset(delay) } as CSSProperties)
+      : undefined;
 
   return (
-    <motion.div
-      ref={ref}
-      initial={variantConfig.initial}
-      animate={shouldAnimate ? variantConfig.animate : variantConfig.initial}
-      transition={{
-        duration: 0.6,
-        delay,
-        ease: [0.25, 0.1, 0.25, 1],
-      }}
-      className={className}
-    >
+    <div data-lux-reveal={variant} style={style} className={className}>
       {children}
-    </motion.div>
+    </div>
   );
 }
-

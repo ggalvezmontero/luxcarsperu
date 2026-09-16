@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { PlaceholderGrafico } from "./PlaceholderGrafico";
 import { SectionHeading } from "./SectionHeading";
 
 // Diferenciador destacado: es el único argumento realmente excluyente frente
@@ -62,12 +62,14 @@ export function WhyUsSection() {
           Miami.
         </p>
         <div className="flex items-center gap-4 rounded-lux-lg border border-line bg-surface-2 p-4">
-          <Image
-            src="/images/contact/concierge.jpg"
-            alt="Asesor concierge de LuxCars atendiendo a un cliente"
-            width={120}
-            height={80}
-            className="h-16 w-20 shrink-0 rounded-lux border border-line object-cover"
+          {/* Misma foto stock que se retiró de ContactSection: dos oficinistas
+              desconocidos, etiquetados como "asesor de LuxCars". Ver
+              docs/IMAGENES.md. */}
+          <PlaceholderGrafico
+            titulo="Equipo LuxCars"
+            icono="asesor"
+            variante="marca"
+            className="h-16 w-20 shrink-0 rounded-lux"
           />
           <div className="space-y-1">
             <p className="text-sm font-semibold text-ink">

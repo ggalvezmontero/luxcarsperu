@@ -1,53 +1,100 @@
 import Image from "next/image";
+import { PlaceholderGrafico, type IconoPlaceholder } from "./PlaceholderGrafico";
 import { SectionHeading } from "./SectionHeading";
 
-const STEPS = [
+/* El `alt` describe LO QUE SE VE en la foto, no lo que el paso promete. Si la
+   foto no puede describirse sin mentir, no hay foto: va PlaceholderGrafico.
+   Ver docs/IMAGENES.md para la lista de tomas que faltan conseguir. */
+type Step = {
+  key: string;
+  title: string;
+  description: string;
+} & (
+  // Union discriminada: o hay foto (con su alt real) o hay tratamiento
+  // grafico. No existe el estado "foto sin alt".
+  | { foto: { src: string; alt: string }; placeholder?: never }
+  | {
+      foto?: never;
+      placeholder: { titulo: string; nota: string; icono: IconoPlaceholder };
+    }
+);
+
+const STEPS: Step[] = [
   {
     key: "search",
     title: "Búsqueda inteligente",
     description:
       "Exploramos inventario off-market, subastas privadas y concesionarios certificados en Miami y todo Estados Unidos.",
-    image: "/images/how/search.jpg",
+    // Aquí había /images/how/search.jpg: una laptop con un dashboard de
+    // analítica de marketing (plantilla de admin genérica, ni un auto a la
+    // vista) presentada como "búsqueda de autos de lujo". No ilustra nada.
+    placeholder: {
+      titulo: "Búsqueda",
+      nota: "Pendiente: captura real de una comparativa de unidades armada para un cliente.",
+      icono: "busqueda",
+    },
   },
   {
     key: "inspection",
     title: "Inspección certificada",
     description:
       "Técnicos ASE realizan checklist de 150 puntos, levantamos CarFax + AutoCheck y validamos historial completo.",
-    image: "/images/how/inspection.jpg",
+    // Aquí había /images/how/inspection.jpg: alguien echando aceite de motor.
+    // Un cambio de aceite no es una inspección ASE de 150 puntos; usarlo como
+    // prueba del servicio es exactamente el tipo de foto que cuesta la venta.
+    placeholder: {
+      titulo: "Inspección",
+      nota: "Pendiente: foto del técnico con el checklist firmado junto a la unidad.",
+      icono: "inspeccion",
+    },
   },
   {
     key: "purchase",
     title: "Negociación & compra",
     description:
       "Tomamos posición como tu broker, negociamos precio, extras y garantizamos contrato blindado a tu favor.",
-    image: "/images/how/purchase.jpg",
+    foto: {
+      src: "/images/how/purchase.jpg",
+      alt: "Dos personas de traje se dan la mano cerrando un acuerdo en una oficina",
+    },
   },
   {
     key: "shipping",
     title: "Envío asegurado",
     description:
       "Coordinamos transporte interno y booking marítimo premium con cobertura total en contenedor o RoRo.",
-    image: "/images/how/shipping.jpg",
+    foto: {
+      src: "/images/how/shipping.jpg",
+      alt: "Vista aérea de un terminal portuario con contenedores apilados y grúas pórtico",
+    },
   },
   {
     key: "customs",
     title: "Aduanas & SUNAT",
     description:
       "Gestionamos nacionalización, pagos de impuestos, ISC y homologación sin sorpresas ni retrasos.",
-    image: "/images/how/customs.jpg",
+    foto: {
+      src: "/images/how/customs.jpg",
+      alt: "Una persona firma con lapicero un juego de documentos impresos sobre un escritorio",
+    },
   },
   {
     key: "delivery",
     title: "Entrega VIP",
     description:
       "Detailing completo, placas instaladas y experiencia de entrega en tu garage o showroom privado.",
-    image: "/images/how/delivery.jpg",
+    foto: {
+      src: "/images/how/delivery.jpg",
+      alt: "Toyota RAV4 plateada recién lavada, estacionada al aire libre y vista de tres cuartos",
+    },
   },
 ];
 
 export function HowItWorksSection() {
   const lastIndex = STEPS.length - 1;
+  // La primera foto real de la reticula es la candidata a LCP en /como-funciona:
+  // se precarga. El resto queda en lazy, que es el default de next/image.
+  const firstPhotoKey = STEPS.find((step) => step.foto)?.key;
 
   return (
     <section
@@ -69,17 +116,29 @@ export function HowItWorksSection() {
             <li key={step.key} className="h-full">
               <article className="group flex h-full flex-col overflow-hidden rounded-lux-lg border border-line bg-surface transition-colors duration-300 hover:border-line-strong">
                 <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-line bg-surface-2">
-                  <Image
-                    src={step.image}
-                    alt={`Paso ${stepNumber}: ${step.title} en el proceso de importación de LuxCars`}
-                    fill
-                    sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-gradient-to-t from-void/85 via-void/25 to-transparent"
-                  />
+                  {step.foto ? (
+                    <>
+                      <Image
+                        src={step.foto.src}
+                        alt={step.foto.alt}
+                        fill
+                        priority={step.key === firstPhotoKey}
+                        sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
+                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                      />
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-0 bg-gradient-to-t from-void/85 via-void/25 to-transparent"
+                      />
+                    </>
+                  ) : (
+                    <PlaceholderGrafico
+                      titulo={step.placeholder.titulo}
+                      nota={step.placeholder.nota}
+                      icono={step.placeholder.icono}
+                      className="h-full w-full border-0"
+                    />
+                  )}
                 </div>
 
                 <div className="flex flex-1 flex-col gap-3 p-6 sm:p-7">

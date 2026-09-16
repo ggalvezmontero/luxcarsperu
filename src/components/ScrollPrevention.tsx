@@ -36,10 +36,15 @@ export function ScrollPrevention() {
       });
     });
 
-    // Restaurar scroll suave después de que la página se haya cargado
+    // Restaurar scroll suave después de que la página se haya cargado.
+    //
+    // Antes esto también añadía la clase `js-scroll-initialized` al <html>.
+    // Se eliminó: ningún selector de globals.css ni ningún componente la leía
+    // nunca, así que era una escritura en el DOM que no producía efecto. Si
+    // alguien la vuelve a necesitar, que la agregue junto con el selector que
+    // la consume.
     const restoreSmoothScroll = () => {
       document.documentElement.style.scrollBehavior = '';
-      document.documentElement.classList.add('js-scroll-initialized');
     };
 
     // Restaurar después de un pequeño delay

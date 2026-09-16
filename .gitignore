@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -40,8 +41,33 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# build alterno para dev cuando .next no es escribible
-/.next-dev/
+# TODO directorio de build alterno (NEXT_DIST_DIR=.next-dev, .next-perf,
+# .next-verify, .next-fotos, el que sea).
+#
+# ESTO NO ES ORDEN, ES QUE SI NO EL SITIO ENTERO RESPONDE 500.
+# Tailwind v4 rastrea el proyecto para descubrir clases y SALTA lo que está en
+# .gitignore. Un dist alterno sin ignorar entra en el rastreo, Tailwind lee los
+# .sst y .css.map binarios de Turbopack como si fueran texto, extrae basura como
+# nombre de clase y emite CSS inválido:
+#
+#     .shadow-\[var\(-J\4 \3 \12 ?ilg\)\] { --tw-shadow: var(-J ilg); }
+#     → Parsing CSS source code failed: Unexpected token Ident("-J")
+#
+# Eso no rompe una pantalla: tumba la hoja de estilos completa y TODAS las rutas
+# devuelven 500. Es el mismo fallo que ya documenta la cabecera de
+# src/app/globals.css para los iconos binarios de src/app/.
+#
+# El patrón es genérico a propósito: enumerarlos uno por uno ya falló una vez
+# (`.next-fotos/` se creó después y dejó el sitio en 500).
+/.next-*/
+
+# Salidas de build sueltas que quedaron dentro del repo (169 MB entre las dos:
+# /tmp/luxbuild-img y /private/tmp/claude-501/..., ambas caché de Turbopack).
+# Se ignoran por la MISMA razón que los dist alternos de arriba: sin esto
+# Tailwind las rastrea, lee sus binarios y tumba la hoja de estilos entera.
+# No son de nadie: se pueden borrar sin consecuencias.
+/tmp/
+/private/
 
 # generados por next dev (agentRules)
 /AGENTS.md

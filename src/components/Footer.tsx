@@ -7,11 +7,13 @@ import Link from "next/link";
 const CURRENT_YEAR = new Date().getFullYear();
 
 const FOOTER_LINKS = {
+  // Las cuatro líneas de negocio ya tienen su propia columna, enlazada a las
+  // rutas: aquí van las herramientas y el contenido de apoyo.
   services: [
     { label: "Calculadora de Importación", href: "/#calculator" },
     { label: "Cómo Funciona", href: "/como-funciona" },
+    { label: "Etapas de Entrega", href: "/#timeline" },
     { label: "Marcas Disponibles", href: "/como-funciona#brands" },
-    { label: "Timeline de Entrega", href: "/#timeline" },
   ],
   company: [
     { label: "Por Qué Nosotros", href: "/como-funciona#why-us" },
@@ -24,6 +26,17 @@ const FOOTER_LINKS = {
     { label: "Política de Privacidad", href: "/privacidad" },
     { label: "Política de Cookies", href: "/cookies" },
   ],
+};
+
+/**
+ * Destino de cada línea de negocio. Tres tienen página propia; la gestión
+ * documentaria se atiende por contacto directo, así que apunta al formulario.
+ */
+const LINE_HREF: Record<string, string> = {
+  "compra-venta": "/comprar",
+  importacion: "/importar",
+  tasacion: "/vender",
+  documentaria: "/#contact",
 };
 
 const SOCIAL_LINKS = [
@@ -70,10 +83,10 @@ export function Footer() {
           {/* Brand + contacto */}
           <div className="min-w-0 lg:col-span-4">
             <Image
-              src="/brand/luxcars-blanco.svg"
+              src="/brand/logo-blanco.svg"
               alt={`${LUXCARS_CONFIG.brandName} — importación de autos de lujo`}
-              width={1254}
-              height={1254}
+              width={1010}
+              height={590}
               className="h-10 w-auto"
             />
             <p className="mt-3 text-[0.6875rem] uppercase tracking-[0.3em] text-silver-dim">
@@ -135,11 +148,13 @@ export function Footer() {
                 <h3 className={COLUMN_HEADING}>Líneas de negocio</h3>
                 <ul className="mt-5 space-y-3">
                   {LUXCARS_CONFIG.businessLines.map((line) => (
-                    <li
-                      key={line.id}
-                      className="border-l border-line pl-3 text-sm leading-relaxed text-ink-2"
-                    >
-                      {line.label}
+                    <li key={line.id}>
+                      <Link
+                        href={LINE_HREF[line.id] ?? "/#contact"}
+                        className="block border-l border-line pl-3 text-sm leading-relaxed text-ink-2 transition-colors duration-300 hover:border-silver hover:text-ink"
+                      >
+                        {line.label}
+                      </Link>
                     </li>
                   ))}
                 </ul>

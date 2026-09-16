@@ -1,6 +1,20 @@
 @import "tailwindcss";
 
 /* ===========================================================================
+   NO BORRAR: Tailwind v4 detecta clases escaneando los archivos del proyecto.
+   Los iconos que Next resuelve por convención de archivo —src/app/icon.png,
+   apple-icon.png y favicon.ico— son BINARIOS. Al leerlos como texto, el
+   escáner extrae basura como si fuera un nombre de clase y emite CSS inválido
+   (`--tw-shadow: var(-<bytes>)` → "Unexpected token"). Eso no rompe una
+   pantalla: tumba la hoja de estilos entera y TODAS las rutas responden 500.
+   Se excluyen explícitamente. Si mañana se agrega otro binario dentro de
+   `src/`, hay que excluirlo igual.
+   =========================================================================== */
+@source not "./icon.png";
+@source not "./apple-icon.png";
+@source not "./favicon.ico";
+
+/* ===========================================================================
    SISTEMA DE COLOR LUX | CARS
    ---------------------------------------------------------------------------
    Derivado de la paleta oficial del brand kit:
@@ -15,6 +29,28 @@
    Todos los pares de uso real están verificados con la fórmula WCAG 2.1 y
    cumplen AA como mínimo. No agregar un hex suelto en un componente: si hace
    falta un color nuevo, se agrega aquí como token.
+
+   AUDITORÍA DE CONTRASTE (2026-09-15) — esa afirmación era falsa para dos
+   tokens y se corrigieron los valores. Medido siempre contra `surface-3`
+   (#232327), el fondo más claro sobre el que se pintan, que es el peor caso:
+
+     --color-ink-4      #787880 → #898991   3.58:1 → 4.51:1   (AA texto, 4.5)
+     --color-ink-3      #8E8E96 → #9E9EA6   4.82:1 → 5.89:1   (ver nota)
+     --color-line-strong #5D5D62 → #6D6D72  2.39:1 → 3.04:1   (AA no-textual, 3.0)
+
+   Por qué también se movió `ink-3`, que ya pasaba: al subir `ink-4` hasta el
+   mínimo AA los dos grises quedaban a 4.82 vs 4.51, indistinguibles a ojo, y
+   la escala de cuatro pesos se derrumbaba a tres. Subir `ink-3` restaura el
+   escalón. La escala queda 9.48 / 7.03 / 5.39 sobre `surface`.
+
+   `line-strong` es el borde de inputs y botones delineados: WCAG 1.4.11 pide
+   3:1 a los límites de un control, no 4.5. A 2.39:1 el borde del input contra
+   su propio relleno era casi invisible.
+
+   NO BAJAR ESTOS VALORES. `ink-4` está exactamente en el mínimo: cualquier
+   oscurecimiento lo saca de AA y hay ~140 usos de `text-ink-4` en el sitio.
+   El texto pequeño (10-11 px, que aquí abunda) no califica como "texto
+   grande", así que el umbral aplicable es 4.5:1 sin excepción.
    =========================================================================== */
 
 :root {
@@ -34,13 +70,15 @@
 
   /* Líneas */
   --color-line: #2C2C31;
-  --color-line-strong: #5D5D62;
+  /* Borde de controles: 3.04:1 sobre surface-3 (WCAG 1.4.11). Ver cabecera. */
+  --color-line-strong: #6D6D72;
 
   /* Texto */
   --color-ink: #FFFFFF;
   --color-ink-2: #B8B8BE;
-  --color-ink-3: #8E8E96;
-  --color-ink-4: #787880;
+  --color-ink-3: #9E9EA6;
+  /* Mínimo AA exacto: 4.51:1 sobre surface-3. No oscurecer. Ver cabecera. */
+  --color-ink-4: #898991;
 
   /* Plata: el acento dominante */
   --color-silver: #C0C0C0;
@@ -94,6 +132,44 @@ a { color: inherit; text-decoration: none; }
   border-radius: 4px;
 }
 
+/* ===========================================================================
+   PARCHE TEMPORAL — MENÚ MÓVIL CERRADO PERO TABULABLE
+   ---------------------------------------------------------------------------
+   QUÉ PASA: `#mobile-menu` (src/components/Navbar.tsx) se colapsa con
+   `max-h-0 opacity-0 pointer-events-none` dentro de un `overflow-hidden`.
+   Ninguna de esas tres propiedades saca un elemento del orden de tabulación:
+   `opacity: 0` no lo hace, `max-height: 0` con `overflow: hidden` tampoco, y
+   `pointer-events: none` solo desactiva el ratón, nunca el teclado.
+
+   Comprobado en el navegador a 375 px con el menú CERRADO: sus 6 enlaces
+   siguen recibiendo foco (`visibility: visible`, `opacity: 0`). Es decir, en
+   móvil alguien que navega con teclado o conmutador atraviesa seis paradas
+   invisibles con el anillo de foco puesto sobre la nada — WCAG 2.4.3 (orden
+   del foco) y 2.4.7 (foco visible).
+
+   `visibility: hidden` sí saca a los descendientes del orden de tabulación, y
+   se aplica solo mientras el contenedor lleva `pointer-events-none`, que es
+   exactamente su estado cerrado. Al abrirse, Navbar cambia esa clase por
+   `pointer-events-auto` y esta regla deja de aplicar sola.
+
+   NO SE TOCA LA TRANSICIÓN. El div ya lleva `transition-all duration-300` de
+   Tailwind, y `visibility` tiene una regla de interpolación propia: al pasar a
+   `hidden` se mantiene `visible` durante toda la transición y solo cambia al
+   final, mientras que al volver a `visible` cambia de inmediato. Es justo el
+   comportamiento que se quiere, gratis. Declarar aquí un `transition:` propio
+   sería contraproducente: el atajo pisaría el `transition-property: all` de
+   Tailwind y mataría la animación de colapso.
+
+   ESTO NO VA AQUÍ: la solución correcta es el atributo `inert` en el div del
+   menú cuando está cerrado, y eso vive en Navbar.tsx, que en esta sesión lo
+   está tocando otro equipo. En cuanto ese `inert` exista, BORRAR este bloque:
+   el parche deja de hacer falta y una regla de CSS acoplada al `id` y a una
+   clase utilitaria de otro componente es deuda, no diseño.
+   =========================================================================== */
+#mobile-menu.pointer-events-none {
+  visibility: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
@@ -101,4 +177,71 @@ a { color: inherit; text-decoration: none; }
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
   }
+}
+
+/* ===========================================================================
+   ANIMACIÓN DE ENTRADA — conducida por el timeline de scroll nativo
+   ---------------------------------------------------------------------------
+   Contraparte de src/components/ScrollAnimation.tsx. Reemplaza framer-motion
+   (112 KB de JS en la carga inicial de la home) por cero bytes de JS.
+
+   REGLA QUE NO SE NEGOCIA: el estado base es VISIBLE. La opacidad 0 solo
+   existe dentro de los @keyframes. Si el navegador no soporta
+   `animation-timeline`, o el usuario pidió menos movimiento, el contenido se
+   ve tal cual y no pasa nada. Nunca se debe mover la opacidad 0 al selector
+   base "para que el fade siempre funcione": eso ataría el pintado del
+   elemento LCP a la hidratación, que es exactamente el problema que esto
+   vino a resolver.
+
+   `animation-fill-mode: both` es lo que hace que un elemento que ya está en
+   el viewport al cargar se pinte en su estado final: su progreso dentro del
+   rango `entry` ya está al 100%.
+
+   Se animan `translate` y `scale` como propiedades independientes, no
+   `transform`, para no pisar ninguna utilidad de transform que Tailwind
+   ponga en el mismo nodo.
+   =========================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    [data-lux-reveal] {
+      animation: lux-reveal-fade-up linear both;
+      animation-timeline: view();
+      /* El rango se mide en PÍXELES sobre `cover`, no en porcentaje sobre
+         `entry`, y la razón es que estos envoltorios son enormes: en la home
+         van de 1.400 a 3.600 px de alto. Un porcentaje de `entry` se mide
+         contra la altura del ELEMENTO, así que `entry 60%` en una sección de
+         3.600 px significaría que la opacidad recién llega a 1 tras más de
+         2.000 px de scroll: el usuario estaría leyendo el encabezado de la
+         sección todavía translúcido.
+
+         Con `cover` + una longitud fija, el fundido siempre dura 300 px de
+         scroll desde que la sección asoma, mida lo que mida. */
+      animation-range: cover calc(var(--lux-reveal-stagger, 0px))
+                       cover calc(300px + var(--lux-reveal-stagger, 0px));
+    }
+
+    [data-lux-reveal="fadeIn"] {
+      animation-name: lux-reveal-fade-in;
+    }
+
+    [data-lux-reveal="scale"] {
+      animation-name: lux-reveal-scale;
+    }
+  }
+}
+
+@keyframes lux-reveal-fade-up {
+  from { opacity: 0; translate: 0 40px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes lux-reveal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes lux-reveal-scale {
+  from { opacity: 0; scale: .95; }
+  to   { opacity: 1; scale: 1; }
 }

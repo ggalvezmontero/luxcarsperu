@@ -4,20 +4,31 @@ import { LUXCARS_CONFIG } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "./Button";
 
+/* Las tres líneas de negocio con página propia van primero: antes el menú
+   solo ofrecía anclas de la home y la web entera parecía una importadora.
+   El logo es el enlace a Inicio, así que no se repite como ítem.
+   El menú hamburguesa sigue activo hasta lg (1024 px): por debajo de ese
+   ancho esta fila no se muestra. */
 const NAV_LINKS = [
-  { label: "Inicio", href: "/" },
-  { label: "Más buscados", href: "/#mas-buscados" },
+  { label: "Comprar", href: "/comprar" },
+  { label: "Importar", href: "/importar" },
+  { label: "Vender", href: "/vender" },
   { label: "Calculadora", href: "/#calculator" },
-  { label: "Etapas", href: "/#timeline" },
-  { label: "Cómo Funciona", href: "/como-funciona" },
+  { label: "Cómo funciona", href: "/como-funciona" },
 ];
 
 export function Navbar() {
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  /* Solo se marca la ruta, nunca el ancla: el hash lo gobierna el scroll. */
+  const isCurrent = (href: string) =>
+    !href.includes("#") && href !== "/" && pathname === href;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -65,28 +76,37 @@ export function Navbar() {
           className="flex min-w-0 items-center gap-3"
         >
           <Image
-            src="/brand/luxcars-blanco.svg"
+            src="/brand/logo-blanco.svg"
             alt={LUXCARS_CONFIG.brandName}
-            width={1254}
-            height={1254}
-            className="h-9 w-auto shrink-0 sm:h-10 lg:h-11"
+            width={1010}
+            height={590}
+            className="h-11 w-auto shrink-0 sm:h-12 lg:h-14"
             priority
           />
-          <span className="hidden text-[10px] uppercase tracking-[0.4em] text-ink-4 sm:inline">
+          <span className="hidden text-[9px] uppercase tracking-[0.25em] text-ink-4 xl:inline">
             Miami · Lima
           </span>
         </Link>
 
-        <div className="hidden flex-1 items-center justify-center gap-5 text-xs font-medium uppercase tracking-[0.2em] text-ink-2 lg:flex lg:gap-7 lg:tracking-[0.3em]">
+        <div className="hidden flex-1 items-center justify-center whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.14em] text-ink-2 lg:flex lg:gap-5 xl:gap-7 xl:text-xs xl:tracking-[0.26em]">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={handleLinkClick}
-              className="group relative transition-colors duration-300 hover:text-ink"
+              aria-current={isCurrent(link.href) ? "page" : undefined}
+              className={cn(
+                "group relative transition-colors duration-300 hover:text-ink",
+                isCurrent(link.href) ? "text-ink" : "",
+              )}
             >
               {link.label}
-              <span className="absolute inset-x-0 -bottom-2 h-px origin-left scale-x-0 bg-silver transition-transform duration-300 group-hover:scale-x-100" />
+              <span
+                className={cn(
+                  "absolute inset-x-0 -bottom-2 h-px origin-left bg-silver transition-transform duration-300 group-hover:scale-x-100",
+                  isCurrent(link.href) ? "scale-x-100" : "scale-x-0",
+                )}
+              />
             </Link>
           ))}
         </div>
@@ -136,7 +156,7 @@ export function Navbar() {
         className={cn(
           "overflow-hidden transition-all duration-300 lg:hidden",
           isMenuOpen
-            ? "max-h-96 opacity-100 pointer-events-auto"
+            ? "max-h-[32rem] opacity-100 pointer-events-auto"
             : "max-h-0 opacity-0 pointer-events-none",
         )}
       >
@@ -146,7 +166,11 @@ export function Navbar() {
               key={link.href}
               href={link.href}
               onClick={handleLinkClick}
-              className="block rounded-lux border border-transparent px-4 py-3 text-center transition-colors duration-300 hover:border-line-strong hover:bg-surface-2 hover:text-ink"
+              aria-current={isCurrent(link.href) ? "page" : undefined}
+              className={cn(
+                "block rounded-lux border border-transparent px-4 py-3 text-center transition-colors duration-300 hover:border-line-strong hover:bg-surface-2 hover:text-ink",
+                isCurrent(link.href) ? "border-line-strong bg-surface-2 text-ink" : "",
+              )}
             >
               {link.label}
             </Link>

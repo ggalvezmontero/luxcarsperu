@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { PlaceholderGrafico } from "./PlaceholderGrafico";
 import { SectionHeading } from "./SectionHeading";
 
 const WEBSITE_LOGOS = [
@@ -57,12 +58,16 @@ export function WebsitesSection() {
         </div>
 
         <div className="min-w-0 space-y-6 rounded-lux-lg border border-line bg-surface p-6 sm:p-8">
-          <Image
-            src="/images/how/search.jpg"
-            alt="Selección de autos de lujo en marketplaces premium"
-            width={640}
-            height={360}
-            className="h-44 w-full rounded-lux border border-line object-cover sm:h-48"
+          {/* Aquí había /images/how/search.jpg con el alt "Selección de autos de
+              lujo en marketplaces premium". La foto era una laptop mostrando un
+              dashboard de analítica de marketing: no aparecía ningún auto ni
+              ningún marketplace. El alt describía algo que la imagen no tenía.
+              Hasta tener una captura propia va el tratamiento gráfico. */}
+          <PlaceholderGrafico
+            titulo="Comparativa de fuentes"
+            nota="Pendiente: captura real del comparativo que se le envía al cliente."
+            icono="busqueda"
+            className="h-44 w-full rounded-lux sm:h-48"
           />
           <div className="space-y-5 text-sm text-ink-2">
             <p>

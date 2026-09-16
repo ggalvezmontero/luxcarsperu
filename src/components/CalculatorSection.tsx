@@ -25,7 +25,6 @@ import {
 } from "@/core/pricing/originInference";
 import { getTrendingVehicleById } from "@/data/trendingVehicles";
 import { LUXCARS_CONFIG, type VehicleTypeId } from "@/lib/config";
-import { generatePDF } from "@/lib/pdfExport";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 import {
   buildIncompleteCalculatorWhatsappLink,
@@ -175,6 +174,10 @@ function CalculatorSectionInner() {
   const [showResults, setShowResults] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  /* Distingue el primer render de un cambio real de vista. Ver el efecto de
+     foco más abajo. */
+  const yaCambioDeVista = useRef(false);
 
   const minPrice = LUXCARS_CONFIG.services.minimumVehiclePrice;
   const vehicleTypeOptions = VEHICLE_CATEGORIES;
@@ -421,6 +424,31 @@ function CalculatorSectionInner() {
     }
   }, [estimate, form.preferredPlan]);
 
+  /* FOCO AL CAMBIAR DE VISTA.
+     El formulario y los resultados no conviven: al pulsar "Calcular Estimado"
+     el formulario entero se desmonta y lo reemplaza el panel de resultados. El
+     botón que tenía el foco desaparece con él, así que el navegador manda el
+     foco a `<body>` y la siguiente tabulación reinicia desde la cabecera de la
+     página. Peor aún: con lector de pantalla no se anuncia nada, porque no hubo
+     navegación ni región en vivo — la persona no se entera de que el cálculo ya
+     está hecho.
+
+     Llevar el foco al contenedor de resultados resuelve las dos cosas: anuncia
+     el panel y deja la tabulación justo donde continúa el flujo (WCAG 2.4.3).
+     Lo mismo aplica al volver con "Nueva Simulación", donde el foco se devuelve
+     al formulario. */
+  useEffect(() => {
+    // En el primer render no hubo ningún cambio de vista: si no se saltara,
+    // la calculadora robaría el foco nada más cargar la página.
+    if (!yaCambioDeVista.current) {
+      yaCambioDeVista.current = true;
+      return;
+    }
+
+    const destino = showResults ? resultsRef.current : formRef.current;
+    destino?.focus({ preventScroll: true });
+  }, [showResults]);
+
   // Scroll automático a los resultados en mobile cuando se muestran
   useEffect(() => {
     if (showResults && resultsRef.current && typeof window !== 'undefined') {
@@ -537,6 +565,11 @@ function CalculatorSectionInner() {
 
     setIsGeneratingPDF(true);
     try {
+      // import() dinámico a propósito: `@/lib/pdfExport` arrastra jspdf y
+      // jspdf-autotable (~500 KB sin comprimir). Pedirlos recién al pulsar el
+      // botón los saca del bundle inicial de la home. No convertir esto en un
+      // import estático arriba.
+      const { generatePDF } = await import("@/lib/pdfExport");
       await generatePDF(estimate);
     } catch (err) {
       console.error('Error generando PDF:', err);
@@ -560,17 +593,32 @@ function CalculatorSectionInner() {
       />
       {!showResults ? (
         /* FORMULARIO */
-        <div className="mt-8 md:mt-16 max-w-3xl mx-auto">
+        <div
+          ref={formRef}
+          /* `tabIndex={-1}` para poder recibir el foco por programa al volver
+             de los resultados, sin entrar en el orden de tabulación normal. */
+          tabIndex={-1}
+          role="group"
+          aria-label="Formulario de la calculadora de importación"
+          className="mt-8 md:mt-16 max-w-3xl mx-auto"
+        >
           <div className="grid gap-5 md:gap-7 rounded-lux md:rounded-lux-lg border border-line bg-surface-2 p-4 md:p-8 shadow-[var(--lux-shadow-lg)]">
             <div className="grid gap-4 md:gap-5">
               <div className="grid gap-2.5 text-sm text-ink-2">
                 <div className="flex items-center gap-2 text-ink">
-                  <span className="font-semibold tracking-wide text-sm md:text-base">
+                  <span
+                    id="calc-condicion-etiqueta"
+                    className="font-semibold tracking-wide text-sm md:text-base"
+                  >
                     Condición
                   </span>
                   <Tooltip content="El ISC que cobra SUNAT no es el mismo para un vehículo nuevo que para uno usado." />
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div
+                  role="group"
+                  aria-labelledby="calc-condicion-etiqueta"
+                  className="grid grid-cols-2 gap-2.5"
+                >
                   {CONDITION_OPTIONS.map((option) => {
                     const isSelected = form.condition === option.id;
                     return (
@@ -604,8 +652,11 @@ function CalculatorSectionInner() {
 
             <div className="grid gap-2.5 md:gap-3 text-sm text-ink-2">
               <div className="flex items-center gap-2 text-ink">
-                <VehicleIcon size={18} className="text-silver" />
-                <span className="font-semibold tracking-wide text-sm md:text-base">
+                <VehicleIcon size={18} className="text-silver" aria-hidden="true" />
+                <span
+                  id="calc-tipo-etiqueta"
+                  className="font-semibold tracking-wide text-sm md:text-base"
+                >
                   Tipo de vehículo & ISC
                 </span>
                 <Tooltip
@@ -616,13 +667,22 @@ function CalculatorSectionInner() {
                   }
                 />
               </div>
-              <div className="grid gap-2.5 md:gap-3 md:grid-cols-2">
+              <div
+                role="group"
+                aria-labelledby="calc-tipo-etiqueta"
+                className="grid gap-2.5 md:gap-3 md:grid-cols-2"
+              >
                 {vehicleTypeOptions.map((option) => {
                   const isSelected = form.vehicleType === option.id;
                   return (
                     <button
                       key={option.id}
                       type="button"
+                      /* Faltaba `aria-pressed`: el botón elegido se distinguía
+                         solo por color de borde y fondo, así que con lector de
+                         pantalla no había forma de saber qué tipo estaba
+                         seleccionado (WCAG 1.3.1 / 4.1.2). */
+                      aria-pressed={isSelected}
                       onClick={() => handleVehicleTypeSelect(option.id)}
                       className={cn(
                         "flex flex-col items-start gap-1.5 md:gap-2 rounded-lux border px-4 md:px-5 py-3 md:py-4 text-left transition",
@@ -774,8 +834,12 @@ function CalculatorSectionInner() {
               </label>
             </div>
             <div className="grid gap-2 text-sm text-ink-2">
-              Plan estimado de entrega
-              <div className="grid gap-2.5 md:gap-3 sm:grid-cols-2">
+              <span id="calc-plan-etiqueta">Plan estimado de entrega</span>
+              <div
+                role="group"
+                aria-labelledby="calc-plan-etiqueta"
+                className="grid gap-2.5 md:gap-3 sm:grid-cols-2"
+              >
                 {([
                   {
                     key: "fast",
@@ -791,6 +855,7 @@ function CalculatorSectionInner() {
                   <button
                     key={option.key}
                     type="button"
+                    aria-pressed={form.preferredPlan === option.key}
                     onClick={() =>
                       setForm((prev) => ({ ...prev, preferredPlan: option.key }))
                     }
@@ -811,8 +876,14 @@ function CalculatorSectionInner() {
                 ))}
               </div>
             </div>
+            {/* Sin `role="alert"` este mensaje aparecía en pantalla y no se
+                anunciaba: quien usa lector de pantalla pulsaba "Calcular" y no
+                recibía ninguna señal de que algo había fallado (WCAG 3.3.1). */}
             {error ? (
-              <div className="rounded-lux border border-danger/40 bg-danger/10 px-4 md:px-5 py-2.5 md:py-3 text-sm text-danger">
+              <div
+                role="alert"
+                className="rounded-lux border border-danger/40 bg-danger/10 px-4 md:px-5 py-2.5 md:py-3 text-sm text-danger"
+              >
                 {error}
               </div>
             ) : null}
@@ -854,7 +925,13 @@ function CalculatorSectionInner() {
         </div>
       ) : (
         /* RESULTADOS */
-        <div ref={resultsRef} className="mt-8 md:mt-16 max-w-4xl mx-auto">
+        <div
+          ref={resultsRef}
+          tabIndex={-1}
+          role="group"
+          aria-label="Resultado del estimado de importación"
+          className="mt-8 md:mt-16 max-w-4xl mx-auto"
+        >
           <div className="flex flex-col rounded-lux md:rounded-lux-lg border border-line bg-surface-2 p-4 md:p-8 shadow-[var(--lux-shadow-lg)]">
             {estimate ? (
               <div className="flex flex-col gap-4 md:gap-6 h-full">

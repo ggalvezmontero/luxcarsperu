@@ -1,33 +1,89 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 const COOKIE_CONSENT_KEY = "luxcars-cookie-consent";
 
+/**
+ * Aviso de cookies.
+ *
+ * NOTAS DE ACCESIBILIDAD (auditoría 2026-09-15)
+ *
+ * 1. EL FOCO NO SE ROBA AL APARECER. El banner se monta un segundo después de
+ *    la carga. Llevar el foco ahí por sorpresa interrumpiría a quien ya está
+ *    leyendo o escribiendo (WCAG 3.2.5). En su lugar el banner se anuncia solo
+ *    con `role="region"` + nombre, y queda al final del orden de tabulación,
+ *    que es donde también está visualmente (abajo del todo).
+ *
+ * 2. EL FOCO SÍ SE DEVUELVE AL CERRAR. Éste era el fallo real: al pulsar
+ *    "Aceptar" o "Rechazar" el componente se desmonta, el botón enfocado
+ *    desaparece y el navegador manda el foco a `<body>`. La siguiente
+ *    tabulación arranca desde el principio de la página, no desde donde
+ *    estabas (WCAG 2.4.3). Ahora el foco se devuelve al elemento que lo tenía
+ *    antes de que el banner apareciera, y si ese elemento ya no existe, al
+ *    `<main>`.
+ *
+ * 3. NO SE CIERRA CON ESCAPE, A PROPÓSITO. Escape tendría que significar
+ *    "aceptar" o "rechazar", y ninguna de las dos es una lectura honesta de
+ *    una tecla de descarte. Un consentimiento tiene que ser un acto explícito;
+ *    dejarlo abierto hasta que se elija es lo correcto, no un descuido.
+ *
+ * 4. NO ES UN DIÁLOGO MODAL. No atrapa el foco ni bloquea el resto de la
+ *    página: se puede seguir navegando el sitio con el banner abierto.
+ */
 export function CookieBanner() {
   const [showBanner, setShowBanner] = useState(false);
+  /* Quién tenía el foco justo antes de que esto apareciera. */
+  const focoPrevio = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    // Check if user has already made a choice
     const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (!consent) {
-      // Show banner after a short delay for better UX
-      setTimeout(() => setShowBanner(true), 1000);
-    }
+    if (consent) return;
+
+    const temporizador = setTimeout(() => {
+      focoPrevio.current =
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement !== document.body
+          ? document.activeElement
+          : null;
+      setShowBanner(true);
+    }, 1000);
+
+    return () => clearTimeout(temporizador);
   }, []);
 
+  /**
+   * Devuelve el foco a un sitio con sentido en vez de dejarlo en `<body>`.
+   * `isConnected` descarta el caso de que el elemento previo ya se haya
+   * desmontado (por ejemplo, tras navegar a otra ruta).
+   */
+  const devolverFoco = useCallback(() => {
+    const previo = focoPrevio.current;
+    if (previo?.isConnected) {
+      previo.focus();
+      return;
+    }
+
+    const main = document.querySelector("main");
+    if (!main) return;
+    if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1");
+    main.focus();
+  }, []);
+
+  /* PENDIENTE (no es accesibilidad, pero se ve desde aquí): ni "aceptar" ni
+     "rechazar" activan o bloquean nada todavía. El día que se añada analítica,
+     tiene que leer esta clave ANTES de cargarse, o el banner es decorativo. */
   const handleAccept = () => {
     localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
     setShowBanner(false);
-    // Here you would initialize analytics and other tracking
-    console.log("Cookies accepted");
+    devolverFoco();
   };
 
   const handleReject = () => {
     localStorage.setItem(COOKIE_CONSENT_KEY, "rejected");
     setShowBanner(false);
-    console.log("Cookies rejected");
+    devolverFoco();
   };
 
   if (!showBanner) return null;
@@ -35,37 +91,51 @@ export function CookieBanner() {
   return (
     <div
       role="region"
-      aria-label="Aviso de cookies"
+      /* El nombre sale del propio encabezado visible, no de una cadena suelta
+         que se desincroniza en cuanto alguien edita el texto. */
+      aria-labelledby="cookie-banner-titulo"
+      aria-describedby="cookie-banner-texto"
       className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 backdrop-blur-md animate-in slide-in-from-bottom duration-500"
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:px-6 sm:py-4">
         <div className="min-w-0 flex-1">
-          <h2 className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-silver">
+          <h2
+            id="cookie-banner-titulo"
+            className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-silver"
+          >
             Utilizamos cookies
           </h2>
-          <p className="mt-1 text-xs leading-relaxed text-ink-3">
+          <p
+            id="cookie-banner-texto"
+            className="mt-1 text-xs leading-relaxed text-ink-3"
+          >
             Utilizamos cookies esenciales para el funcionamiento del sitio y cookies opcionales para mejorar tu experiencia y analizar el uso.{" "}
             <Link
               href="/cookies"
               className="text-ink-2 underline underline-offset-2 transition-colors hover:text-silver-bright"
             >
               Más información
+              <span className="sr-only"> sobre nuestro uso de cookies</span>
             </Link>
           </p>
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button
+            type="button"
             onClick={handleReject}
-            className="flex-1 whitespace-nowrap rounded-full border border-line-strong px-5 py-2 text-xs font-medium uppercase tracking-[0.12em] text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink sm:flex-none"
+            className="min-h-11 flex-1 whitespace-nowrap rounded-full border border-line-strong px-5 py-2 text-xs font-medium uppercase tracking-[0.12em] text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink sm:flex-none"
           >
             Rechazar
+            <span className="sr-only"> las cookies opcionales</span>
           </button>
           <button
+            type="button"
             onClick={handleAccept}
-            className="flex-1 whitespace-nowrap rounded-full border border-silver-bright bg-silver-bright px-5 py-2 text-xs font-medium uppercase tracking-[0.12em] text-void transition-colors hover:bg-silver hover:border-silver sm:flex-none"
+            className="min-h-11 flex-1 whitespace-nowrap rounded-full border border-silver-bright bg-silver-bright px-5 py-2 text-xs font-medium uppercase tracking-[0.12em] text-void transition-colors hover:bg-silver hover:border-silver sm:flex-none"
           >
             Aceptar
+            <span className="sr-only"> las cookies opcionales</span>
           </button>
         </div>
       </div>

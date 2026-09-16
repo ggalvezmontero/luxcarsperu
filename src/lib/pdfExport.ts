@@ -1,5 +1,13 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jspdf + jspdf-autotable pesan ~500 KB sin comprimir. Solo hacen falta
+// cuando alguien pulsa "Descargar PDF", así que NO pueden entrar por un
+// import estático: eso los metía en el bundle inicial de la home, la ruta
+// más visitada y la que manda en el SEO. Aquí se importan SOLO como tipo
+// (`import type` se borra en compilación y no arrastra runtime) y el módulo
+// real se pide con import() dinámico dentro de generatePDF.
+//
+// Si mañana alguien convierte esto en un import normal, la home vuelve a
+// cargar medio megabyte de JS que el 99% de las visitas nunca ejecuta.
+import type jsPDF from 'jspdf';
 
 // jspdf-autotable no aumenta los tipos de jsPDF (su propio d.ts declara el
 // documento como `any`), así que describimos aquí lo único que usamos de él.
@@ -140,7 +148,13 @@ async function getImageAsBase64(url: string): Promise<{data: string; width: numb
 }
 
 export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
-  const doc = new jsPDF({
+  // Carga diferida: recién aquí se descarga el motor de PDF.
+  const [{ default: JsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+
+  const doc = new JsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
@@ -167,7 +181,7 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
   doc.rect(0, 0, pageWidth, 30, 'F');
   
   // Logo de LuxCars (pequeño icono al lado del texto)
-  const companyLogoData = await getImageAsBase64('/brand/luxcars-negro.svg');
+  const companyLogoData = await getImageAsBase64('/brand/logo-negro.svg');
   let textStartX = margin;
   
   if (companyLogoData) {

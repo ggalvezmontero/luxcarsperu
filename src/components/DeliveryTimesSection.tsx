@@ -2,20 +2,24 @@ import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { SectionHeading } from "./SectionHeading";
 
+/* El `alt` describe lo que se ve en la foto, no el plan comercial que ilustra:
+   "Plan Fast Track timeline" no le sirve a nadie que no vea la pantalla. */
 const HIGHLIGHTS = [
   {
     title: "Fast Track",
     key: "fastTrack" as const,
     description:
       "Prioridad en inspección, booking de nave y liberación en Callao. Ideal para lanzamientos, coleccionistas o entregas urgentes.",
-    image: "/images/how/shipping.jpg", // Imagen de envío rápido
+    image: "/images/how/shipping.jpg",
+    alt: "Vista aérea de un terminal portuario con contenedores apilados y grúas pórtico",
   },
   {
     title: "Estándar",
     key: "standard" as const,
     description:
       "Proceso regular con ahorro logístico. Supervisión diaria con reportes de avance semana a semana.",
-    image: "/images/timeline/journey.jpg", // Imagen de proceso estándar
+    image: "/images/timeline/journey.jpg",
+    alt: "Mercedes-AMG GT amarillo circulando sobre una carretera despejada",
   },
 ];
 
@@ -53,7 +57,7 @@ export function DeliveryTimesSection() {
               <div className="relative h-40 overflow-hidden rounded-lux border border-line sm:h-44">
                 <Image
                   src={item.image}
-                  alt={`Plan ${item.title} timeline`}
+                  alt={item.alt}
                   fill
                   sizes="(min-width: 1024px) 520px, 100vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"

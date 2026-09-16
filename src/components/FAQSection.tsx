@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { PlaceholderGrafico } from "./PlaceholderGrafico";
 import { SectionHeading } from "./SectionHeading";
 
 export function FAQSection() {
@@ -60,12 +60,15 @@ export function FAQSection() {
         </div>
 
         <aside className="h-fit space-y-4 md:space-y-6 rounded-lux md:rounded-lux-lg border border-line bg-surface-2 p-5 md:p-8">
-          <Image
-            src="/images/faq/questions.jpg"
-            alt="Asesor LuxCars respondiendo preguntas frecuentes"
-            width={560}
-            height={360}
-            className="h-40 md:h-48 w-full rounded-lux border border-line object-cover"
+          {/* Aquí había /images/faq/questions.jpg con el alt "Asesor LuxCars
+              respondiendo preguntas frecuentes": stock de tres desconocidos
+              señalando una laptop. Ni es LuxCars ni está respondiendo nada.
+              Ver docs/IMAGENES.md. */}
+          <PlaceholderGrafico
+            titulo="Soporte directo"
+            nota="Pendiente: foto real del equipo atendiendo consultas."
+            icono="soporte"
+            className="h-40 w-full rounded-lux md:h-48"
           />
           <div className="space-y-3 md:space-y-4 text-sm leading-relaxed text-ink-3">
             <p>
