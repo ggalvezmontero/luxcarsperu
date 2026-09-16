@@ -92,7 +92,7 @@ export const LUXCARS_CONFIG = {
   brandVariants: [
     "LuxCars",
     "LuxCars Perú",
-    "LuxCars.pe",
+    "luxcars.pe",
     "LuxCars Broker",
     "LuxCars Imports",
     "LuxAutoCars",

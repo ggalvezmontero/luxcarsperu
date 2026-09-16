@@ -123,7 +123,7 @@ export function VehiculosPanel({ busqueda, estado, publicado }: Props) {
             negocio. Todo lo demás va en plata. */}
         <Link
           href="/portal/vehiculos/nuevo"
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-gold px-7 text-sm font-medium uppercase tracking-[0.16em] text-void transition-colors hover:bg-gold-bright"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-ink px-7 text-sm font-medium uppercase tracking-[0.16em] text-void transition-colors hover:bg-silver-bright"
         >
           Cargar vehículo
         </Link>

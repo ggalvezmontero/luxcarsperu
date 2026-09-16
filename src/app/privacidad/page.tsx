@@ -15,20 +15,18 @@ export default function PrivacidadPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
-      <main className="flex-1 w-full px-4 pb-20 pt-32 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-6xl space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-balance text-ink sm:text-5xl">
+      <main id="contenido" className="w-full flex-1 pt-[calc(var(--lux-nav-h)+3rem)] pb-20">
+        <div className="container-lux max-w-3xl space-y-10">
+        <div>
+          <h1 className="text-balance text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
             Política de Privacidad
           </h1>
-          <p className="mt-4 text-lg text-ink-2">
-            Última actualización: {new Date().toLocaleDateString('es-PE')}
-          </p>
+          <p className="mt-3 text-sm text-ink-4">Última actualización: 15 de septiembre de 2026</p>
         </div>
 
-        <div className="space-y-8 rounded-lux-lg md:rounded-lux-xl border border-line bg-surface p-5 text-ink-2 md:p-8">
+        <div className="space-y-10 text-[15px] leading-relaxed text-ink-2">
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">1. Información que Recopilamos</h2>
+            <h2 className="text-xl font-semibold text-ink">1. Información que Recopilamos</h2>
             <p>
               En {LUXCARS_CONFIG.brandName}, recopilamos la siguiente información:
             </p>
@@ -41,7 +39,7 @@ export default function PrivacidadPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">2. Uso de la Información</h2>
+            <h2 className="text-xl font-semibold text-ink">2. Uso de la Información</h2>
             <p>Utilizamos su información para:</p>
             <ul className="list-disc space-y-2 pl-6">
               <li>Prestar nuestros servicios de importación de vehículos</li>
@@ -54,7 +52,7 @@ export default function PrivacidadPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">3. Compartir Información</h2>
+            <h2 className="text-xl font-semibold text-ink">3. Compartir Información</h2>
             <p>
               No vendemos ni alquilamos su información personal a terceros. Podemos compartir su información con:
             </p>
@@ -66,14 +64,14 @@ export default function PrivacidadPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">4. Seguridad de los Datos</h2>
+            <h2 className="text-xl font-semibold text-ink">4. Seguridad de los Datos</h2>
             <p>
               Implementamos medidas de seguridad técnicas y organizativas para proteger su información personal contra acceso no autorizado, pérdida o alteración. Sin embargo, ningún método de transmisión por Internet es 100% seguro.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">5. Cookies y Tecnologías Similares</h2>
+            <h2 className="text-xl font-semibold text-ink">5. Cookies y Tecnologías Similares</h2>
             <p>
               Utilizamos cookies y tecnologías similares para:
             </p>
@@ -89,7 +87,7 @@ export default function PrivacidadPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">6. Sus Derechos</h2>
+            <h2 className="text-xl font-semibold text-ink">6. Sus Derechos</h2>
             <p>
               Usted tiene derecho a:
             </p>
@@ -104,35 +102,35 @@ export default function PrivacidadPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">7. Retención de Datos</h2>
+            <h2 className="text-xl font-semibold text-ink">7. Retención de Datos</h2>
             <p>
               Conservamos su información personal durante el tiempo necesario para cumplir con los propósitos descritos en esta política, o según lo requiera la ley peruana (generalmente 5 años para registros comerciales).
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">8. Transferencias Internacionales</h2>
+            <h2 className="text-xl font-semibold text-ink">8. Transferencias Internacionales</h2>
             <p>
               Debido a la naturaleza de nuestro servicio (importación desde Estados Unidos), su información puede ser transferida y procesada en Estados Unidos. Tomamos medidas para garantizar que su información esté protegida adecuadamente.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">9. Menores de Edad</h2>
+            <h2 className="text-xl font-semibold text-ink">9. Menores de Edad</h2>
             <p>
               Nuestros servicios no están dirigidos a menores de 18 años. No recopilamos intencionalmente información de menores.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">10. Cambios a esta Política</h2>
+            <h2 className="text-xl font-semibold text-ink">10. Cambios a esta Política</h2>
             <p>
               Podemos actualizar esta política periódicamente. Le notificaremos sobre cambios significativos a través de nuestro sitio web o por correo electrónico.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">11. Contacto</h2>
+            <h2 className="text-xl font-semibold text-ink">11. Contacto</h2>
             <p>
               Para ejercer sus derechos o hacer consultas sobre privacidad, contáctenos en:
             </p>

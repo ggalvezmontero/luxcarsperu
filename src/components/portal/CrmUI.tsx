@@ -55,7 +55,7 @@ export type StatTone = "default" | "accent" | "ok" | "warn" | "danger";
 const statToneClasses: Record<StatTone, string> = {
   default: "text-ink",
   /* Oro: como máximo un StatCard con `accent` por pantalla. */
-  accent: "text-gold",
+  accent: "text-silver-bright",
   ok: "text-ok",
   warn: "text-warn",
   danger: "text-danger",

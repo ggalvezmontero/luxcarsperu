@@ -41,9 +41,9 @@ import {
   type ChangeEvent,
 } from "react";
 import { Button } from "./Button";
-import { MoneyIcon, ServiceIcon, TaxIcon, VehicleIcon } from "./Icons";
-import { SectionHeading } from "./SectionHeading";
 import { Tooltip } from "./Tooltip";
+import { Icon } from "./ui/Icon";
+import { Section, SectionHeader } from "./ui/Section";
 
 const BRAND_OPTIONS = [
   "Aston Martin",
@@ -580,565 +580,425 @@ function CalculatorSectionInner() {
   };
 
 
+  const yearOptions = (() => {
+    const oldest = CURRENT_YEAR - PRICING_CONFIG.usedMaxAgeYears;
+    return Array.from({ length: CURRENT_YEAR - oldest + 1 }, (_, i) => CURRENT_YEAR - i);
+  })();
+
+  const planOptions = [
+    {
+      key: "fast" as const,
+      label: LUXCARS_CONFIG.deliveryWindows.fastTrack.label,
+      days: LUXCARS_CONFIG.deliveryWindows.fastTrack.days,
+    },
+    {
+      key: "standard" as const,
+      label: LUXCARS_CONFIG.deliveryWindows.standard.label,
+      days: LUXCARS_CONFIG.deliveryWindows.standard.days,
+    },
+  ];
+
   return (
-    <section
-      id="calculator"
-      className="scroll-mt-32 rounded-lux-lg md:rounded-lux-xl border border-line bg-surface px-4 md:px-6 py-12 md:py-20 lg:px-14"
-    >
-      <SectionHeading
+    <Section id="calculator" tone="surface">
+      <SectionHeader
         eyebrow="Calculadora pública"
-        title="Calcula tu importación premium en menos de un minuto"
-        description="Selecciona el tipo de vehículo, ingresa tu precio en Miami y obtén un estimado completo con flete, seguros, impuestos SUNAT y honorarios LuxCars. Si no tienes año ni precio, indícalo y te contactamos para asesorarte."
+        title="¿Cuánto cuesta importar tu auto?"
+        description="Precio en EE.UU., flete, seguro, tributos SUNAT y honorarios en una sola cifra. En menos de un minuto."
         align="center"
       />
+
       {!showResults ? (
-        /* FORMULARIO */
         <div
           ref={formRef}
-          /* `tabIndex={-1}` para poder recibir el foco por programa al volver
-             de los resultados, sin entrar en el orden de tabulación normal. */
           tabIndex={-1}
           role="group"
           aria-label="Formulario de la calculadora de importación"
-          className="mt-8 md:mt-16 max-w-3xl mx-auto"
+          className="mx-auto mt-10 max-w-3xl"
         >
-          <div className="grid gap-5 md:gap-7 rounded-lux md:rounded-lux-lg border border-line bg-surface-2 p-4 md:p-8 shadow-[var(--lux-shadow-lg)]">
-            <div className="grid gap-4 md:gap-5">
-              <div className="grid gap-2.5 text-sm text-ink-2">
-                <div className="flex items-center gap-2 text-ink">
-                  <span
-                    id="calc-condicion-etiqueta"
-                    className="font-semibold tracking-wide text-sm md:text-base"
-                  >
-                    Condición
-                  </span>
-                  <Tooltip content="El ISC que cobra SUNAT no es el mismo para un vehículo nuevo que para uno usado." />
-                </div>
-                <div
-                  role="group"
-                  aria-labelledby="calc-condicion-etiqueta"
-                  className="grid grid-cols-2 gap-2.5"
-                >
-                  {CONDITION_OPTIONS.map((option) => {
-                    const isSelected = form.condition === option.id;
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() =>
-                          setForm((prev) => ({ ...prev, condition: option.id }))
-                        }
-                        className={cn(
-                          "flex flex-col items-start gap-1 rounded-lux border px-3.5 py-3 text-left transition",
-                          isSelected
-                            ? "border-silver bg-surface-3 text-ink"
-                            : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink",
-                        )}
-                      >
-                        <span className="text-sm font-semibold text-ink">
-                          {option.label}
-                        </span>
-                        <span className="text-[11px] leading-tight text-ink-4">
-                          {option.hint}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
-
-            <div className="grid gap-2.5 md:gap-3 text-sm text-ink-2">
-              <div className="flex items-center gap-2 text-ink">
-                <VehicleIcon size={18} className="text-silver" aria-hidden="true" />
-                <span
-                  id="calc-tipo-etiqueta"
-                  className="font-semibold tracking-wide text-sm md:text-base"
-                >
-                  Tipo de vehículo & ISC
-                </span>
-                <Tooltip
-                  content={
-                    selectedVehicleType
-                      ? selectedVehicleType.tooltip
-                      : "Elige el tipo de vehículo para aplicar el porcentaje ISC estimado según SUNAT."
-                  }
-                />
-              </div>
-              <div
-                role="group"
-                aria-labelledby="calc-tipo-etiqueta"
-                className="grid gap-2.5 md:gap-3 md:grid-cols-2"
-              >
-                {vehicleTypeOptions.map((option) => {
-                  const isSelected = form.vehicleType === option.id;
+          <div className="rounded-[22px] border border-line bg-bg p-5 sm:p-8">
+            {/* 1 · Condición */}
+            <fieldset>
+              <legend className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <StepNumber n={1} /> Condición
+                <Tooltip content="El ISC que cobra SUNAT no es el mismo para un vehículo nuevo que para uno usado." />
+              </legend>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {CONDITION_OPTIONS.map((option) => {
+                  const on = form.condition === option.id;
                   return (
                     <button
                       key={option.id}
                       type="button"
-                      /* Faltaba `aria-pressed`: el botón elegido se distinguía
-                         solo por color de borde y fondo, así que con lector de
-                         pantalla no había forma de saber qué tipo estaba
-                         seleccionado (WCAG 1.3.1 / 4.1.2). */
-                      aria-pressed={isSelected}
-                      onClick={() => handleVehicleTypeSelect(option.id)}
+                      aria-pressed={on}
+                      onClick={() => setForm((prev) => ({ ...prev, condition: option.id }))}
                       className={cn(
-                        "flex flex-col items-start gap-1.5 md:gap-2 rounded-lux border px-4 md:px-5 py-3 md:py-4 text-left transition",
-                        isSelected
+                        "rounded-2xl border px-4 py-3 text-left transition-colors",
+                        on
                           ? "border-silver bg-surface-3 text-ink"
                           : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink",
                       )}
                     >
-                      <span className="text-sm font-semibold text-ink">
-                        {option.label}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-ink-4">
-                        <TaxIcon size={14} />{" "}
-                        {(() => {
-                          const rate = resolveIscRate({
-                            category: option,
-                            condition: form.condition,
-                          });
-                          return rate === null
-                            ? "no importable"
-                            : formatPercentage(rate);
-                        })()}
+                      <span className="block text-sm font-semibold text-ink">{option.label}</span>
+                      <span className="mt-0.5 block text-xs text-ink-4">{option.hint}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            {/* 2 · Tipo de vehículo */}
+            <fieldset className="mt-8">
+              <legend className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <StepNumber n={2} /> Motor
+                <Tooltip
+                  content={
+                    selectedVehicleType
+                      ? selectedVehicleType.tooltip
+                      : "El tipo de motor define el porcentaje de ISC que aplica SUNAT."
+                  }
+                />
+              </legend>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {vehicleTypeOptions.map((option) => {
+                  const on = form.vehicleType === option.id;
+                  const rate = resolveIscRate({ category: option, condition: form.condition });
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => handleVehicleTypeSelect(option.id)}
+                      className={cn(
+                        "rounded-2xl border px-4 py-3 text-left transition-colors",
+                        on
+                          ? "border-silver bg-surface-3 text-ink"
+                          : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink",
+                      )}
+                    >
+                      <span className="block text-sm font-semibold text-ink">{option.label}</span>
+                      <span className="mt-0.5 block text-xs text-ink-4">
+                        ISC {rate === null ? "no importable" : formatPercentage(rate)}
                       </span>
                     </button>
                   );
                 })}
               </div>
-            </div>
+            </fieldset>
 
-            <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm text-ink-2">
-                Marca
-                <select
-                  value={form.brand}
-                  onChange={handleFieldChange("brand")}
-                  className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 pr-10 text-ink hover:border-silver-dim focus:border-silver-bright appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base"
-                  style={{
-                    colorScheme: 'dark',
-                    fontSize: '16px', // Prevenir zoom automático en móviles
-                  }}
-                >
-                  <option value="" className="bg-surface text-ink-3">Selecciona</option>
-                  {BRAND_OPTIONS.map((brand) => (
-                    <option key={brand} value={brand} className="bg-surface text-ink">
-                      {brand}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm text-ink-2">
-                Modelo
-                <input
-                  value={form.model}
-                  onChange={handleFieldChange("model")}
-                  placeholder="Ej. 911 Turbo S"
-                  className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 text-ink placeholder:text-ink-3 hover:border-silver-dim focus:border-silver-bright text-base"
-                  style={{
-                    fontSize: '16px', // Prevenir zoom automático en móviles
-                  }}
-                />
-              </label>
-            </div>
-            <label className="grid gap-2 text-sm text-ink-2">
-              <span className="flex items-center gap-2">
-                VIN
-                <span className="text-xs text-ink-4">(opcional)</span>
-                <Tooltip content="Si tienes el VIN del vehículo, su primer carácter identifica el país de fabricación con certeza y ajusta el arancel automáticamente." />
-              </span>
-              <input
-                value={form.vin}
-                onChange={handleFieldChange("vin")}
-                placeholder="17 caracteres · afina el arancel"
-                maxLength={17}
-                autoComplete="off"
-                spellCheck={false}
-                className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 font-mono uppercase tracking-wider text-ink placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-ink-3 hover:border-silver-dim focus:border-silver-bright text-base"
-                style={{ fontSize: '16px' }}
-              />
-            </label>
-            <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
-              <div className="grid gap-2 text-sm text-ink-2">
-                <div className="flex items-center gap-2">
-                  <span>Año</span>
-                  <span className="text-xs text-ink-4">
-                    (hasta 2 años)
-                  </span>
-                </div>
-                <select
-                  id="calc-year"
-                  aria-label="Año del vehículo"
-                  value={form.year}
-                  onChange={handleFieldChange("year")}
-                  disabled={form.missingYearAndPrice}
-                  className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 pr-10 text-ink hover:border-silver-dim focus:border-silver-bright appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{
-                    colorScheme: 'dark',
-                    fontSize: '16px', // Prevenir zoom automático en móviles
-                  }}
-                >
-                  <option value="" className="bg-surface text-ink-3">Selecciona</option>
-                  {(() => {
-                    // El rango se deriva de la regla de antigüedad, no se
-                    // escribe a mano: si cambia la norma, cambia el select.
-                    const newest = CURRENT_YEAR;
-                    const oldest = CURRENT_YEAR - PRICING_CONFIG.usedMaxAgeYears;
-                    const years = Array.from(
-                      { length: newest - oldest + 1 },
-                      (_, i) => newest - i,
-                    );
-                    return years.map((year) => (
-                      <option key={year} value={year.toString()} className="bg-surface text-ink">
-                        {year}
-                      </option>
-                    ));
-                  })()}
-                </select>
-              </div>
-              <div className="grid gap-2 text-sm text-ink-2">
-                <label htmlFor="calc-price" className="text-sm text-ink-2">
-                  Precio en Miami (USD)
-                </label>
-                <input
-                  id="calc-price"
-                  value={form.price}
-                  onChange={handleFieldChange("price")}
-                  placeholder="Ej. 265000"
-                  inputMode="decimal"
-                  disabled={form.missingYearAndPrice}
-                  className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 text-ink placeholder:text-ink-3 hover:border-silver-dim focus:border-silver-bright text-base disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{
-                    fontSize: '16px', // Prevenir zoom automático en móviles
-                  }}
-                />
-              </div>
-            </div>
-            <div className="flex items-start gap-2.5 -mt-1">
-              <input
-                id="calc-missing-year-price"
-                type="checkbox"
-                checked={form.missingYearAndPrice}
-                onChange={handleMissingYearAndPriceToggle}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-line-strong bg-surface-3 accent-silver"
-              />
-              <label
-                htmlFor="calc-missing-year-price"
-                className="cursor-pointer text-xs leading-snug text-ink-3"
-              >
-                No tengo el año ni el precio — quiero que me asesoren
-              </label>
-            </div>
-            <div className="grid gap-2 text-sm text-ink-2">
-              <span id="calc-plan-etiqueta">Plan estimado de entrega</span>
-              <div
-                role="group"
-                aria-labelledby="calc-plan-etiqueta"
-                className="grid gap-2.5 md:gap-3 sm:grid-cols-2"
-              >
-                {([
-                  {
-                    key: "fast",
-                    label: LUXCARS_CONFIG.deliveryWindows.fastTrack.label,
-                    days: LUXCARS_CONFIG.deliveryWindows.fastTrack.days,
-                  },
-                  {
-                    key: "standard",
-                    label: LUXCARS_CONFIG.deliveryWindows.standard.label,
-                    days: LUXCARS_CONFIG.deliveryWindows.standard.days,
-                  },
-                ] as const).map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    aria-pressed={form.preferredPlan === option.key}
-                    onClick={() =>
-                      setForm((prev) => ({ ...prev, preferredPlan: option.key }))
-                    }
-                    className={cn(
-                      "rounded-lux border px-4 md:px-5 py-3 md:py-4 text-left transition",
-                      form.preferredPlan === option.key
-                        ? "border-silver bg-surface-3 text-ink"
-                        : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink",
-                    )}
+            {/* 3 · Datos del auto */}
+            <fieldset className="mt-8">
+              <legend className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <StepNumber n={3} /> El auto
+              </legend>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm text-ink-2">
+                  Marca
+                  <select
+                    value={form.brand}
+                    onChange={handleFieldChange("brand")}
+                    className="field-lux select-lux"
                   >
-                    <span className="text-xs uppercase tracking-[0.3em] text-ink-3">
-                      {option.label}
-                    </span>
-                    <p className="mt-1.5 md:mt-2 text-base md:text-lg font-medium text-ink">
-                      {option.days[0]} - {option.days[1]} días
-                    </p>
-                  </button>
-                ))}
+                    <option value="">Selecciona</option>
+                    {BRAND_OPTIONS.map((brand) => (
+                      <option key={brand} value={brand}>{brand}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm text-ink-2">
+                  Modelo
+                  <input
+                    value={form.model}
+                    onChange={handleFieldChange("model")}
+                    placeholder="Ej. Macan S"
+                    className="field-lux"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm text-ink-2">
+                  Año
+                  <select
+                    id="calc-year"
+                    value={form.year}
+                    onChange={handleFieldChange("year")}
+                    disabled={form.missingYearAndPrice}
+                    className="field-lux select-lux"
+                  >
+                    <option value="">Selecciona</option>
+                    {yearOptions.map((year) => (
+                      <option key={year} value={String(year)}>{year}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm text-ink-2" htmlFor="calc-price">
+                  Precio en EE.UU. (USD)
+                  <input
+                    id="calc-price"
+                    value={form.price}
+                    onChange={handleFieldChange("price")}
+                    placeholder="Ej. 65000"
+                    inputMode="decimal"
+                    disabled={form.missingYearAndPrice}
+                    className="field-lux tabular-nums"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm text-ink-2 sm:col-span-2">
+                  <span className="flex items-center gap-2">
+                    VIN <span className="text-xs text-ink-4">(opcional, afina el arancel)</span>
+                    <Tooltip content="El primer carácter del VIN identifica el país de fabricación y ajusta el ad valorem automáticamente." />
+                  </span>
+                  <input
+                    value={form.vin}
+                    onChange={handleFieldChange("vin")}
+                    placeholder="17 caracteres"
+                    maxLength={17}
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="field-lux font-mono uppercase tracking-wider placeholder:font-sans placeholder:normal-case placeholder:tracking-normal"
+                  />
+                </label>
               </div>
-            </div>
-            {/* Sin `role="alert"` este mensaje aparecía en pantalla y no se
-                anunciaba: quien usa lector de pantalla pulsaba "Calcular" y no
-                recibía ninguna señal de que algo había fallado (WCAG 3.3.1). */}
+              <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm text-ink-3">
+                <input
+                  id="calc-missing-year-price"
+                  type="checkbox"
+                  checked={form.missingYearAndPrice}
+                  onChange={handleMissingYearAndPriceToggle}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded accent-silver"
+                />
+                No tengo el año ni el precio, quiero que me asesoren
+              </label>
+            </fieldset>
+
+            {/* 4 · Plan */}
+            <fieldset className="mt-8">
+              <legend className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <StepNumber n={4} /> Plazo de entrega
+              </legend>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {planOptions.map((option) => {
+                  const on = form.preferredPlan === option.key;
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setForm((prev) => ({ ...prev, preferredPlan: option.key }))}
+                      className={cn(
+                        "rounded-2xl border px-4 py-3 text-left transition-colors",
+                        on
+                          ? "border-silver bg-surface-3 text-ink"
+                          : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink",
+                      )}
+                    >
+                      <span className="block text-sm font-semibold text-ink">{option.label}</span>
+                      <span className="mt-0.5 block text-xs text-ink-4">
+                        {option.days[0]}–{option.days[1]} días
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
             {error ? (
-              <div
-                role="alert"
-                className="rounded-lux border border-danger/40 bg-danger/10 px-4 md:px-5 py-2.5 md:py-3 text-sm text-danger"
-              >
+              <p role="alert" className="mt-6 flex items-start gap-2 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+                <Icon name="alert" size={18} className="mt-0.5 shrink-0" />
                 {error}
-              </div>
+              </p>
             ) : null}
 
-            {form.missingYearAndPrice ? (
-              <div className="grid gap-3">
-                <div className="rounded-lux border border-line-strong bg-surface-3 px-4 md:px-5 py-3 md:py-4 text-sm text-ink-2">
-                  <p className="font-medium text-ink">
-                    Te ayudamos con lo que falta
-                  </p>
-                  <p className="mt-1.5 text-ink-2">
-                    Completa lo que sepas (tipo de vehículo, marca, modelo) y
-                    escríbenos. Prepararemos opciones a tu medida según tu caso.
-                  </p>
-                </div>
-                {incompleteDataWhatsappLink ? (
-                  <Button
-                    href={incompleteDataWhatsappLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    size="lg"
-                    className="w-full"
-                  >
-                    Pedir asesoría por WhatsApp
-                  </Button>
-                ) : null}
-              </div>
-            ) : (
-              <Button onClick={handleCalculate} size="lg">
-                Calcular Estimado
-              </Button>
-            )}
-
-            <p className="text-xs text-ink-4 leading-relaxed">
-              Este es un estimado de importación. El valor final puede variar según
-              la partida arancelaria, condición del vehículo y determinación de SUNAT.
-            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {form.missingYearAndPrice && incompleteDataWhatsappLink ? (
+                <Button href={incompleteDataWhatsappLink} variant="whatsapp" size="lg" className="w-full sm:w-auto">
+                  Pedir asesoría por WhatsApp
+                </Button>
+              ) : (
+                <Button onClick={handleCalculate} variant="accent" size="lg" className="w-full sm:w-auto">
+                  <Icon name="calculator" size={18} />
+                  Calcular estimado
+                </Button>
+              )}
+              <p className="text-xs leading-relaxed text-ink-4 sm:max-w-xs">
+                Estimado referencial. El monto final depende de SUNAT, tipo de cambio y flete del mes.
+              </p>
+            </div>
           </div>
         </div>
       ) : (
-        /* RESULTADOS */
         <div
           ref={resultsRef}
           tabIndex={-1}
           role="group"
           aria-label="Resultado del estimado de importación"
-          className="mt-8 md:mt-16 max-w-4xl mx-auto"
+          className="mx-auto mt-10 max-w-4xl"
         >
-          <div className="flex flex-col rounded-lux md:rounded-lux-lg border border-line bg-surface-2 p-4 md:p-8 shadow-[var(--lux-shadow-lg)]">
-            {estimate ? (
-              <div className="flex flex-col gap-4 md:gap-6 h-full">
-                  <div className="space-y-3 md:space-y-4">
-                    <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-                      <span className="rounded-full border border-line bg-surface-3 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.25em] text-ink-3">
-                        {estimate.vehicleCategory.label}
-                      </span>
-                      <span className="rounded-full border border-line bg-surface-3 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.25em] text-ink-3">
-                        {estimate.planConfig.label}
-                      </span>
-                      <span className="rounded-full border border-line bg-surface-3 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.25em] text-ink-3">
-                        ISC {formatPercentage(estimate.iscRate)}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-xl md:text-2xl font-semibold text-ink">
-                        Estimado de Importación
-                      </h3>
-                      <p className="mt-1 text-sm text-ink-3">
-                        {estimate.input.brand} {estimate.input.model} {estimate.input.year}
-                      </p>
-                    </div>
-                  </div>
-
-                <div className="rounded-lux md:rounded-lux-lg border border-line bg-surface-3 p-4 md:p-6">
-                  <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4">
-                    <div className="space-y-2 md:space-y-3 flex-1">
-                      <span className="text-xs uppercase tracking-[0.3em] text-ink-3">
-                        Precio final estimado Lima
-                      </span>
-                      <div className="text-2xl md:text-3xl font-bold tabular-nums text-silver-bright">
-                        {formatCurrency(estimate.finalEstimate)}
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleReset();
-                      }}
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleReset();
-                      }}
-                      type="button"
-                      className="w-full md:w-auto md:flex-shrink-0 inline-flex items-center justify-center rounded-full border border-line-strong bg-surface-2 px-6 py-2 text-sm font-medium tracking-[0.08em] uppercase text-ink transition-colors duration-300 hover:border-silver hover:bg-surface-3"
-                    >
-                      Nueva Simulación
-                    </button>
-                  </div>
+          {estimate ? (
+            <div className="grid gap-5 lg:grid-cols-5">
+              {/* Resumen */}
+              <div className="glow-lux flex flex-col rounded-[22px] border border-line p-6 sm:p-8 lg:col-span-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-4">
+                  Puesto en Lima, con placas
+                </p>
+                <p className="mt-2 text-4xl font-semibold tabular-nums tracking-tight text-ink sm:text-5xl">
+                  {formatCurrency(estimate.finalEstimate)}
+                </p>
+                <p className="mt-2 text-sm text-ink-3">
+                  {estimate.input.brand} {estimate.input.model} {estimate.input.year}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Chip>{estimate.vehicleCategory.label}</Chip>
+                  <Chip>{estimate.planConfig.label}</Chip>
+                  <Chip>ISC {formatPercentage(estimate.iscRate)}</Chip>
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-1.5 md:space-y-2 text-sm">
-                  <BreakdownItem
-                    label="Precio Miami"
-                    amount={estimate.input.priceMiami}
-                    icon={<MoneyIcon size={16} />}
-                  />
-                  <BreakdownItem
-                    label="Flete + Seguro"
+                <div className="mt-6 rounded-2xl border border-line bg-void/40 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                    Efectivo a desembolsar
+                  </p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums text-ink">
+                    {formatCurrency(estimate.cashRequired)}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-4">
+                    Incluye la percepción del IGV ({formatPercentage(estimate.percepcionRate)}), que se recupera como crédito fiscal.
+                  </p>
+                </div>
+
+                <div className="mt-auto grid gap-3 pt-6">
+                  {whatsappLink ? (
+                    <Button href={whatsappLink} variant="whatsapp" size="lg" className="w-full">
+                      Enviar por WhatsApp
+                    </Button>
+                  ) : null}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button onClick={handleDownloadPDF} variant="secondary" disabled={isGeneratingPDF} className="w-full">
+                      <Icon name="download" size={16} />
+                      {isGeneratingPDF ? "Generando…" : "PDF"}
+                    </Button>
+                    <Button onClick={handleReset} variant="ghost" className="w-full border border-line">
+                      <Icon name="refresh" size={16} />
+                      Nuevo
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desglose */}
+              <div className="rounded-[22px] border border-line bg-bg p-6 sm:p-8 lg:col-span-3">
+                <h3 className="text-base font-semibold text-ink">Desglose</h3>
+                <dl className="mt-4 divide-y divide-line">
+                  <Row label="Precio en EE.UU." amount={estimate.input.priceMiami} />
+                  <Row
+                    label="Flete + seguro"
                     amount={estimate.freight + estimate.insurance}
-                    icon={<TaxIcon size={16} />}
-                    tooltip="Flete marítimo desde Miami hasta Callao más seguro internacional (0.35% sobre el 110% del FOB + flete, mínimo USD 45)."
+                    tooltip="Flete marítimo hasta el Callao más seguro internacional."
                   />
-                  <BreakdownItem
-                    label={`Ad Valorem (${formatPercentage(estimate.adValoremRate)})`}
+                  <Row
+                    label={`Ad valorem ${formatPercentage(estimate.adValoremRate)}`}
                     amount={estimate.adValorem}
-                    icon={<TaxIcon size={16} />}
                     tooltip={
                       estimate.adValoremRate === 0
-                        ? "Ad Valorem 0%: los vehículos originarios de EE.UU. entran libres de arancel por el APC Perú–Estados Unidos. Requiere certificado de origen."
-                        : `Ad Valorem ${formatPercentage(estimate.adValoremRate)} sobre el CIF. Solo baja a 0% si el vehículo es originario de EE.UU. y se presenta certificado de origen.`
+                        ? "0%: vehículo originario de EE.UU. con certificado de origen (acuerdo Perú–EE.UU.)."
+                        : "Sobre el valor CIF. Baja a 0% solo si el vehículo es nuevo, originario de EE.UU. y tiene certificado de origen."
                     }
                   />
-                  {originInfo && (
-                    <div className="-mt-1 mb-1 rounded-lux border border-line bg-surface px-3 py-2">
-                      <p className="text-[11px] leading-snug text-ink-4">
-                        {originInfo.reason}
-                      </p>
-                      {(originInfo.mayQualifyWithCertificate ||
-                        estimate.adValoremRate === 0) && (
+                  {originInfo ? (
+                    <div className="py-3">
+                      <p className="text-xs leading-relaxed text-ink-4">{originInfo.reason}</p>
+                      {(originInfo.mayQualifyWithCertificate || estimate.adValoremRate === 0) ? (
                         <button
                           type="button"
-                          onClick={() => handleOriginOverride(
-                            estimate.adValoremRate === 0 ? "otro" : "originario-usa",
-                          )}
-                          className="mt-1.5 text-[11px] font-medium text-silver-bright underline underline-offset-2 hover:text-ink"
+                          onClick={() =>
+                            handleOriginOverride(estimate.adValoremRate === 0 ? "otro" : "originario-usa")
+                          }
+                          className="mt-1.5 text-xs font-semibold text-silver underline underline-offset-2 hover:text-ink"
                         >
                           {estimate.adValoremRate === 0
                             ? "No tengo certificado de origen · recalcular con 6%"
                             : "Sí tengo certificado de origen · recalcular con 0%"}
                         </button>
-                      )}
+                      ) : null}
                     </div>
-                  )}
-                  <BreakdownItem
-                    label={`ISC (${formatPercentage(estimate.iscRate)})`}
+                  ) : null}
+                  <Row
+                    label={`ISC ${formatPercentage(estimate.iscRate)}`}
                     amount={estimate.isc}
-                    icon={<TaxIcon size={16} />}
-                    tooltip={`Impuesto Selectivo al Consumo ${formatPercentage(estimate.iscRate)} sobre CIF + Ad Valorem. ${estimate.iscTooltip}`}
+                    tooltip={`Sobre CIF + ad valorem. ${estimate.iscTooltip}`}
                   />
-                  <BreakdownItem
-                    label="IGV (15.5%)"
-                    amount={estimate.igv}
-                    icon={<TaxIcon size={16} />}
-                    tooltip="Impuesto General a las Ventas 15.5% sobre CIF + Ad Valorem + ISC."
+                  <Row
+                    label="IGV 15.5% + IPM 2.5%"
+                    amount={estimate.igv + estimate.ipm}
+                    tooltip="Sobre CIF + ad valorem + ISC."
                   />
-                  <BreakdownItem
-                    label="IPM (2.5%)"
-                    amount={estimate.ipm}
-                    icon={<TaxIcon size={16} />}
-                    tooltip="Impuesto de Promoción Municipal 2.5%, sobre la misma base que el IGV. Juntos suman el 18% habitual."
-                  />
-                  <BreakdownItem
-                    label="Fees & Servicios"
+                  <Row
+                    label="Servicio LuxCars"
                     amount={estimate.stateComplianceFee + estimate.brokerFee + estimate.documentHandlingFee}
-                    icon={<ServiceIcon size={16} />}
-                    tooltip="Incluye State Compliance Fee (5%), Broker Fee (10%) y Extra FastTrack si aplica. Cubre inspección certificada, negociación, logística concierge y gestión documental."
+                    tooltip="Inspección, negociación, logística, gestión documentaria y Fast Track si aplica."
                   />
-                  <div className="mt-2 rounded-lux border border-line bg-surface-3 p-3">
-                    <BreakdownItem
-                      label={`Percepción IGV (${formatPercentage(estimate.percepcionRate)})`}
-                      amount={estimate.percepcion}
-                      icon={<TaxIcon size={16} />}
-                      tooltip="Adelanto del IGV que se paga en aduanas y luego se recupera como crédito fiscal. No es un costo, pero sí es efectivo que hay que desembolsar."
-                    />
-                    <p className="mt-1.5 text-[11px] leading-snug text-ink-4">
-                      No es costo: se recupera como crédito fiscal. Efectivo total a
-                      desembolsar {formatCurrency(estimate.cashRequired)}.
-                    </p>
-                  </div>
-                </div>
-
-                {whatsappLink && (
-                  <div className="pt-3 md:pt-4 border-t border-line">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-3">
-                      <Button
-                        href={whatsappLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        size="lg"
-                        className="w-full"
-                      >
-                        Enviar WhatsApp
-                      </Button>
-                      <Button
-                        onClick={handleDownloadPDF}
-                        variant="secondary"
-                        size="lg"
-                        className="w-full"
-                        disabled={isGeneratingPDF}
-                      >
-                        {isGeneratingPDF ? 'Generando PDF...' : 'Descargar PDF'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                  <Row
+                    label={`Percepción IGV ${formatPercentage(estimate.percepcionRate)}`}
+                    amount={estimate.percepcion}
+                    muted
+                    tooltip="Adelanto del IGV. Se recupera como crédito fiscal; no es un costo, pero sí efectivo el día del despacho."
+                  />
+                </dl>
+                <p className="mt-4 text-xs leading-relaxed text-ink-4">
+                  Rango final ±{formatPercentage(LUXCARS_CONFIG.services.finalRangeVariance, "es-PE", 1)}. Los tributos son tasas fijas; varían el tipo de cambio y el flete.
+                </p>
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       )}
-    </section>
+    </Section>
   );
 }
 
-type BreakdownItemProps = {
+function StepNumber({ n }: { n: number }) {
+  return (
+    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-3 text-[11px] font-semibold tabular-nums text-silver-bright">
+      {n}
+    </span>
+  );
+}
+
+function Chip({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+      {children}
+    </span>
+  );
+}
+
+function Row({
+  label,
+  amount,
+  tooltip,
+  muted,
+}: {
   label: string;
   amount: number;
   tooltip?: string;
-  icon?: ReactNode;
-};
-
-function BreakdownItem({ label, amount, tooltip, icon }: BreakdownItemProps) {
+  muted?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between gap-3 md:gap-4 rounded-lux border border-line bg-surface px-3 md:px-4 py-2 md:py-2.5">
-      <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-        {icon && <span className="text-ink-4 flex-shrink-0">{icon}</span>}
-        {/* Sin truncate: a 360px recortaba conceptos del desglose
-            ("Percepción IGV (4%)" perdía media etiqueta). Envuelve en dos
-            líneas; el monto no se comprime porque es flex-shrink-0. */}
-        <span className="min-w-0 text-sm leading-snug text-ink-2">{label}</span>
-        {tooltip && <Tooltip content={tooltip} placement="top" />}
-      </div>
-      <span className="font-semibold text-ink tabular-nums text-sm md:text-base flex-shrink-0">
+    <div className="flex items-center justify-between gap-4 py-3">
+      <dt className={cn("flex min-w-0 items-center gap-2 text-sm", muted ? "text-ink-4" : "text-ink-2")}>
+        <span>{label}</span>
+        {tooltip ? <Tooltip content={tooltip} placement="top" /> : null}
+      </dt>
+      <dd className={cn("shrink-0 text-sm font-semibold tabular-nums sm:text-base", muted ? "text-ink-3" : "text-ink")}>
         {formatCurrency(amount)}
-      </span>
+      </dd>
     </div>
   );
 }
 
 function CalculatorSectionFallback() {
   return (
-    <section
-      id="calculator"
-      className="scroll-mt-32 rounded-lux-lg md:rounded-lux-xl border border-line bg-surface px-4 md:px-6 py-12 md:py-20 lg:px-14"
-    >
+    <Section id="calculator" tone="surface">
       <div className="mx-auto max-w-3xl py-16 text-center text-sm text-ink-3">
         Cargando calculadora…
       </div>
-    </section>
+    </Section>
   );
 }
 

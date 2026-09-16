@@ -1,6 +1,6 @@
-## LuxCars.pe · Landing Premium
+## luxcars.pe · Landing Premium
 
-Landing page corporativa desarrollada con Next.js 16 (App Router), TypeScript y Tailwind CSS v4. El diseño refuerza el posicionamiento de LuxCars.pe como broker boutique de importación de autos de lujo y exóticos entre Miami y Lima.
+Landing page corporativa desarrollada con Next.js 16 (App Router), TypeScript y Tailwind CSS v4. El diseño refuerza el posicionamiento de luxcars.pe como broker boutique de importación de autos de lujo y exóticos entre Miami y Lima.
 
 ### 🚀 Inicio rápido
 
@@ -111,4 +111,4 @@ npm run start
 
 ---
 
-Hecho con precisión para **LuxCars.pe · Broker boutique Miami → Lima**. Ajusta libremente el contenido corporativo desde `src/lib/config.ts`. ¡Disfruta la experiencia premium!
+Hecho con precisión para **luxcars.pe · Broker boutique Miami → Lima**. Ajusta libremente el contenido corporativo desde `src/lib/config.ts`. ¡Disfruta la experiencia premium!

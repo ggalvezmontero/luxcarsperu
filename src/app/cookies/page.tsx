@@ -15,31 +15,29 @@ export default function CookiesPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
-      <main className="flex-1 w-full px-4 pb-20 pt-32 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-6xl space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-balance text-ink sm:text-5xl">
+      <main id="contenido" className="w-full flex-1 pt-[calc(var(--lux-nav-h)+3rem)] pb-20">
+        <div className="container-lux max-w-3xl space-y-10">
+        <div>
+          <h1 className="text-balance text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
             Política de Cookies
           </h1>
-          <p className="mt-4 text-lg text-ink-2">
-            Última actualización: {new Date().toLocaleDateString('es-PE')}
-          </p>
+          <p className="mt-3 text-sm text-ink-4">Última actualización: 15 de septiembre de 2026</p>
         </div>
 
-        <div className="space-y-8 rounded-lux-lg md:rounded-lux-xl border border-line bg-surface p-5 text-ink-2 md:p-8">
+        <div className="space-y-10 text-[15px] leading-relaxed text-ink-2">
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">¿Qué son las Cookies?</h2>
+            <h2 className="text-base font-semibold text-ink">¿Qué son las Cookies?</h2>
             <p>
               Las cookies son pequeños archivos de texto que se almacenan en su dispositivo cuando visita nuestro sitio web. Nos ayudan a mejorar su experiencia, recordar sus preferencias y entender cómo utiliza nuestro sitio.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">Tipos de Cookies que Utilizamos</h2>
+            <h2 className="text-base font-semibold text-ink">Tipos de Cookies que Utilizamos</h2>
             
             <div className="space-y-4">
               <div className="rounded-lux border border-line bg-surface-2 p-5 md:p-6">
-                <h3 className="text-xl font-semibold text-ink mb-2">1. Cookies Esenciales</h3>
+                <h3 className="mb-2 text-base font-semibold text-ink">1. Cookies Esenciales</h3>
                 <p className="mb-2">
                   <strong className="text-ink">Necesarias:</strong> Requeridas para el funcionamiento básico del sitio.
                 </p>
@@ -52,7 +50,7 @@ export default function CookiesPage() {
               </div>
 
               <div className="rounded-lux border border-line bg-surface-2 p-5 md:p-6">
-                <h3 className="text-xl font-semibold text-ink mb-2">2. Cookies de Funcionalidad</h3>
+                <h3 className="mb-2 text-base font-semibold text-ink">2. Cookies de Funcionalidad</h3>
                 <p className="mb-2">
                   <strong className="text-ink">Opcionales:</strong> Mejoran la experiencia del usuario.
                 </p>
@@ -64,7 +62,7 @@ export default function CookiesPage() {
               </div>
 
               <div className="rounded-lux border border-line bg-surface-2 p-5 md:p-6">
-                <h3 className="text-xl font-semibold text-ink mb-2">3. Cookies Analíticas</h3>
+                <h3 className="mb-2 text-base font-semibold text-ink">3. Cookies Analíticas</h3>
                 <p className="mb-2">
                   <strong className="text-ink">Opcionales:</strong> Nos ayudan a entender cómo se usa el sitio.
                 </p>
@@ -78,7 +76,7 @@ export default function CookiesPage() {
               </div>
 
               <div className="rounded-lux border border-line bg-surface-2 p-5 md:p-6">
-                <h3 className="text-xl font-semibold text-ink mb-2">4. Cookies de Marketing</h3>
+                <h3 className="mb-2 text-base font-semibold text-ink">4. Cookies de Marketing</h3>
                 <p className="mb-2">
                   <strong className="text-ink">Opcionales:</strong> Para personalizar anuncios y comunicaciones.
                 </p>
@@ -92,7 +90,7 @@ export default function CookiesPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">Duración de las Cookies</h2>
+            <h2 className="text-base font-semibold text-ink">Duración de las Cookies</h2>
             <ul className="list-disc space-y-2 pl-6">
               <li><strong className="text-ink">Cookies de Sesión:</strong> Se eliminan al cerrar el navegador</li>
               <li><strong className="text-ink">Cookies Persistentes:</strong> Permanecen hasta 12 meses o hasta que las elimine</li>
@@ -100,7 +98,7 @@ export default function CookiesPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">Cookies de Terceros</h2>
+            <h2 className="text-base font-semibold text-ink">Cookies de Terceros</h2>
             <p>
               Algunos servicios que utilizamos pueden instalar sus propias cookies:
             </p>
@@ -112,7 +110,7 @@ export default function CookiesPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">Gestionar sus Preferencias de Cookies</h2>
+            <h2 className="text-base font-semibold text-ink">Gestionar sus Preferencias de Cookies</h2>
             <p>
               Puede gestionar o eliminar cookies de las siguientes maneras:
             </p>
@@ -124,7 +122,7 @@ export default function CookiesPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">Instrucciones por Navegador</h2>
+            <h2 className="text-base font-semibold text-ink">Instrucciones por Navegador</h2>
             <div className="space-y-3">
               <div className="rounded-lux-lg border border-line bg-surface-2 p-4">
                 <p><strong className="text-ink">Chrome:</strong> Configuración → Privacidad y seguridad → Cookies</p>
@@ -142,7 +140,7 @@ export default function CookiesPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">Consecuencias de Rechazar Cookies</h2>
+            <h2 className="text-base font-semibold text-ink">Consecuencias de Rechazar Cookies</h2>
             <p>
               Si rechaza las cookies opcionales:
             </p>
@@ -155,14 +153,14 @@ export default function CookiesPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">Actualizaciones</h2>
+            <h2 className="text-base font-semibold text-ink">Actualizaciones</h2>
             <p>
               Podemos actualizar esta política de cookies periódicamente para reflejar cambios en las tecnologías que utilizamos. Le recomendamos revisar esta página ocasionalmente.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-ink">Contacto</h2>
+            <h2 className="text-base font-semibold text-ink">Contacto</h2>
             <p>
               Para preguntas sobre nuestra política de cookies, contáctenos en:
             </p>

@@ -5,10 +5,10 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
 type BaseProps = {
   /**
    * `accent` es la variante en oro: como máximo una por pantalla.
-   * Ante la duda, usar `primary` (plata).
+   * `whatsapp` es el verde oficial, solo para enlaces a wa.me.
    */
-  variant?: "primary" | "secondary" | "ghost" | "accent";
-  size?: "md" | "lg";
+  variant?: "primary" | "secondary" | "ghost" | "accent" | "whatsapp";
+  size?: "sm" | "md" | "lg";
   className?: string;
 };
 
@@ -18,28 +18,24 @@ type ButtonProps = BaseProps &
 type LinkProps = BaseProps &
   AnchorHTMLAttributes<HTMLAnchorElement> & { href: string };
 
-/**
- * El foco visible se resuelve globalmente en globals.css: aquí no se
- * redefine ni se anula con outline-none.
- */
 const baseStyles =
-  "inline-flex max-w-full items-center justify-center gap-2 rounded-full text-center font-medium uppercase leading-none tracking-[0.16em] transition-colors duration-200 ease-out disabled:pointer-events-none disabled:opacity-45";
+  "inline-flex max-w-full shrink-0 items-center justify-center gap-2 rounded-full text-center font-semibold leading-none tracking-[0.01em] transition-all duration-200 ease-out disabled:pointer-events-none disabled:opacity-45 active:scale-[0.98]";
 
 const variants = {
-  /* Plata: el acento dominante del sistema. */
-  primary: "bg-silver text-void hover:bg-silver-bright",
-  /* Control delineado sobre fondo oscuro. */
+  primary: "bg-ink text-void hover:bg-silver-bright shadow-[0_8px_24px_rgba(255,255,255,0.08)]",
   secondary:
     "border border-line-strong bg-transparent text-ink hover:border-silver hover:bg-surface-2",
-  /* Acción terciaria, sin peso visual. */
-  ghost: "text-ink-2 hover:bg-surface hover:text-ink",
-  /* Oro: reservado a un único CTA por pantalla. */
-  accent: "bg-gold text-void hover:bg-gold-bright",
+  ghost: "text-ink-2 hover:bg-surface-2 hover:text-ink",
+  /* Cromado: degradado plateado metálico. Es el CTA principal del sitio. */
+  accent:
+    "bg-[linear-gradient(180deg,#FFFFFF_0%,#D9D9DE_45%,#A9A9B1_100%)] text-void ring-1 ring-white/60 ring-inset shadow-[0_10px_30px_rgba(192,192,192,0.22)] hover:bg-[linear-gradient(180deg,#FFFFFF_0%,#E8E8EC_45%,#BEBEC6_100%)]",
+  whatsapp: "bg-whatsapp text-void hover:brightness-110 shadow-[0_8px_28px_rgba(37,211,102,0.2)]",
 };
 
 const sizes = {
-  md: "min-h-11 px-6 py-3 text-xs",
-  lg: "min-h-12 px-7 py-3.5 text-sm sm:px-8",
+  sm: "min-h-9 px-4 text-xs",
+  md: "min-h-11 px-5 text-sm",
+  lg: "min-h-13 px-7 text-[15px]",
 };
 
 export function Button(props: ButtonProps | LinkProps) {
@@ -48,19 +44,29 @@ export function Button(props: ButtonProps | LinkProps) {
   const classes = cn(baseStyles, variants[variant], sizes[size], className);
 
   if ("href" in props && props.href) {
-    // TypeScript now knows this is LinkProps
-    const linkProps = rest as Omit<LinkProps, "variant" | "size" | "className" | "children">;
+    const linkProps = rest as Omit<
+      LinkProps,
+      "variant" | "size" | "className" | "children"
+    >;
+    const external = /^https?:/.test(props.href);
     return (
-      <Link {...linkProps} className={classes}>
+      <Link
+        {...linkProps}
+        target={external ? "_blank" : linkProps.target}
+        rel={external ? "noopener noreferrer" : linkProps.rel}
+        className={classes}
+      >
         {children}
       </Link>
     );
   }
 
-  // TypeScript now knows this is ButtonProps
-  const buttonProps = rest as Omit<ButtonProps, "variant" | "size" | "className" | "children">;
+  const buttonProps = rest as Omit<
+    ButtonProps,
+    "variant" | "size" | "className" | "children"
+  >;
   return (
-    <button {...buttonProps} className={classes}>
+    <button type="button" {...buttonProps} className={classes}>
       {children}
     </button>
   );

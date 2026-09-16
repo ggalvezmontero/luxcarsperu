@@ -1,459 +1,301 @@
-// jspdf + jspdf-autotable pesan ~500 KB sin comprimir. Solo hacen falta
-// cuando alguien pulsa "Descargar PDF", así que NO pueden entrar por un
-// import estático: eso los metía en el bundle inicial de la home, la ruta
-// más visitada y la que manda en el SEO. Aquí se importan SOLO como tipo
-// (`import type` se borra en compilación y no arrastra runtime) y el módulo
-// real se pide con import() dinámico dentro de generatePDF.
-//
-// Si mañana alguien convierte esto en un import normal, la home vuelve a
-// cargar medio megabyte de JS que el 99% de las visitas nunca ejecuta.
-import type jsPDF from 'jspdf';
+// jspdf + jspdf-autotable pesan ~500 KB. Solo se cargan al pulsar "PDF":
+// aquí entran como tipo y el módulo real se pide con import() dinámico.
+import type jsPDF from "jspdf";
+import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
+import { findBrandLogo } from "./brandLogos";
+import { LUXCARS_CONFIG } from "./config";
+import { formatCurrency, formatPercentage } from "./utils";
 
-// jspdf-autotable no aumenta los tipos de jsPDF (su propio d.ts declara el
-// documento como `any`), así que describimos aquí lo único que usamos de él.
-type DocWithAutoTable = jsPDF & {
-  lastAutoTable: { finalY: number };
-};
-import type { PremiumImportQuote } from '@/core/pricing/priceCalculator';
-import { formatCurrency, formatPercentage } from './utils';
-import { LUXCARS_CONFIG } from './config';
+type DocWithAutoTable = jsPDF & { lastAutoTable: { finalY: number } };
+type RGB = [number, number, number];
 
-// Mapeo de marcas a sus logos
-const BRAND_LOGOS: Record<string, string> = {
-  'Porsche': '/images/brands/porsche.png',
-  'BMW': '/images/brands/bmw.png',
-  'Mercedes-Benz': '/images/brands/mercedes.png',
-  'Audi': '/images/brands/audi.png',
-  'Lexus': '/images/brands/lexus.png',
-  'Tesla': '/images/brands/tesla.png',
-  'Range Rover': '/images/brands/rangerover.png',
-  'Cadillac': '/images/brands/cadillac.png',
-  'Dodge SRT': '/images/brands/dodge.png',
-  'Dodge': '/images/brands/dodge.png',
-  'Bentley': '/images/brands/bentley.png',
-  'Ferrari': '/images/brands/ferrari.png',
-  'Lamborghini': '/images/brands/lamborghini.png',
-  'McLaren': '/images/brands/mclaren.png',
-  'Aston Martin': '/images/brands/astonmartin.png',
-  'Rolls-Royce': '/images/brands/rollsroyce.png',
-  'Toyota': '/images/brands/toyota.svg',
-  'Jeep': '/images/brands/jeep.svg',
-  'Ford': '/images/brands/ford.svg',
-  'Chevrolet': '/images/brands/chevrolet.svg',
-  'Chrysler': '/images/brands/chrysler.png',
-};
+/* Paleta del PDF: mismo sistema que la web, sobre papel blanco. */
+const INK: RGB = [10, 10, 11];
+const INK_2: RGB = [70, 70, 76];
+const INK_3: RGB = [120, 120, 128];
+const LINE: RGB = [225, 225, 229];
+const PAPER: RGB = [245, 245, 247];
+const WHITE: RGB = [255, 255, 255];
+const SILVER: RGB = [192, 192, 192];
 
-// Función mejorada para convertir imagen a base64 con dimensiones
-async function getImageAsBase64(url: string): Promise<{data: string; width: number; height: number} | null> {
-  if (!url) return null;
-  
+type Raster = { data: string; width: number; height: number };
+
+/** Carga una imagen de /public y la devuelve como PNG en base64 (los SVG se rasterizan). */
+async function loadRaster(url: string, rasterWidth = 1200): Promise<Raster | null> {
   try {
-    const fullUrl = url.startsWith('/') ? url : `/${url}`;
-    const response = await fetch(fullUrl);
-    
-    if (!response.ok) {
-      console.warn(`No se pudo cargar la imagen: ${fullUrl}`);
-      return null;
-    }
-    
-    const blob = await response.blob();
-    
-    // Para SVG, intentar convertir a PNG usando canvas con alta calidad
-    if (blob.type === 'image/svg+xml') {
-      try {
-        const svgText = await blob.text();
-        const img = new Image();
-        const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
-        const urlObj = URL.createObjectURL(svgBlob);
-        
-        return new Promise((resolve) => {
-          img.onload = () => {
-            try {
-              const canvas = document.createElement('canvas');
-              // Usar dimensiones reales de la imagen SVG
-              const aspectRatio = img.naturalWidth / img.naturalHeight;
-              canvas.width = 800;
-              canvas.height = canvas.width / aspectRatio;
-              
-              const ctx = canvas.getContext('2d', { alpha: true });
-              if (ctx) {
-                // Limpiar canvas con transparencia
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                // Habilitar suavizado para mejor calidad
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                // Dibujar la imagen
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                const pngData = canvas.toDataURL('image/png', 1.0); // Máxima calidad
-                URL.revokeObjectURL(urlObj);
-                resolve({
-                  data: pngData,
-                  width: img.naturalWidth,
-                  height: img.naturalHeight
-                });
-              } else {
-                URL.revokeObjectURL(urlObj);
-                resolve(null);
-              }
-            } catch {
-              URL.revokeObjectURL(urlObj);
-              resolve(null);
-            }
-          };
-          img.onerror = () => {
-            URL.revokeObjectURL(urlObj);
-            resolve(null);
-          };
-          img.src = urlObj;
-        });
-      } catch {
-        // Si falla la conversión, devolver null
-        return null;
-      }
-    }
-    
-    // Para PNG/JPG, devolver directamente con dimensiones
-    return new Promise((resolve) => {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    return await new Promise<Raster | null>((resolve) => {
       const img = new Image();
-      const urlObj = URL.createObjectURL(blob);
-      
       img.onload = () => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          URL.revokeObjectURL(urlObj);
-          resolve({
-            data: reader.result as string,
-            width: img.naturalWidth,
-            height: img.naturalHeight
-          });
-        };
-        reader.onerror = () => {
-          URL.revokeObjectURL(urlObj);
+        try {
+          const ratio = img.naturalWidth / img.naturalHeight;
+          const canvas = document.createElement("canvas");
+          canvas.width = rasterWidth;
+          canvas.height = Math.round(rasterWidth / ratio);
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return resolve(null);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve({ data: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height });
+        } catch {
           resolve(null);
-        };
-        reader.readAsDataURL(blob);
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
       };
-      
       img.onerror = () => {
-        URL.revokeObjectURL(urlObj);
+        URL.revokeObjectURL(objectUrl);
         resolve(null);
       };
-      
-      img.src = urlObj;
+      img.src = objectUrl;
     });
-  } catch (error) {
-    console.warn('Error cargando imagen:', error);
+  } catch {
     return null;
   }
 }
 
+/** Dibuja una imagen dentro de una caja respetando la proporción. */
+function drawFitted(doc: jsPDF, img: Raster, x: number, y: number, w: number, h: number, align: "left" | "right" = "left") {
+  const ratio = img.width / img.height;
+  let dw = w;
+  let dh = dw / ratio;
+  if (dh > h) {
+    dh = h;
+    dw = dh * ratio;
+  }
+  const dx = align === "right" ? x + w - dw : x;
+  const dy = y + (h - dh) / 2;
+  doc.addImage(img.data, "PNG", dx, dy, dw, dh, undefined, "FAST");
+}
+
 export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
-  // Carga diferida: recién aquí se descarga el motor de PDF.
   const [{ default: JsPDF }, { default: autoTable }] = await Promise.all([
-    import('jspdf'),
-    import('jspdf-autotable'),
+    import("jspdf"),
+    import("jspdf-autotable"),
   ]);
 
-  const doc = new JsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
+  const doc = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 16;
+  const CW = W - 2 * M;
+  const { contact, legalName, ruc } = LUXCARS_CONFIG;
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 15;
-  const contentWidth = pageWidth - 2 * margin;
+  const [logo, brandLogo] = await Promise.all([
+    loadRaster("/brand/logo-blanco.svg", 1000),
+    (() => {
+      const logo = findBrandLogo(estimate.input.brand);
+      // Sobre papel blanco solo sirven los logos oscuros (los blancos se pierden).
+      return logo && logo.mode === "invert" ? loadRaster(logo.src, 600) : Promise.resolve(null);
+    })(),
+  ]);
 
-  // Paleta de colores moderna y elegante - tema oscuro premium
-  const darkBlue: [number, number, number] = [15, 23, 42]; // Slate 900
-  const mediumGray: [number, number, number] = [51, 65, 85]; // Slate 700
-  const lightGray: [number, number, number] = [148, 163, 184]; // Slate 400
-  const veryLightGray: [number, number, number] = [241, 245, 249]; // Slate 100
-  const white: [number, number, number] = [255, 255, 255];
-  const accentBlue: [number, number, number] = [59, 130, 246]; // Blue 500
-  const successGreen: [number, number, number] = [16, 185, 129]; // Emerald 500
-
-  let yPos = margin;
-
-  // Barra superior oscura con información de marca
-  doc.setFillColor(...darkBlue);
-  doc.rect(0, 0, pageWidth, 30, 'F');
-  
-  // Logo de LuxCars (pequeño icono al lado del texto)
-  const companyLogoData = await getImageAsBase64('/brand/logo-negro.svg');
-  let textStartX = margin;
-  
-  if (companyLogoData) {
-    try {
-      const logoSize = 11; // Logo cuadrado pequeño
-      doc.addImage(
-        companyLogoData.data, 
-        'PNG',
-        margin, 
-        yPos + 1, 
-        logoSize, 
-        logoSize,
-        undefined,
-        'SLOW'
-      );
-      textStartX = margin + logoSize + 3; // Espacio después del logo
-    } catch (error) {
-      // Si falla, solo usar texto
-      textStartX = margin;
-    }
+  /* ── Cabecera negra ─────────────────────────────────────────────── */
+  const HEAD_H = 30;
+  doc.setFillColor(...INK);
+  doc.rect(0, 0, W, HEAD_H, "F");
+  if (logo) {
+    drawFitted(doc, logo, M, 4, 40, 22);
+  } else {
+    doc.setTextColor(...WHITE).setFont("helvetica", "bold").setFontSize(16);
+    doc.text("LUX | CARS", M, 20);
   }
-  
-  // Logo de empresa - minimalista (sin PERÚ)
-  doc.setFontSize(20);
-  doc.setTextColor(...white);
-  doc.setFont('helvetica', 'bold');
-  doc.text('LUXCARS', textStartX, yPos + 9);
+  doc.setTextColor(...SILVER).setFont("helvetica", "normal").setFontSize(8);
+  doc.text("ESTIMADO DE IMPORTACIÓN", W - M, 12, { align: "right", charSpace: 0.6 });
+  const fecha = new Date().toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
+  doc.setTextColor(...WHITE).setFontSize(9);
+  doc.text(fecha, W - M, 19, { align: "right" });
+  doc.setTextColor(...SILVER).setFontSize(8);
+  doc.text("Puesto en Lima · referencial", W - M, 24.5, { align: "right" });
 
-  // Logo de marca (derecha) - en card blanco con bordes redondeados
-  const brandLogoData = estimate.input.brand 
-    ? await getImageAsBase64(BRAND_LOGOS[estimate.input.brand] || '')
-    : null;
+  let y = HEAD_H + 10;
 
-  if (brandLogoData) {
-    try {
-      // Card blanco con bordes redondeados para el logo
-      const cardWidth = 50;
-      const cardHeight = 20;
-      const cardPadding = 4; // Padding interno del card
-      const cardX = pageWidth - margin - cardWidth;
-      const cardY = yPos - 1; // Centrado verticalmente en la barra
-      
-      // Dibujar card blanco con bordes redondeados
-      doc.setFillColor(...white);
-      doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 3, 3, 'F');
-      
-      // Calcular dimensiones del logo respetando aspect ratio REAL
-      const maxLogoWidth = cardWidth - (cardPadding * 2);
-      const maxLogoHeight = cardHeight - (cardPadding * 2);
-      
-      // Obtener aspect ratio real de la imagen
-      const imageAspectRatio = brandLogoData.width / brandLogoData.height;
-      
-      // Calcular dimensiones manteniendo el aspect ratio
-      let logoWidth = maxLogoWidth;
-      let logoHeight = logoWidth / imageAspectRatio;
-      
-      // Si la altura excede el máximo, ajustar por altura
-      if (logoHeight > maxLogoHeight) {
-        logoHeight = maxLogoHeight;
-        logoWidth = logoHeight * imageAspectRatio;
-      }
-      
-      // Centrar el logo dentro del card
-      const logoX = cardX + (cardWidth - logoWidth) / 2;
-      const logoY = cardY + (cardHeight - logoHeight) / 2;
-      
-      doc.addImage(
-        brandLogoData.data, 
-        'PNG',
-        logoX, 
-        logoY, 
-        logoWidth, 
-        logoHeight,
-        undefined,
-        'SLOW'
-      );
-    } catch (error) {
-      console.error('Error adding brand logo:', error);
-      // Fallback: card blanco con nombre de marca
-      const cardWidth = 50;
-      const cardHeight = 20;
-      const cardX = pageWidth - margin - cardWidth;
-      const cardY = yPos - 1;
-      
-      doc.setFillColor(...white);
-      doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 3, 3, 'F');
-      
-      doc.setFontSize(14);
-      doc.setTextColor(...darkBlue);
-      doc.setFont('helvetica', 'bold');
-      doc.text(estimate.input.brand, cardX + cardWidth / 2, cardY + cardHeight / 2 + 2, { align: 'center' });
-    }
-  }
+  /* ── Vehículo ───────────────────────────────────────────────────── */
+  doc.setTextColor(...INK_3).setFont("helvetica", "bold").setFontSize(8);
+  doc.text("VEHÍCULO", M, y, { charSpace: 0.5 });
+  y += 7;
+  doc.setTextColor(...INK).setFont("helvetica", "bold").setFontSize(22);
+  const titulo = `${estimate.input.brand} ${estimate.input.model} ${estimate.input.year}`;
+  doc.text(doc.splitTextToSize(titulo, CW - 40), M, y);
+  if (brandLogo) drawFitted(doc, brandLogo, W - M - 34, y - 12, 34, 16, "right");
+  y += 6;
 
-  yPos = 37;
-
-  // Título y vehículo en layout horizontal compacto
-  doc.setFontSize(11);
-  doc.setTextColor(...lightGray);
-  doc.setFont('helvetica', 'normal');
-  doc.text('ESTIMADO DE IMPORTACIÓN', margin, yPos);
-  
-  doc.setFontSize(20);
-  doc.setTextColor(...darkBlue);
-  doc.setFont('helvetica', 'bold');
-  const vehicleInfo = `${estimate.input.brand} ${estimate.input.model} ${estimate.input.year}`;
-  doc.text(vehicleInfo, margin, yPos + 8);
-  
-  yPos += 15;
-
-  // Badges compactos - inline
-  const badges = [
+  const chips = [
+    estimate.condition === "nuevo" ? "Nuevo" : "Usado",
     estimate.vehicleCategory.label,
-    estimate.planConfig.label,
+    `Plan ${estimate.planConfig.label} · ${estimate.planConfig.timelineLabel}`,
     `ISC ${formatPercentage(estimate.iscRate)}`,
+    `Ad valorem ${formatPercentage(estimate.adValoremRate)}`,
   ];
-
-  const badgeWidth = 38;
-  const badgeSpacing = 4;
-  const badgeHeight = 8;
-  let badgeX = margin;
-
-  badges.forEach((badge) => {
-    doc.setFillColor(...veryLightGray);
-    doc.setDrawColor(...mediumGray);
-    doc.setLineWidth(0.2);
-    doc.roundedRect(badgeX, yPos - 4, badgeWidth, badgeHeight, 2, 2, 'FD');
-    
-    doc.setFontSize(8);
-    doc.setTextColor(...mediumGray);
-    doc.setFont('helvetica', 'bold');
-    doc.text(badge, badgeX + badgeWidth / 2, yPos + 1, { align: 'center' });
-    badgeX += badgeWidth + badgeSpacing;
+  let cx = M;
+  doc.setFontSize(7.5).setFont("helvetica", "bold");
+  chips.forEach((chip) => {
+    const tw = doc.getTextWidth(chip) + 7;
+    if (cx + tw > W - M) {
+      cx = M;
+      y += 8;
+    }
+    doc.setFillColor(...PAPER).setDrawColor(...LINE).setLineWidth(0.2);
+    doc.roundedRect(cx, y, tw, 6.5, 3.25, 3.25, "FD");
+    doc.setTextColor(...INK_2);
+    doc.text(chip, cx + 3.5, y + 4.4);
+    cx += tw + 2.5;
   });
+  y += 13;
 
-  yPos += 10;
+  /* ── Dos tarjetas de resumen ────────────────────────────────────── */
+  const cardH = 27;
+  const gap = 5;
+  const cardW = (CW - gap) / 2;
 
-  // Precio final - diseño premium compacto
-  const priceBoxHeight = 24;
-  
-  // Gradiente sutil con borde
-  doc.setFillColor(249, 250, 251);
-  doc.roundedRect(margin, yPos, contentWidth, priceBoxHeight, 3, 3, 'F');
-  
-  doc.setDrawColor(...accentBlue);
-  doc.setLineWidth(1);
-  doc.roundedRect(margin, yPos, contentWidth, priceBoxHeight, 3, 3, 'S');
-  
-  // Layout horizontal: label | precio
-  doc.setFontSize(10);
-  doc.setTextColor(...lightGray);
-  doc.setFont('helvetica', 'bold');
-  doc.text('PRECIO FINAL ESTIMADO', margin + 5, yPos + 8);
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Lima, Perú', margin + 5, yPos + 14);
-  
-  doc.setFontSize(26);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...darkBlue);
-  doc.text(formatCurrency(estimate.finalEstimate), pageWidth - margin - 5, yPos + 16, { align: 'right' });
-  
-  yPos += priceBoxHeight + 8;
+  doc.setFillColor(...INK);
+  doc.roundedRect(M, y, cardW, cardH, 3, 3, "F");
+  doc.setTextColor(...SILVER).setFont("helvetica", "bold").setFontSize(7.5);
+  doc.text("PUESTO EN LIMA, CON PLACAS", M + 6, y + 8, { charSpace: 0.4 });
+  doc.setTextColor(...WHITE).setFontSize(22);
+  doc.text(formatCurrency(estimate.finalEstimate), M + 6, y + 17.5);
+  doc.setTextColor(...SILVER).setFont("helvetica", "normal").setFontSize(7.5);
+  doc.text(
+    `Rango ${formatCurrency(estimate.finalRange.min)} – ${formatCurrency(estimate.finalRange.max)}`,
+    M + 6,
+    y + 23.5,
+  );
 
-  // Tabla de desglose
-  const tableData = [
-    ['Precio Miami', formatCurrency(estimate.input.priceMiami)],
-    ['Flete', formatCurrency(estimate.freight)],
-    ['Seguro internacional', formatCurrency(estimate.insurance)],
-    ['CIF (Costo + Seguro + Flete)', formatCurrency(estimate.cif)],
-    [`Ad Valorem (${formatPercentage(estimate.adValoremRate)})`, formatCurrency(estimate.adValorem)],
-    [`ISC (${formatPercentage(estimate.iscRate)} sobre CIF + Ad Valorem)`, formatCurrency(estimate.isc)],
-    ['IGV (15.5% sobre CIF + Ad Valorem + ISC)', formatCurrency(estimate.igv)],
-    ['IPM (2.5% sobre la misma base)', formatCurrency(estimate.ipm)],
-    ['State Compliance Fee (5%)', formatCurrency(estimate.stateComplianceFee)],
-    ['Broker Fee (10%)', formatCurrency(estimate.brokerFee)],
+  const x2 = M + cardW + gap;
+  doc.setFillColor(...PAPER).setDrawColor(...LINE).setLineWidth(0.3);
+  doc.roundedRect(x2, y, cardW, cardH, 3, 3, "FD");
+  doc.setTextColor(...INK_3).setFont("helvetica", "bold").setFontSize(7.5);
+  doc.text("EFECTIVO A DESEMBOLSAR", x2 + 6, y + 8, { charSpace: 0.4 });
+  doc.setTextColor(...INK).setFontSize(22);
+  doc.text(formatCurrency(estimate.cashRequired), x2 + 6, y + 17.5);
+  doc.setTextColor(...INK_3).setFont("helvetica", "normal").setFontSize(7.5);
+  doc.text(
+    `Incluye percepción del IGV (${formatPercentage(estimate.percepcionRate)}), recuperable como crédito fiscal.`,
+    x2 + 6,
+    y + 23.5,
+  );
+  y += cardH + 6;
+
+  /* ── Desglose agrupado ──────────────────────────────────────────── */
+  type Row = [string, string];
+  const group = (title: string, rows: Row[]) => [
+    [{ content: title, colSpan: 2, styles: { fontStyle: "bold" as const, textColor: INK_3, fillColor: WHITE, fontSize: 7.5, cellPadding: { top: 3, bottom: 1.2, left: 0, right: 0 } } }],
+    ...rows,
   ];
 
-  if (estimate.documentHandlingFee > 0) {
-    tableData.push(['Extra FastTrack', formatCurrency(estimate.documentHandlingFee)]);
-  }
+  const servicio = estimate.stateComplianceFee + estimate.brokerFee + estimate.documentHandlingFee;
+  const body = [
+    ...group("VEHÍCULO Y LOGÍSTICA", [
+      ["Precio en EE.UU.", formatCurrency(estimate.input.priceMiami)],
+      ["Flete marítimo hasta el Callao", formatCurrency(estimate.freight)],
+      ["Seguro internacional", formatCurrency(estimate.insurance)],
+      ["Valor CIF", formatCurrency(estimate.cif)],
+    ]),
+    ...group("TRIBUTOS SUNAT", [
+      [`Ad valorem ${formatPercentage(estimate.adValoremRate)} sobre CIF`, formatCurrency(estimate.adValorem)],
+      [`ISC ${formatPercentage(estimate.iscRate)} sobre CIF + ad valorem`, formatCurrency(estimate.isc)],
+      ["IGV 15.5% sobre CIF + ad valorem + ISC", formatCurrency(estimate.igv)],
+      ["IPM 2.5% sobre la misma base", formatCurrency(estimate.ipm)],
+    ]),
+    ...group("SERVICIO LUXCARS", [
+      ["Inspección, negociación, logística y gestión documentaria", formatCurrency(servicio)],
+    ]),
+  ];
 
   autoTable(doc, {
-    startY: yPos,
-    head: [['Concepto', 'Monto']],
-    body: tableData,
-    theme: 'plain',
-    headStyles: {
-      fillColor: darkBlue,
-      textColor: white,
-      fontStyle: 'bold',
-      fontSize: 10,
-      cellPadding: 4,
-      halign: 'left',
-    },
-    bodyStyles: {
-      textColor: mediumGray,
-      fontSize: 9,
-      cellPadding: 3.5,
-    },
-    alternateRowStyles: {
-      fillColor: [252, 252, 253],
-    },
-    styles: {
-      cellPadding: 3.5,
-      lineColor: [226, 232, 240],
-      lineWidth: 0.2,
-      fontSize: 9,
-    },
+    startY: y,
+    body,
+    theme: "plain",
+    styles: { font: "helvetica", fontSize: 9, textColor: INK_2, cellPadding: { top: 2.1, bottom: 2.1, left: 0, right: 0 }, lineColor: LINE, lineWidth: 0 },
     columnStyles: {
-      0: { cellWidth: 'auto', halign: 'left', fontStyle: 'normal' },
-      1: { cellWidth: 55, halign: 'right', fontStyle: 'bold', textColor: darkBlue },
+      0: { cellWidth: CW - 45 },
+      1: { cellWidth: 45, halign: "right", fontStyle: "bold", textColor: INK },
     },
-    margin: { left: margin, right: margin },
+    margin: { left: M, right: M },
+    didDrawCell: (data) => {
+      // Filete fino bajo cada fila de dato (no bajo los títulos de grupo).
+      if (data.column.index === 1 && data.row.raw && Array.isArray(data.row.raw) && data.row.raw.length === 2) {
+        doc.setDrawColor(...LINE).setLineWidth(0.2);
+        doc.line(M, data.cell.y + data.cell.height, W - M, data.cell.y + data.cell.height);
+      }
+    },
   });
+  y = (doc as DocWithAutoTable).lastAutoTable.finalY + 3;
 
-  yPos = (doc as DocWithAutoTable).lastAutoTable.finalY + 6;
+  // Total
+  doc.setFillColor(...PAPER);
+  doc.roundedRect(M, y, CW, 11, 2, 2, "F");
+  doc.setTextColor(...INK).setFont("helvetica", "bold").setFontSize(10);
+  doc.text("Costo total puesto en Lima", M + 4, y + 7.2);
+  doc.text(formatCurrency(estimate.finalEstimate), W - M - 4, y + 7.2, { align: "right" });
+  y += 14;
 
-  // Timeline y nota en una línea compacta
-  doc.setFontSize(8);
-  doc.setTextColor(...accentBlue);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Timeline estimado: ${estimate.planConfig.timelineLabel}`, margin, yPos);
-  
-  yPos += 5;
+  // Percepción, aparte
+  doc.setDrawColor(...SILVER).setLineWidth(0.6);
+  doc.line(M, y, M, y + 12);
+  doc.setTextColor(...INK).setFont("helvetica", "bold").setFontSize(9);
+  doc.text(`Percepción del IGV ${formatPercentage(estimate.percepcionRate)}: ${formatCurrency(estimate.percepcion)}`, M + 4, y + 4.5);
+  doc.setTextColor(...INK_3).setFont("helvetica", "normal").setFontSize(8);
+  doc.text(
+    doc.splitTextToSize("No es un costo: es un adelanto del IGV que se recupera como crédito fiscal. Sí es efectivo que debes tener el día del despacho.", CW - 6),
+    M + 4,
+    y + 9.5,
+  );
+  y += 17;
 
-  // Nota legal compacta
-  doc.setFontSize(7);
-  doc.setTextColor(...lightGray);
-  doc.setFont('helvetica', 'italic');
-  const noteText = 'Estimado sujeto a variaciones según partida arancelaria, condición del vehículo y determinación de SUNAT.';
-  const splitNote = doc.splitTextToSize(noteText, contentWidth);
-  doc.text(splitNote, margin, yPos);
-  yPos += splitNote.length * 3 + 5;
-
-  // Footer minimalista - barra inferior
-  const footerY = pageHeight - 20;
-  
-  // Barra oscura inferior
-  doc.setFillColor(...darkBlue);
-  doc.rect(0, footerY, pageWidth, 20, 'F');
-  
-  // Información de contacto en una línea
-  doc.setFontSize(7);
-  doc.setTextColor(...lightGray);
-  doc.setFont('helvetica', 'normal');
-  
-  const contactY = footerY + 7;
-  
-  // Izquierda: Empresa
-  doc.setFont('helvetica', 'bold');
-  doc.text('LUXCARS PERU', margin, contactY);
-  
-  // Centro: Contacto
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Email: ${LUXCARS_CONFIG.contact.email}`, pageWidth / 2 - 30, contactY);
-  doc.text(`Tel: ${LUXCARS_CONFIG.contact.phone}`, pageWidth / 2 - 30, contactY + 4);
-  
-  // Derecha: Fecha
-  const date = new Date().toLocaleDateString('es-PE', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+  /* ── Qué incluye ────────────────────────────────────────────────── */
+  doc.setTextColor(...INK_3).setFont("helvetica", "bold").setFontSize(8);
+  doc.text("QUÉ INCLUYE EL SERVICIO", M, y, { charSpace: 0.5 });
+  y += 6;
+  const incluye = [
+    "Búsqueda en dealers verificados de EE.UU.",
+    "CarFax, AutoCheck e inspección presencial antes de pagar",
+    "Flete marítimo y seguro internacional",
+    "Despacho SUNAT, homologación, placas y tarjeta de propiedad",
+    "Seguimiento semanal por WhatsApp",
+    `Entrega estimada: ${estimate.planConfig.timelineLabel} desde la reserva`,
+  ];
+  const colW = CW / 2;
+  doc.setTextColor(...INK_2).setFont("helvetica", "normal").setFontSize(8.5);
+  incluye.forEach((item, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const ix = M + col * colW;
+    const iy = y + row * 6;
+    doc.setFillColor(...INK);
+    doc.circle(ix + 1.2, iy - 1.1, 1, "F");
+    doc.text(item, ix + 5, iy);
   });
-  doc.text(`Generado: ${date}`, pageWidth - margin, contactY, { align: 'right' });
-  doc.text('Lima, Peru', pageWidth - margin, contactY + 4, { align: 'right' });
+  y += Math.ceil(incluye.length / 2) * 6 + 3;
 
-  // Guardar
-  const cleanBrand = estimate.input.brand.replace(/[^a-zA-Z0-9]/g, '_');
-  const cleanModel = estimate.input.model.replace(/[^a-zA-Z0-9]/g, '_');
-  const fileName = `LuxCars_Estimado_${cleanBrand}_${cleanModel}_${estimate.input.year}.pdf`;
-  doc.save(fileName);
+  /* ── Nota legal ─────────────────────────────────────────────────── */
+  doc.setTextColor(...INK_3).setFont("helvetica", "normal").setFontSize(7.5);
+  doc.text(
+    doc.splitTextToSize(
+      "Estimado referencial calculado con las tasas vigentes. Los tributos son tasas fijas; varían el tipo de cambio del día, el flete del mes y el valor que SUNAT acepte como base imponible. El ad valorem de 0% aplica solo a vehículos nuevos originarios de EE.UU. con certificado de origen. No constituye oferta en firme.",
+      CW,
+    ),
+    M,
+    y,
+  );
+
+  /* ── Pie ────────────────────────────────────────────────────────── */
+  const FOOT_H = 22;
+  doc.setFillColor(...INK);
+  doc.rect(0, H - FOOT_H, W, FOOT_H, "F");
+  doc.setTextColor(...WHITE).setFont("helvetica", "bold").setFontSize(8.5);
+  doc.text(legalName, M, H - FOOT_H + 8);
+  doc.setTextColor(...SILVER).setFont("helvetica", "normal").setFontSize(7.5);
+  doc.text(`RUC ${ruc} · ${contact.address}, ${contact.city}`, M, H - FOOT_H + 13.5);
+  doc.setTextColor(...WHITE).setFont("helvetica", "bold").setFontSize(8.5);
+  doc.text(`WhatsApp ${contact.phone}`, W - M, H - FOOT_H + 8, { align: "right" });
+  doc.setTextColor(...SILVER).setFont("helvetica", "normal").setFontSize(7.5);
+  doc.text(`${contact.email} · luxcars.pe`, W - M, H - FOOT_H + 13.5, { align: "right" });
+
+  const clean = (s: string) => s.replace(/[^a-zA-Z0-9]/g, "_");
+  doc.save(`LuxCars_Estimado_${clean(estimate.input.brand)}_${clean(estimate.input.model)}_${estimate.input.year}.pdf`);
 }

@@ -210,3 +210,43 @@ catálogo sale de un listado de esas plataformas. Ver la cabecera de
 5. Agregar la fila a la tabla maestra de este archivo.
 6. `npx tsc --noEmit`. Si la licencia exige atribución y falta el crédito, el
    build revienta a propósito.
+
+
+---
+
+## Logos de marcas (`public/images/brands/`) — actualizado 2026-09-16
+
+Vectores de Wikimedia Commons, versiones vigentes de cada marca. Son marcas
+registradas: se usan solo para identificar a la marca (uso nominativo), nunca
+como si LuxCars fuera concesionario oficial. Commons los aloja como dominio
+público o CC0 por no alcanzar el umbral de originalidad (texto y formas simples).
+
+| Archivo | Archivo en Commons | Licencia | Fuente |
+|---|---|---|---|
+| `astonmartin.svg` | Aston Martin wordmark.svg | Public domain | https://commons.wikimedia.org/wiki/File:Aston_Martin_wordmark.svg |
+| `audi.svg` | Audi-Logo 2016.svg | Public domain | https://commons.wikimedia.org/wiki/File:Audi-Logo_2016.svg |
+| `bentley.svg` | Bentley.svg | CC0 | https://commons.wikimedia.org/wiki/File:Bentley.svg |
+| `bmw.svg` | BMW logo (white).svg | Public domain | https://commons.wikimedia.org/wiki/File:BMW_logo_(white).svg |
+| `cadillac.svg` | Cadillac Logo 2021.svg | Public domain | https://commons.wikimedia.org/wiki/File:Cadillac_Logo_2021.svg |
+| `chevrolet.svg` | Chevrolet-logo.svg | Public domain | https://commons.wikimedia.org/wiki/File:Chevrolet-logo.svg |
+| `chrysler.svg` | Chrysler brand logo 2026.svg | Public domain | https://commons.wikimedia.org/wiki/File:Chrysler_brand_logo_2026.svg |
+| `dodge.svg` | Dodge 2022 logo.svg | Public domain | https://commons.wikimedia.org/wiki/File:Dodge_2022_logo.svg |
+| `ferrari.svg` | Ferrari wordmark vector HQ.svg | Public domain | https://commons.wikimedia.org/wiki/File:Ferrari_wordmark_vector_HQ.svg |
+| `ford.svg` | Ford-Logo-Vector.svg | Public domain | https://commons.wikimedia.org/wiki/File:Ford-Logo-Vector.svg |
+| `jeep.svg` | Jeep.svg | Public domain | https://commons.wikimedia.org/wiki/File:Jeep.svg |
+| `lamborghini.svg` | Lamborghini - logo wordmark (italy, 1963-).svg | Public domain | https://commons.wikimedia.org/wiki/File:Lamborghini_-_logo_wordmark_(italy,_1963-).svg |
+| `lexus.svg` | Lexus.svg | Public domain | https://commons.wikimedia.org/wiki/File:Lexus.svg |
+| `mclaren.svg` | McLaren Automotive logo.svg | Public domain | https://commons.wikimedia.org/wiki/File:McLaren_Automotive_logo.svg |
+| `mercedes.svg` | Mercedes-Benz (2025).svg | Public domain | https://commons.wikimedia.org/wiki/File:Mercedes-Benz_(2025).svg |
+| `porsche.svg` | Porsche Wordmark Logo Black.svg | Public domain | https://commons.wikimedia.org/wiki/File:Porsche_Wordmark_Logo_Black.svg |
+| `ram.svg` | Ram Trucks 2009 wordmark.svg | Public domain | https://commons.wikimedia.org/wiki/File:Ram_Trucks_2009_wordmark.svg |
+| `rangerover.svg` | Range Rover.svg | Public domain | https://commons.wikimedia.org/wiki/File:Range_Rover.svg |
+| `rollsroyce.svg` | Rolls royce motorcars logo.svg | Public domain | https://commons.wikimedia.org/wiki/File:Rolls_royce_motorcars_logo.svg |
+| `tesla.svg` | Tesla Motors Logo - White.svg | Public domain | https://commons.wikimedia.org/wiki/File:Tesla_Motors_Logo_-_White.svg |
+| `toyota.svg` | Toyota Logo.svg | Public domain | https://commons.wikimedia.org/wiki/File:Toyota_Logo.svg |
+
+## Fotos de ambiente
+
+| Archivo | Fuente | Autor | Licencia | Crédito |
+|---|---|---|---|---|
+| `images/lima/miraflores-atardecer.jpg` | [File:Miraflores - Lima, Peru at Night.jpg](https://commons.wikimedia.org/wiki/File:Miraflores_-_Lima,_Peru_at_Night.jpg) | geezaweezer (Flickr) | **CC BY 2.0** | **Obligatorio**: se publica con `<CreditoFoto />` en la portada de /comprar. |

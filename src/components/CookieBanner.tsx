@@ -91,51 +91,34 @@ export function CookieBanner() {
   return (
     <div
       role="region"
-      /* El nombre sale del propio encabezado visible, no de una cadena suelta
-         que se desincroniza en cuanto alguien edita el texto. */
       aria-labelledby="cookie-banner-titulo"
       aria-describedby="cookie-banner-texto"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 backdrop-blur-md animate-in slide-in-from-bottom duration-500"
+      className="fixed inset-x-3 bottom-3 z-50 sm:inset-x-auto sm:bottom-5 sm:left-5 sm:max-w-md"
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:px-6 sm:py-4">
-        <div className="min-w-0 flex-1">
-          <h2
-            id="cookie-banner-titulo"
-            className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-silver"
-          >
-            Utilizamos cookies
-          </h2>
-          <p
-            id="cookie-banner-texto"
-            className="mt-1 text-xs leading-relaxed text-ink-3"
-          >
-            Utilizamos cookies esenciales para el funcionamiento del sitio y cookies opcionales para mejorar tu experiencia y analizar el uso.{" "}
-            <Link
-              href="/cookies"
-              className="text-ink-2 underline underline-offset-2 transition-colors hover:text-silver-bright"
-            >
-              Más información
-              <span className="sr-only"> sobre nuestro uso de cookies</span>
-            </Link>
-          </p>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+      <div className="rounded-2xl border border-line bg-surface/95 p-4 shadow-[var(--lux-shadow-lg)] backdrop-blur-xl sm:p-5">
+        <h2 id="cookie-banner-titulo" className="text-sm font-semibold text-ink">
+          Usamos cookies
+        </h2>
+        <p id="cookie-banner-texto" className="mt-1 text-xs leading-relaxed text-ink-3">
+          Esenciales para que el sitio funcione y opcionales para mejorar tu experiencia.{" "}
+          <Link href="/cookies" className="text-ink-2 underline underline-offset-2 hover:text-ink">
+            Más información<span className="sr-only"> sobre nuestro uso de cookies</span>
+          </Link>
+        </p>
+        <div className="mt-3 flex gap-2">
           <button
             type="button"
             onClick={handleReject}
-            className="min-h-11 flex-1 whitespace-nowrap rounded-full border border-line-strong px-5 py-2 text-xs font-medium uppercase tracking-[0.12em] text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink sm:flex-none"
+            className="min-h-10 flex-1 rounded-full border border-line-strong px-4 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
           >
-            Rechazar
-            <span className="sr-only"> las cookies opcionales</span>
+            Rechazar<span className="sr-only"> las cookies opcionales</span>
           </button>
           <button
             type="button"
             onClick={handleAccept}
-            className="min-h-11 flex-1 whitespace-nowrap rounded-full border border-silver-bright bg-silver-bright px-5 py-2 text-xs font-medium uppercase tracking-[0.12em] text-void transition-colors hover:bg-silver hover:border-silver sm:flex-none"
+            className="min-h-10 flex-1 rounded-full bg-ink px-4 text-sm font-semibold text-void transition-colors hover:bg-silver-bright"
           >
-            Aceptar
-            <span className="sr-only"> las cookies opcionales</span>
+            Aceptar<span className="sr-only"> las cookies opcionales</span>
           </button>
         </div>
       </div>

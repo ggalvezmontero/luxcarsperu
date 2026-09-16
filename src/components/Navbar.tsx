@@ -7,12 +7,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "./Button";
+import { Icon, WhatsAppIcon } from "./ui/Icon";
 
-/* Las tres líneas de negocio con página propia van primero: antes el menú
-   solo ofrecía anclas de la home y la web entera parecía una importadora.
-   El logo es el enlace a Inicio, así que no se repite como ítem.
-   El menú hamburguesa sigue activo hasta lg (1024 px): por debajo de ese
-   ancho esta fila no se muestra. */
 const NAV_LINKS = [
   { label: "Comprar", href: "/comprar" },
   { label: "Importar", href: "/importar" },
@@ -21,171 +17,142 @@ const NAV_LINKS = [
   { label: "Cómo funciona", href: "/como-funciona" },
 ];
 
+const WA_HREF = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}`;
+
 export function Navbar() {
   const pathname = usePathname();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+  /* Se guarda la ruta en la que se abrió: al navegar, `open` se vuelve falso
+     solo, sin efectos ni setState al cambiar el pathname. */
+  const [openAt, setOpenAt] = useState<string | null>(null);
+  const open = openAt === pathname;
+  const setOpen = (next: boolean) => setOpenAt(next ? pathname : null);
+  const [scrolled, setScrolled] = useState(false);
 
-  /* Solo se marca la ruta, nunca el ancla: el hash lo gobierna el scroll. */
   const isCurrent = (href: string) =>
-    !href.includes("#") && href !== "/" && pathname === href;
+    !href.includes("#") && href !== "/" && pathname.startsWith(href);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 24);
-    };
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  /* Bloquear el scroll del fondo mientras el menú está abierto. */
   useEffect(() => {
-    if (!isMenuOpen) return;
-
-    const close = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest?.("[data-navbar-root]")) return;
-      setIsMenuOpen(false);
+    document.documentElement.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.documentElement.style.overflow = "";
     };
-
-    window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
-  }, [isMenuOpen]);
-
-  const handleLinkClick = () => {
-    setIsMenuOpen(false);
-  };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
+    <>
     <header
       className={cn(
-        "sticky top-0 z-50 w-full border-b transition-colors duration-300",
-        isScrolled
-          ? "border-line bg-bg/85 shadow-lg backdrop-blur-xl backdrop-saturate-150"
-          : "border-transparent bg-bg/20 backdrop-blur-md",
+        "fixed inset-x-0 top-0 z-50 transition-[background-color] duration-300",
+        scrolled || open ? "bg-void/90 backdrop-blur-xl" : "bg-transparent",
       )}
     >
       <nav
-        data-navbar-root
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-12"
+        aria-label="Principal"
+        className="container-lux flex h-[var(--lux-nav-h)] items-center justify-between gap-6"
       >
-        <Link
-          href="/"
-          onClick={handleLinkClick}
-          className="flex min-w-0 items-center gap-3"
-        >
+        <Link href="/" className="flex shrink-0 items-center" aria-label="LuxCars Perú, inicio">
           <Image
             src="/brand/logo-blanco.svg"
-            alt={LUXCARS_CONFIG.brandName}
+            alt=""
             width={1010}
             height={590}
-            className="h-11 w-auto shrink-0 sm:h-12 lg:h-14"
             priority
+            className="h-12 w-auto sm:h-14"
           />
-          <span className="hidden text-[9px] uppercase tracking-[0.25em] text-ink-4 xl:inline">
-            Miami · Lima
-          </span>
         </Link>
 
-        <div className="hidden flex-1 items-center justify-center whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.14em] text-ink-2 lg:flex lg:gap-5 xl:gap-7 xl:text-xs xl:tracking-[0.26em]">
+        <ul className="hidden items-center gap-1 lg:flex">
           {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={handleLinkClick}
-              aria-current={isCurrent(link.href) ? "page" : undefined}
-              className={cn(
-                "group relative transition-colors duration-300 hover:text-ink",
-                isCurrent(link.href) ? "text-ink" : "",
-              )}
-            >
-              {link.label}
-              <span
+            <li key={link.href}>
+              <Link
+                href={link.href}
+                aria-current={isCurrent(link.href) ? "page" : undefined}
                 className={cn(
-                  "absolute inset-x-0 -bottom-2 h-px origin-left bg-silver transition-transform duration-300 group-hover:scale-x-100",
-                  isCurrent(link.href) ? "scale-x-100" : "scale-x-0",
+                  "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                  isCurrent(link.href)
+                    ? "bg-surface-2 text-ink"
+                    : "text-ink-2 hover:bg-surface-2/70 hover:text-ink",
                 )}
-              />
-            </Link>
+              >
+                {link.label}
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
 
-        <div className="hidden lg:flex">
-          <Button
-            href="/#contact"
-            size="md"
-            className="!bg-silver !text-void !shadow-none hover:!bg-silver-bright"
-          >
-            Contáctenos
-          </Button>
-        </div>
-
-        <button
-          onClick={() => setIsMenuOpen((prev) => !prev)}
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors duration-300 hover:border-silver hover:bg-surface-2 lg:hidden"
-          aria-label={isMenuOpen ? "Cerrar navegación" : "Abrir navegación"}
-          aria-expanded={isMenuOpen}
-          aria-controls="mobile-menu"
-        >
-          <span className="relative h-4 w-4">
-            <span
-              className={cn(
-                "absolute inset-x-0 top-0 h-0.5 rounded-full bg-silver-bright transition-transform duration-300",
-                isMenuOpen ? "translate-y-1.5 rotate-45" : "",
-              )}
-            />
-            <span
-              className={cn(
-                "absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-silver-bright transition-opacity duration-300",
-                isMenuOpen ? "opacity-0" : "opacity-100",
-              )}
-            />
-            <span
-              className={cn(
-                "absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-silver-bright transition-transform duration-300",
-                isMenuOpen ? "-translate-y-1.5 -rotate-45" : "",
-              )}
-            />
-          </span>
-        </button>
-      </nav>
-
-      <div
-        id="mobile-menu"
-        className={cn(
-          "overflow-hidden transition-all duration-300 lg:hidden",
-          isMenuOpen
-            ? "max-h-[32rem] opacity-100 pointer-events-auto"
-            : "max-h-0 opacity-0 pointer-events-none",
-        )}
-      >
-        <div className="mx-4 mb-4 space-y-2 rounded-lux-xl border border-line bg-surface/95 px-3 py-4 text-xs uppercase tracking-[0.3em] text-ink-2 backdrop-blur-xl">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={handleLinkClick}
-              aria-current={isCurrent(link.href) ? "page" : undefined}
-              className={cn(
-                "block rounded-lux border border-transparent px-4 py-3 text-center transition-colors duration-300 hover:border-line-strong hover:bg-surface-2 hover:text-ink",
-                isCurrent(link.href) ? "border-line-strong bg-surface-2 text-ink" : "",
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
-          <div className="px-1 pt-1">
-            <Button
-              href="/#contact"
-              size="md"
-              className="w-full !bg-silver !text-void !shadow-none hover:!bg-silver-bright"
-            >
-              Contáctenos
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:block">
+            <Button href={WA_HREF} variant="whatsapp" size="md">
+              <WhatsAppIcon size={18} />
+              WhatsApp
             </Button>
           </div>
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-label={open ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface/60 text-ink transition-colors hover:border-line-strong lg:hidden"
+          >
+            <Icon name={open ? "close" : "menu"} size={20} />
+          </button>
+        </div>
+      </nav>
+    </header>
+
+      {/* Menú móvil: va FUERA del header porque el backdrop-filter de la barra
+          crea un bloque contenedor y recorta lo que se sale de ella. */}
+      <div
+        id="mobile-menu"
+        inert={!open}
+        className={cn(
+          "fixed inset-x-0 bottom-0 top-[var(--lux-nav-h)] z-40 flex flex-col overflow-y-auto bg-void/95 backdrop-blur-xl transition-opacity duration-200 lg:hidden",
+          open ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      >
+        <ul className="container-lux flex flex-col gap-1 pt-6">
+          {NAV_LINKS.map((link) => (
+            <li key={link.href}>
+              <Link
+                href={link.href}
+                onClick={() => setOpen(false)}
+                aria-current={isCurrent(link.href) ? "page" : undefined}
+                className={cn(
+                  "flex items-center justify-between rounded-2xl px-4 py-4 text-lg font-medium transition-colors",
+                  isCurrent(link.href) ? "bg-surface-2 text-ink" : "text-ink-2 hover:bg-surface-2",
+                )}
+              >
+                {link.label}
+                <Icon name="chevronRight" size={18} className="text-ink-4" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div className="container-lux mt-auto flex flex-col gap-3 border-t border-line py-6">
+          <Button href={WA_HREF} variant="whatsapp" size="lg" className="w-full">
+            <WhatsAppIcon size={20} />
+            Escribir por WhatsApp
+          </Button>
+          <p className="text-center text-xs text-ink-4">
+            {LUXCARS_CONFIG.contact.address}
+          </p>
         </div>
       </div>
-    </header>
+    </>
   );
 }

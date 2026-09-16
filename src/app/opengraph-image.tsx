@@ -64,7 +64,7 @@ export default function OpengraphImage() {
             }}
           >
             LUX
-            <span style={{ color: BRAND_PALETTE.gold, padding: "0 18px" }}>
+            <span style={{ color: BRAND_PALETTE.silver, padding: "0 18px" }}>
               |
             </span>
             CARS

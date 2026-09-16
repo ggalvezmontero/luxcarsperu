@@ -189,7 +189,7 @@ export function PortalLoginForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-lux bg-gold px-4 py-3 text-sm font-medium text-void transition-colors hover:bg-gold-bright disabled:opacity-60"
+          className="mt-6 w-full rounded-lux bg-ink px-4 py-3 text-sm font-medium text-void transition-colors hover:bg-silver-bright disabled:opacity-60"
         >
           {submitting ? "Entrando…" : "Entrar"}
         </button>

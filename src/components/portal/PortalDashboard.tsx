@@ -41,7 +41,7 @@ function MetricCard({
   loading: boolean;
 }) {
   const valueColor =
-    tone === "oro" ? "text-gold" : tone === "atencion" ? "text-warn" : "text-ink";
+    tone === "oro" ? "text-silver-bright" : tone === "atencion" ? "text-warn" : "text-ink";
   const ring =
     tone === "atencion" ? "border-warn/30" : "border-line";
 

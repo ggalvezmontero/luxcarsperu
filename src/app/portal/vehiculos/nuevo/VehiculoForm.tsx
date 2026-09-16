@@ -857,7 +857,7 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
         <button
           type="submit"
           disabled={envio.fase === "guardando"}
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-gold px-8 text-sm font-medium uppercase tracking-[0.16em] text-void transition-colors hover:bg-gold-bright disabled:pointer-events-none disabled:opacity-50"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-ink px-8 text-sm font-medium uppercase tracking-[0.16em] text-void transition-colors hover:bg-silver-bright disabled:pointer-events-none disabled:opacity-50"
         >
           {envio.fase === "guardando" ? "Guardando…" : "Guardar vehículo"}
         </button>

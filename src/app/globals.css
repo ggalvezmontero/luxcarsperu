@@ -1,100 +1,59 @@
 @import "tailwindcss";
 
-/* ===========================================================================
-   NO BORRAR: Tailwind v4 detecta clases escaneando los archivos del proyecto.
-   Los iconos que Next resuelve por convención de archivo —src/app/icon.png,
-   apple-icon.png y favicon.ico— son BINARIOS. Al leerlos como texto, el
-   escáner extrae basura como si fuera un nombre de clase y emite CSS inválido
-   (`--tw-shadow: var(-<bytes>)` → "Unexpected token"). Eso no rompe una
-   pantalla: tumba la hoja de estilos entera y TODAS las rutas responden 500.
-   Se excluyen explícitamente. Si mañana se agrega otro binario dentro de
-   `src/`, hay que excluirlo igual.
-   =========================================================================== */
+/* Los iconos binarios de src/app/ no deben entrar al escáner de clases. */
 @source not "./icon.png";
 @source not "./apple-icon.png";
 @source not "./favicon.ico";
 
 /* ===========================================================================
-   SISTEMA DE COLOR LUX | CARS
+   SISTEMA DE DISEÑO LUX | CARS — "showroom nocturno"
    ---------------------------------------------------------------------------
-   Derivado de la paleta oficial del brand kit:
-       Negro  #050505    Blanco #FFFFFF
-       Plata  #C0C0C0    Oro    #D4AF37
-
-   REGLA DE PROPORCIÓN: la plata es el acento dominante; el oro se reserva
-   para menos del 5% de la superficie (un CTA principal, un dato destacado,
-   un acento del logo). El dorado sobre negro es el cliché de las importadoras
-   limeñas: usarlo con cuentagotas es lo que diferencia a LuxCars.
-
-   Todos los pares de uso real están verificados con la fórmula WCAG 2.1 y
-   cumplen AA como mínimo. No agregar un hex suelto en un componente: si hace
-   falta un color nuevo, se agrega aquí como token.
-
-   AUDITORÍA DE CONTRASTE (2026-09-15) — esa afirmación era falsa para dos
-   tokens y se corrigieron los valores. Medido siempre contra `surface-3`
-   (#232327), el fondo más claro sobre el que se pintan, que es el peor caso:
-
-     --color-ink-4      #787880 → #898991   3.58:1 → 4.51:1   (AA texto, 4.5)
-     --color-ink-3      #8E8E96 → #9E9EA6   4.82:1 → 5.89:1   (ver nota)
-     --color-line-strong #5D5D62 → #6D6D72  2.39:1 → 3.04:1   (AA no-textual, 3.0)
-
-   Por qué también se movió `ink-3`, que ya pasaba: al subir `ink-4` hasta el
-   mínimo AA los dos grises quedaban a 4.82 vs 4.51, indistinguibles a ojo, y
-   la escala de cuatro pesos se derrumbaba a tres. Subir `ink-3` restaura el
-   escalón. La escala queda 9.48 / 7.03 / 5.39 sobre `surface`.
-
-   `line-strong` es el borde de inputs y botones delineados: WCAG 1.4.11 pide
-   3:1 a los límites de un control, no 4.5. A 2.39:1 el borde del input contra
-   su propio relleno era casi invisible.
-
-   NO BAJAR ESTOS VALORES. `ink-4` está exactamente en el mínimo: cualquier
-   oscurecimiento lo saca de AA y hay ~140 usos de `text-ink-4` en el sitio.
-   El texto pequeño (10-11 px, que aquí abunda) no califica como "texto
-   grande", así que el umbral aplicable es 4.5:1 sin excepción.
+   Paleta del brand kit: Negro #050505 · Blanco · Plata #C0C0C0 · Oro #D4AF37.
+   La plata es el acento dominante; el oro se reserva para un CTA por pantalla.
+   Todos los grises de texto cumplen WCAG AA sobre `surface-3` (peor caso).
    =========================================================================== */
 
 :root {
-  /* Alias para CSS plano fuera de Tailwind. La fuente de verdad es @theme. */
-  --lux-shadow-sm: 0 1px 2px rgba(0, 0, 0, .6);
-  --lux-shadow: 0 8px 30px rgba(0, 0, 0, .5);
-  --lux-shadow-lg: 0 24px 70px rgba(0, 0, 0, .55);
+  --lux-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --lux-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --lux-shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.6);
+  --lux-nav-h: 76px;
 }
 
 @theme {
   /* Fondos */
   --color-void: #050505;
-  --color-bg: #0A0A0B;
+  --color-bg: #0a0a0b;
   --color-surface: #121214;
-  --color-surface-2: #1A1A1D;
+  --color-surface-2: #1a1a1d;
   --color-surface-3: #232327;
 
   /* Líneas */
-  --color-line: #2C2C31;
-  /* Borde de controles: 3.04:1 sobre surface-3 (WCAG 1.4.11). Ver cabecera. */
-  --color-line-strong: #6D6D72;
+  --color-line: #2c2c31;
+  --color-line-strong: #6d6d72;
 
   /* Texto */
-  --color-ink: #FFFFFF;
-  --color-ink-2: #B8B8BE;
-  --color-ink-3: #9E9EA6;
-  /* Mínimo AA exacto: 4.51:1 sobre surface-3. No oscurecer. Ver cabecera. */
+  --color-ink: #ffffff;
+  --color-ink-2: #b8b8be;
+  --color-ink-3: #9e9ea6;
   --color-ink-4: #898991;
 
-  /* Plata: el acento dominante */
-  --color-silver: #C0C0C0;
-  --color-silver-bright: #E8E8EC;
-  --color-silver-dim: #8A8A92;
+  /* Plata */
+  --color-silver: #c0c0c0;
+  --color-silver-bright: #e8e8ec;
+  --color-silver-dim: #8a8a92;
 
-  /* Oro: acento escaso */
-  --color-gold: #D4AF37;
-  --color-gold-bright: #E3C45C;
-  --color-gold-dim: #9A761F;
+  /* Oro */
+  --color-gold: #d4af37;
+  --color-gold-bright: #e3c45c;
+  --color-gold-dim: #9a761f;
 
   /* Semánticos */
-  --color-ok: #4ADE80;
-  --color-warn: #FBBF24;
-  --color-danger: #F87171;
-  --color-info: #7DD3FC;
+  --color-ok: #4ade80;
+  --color-warn: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #7dd3fc;
+  --color-whatsapp: #25d366;
 
   --radius-lux: 14px;
   --radius-lux-lg: 22px;
@@ -107,6 +66,7 @@
 html {
   scroll-behavior: smooth;
   color-scheme: dark;
+  scroll-padding-top: calc(var(--lux-nav-h) + 16px);
 }
 
 body {
@@ -116,132 +76,147 @@ body {
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-a { color: inherit; text-decoration: none; }
 
 ::selection {
   background: var(--color-silver);
   color: var(--color-void);
 }
 
-/* Foco visible y consistente en todo lo que se puede enfocar con teclado. */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--color-silver-bright);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
-/* ===========================================================================
-   PARCHE TEMPORAL — MENÚ MÓVIL CERRADO PERO TABULABLE
-   ---------------------------------------------------------------------------
-   QUÉ PASA: `#mobile-menu` (src/components/Navbar.tsx) se colapsa con
-   `max-h-0 opacity-0 pointer-events-none` dentro de un `overflow-hidden`.
-   Ninguna de esas tres propiedades saca un elemento del orden de tabulación:
-   `opacity: 0` no lo hace, `max-height: 0` con `overflow: hidden` tampoco, y
-   `pointer-events: none` solo desactiva el ratón, nunca el teclado.
+/* ---------------------------------------------------------------------------
+   Utilidades del sistema
+   --------------------------------------------------------------------------- */
+@utility container-lux {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 80rem; /* 1280px */
+  padding-inline: 1.25rem;
+  @media (min-width: 640px) { padding-inline: 2rem; }
+  @media (min-width: 1024px) { padding-inline: 2.5rem; }
+}
 
-   Comprobado en el navegador a 375 px con el menú CERRADO: sus 6 enlaces
-   siguen recibiendo foco (`visibility: visible`, `opacity: 0`). Es decir, en
-   móvil alguien que navega con teclado o conmutador atraviesa seis paradas
-   invisibles con el anillo de foco puesto sobre la nada — WCAG 2.4.3 (orden
-   del foco) y 2.4.7 (foco visible).
+@utility eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-silver);
+}
 
-   `visibility: hidden` sí saca a los descendientes del orden de tabulación, y
-   se aplica solo mientras el contenedor lleva `pointer-events-none`, que es
-   exactamente su estado cerrado. Al abrirse, Navbar cambia esa clase por
-   `pointer-events-auto` y esta regla deja de aplicar sola.
+@utility card-lux {
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  border-radius: var(--radius-lux-lg);
+}
 
-   NO SE TOCA LA TRANSICIÓN. El div ya lleva `transition-all duration-300` de
-   Tailwind, y `visibility` tiene una regla de interpolación propia: al pasar a
-   `hidden` se mantiene `visible` durante toda la transición y solo cambia al
-   final, mientras que al volver a `visible` cambia de inmediato. Es justo el
-   comportamiento que se quiere, gratis. Declarar aquí un `transition:` propio
-   sería contraproducente: el atajo pisaría el `transition-property: all` de
-   Tailwind y mataría la animación de colapso.
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
 
-   ESTO NO VA AQUÍ: la solución correcta es el atributo `inert` en el div del
-   menú cuando está cerrado, y eso vive en Navbar.tsx, que en esta sesión lo
-   está tocando otro equipo. En cuanto ese `inert` exista, BORRAR este bloque:
-   el parche deja de hacer falta y una regla de CSS acoplada al `id` y a una
-   clase utilitaria de otro componente es deuda, no diseño.
-   =========================================================================== */
-#mobile-menu.pointer-events-none {
-  visibility: hidden;
+/* Campos de formulario: un solo estilo para toda la web pública. */
+@utility field-lux {
+  width: 100%;
+  min-height: 3rem;
+  border-radius: var(--radius-lux);
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-surface-2);
+  padding: 0.75rem 1rem;
+  font-size: 1rem; /* evita el zoom automático en iOS */
+  color: var(--color-ink);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  &::placeholder { color: var(--color-ink-4); }
+  &:hover { border-color: var(--color-silver-dim); }
+  &:focus { border-color: var(--color-silver-bright); background: var(--color-surface-3); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+@utility select-lux {
+  appearance: none;
+  padding-right: 2.75rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5 10 12.5 15 7.5' stroke='%23C0C0C0' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  background-size: 20px 20px;
+  cursor: pointer;
+  & option { background: var(--color-surface-2); color: var(--color-ink); }
+}
+
+/* Fondo con resplandor plateado sutil detrás de portadas y bandas. */
+@utility glow-lux {
+  background-image:
+    radial-gradient(60% 50% at 50% 0%, rgba(192, 192, 192, 0.12), transparent 70%),
+    linear-gradient(180deg, var(--color-void), var(--color-bg));
+}
+
+/* Marquesina de logos: cero JS. */
+@keyframes lux-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.lux-marquee {
+  display: flex;
+  width: max-content;
+  animation: lux-marquee 48s linear infinite;
+}
+.lux-marquee:hover { animation-play-state: paused; }
+
+/* Rejilla de líneas finas para fondos de sección. */
+.lux-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .lux-marquee { animation: none; }
   *, *::before, *::after {
-    animation-duration: .01ms !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
-/* ===========================================================================
-   ANIMACIÓN DE ENTRADA — conducida por el timeline de scroll nativo
-   ---------------------------------------------------------------------------
-   Contraparte de src/components/ScrollAnimation.tsx. Reemplaza framer-motion
-   (112 KB de JS en la carga inicial de la home) por cero bytes de JS.
-
-   REGLA QUE NO SE NEGOCIA: el estado base es VISIBLE. La opacidad 0 solo
-   existe dentro de los @keyframes. Si el navegador no soporta
-   `animation-timeline`, o el usuario pidió menos movimiento, el contenido se
-   ve tal cual y no pasa nada. Nunca se debe mover la opacidad 0 al selector
-   base "para que el fade siempre funcione": eso ataría el pintado del
-   elemento LCP a la hidratación, que es exactamente el problema que esto
-   vino a resolver.
-
-   `animation-fill-mode: both` es lo que hace que un elemento que ya está en
-   el viewport al cargar se pinte en su estado final: su progreso dentro del
-   rango `entry` ya está al 100%.
-
-   Se animan `translate` y `scale` como propiedades independientes, no
-   `transform`, para no pisar ninguna utilidad de transform que Tailwind
-   ponga en el mismo nodo.
-   =========================================================================== */
-
+/* ---------------------------------------------------------------------------
+   Animación de entrada conducida por scroll (sin JS). Estado base: visible.
+   --------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
     [data-lux-reveal] {
       animation: lux-reveal-fade-up linear both;
       animation-timeline: view();
-      /* El rango se mide en PÍXELES sobre `cover`, no en porcentaje sobre
-         `entry`, y la razón es que estos envoltorios son enormes: en la home
-         van de 1.400 a 3.600 px de alto. Un porcentaje de `entry` se mide
-         contra la altura del ELEMENTO, así que `entry 60%` en una sección de
-         3.600 px significaría que la opacidad recién llega a 1 tras más de
-         2.000 px de scroll: el usuario estaría leyendo el encabezado de la
-         sección todavía translúcido.
-
-         Con `cover` + una longitud fija, el fundido siempre dura 300 px de
-         scroll desde que la sección asoma, mida lo que mida. */
       animation-range: cover calc(var(--lux-reveal-stagger, 0px))
-                       cover calc(300px + var(--lux-reveal-stagger, 0px));
+                       cover calc(260px + var(--lux-reveal-stagger, 0px));
     }
-
-    [data-lux-reveal="fadeIn"] {
-      animation-name: lux-reveal-fade-in;
-    }
-
-    [data-lux-reveal="scale"] {
-      animation-name: lux-reveal-scale;
-    }
+    [data-lux-reveal="fadeIn"] { animation-name: lux-reveal-fade-in; }
+    [data-lux-reveal="scale"] { animation-name: lux-reveal-scale; }
   }
 }
 
 @keyframes lux-reveal-fade-up {
-  from { opacity: 0; translate: 0 40px; }
+  from { opacity: 0; translate: 0 28px; }
   to   { opacity: 1; translate: 0 0; }
 }
-
 @keyframes lux-reveal-fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
 @keyframes lux-reveal-scale {
-  from { opacity: 0; scale: .95; }
+  from { opacity: 0; scale: 0.96; }
   to   { opacity: 1; scale: 1; }
 }
+
