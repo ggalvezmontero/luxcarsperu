@@ -32,6 +32,24 @@ const AD_VALOREM_BY_ORIGIN: Record<VehicleOrigin, number> = {
   otro: 0.06,
 };
 
+/**
+ * Resuelve el ad valorem considerando origen Y condición.
+ *
+ * La preferencia del APC Perú–EE.UU. EXCLUYE a los vehículos usados de la
+ * partida 87.03: un usado paga 6% aunque sea originario de EE.UU. y tenga
+ * certificado de origen. Solo los nuevos originarios llegan a 0%.
+ *
+ * Ante la duda se cobra 6%: prometer 0% y que el cliente pague 6% al
+ * nacionalizar es el error caro; lo contrario es una buena noticia.
+ */
+export function resolveAdValoremRate(params: {
+  origin: VehicleOrigin;
+  condition: VehicleCondition;
+}): number {
+  if (params.condition === "usado") return AD_VALOREM_BY_ORIGIN.otro;
+  return AD_VALOREM_BY_ORIGIN[params.origin];
+}
+
 export const PRICING_CONFIG = {
   freightByCategory: FREIGHT_ESTIMATES,
 

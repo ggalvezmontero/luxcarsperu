@@ -1,46 +1,104 @@
 @import "tailwindcss";
 
+/* ===========================================================================
+   SISTEMA DE COLOR LUX | CARS
+   ---------------------------------------------------------------------------
+   Derivado de la paleta oficial del brand kit:
+       Negro  #050505    Blanco #FFFFFF
+       Plata  #C0C0C0    Oro    #D4AF37
+
+   REGLA DE PROPORCIÓN: la plata es el acento dominante; el oro se reserva
+   para menos del 5% de la superficie (un CTA principal, un dato destacado,
+   un acento del logo). El dorado sobre negro es el cliché de las importadoras
+   limeñas: usarlo con cuentagotas es lo que diferencia a LuxCars.
+
+   Todos los pares de uso real están verificados con la fórmula WCAG 2.1 y
+   cumplen AA como mínimo. No agregar un hex suelto en un componente: si hace
+   falta un color nuevo, se agrega aquí como token.
+   =========================================================================== */
+
 :root {
-  --background: #0f0f0f;
-  --foreground: #fcfcfc;
-  --accent-gold-soft: #d7b977;
-  --accent-gold-bright: #f1d387;
-  --graphite: #1c1c1c;
-  --smoke: #d9d9d9;
+  /* Alias para CSS plano fuera de Tailwind. La fuente de verdad es @theme. */
+  --lux-shadow-sm: 0 1px 2px rgba(0, 0, 0, .6);
+  --lux-shadow: 0 8px 30px rgba(0, 0, 0, .5);
+  --lux-shadow-lg: 0 24px 70px rgba(0, 0, 0, .55);
 }
 
-html {
-  scroll-behavior: smooth;
-}
+@theme {
+  /* Fondos */
+  --color-void: #050505;
+  --color-bg: #0A0A0B;
+  --color-surface: #121214;
+  --color-surface-2: #1A1A1D;
+  --color-surface-3: #232327;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-brand: var(--accent-gold-bright);
-  --color-brand-alt: var(--accent-gold-soft);
-  --color-muted: #8f8f91;
+  /* Líneas */
+  --color-line: #2C2C31;
+  --color-line-strong: #5D5D62;
+
+  /* Texto */
+  --color-ink: #FFFFFF;
+  --color-ink-2: #B8B8BE;
+  --color-ink-3: #8E8E96;
+  --color-ink-4: #787880;
+
+  /* Plata: el acento dominante */
+  --color-silver: #C0C0C0;
+  --color-silver-bright: #E8E8EC;
+  --color-silver-dim: #8A8A92;
+
+  /* Oro: acento escaso */
+  --color-gold: #D4AF37;
+  --color-gold-bright: #E3C45C;
+  --color-gold-dim: #9A761F;
+
+  /* Semánticos */
+  --color-ok: #4ADE80;
+  --color-warn: #FBBF24;
+  --color-danger: #F87171;
+  --color-info: #7DD3FC;
+
+  --radius-lux: 14px;
+  --radius-lux-lg: 22px;
+  --radius-lux-xl: 32px;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(1200px at 20% 10%, rgba(241, 211, 135, 0.12), transparent 55%),
-    radial-gradient(900px at 80% 0%, rgba(215, 185, 119, 0.18), transparent 60%),
-    linear-gradient(160deg, #121212 0%, #161616 45%, rgba(25, 25, 27, 0.92) 70%, #0b0b0b 100%);
-  color: var(--foreground);
+  background: var(--color-bg);
+  color: var(--color-ink);
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+a { color: inherit; text-decoration: none; }
 
 ::selection {
-  background: rgba(241, 211, 135, 0.35);
-  color: #0f0f0f;
+  background: var(--color-silver);
+  color: var(--color-void);
+}
+
+/* Foco visible y consistente en todo lo que se puede enfocar con teclado. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-silver-bright);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }

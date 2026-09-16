@@ -2,60 +2,71 @@ import { LUXCARS_CONFIG } from "@/lib/config";
 import { SectionHeading } from "./SectionHeading";
 
 export function TimelineSection() {
+  const stages = LUXCARS_CONFIG.timeline;
+
   return (
     <section
       id="timeline"
-      className="scroll-mt-32 rounded-3xl md:rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950 via-black to-neutral-900 px-4 py-12 md:px-6 md:py-20 lg:px-14"
+      className="scroll-mt-32 rounded-lux-lg md:rounded-lux-xl border border-line bg-surface px-4 py-12 md:px-8 md:py-20 lg:px-14"
     >
       <SectionHeading
         eyebrow="Timeline de entrega"
         title="Tu auto llega a Lima en 7 hitos guiados por especialistas"
         description="Coordinamos cada paso con documentación compartida, reportes fotográficos y validación en tu idioma. Así mantenemos transparencia total de punta a punta."
       />
-      <div className="mt-8 md:mt-14 relative max-w-5xl mx-auto pl-14 md:pl-20">
-        {/* Línea vertical continua con gradiente mejorado */}
-        <div className="absolute left-[20px] md:left-[28px] top-[7px] bottom-[7px] w-[2px] md:w-[3px] bg-gradient-to-b from-white/50 via-white/30 via-white/20 to-transparent rounded-full" />
 
-        <div className="grid gap-5 md:gap-8">
-          {LUXCARS_CONFIG.timeline.map((stage, index) => (
-            <div
+      <ol className="mt-10 md:mt-16 max-w-5xl mx-auto grid gap-5 md:gap-8">
+        {stages.map((stage, index) => {
+          const isLast = index === stages.length - 1;
+
+          return (
+            <li
               key={stage.day}
-              className="group relative"
+              className="group relative pl-11 md:pl-16"
             >
-              {/* Círculo fuera de la tarjeta */}
-              <div className="absolute left-[-56px] md:left-[-76px] top-[16px] md:top-[24px] z-10">
-                <div className="relative">
-                  <span className="inline-flex h-10 w-10 md:h-14 md:w-14 items-center justify-center rounded-full border-[2px] md:border-[3px] border-white/50 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-md text-sm md:text-base font-bold text-white shadow-[0_8px_32px_rgba(255,255,255,0.2)] transition-all group-hover:scale-110 group-hover:border-white/70 group-hover:shadow-[0_12px_48px_rgba(255,255,255,0.3)]">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  {/* Pulse ring effect */}
-                  <span className="absolute inset-0 rounded-full border-2 border-white/30 opacity-0 transition-all group-hover:animate-ping group-hover:opacity-100" />
-                </div>
-              </div>
+              {/* Riel vertical: conecta este hito con el siguiente */}
+              {!isLast ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute left-[15px] md:left-[21px] top-1.5 md:top-2 -bottom-5 md:-bottom-8 w-px bg-line"
+                />
+              ) : null}
 
-              {/* Tarjeta */}
-              <div className="rounded-2xl md:rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.04] to-transparent p-4 md:p-7 shadow-[0_20px_80px_rgba(0,0,0,0.4)] transition-all hover:-translate-y-0.5 hover:border-white/20 hover:shadow-[0_25px_100px_rgba(0,0,0,0.5)]">
-                {/* Glow effect on hover */}
-                <div className="absolute inset-0 rounded-2xl md:rounded-3xl bg-gradient-to-br from-white/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+              {/* Marcador numerado */}
+              <span
+                aria-hidden="true"
+                className={[
+                  "absolute left-0 top-1.5 md:top-2 z-10 inline-flex h-8 w-8 md:h-11 md:w-11",
+                  "items-center justify-center rounded-full border font-mono text-[11px] md:text-sm",
+                  "tabular-nums bg-surface transition-colors",
+                  isLast
+                    ? "border-silver text-silver-bright"
+                    : "border-line-strong text-silver group-hover:border-silver group-hover:text-silver-bright",
+                ].join(" ")}
+              >
+                {String(index + 1).padStart(2, "0")}
+              </span>
 
-                <div className="relative grid gap-3 md:gap-4 md:grid-cols-[280px_1fr]">
+              {/* Tarjeta del hito */}
+              <div className="rounded-lux border border-line bg-surface-2 p-4 md:p-6 transition-colors hover:border-line-strong">
+                <div className="grid gap-2 md:gap-6 md:grid-cols-[220px_1fr] md:items-baseline">
                   <div className="space-y-1">
-                    <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.4em] text-white/40">
+                    <p className="font-mono text-[11px] md:text-xs uppercase tracking-[0.25em] tabular-nums text-silver">
                       {stage.day}
                     </p>
-                    <h3 className="text-lg md:text-xl font-bold text-white transition-colors group-hover:text-white">
+                    <h3 className="text-lg md:text-xl font-semibold tracking-tight text-ink">
                       {stage.title}
                     </h3>
                   </div>
-                  <p className="text-sm md:text-[15px] text-white/70 leading-relaxed">
+                  <p className="text-sm md:text-[15px] leading-relaxed text-ink-2">
                     {descriptions[index] ?? GENERIC_DESCRIPTION}
                   </p>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

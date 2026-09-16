@@ -31,7 +31,7 @@ export function Hero() {
   return (
     <section
       id="hero"
-      className="relative overflow-hidden rounded-3xl md:rounded-[40px] border border-white/10 bg-neutral-950/90 px-4 py-16 sm:px-6 sm:py-24 shadow-[inset_0_0_90px_rgba(255,255,255,0.08)] backdrop-blur-xl lg:px-20 lg:py-32"
+      className="relative isolate overflow-hidden rounded-lux-lg border border-line bg-bg px-4 py-16 sm:px-6 sm:py-24 md:rounded-lux-xl lg:px-20 lg:py-32"
     >
       <div className="absolute inset-0 -z-10">
         <Image
@@ -42,22 +42,39 @@ export function Hero() {
           sizes="100vw"
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-black/80 to-neutral-950/95" />
-        <div className="absolute -left-32 top-32 h-72 w-72 rounded-full bg-[#f5d072]/20 blur-3xl" />
-        <div className="pointer-events-none absolute -right-24 bottom-16 h-72 w-72 rounded-full bg-[#b68b2d]/30 blur-3xl" aria-hidden="true" />
+        {/* Velo sobrio: oscurece el lado del texto y deja respirar la foto. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-linear-to-r from-void via-void/90 to-void/70 lg:to-void/25"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-linear-to-t from-void via-transparent to-transparent"
+        />
       </div>
+
       <div className="mx-auto grid max-w-6xl gap-10 md:gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-        <div>
-          <h1 className="text-balance text-3xl md:text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+        <div className="min-w-0">
+          <span
+            aria-hidden="true"
+            className="block h-px w-12 bg-silver/70 sm:w-16"
+          />
+          <h1 className="mt-6 text-balance text-3xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-6xl">
             Importamos tu auto de lujo desde Miami con transparencia absoluta.
           </h1>
-          <p className="mt-5 md:mt-6 max-w-xl text-pretty text-base md:text-lg text-white/70 lg:text-xl">
+          <p className="mt-5 max-w-xl text-pretty text-base text-ink-2 md:mt-6 md:text-lg lg:text-xl">
             LuxCars Perú es el broker boutique que representa tus intereses, no
             los de un dealer. Calcula tu costo real al instante y acompáñanos en
             un proceso seguro, guiado y 100% premium.
           </p>
-          <div className="mt-8 md:mt-10 flex flex-wrap items-center gap-3 md:gap-4">
-            <Button href="/#calculator" size="lg" className="!text-black" onClick={handleCalculateClick}>
+
+          <div className="mt-8 flex flex-wrap items-center gap-3 md:mt-10 md:gap-4">
+            <Button
+              href="/#calculator"
+              size="lg"
+              className="bg-gold! text-void! shadow-none! hover:bg-gold-bright! hover:shadow-none!"
+              onClick={handleCalculateClick}
+            >
               Calcular Ahora
             </Button>
             <Button
@@ -66,39 +83,44 @@ export function Hero() {
               size="lg"
               target="_blank"
               rel="noopener noreferrer"
+              className="border-line-strong! bg-transparent! text-silver-bright! hover:border-silver! hover:bg-surface-2!"
             >
               WhatsApp
             </Button>
           </div>
-          <ul className="mt-8 md:mt-12 grid gap-2 md:gap-3 text-sm text-white/65 sm:grid-cols-2">
+
+          <ul className="mt-8 grid gap-2 text-sm text-ink-2 sm:grid-cols-2 md:mt-12 md:gap-3">
             {HERO_BULLETS.map((bullet) => (
               <li
                 key={bullet}
-                className="flex items-start gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 md:px-5 md:py-3 backdrop-blur-sm"
+                className="flex min-w-0 items-start gap-2.5 rounded-lux border border-line bg-surface/70 px-3.5 py-2.5 backdrop-blur-sm md:gap-3 md:px-5 md:py-3"
               >
-                <span className="mt-1 inline-flex h-2.5 w-2.5 flex-none rounded-full bg-gradient-to-br from-[#f5d072] to-[#b68b2d] shadow-[0_0_12px_rgba(245,208,114,0.6)]" />
-                <span className="text-sm">{bullet}</span>
+                <span
+                  aria-hidden="true"
+                  className="mt-1.5 inline-block h-1.5 w-1.5 flex-none rounded-full bg-silver"
+                />
+                <span className="min-w-0 text-sm">{bullet}</span>
               </li>
             ))}
           </ul>
         </div>
-        <div className="relative overflow-hidden rounded-2xl md:rounded-[32px] border border-white/10 bg-gradient-to-br from-neutral-950 via-neutral-900/80 to-neutral-950 p-5 md:p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(245,208,114,0.2),transparent_55%)]" />
-          <div className="relative flex h-full flex-col justify-between gap-8 md:gap-12">
+
+        <div className="relative min-w-0 overflow-hidden rounded-lux-lg border border-line bg-surface/85 p-5 backdrop-blur-sm md:rounded-lux-xl md:p-8">
+          <div className="flex h-full flex-col justify-between gap-8 md:gap-12">
             <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+              <p className="text-xs uppercase tracking-[0.3em] text-silver-dim">
                 LuxCars Signature
               </p>
-              <h3 className="mt-3 md:mt-4 text-xl md:text-2xl font-semibold text-white">
+              <h2 className="mt-3 text-xl font-semibold text-ink md:mt-4 md:text-2xl">
                 Concierge Miami → Perú
-              </h3>
-              <p className="mt-3 md:mt-4 text-sm text-white/60">
+              </h2>
+              <p className="mt-3 text-sm text-ink-3 md:mt-4">
                 Acceso directo a inventario off-market, negociación avanzada,
                 informes CarFax + AutoCheck y logística end-to-end con equipo en
                 Miami y Lima.
               </p>
             </div>
-            <div className="grid gap-2.5 md:gap-4">
+            <dl className="grid gap-2.5 md:gap-4">
               {[
                 {
                   label: "Autos cubiertos",
@@ -109,17 +131,17 @@ export function Hero() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="flex items-center justify-between rounded-xl md:rounded-2xl border border-white/10 bg-white/5 px-3.5 py-3 md:px-5 md:py-4"
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lux border border-line bg-surface-2/70 px-3.5 py-3 md:px-5 md:py-4"
                 >
-                  <span className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-white/50">
+                  <dt className="text-[10px] uppercase tracking-[0.3em] text-ink-4 md:text-xs">
                     {item.label}
-                  </span>
-                  <span className="text-xs md:text-sm font-medium text-white">
+                  </dt>
+                  <dd className="text-xs font-medium text-silver-bright md:text-sm">
                     {item.value}
-                  </span>
+                  </dd>
                 </div>
               ))}
-            </div>
+            </dl>
           </div>
         </div>
       </div>

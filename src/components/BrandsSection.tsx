@@ -28,7 +28,7 @@ export function BrandsSection() {
   return (
     <section
       id="brands"
-      className="scroll-mt-32 rounded-[40px] border border-white/10 bg-black/70 px-6 py-20 backdrop-blur lg:px-14"
+      className="scroll-mt-32 rounded-lux-xl border border-line bg-surface px-5 py-16 sm:px-8 sm:py-20 lg:px-14"
     >
       <SectionHeading
         eyebrow="Marcas & gamas"
@@ -36,14 +36,14 @@ export function BrandsSection() {
         description="Trabajamos directamente con las marcas más deseadas del mundo y sus versiones más exclusivas: ediciones limitadas, packs especiales y configuraciones a medida."
         align="center"
       />
-      <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+
+      <ul className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-lux-lg border border-line bg-line sm:mt-14 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {BRAND_LOGOS.map((brand) => (
-          <article
+          <li
             key={brand.name}
-            className="group relative flex flex-col items-center justify-center gap-4 overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-neutral-950/85 via-black/70 to-neutral-900/90 p-8 text-center shadow-[0_25px_90px_rgba(0,0,0,0.4)] transition hover:-translate-y-1 hover:border-[#f5d072]/60 hover:shadow-[0_35px_140px_rgba(245,208,114,0.25)]"
+            className="group flex flex-col items-center justify-start gap-4 bg-surface px-4 py-7 text-center transition-colors duration-300 hover:bg-surface-2 sm:px-5 sm:py-8"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,208,114,0.3),transparent_70%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-            <div className="relative flex h-24 w-full items-center justify-center rounded-2xl border border-white/10 bg-white p-4">
+            <div className="flex h-14 w-full items-center justify-center rounded-lux bg-ink p-3 opacity-55 grayscale transition-opacity duration-300 group-hover:opacity-100 sm:h-16">
               <Image
                 src={`/images/brands/${brand.file}`}
                 alt={`Logo ${brand.name}`}
@@ -52,10 +52,12 @@ export function BrandsSection() {
                 className="h-full w-full object-contain"
               />
             </div>
-            <p className="relative text-sm font-semibold text-white/80">{brand.name}</p>
-          </article>
+            <p className="text-[0.6875rem] font-medium uppercase leading-tight tracking-[0.14em] text-ink-3 transition-colors duration-300 group-hover:text-silver-bright">
+              {brand.name}
+            </p>
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

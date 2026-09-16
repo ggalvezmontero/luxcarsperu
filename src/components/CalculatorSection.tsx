@@ -550,7 +550,7 @@ function CalculatorSectionInner() {
   return (
     <section
       id="calculator"
-      className="scroll-mt-32 rounded-[40px] md:rounded-[40px] rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/95 via-black/80 to-neutral-900 px-4 md:px-6 py-12 md:py-20 backdrop-blur lg:px-14"
+      className="scroll-mt-32 rounded-lux-lg md:rounded-lux-xl border border-line bg-surface px-4 md:px-6 py-12 md:py-20 lg:px-14"
     >
       <SectionHeading
         eyebrow="Calculadora pública"
@@ -561,10 +561,10 @@ function CalculatorSectionInner() {
       {!showResults ? (
         /* FORMULARIO */
         <div className="mt-8 md:mt-16 max-w-3xl mx-auto">
-          <div className="grid gap-5 md:gap-7 rounded-2xl md:rounded-3xl border border-white/10 bg-white/5 p-4 md:p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
+          <div className="grid gap-5 md:gap-7 rounded-lux md:rounded-lux-lg border border-line bg-surface-2 p-4 md:p-8 shadow-[var(--lux-shadow-lg)]">
             <div className="grid gap-4 md:gap-5">
-              <div className="grid gap-2.5 text-sm text-white/70">
-                <div className="flex items-center gap-2 text-white">
+              <div className="grid gap-2.5 text-sm text-ink-2">
+                <div className="flex items-center gap-2 text-ink">
                   <span className="font-semibold tracking-wide text-sm md:text-base">
                     Condición
                   </span>
@@ -582,16 +582,16 @@ function CalculatorSectionInner() {
                           setForm((prev) => ({ ...prev, condition: option.id }))
                         }
                         className={cn(
-                          "flex flex-col items-start gap-1 rounded-xl border px-3.5 py-3 text-left transition",
+                          "flex flex-col items-start gap-1 rounded-lux border px-3.5 py-3 text-left transition",
                           isSelected
-                            ? "border-[#f5d072]/80 bg-[#f5d072]/10 text-white"
-                            : "border-white/10 bg-black/40 text-white/60 hover:border-white/20 hover:text-white",
+                            ? "border-silver bg-surface-3 text-ink"
+                            : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink",
                         )}
                       >
-                        <span className="text-sm font-semibold text-white">
+                        <span className="text-sm font-semibold text-ink">
                           {option.label}
                         </span>
-                        <span className="text-[11px] leading-tight text-white/40">
+                        <span className="text-[11px] leading-tight text-ink-4">
                           {option.hint}
                         </span>
                       </button>
@@ -602,9 +602,9 @@ function CalculatorSectionInner() {
 
             </div>
 
-            <div className="grid gap-2.5 md:gap-3 text-sm text-white/70">
-              <div className="flex items-center gap-2 text-white">
-                <VehicleIcon size={18} />
+            <div className="grid gap-2.5 md:gap-3 text-sm text-ink-2">
+              <div className="flex items-center gap-2 text-ink">
+                <VehicleIcon size={18} className="text-silver" />
                 <span className="font-semibold tracking-wide text-sm md:text-base">
                   Tipo de vehículo & ISC
                 </span>
@@ -625,16 +625,16 @@ function CalculatorSectionInner() {
                       type="button"
                       onClick={() => handleVehicleTypeSelect(option.id)}
                       className={cn(
-                        "flex flex-col items-start gap-1.5 md:gap-2 rounded-xl md:rounded-2xl border px-4 md:px-5 py-3 md:py-4 text-left transition",
+                        "flex flex-col items-start gap-1.5 md:gap-2 rounded-lux border px-4 md:px-5 py-3 md:py-4 text-left transition",
                         isSelected
-                          ? "border-[#f5d072]/80 bg-[#f5d072]/10 text-white shadow-[0_15px_60px_rgba(245,208,114,0.2)]"
-                          : "border-white/10 bg-black/40 text-white/60 hover:border-white/20 hover:text-white",
+                          ? "border-silver bg-surface-3 text-ink"
+                          : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink",
                       )}
                     >
-                      <span className="text-sm font-semibold text-white">
+                      <span className="text-sm font-semibold text-ink">
                         {option.label}
                       </span>
-                      <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-white/40">
+                      <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-ink-4">
                         <TaxIcon size={14} />{" "}
                         {(() => {
                           const rate = resolveIscRate({
@@ -653,42 +653,42 @@ function CalculatorSectionInner() {
             </div>
 
             <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm text-white/70">
+              <label className="grid gap-2 text-sm text-ink-2">
                 Marca
                 <select
                   value={form.brand}
                   onChange={handleFieldChange("brand")}
-                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 pr-10 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base"
+                  className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 pr-10 text-ink hover:border-silver-dim focus:border-silver-bright appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base"
                   style={{
                     colorScheme: 'dark',
                     fontSize: '16px', // Prevenir zoom automático en móviles
                   }}
                 >
-                  <option value="" className="bg-neutral-900 text-white/60">Selecciona</option>
+                  <option value="" className="bg-surface text-ink-3">Selecciona</option>
                   {BRAND_OPTIONS.map((brand) => (
-                    <option key={brand} value={brand} className="bg-neutral-900 text-white">
+                    <option key={brand} value={brand} className="bg-surface text-ink">
                       {brand}
                     </option>
                   ))}
                 </select>
               </label>
-              <label className="grid gap-2 text-sm text-white/70">
+              <label className="grid gap-2 text-sm text-ink-2">
                 Modelo
                 <input
                   value={form.model}
                   onChange={handleFieldChange("model")}
                   placeholder="Ej. 911 Turbo S"
-                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base"
+                  className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 text-ink placeholder:text-ink-3 hover:border-silver-dim focus:border-silver-bright text-base"
                   style={{
                     fontSize: '16px', // Prevenir zoom automático en móviles
                   }}
                 />
               </label>
             </div>
-            <label className="grid gap-2 text-sm text-white/70">
+            <label className="grid gap-2 text-sm text-ink-2">
               <span className="flex items-center gap-2">
                 VIN
-                <span className="text-xs text-white/40">(opcional)</span>
+                <span className="text-xs text-ink-4">(opcional)</span>
                 <Tooltip content="Si tienes el VIN del vehículo, su primer carácter identifica el país de fabricación con certeza y ajusta el arancel automáticamente." />
               </span>
               <input
@@ -698,15 +698,15 @@ function CalculatorSectionInner() {
                 maxLength={17}
                 autoComplete="off"
                 spellCheck={false}
-                className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 font-mono uppercase tracking-wider text-white shadow-inner shadow-black/40 placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base"
+                className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 font-mono uppercase tracking-wider text-ink placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-ink-3 hover:border-silver-dim focus:border-silver-bright text-base"
                 style={{ fontSize: '16px' }}
               />
             </label>
             <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
-              <div className="grid gap-2 text-sm text-white/70">
+              <div className="grid gap-2 text-sm text-ink-2">
                 <div className="flex items-center gap-2">
                   <span>Año</span>
-                  <span className="text-xs text-white/40">
+                  <span className="text-xs text-ink-4">
                     (hasta 2 años)
                   </span>
                 </div>
@@ -716,13 +716,13 @@ function CalculatorSectionInner() {
                   value={form.year}
                   onChange={handleFieldChange("year")}
                   disabled={form.missingYearAndPrice}
-                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 pr-10 text-white shadow-inner shadow-black/40 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 pr-10 text-ink hover:border-silver-dim focus:border-silver-bright appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgNy41TDEwIDEyLjVMMTUgNy41IiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjUiLz4KPC9zdmc+Cg==')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat cursor-pointer text-base disabled:cursor-not-allowed disabled:opacity-50"
                   style={{
                     colorScheme: 'dark',
                     fontSize: '16px', // Prevenir zoom automático en móviles
                   }}
                 >
-                  <option value="" className="bg-neutral-900 text-white/60">Selecciona</option>
+                  <option value="" className="bg-surface text-ink-3">Selecciona</option>
                   {(() => {
                     // El rango se deriva de la regla de antigüedad, no se
                     // escribe a mano: si cambia la norma, cambia el select.
@@ -733,15 +733,15 @@ function CalculatorSectionInner() {
                       (_, i) => newest - i,
                     );
                     return years.map((year) => (
-                      <option key={year} value={year.toString()} className="bg-neutral-900 text-white">
+                      <option key={year} value={year.toString()} className="bg-surface text-ink">
                         {year}
                       </option>
                     ));
                   })()}
                 </select>
               </div>
-              <div className="grid gap-2 text-sm text-white/70">
-                <label htmlFor="calc-price" className="text-sm text-white/70">
+              <div className="grid gap-2 text-sm text-ink-2">
+                <label htmlFor="calc-price" className="text-sm text-ink-2">
                   Precio en Miami (USD)
                 </label>
                 <input
@@ -751,7 +751,7 @@ function CalculatorSectionInner() {
                   placeholder="Ej. 265000"
                   inputMode="decimal"
                   disabled={form.missingYearAndPrice}
-                  className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 text-white shadow-inner shadow-black/40 placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-11 md:h-12 rounded-lux border border-line-strong bg-surface-3 px-3 md:px-4 text-ink placeholder:text-ink-3 hover:border-silver-dim focus:border-silver-bright text-base disabled:cursor-not-allowed disabled:opacity-50"
                   style={{
                     fontSize: '16px', // Prevenir zoom automático en móviles
                   }}
@@ -764,16 +764,16 @@ function CalculatorSectionInner() {
                 type="checkbox"
                 checked={form.missingYearAndPrice}
                 onChange={handleMissingYearAndPriceToggle}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-black/60 text-[#f5d072] focus:ring-[#f5d072]/40"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-line-strong bg-surface-3 accent-silver"
               />
               <label
                 htmlFor="calc-missing-year-price"
-                className="cursor-pointer text-xs leading-snug text-white/55"
+                className="cursor-pointer text-xs leading-snug text-ink-3"
               >
                 No tengo el año ni el precio — quiero que me asesoren
               </label>
             </div>
-            <div className="grid gap-2 text-sm text-white/70">
+            <div className="grid gap-2 text-sm text-ink-2">
               Plan estimado de entrega
               <div className="grid gap-2.5 md:gap-3 sm:grid-cols-2">
                 {([
@@ -795,16 +795,16 @@ function CalculatorSectionInner() {
                       setForm((prev) => ({ ...prev, preferredPlan: option.key }))
                     }
                     className={cn(
-                      "rounded-xl md:rounded-2xl border px-4 md:px-5 py-3 md:py-4 text-left transition",
+                      "rounded-lux border px-4 md:px-5 py-3 md:py-4 text-left transition",
                       form.preferredPlan === option.key
-                        ? "border-[#f5d072]/80 bg-[#f5d072]/10 text-white"
-                        : "border-white/10 bg-black/50 text-white/60 hover:border-white/20 hover:text-white",
+                        ? "border-silver bg-surface-3 text-ink"
+                        : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink",
                     )}
                   >
-                    <span className="text-xs uppercase tracking-[0.3em] text-white/50">
+                    <span className="text-xs uppercase tracking-[0.3em] text-ink-3">
                       {option.label}
                     </span>
-                    <p className="mt-1.5 md:mt-2 text-base md:text-lg font-medium text-white">
+                    <p className="mt-1.5 md:mt-2 text-base md:text-lg font-medium text-ink">
                       {option.days[0]} - {option.days[1]} días
                     </p>
                   </button>
@@ -812,18 +812,18 @@ function CalculatorSectionInner() {
               </div>
             </div>
             {error ? (
-              <div className="rounded-xl md:rounded-2xl border border-red-400/40 bg-red-500/10 px-4 md:px-5 py-2.5 md:py-3 text-sm text-red-200">
+              <div className="rounded-lux border border-danger/40 bg-danger/10 px-4 md:px-5 py-2.5 md:py-3 text-sm text-danger">
                 {error}
               </div>
             ) : null}
 
             {form.missingYearAndPrice ? (
               <div className="grid gap-3">
-                <div className="rounded-xl md:rounded-2xl border border-[#f5d072]/25 bg-[#f5d072]/5 px-4 md:px-5 py-3 md:py-4 text-sm text-white/75">
-                  <p className="font-medium text-white">
+                <div className="rounded-lux border border-line-strong bg-surface-3 px-4 md:px-5 py-3 md:py-4 text-sm text-ink-2">
+                  <p className="font-medium text-ink">
                     Te ayudamos con lo que falta
                   </p>
-                  <p className="mt-1.5 text-white/65">
+                  <p className="mt-1.5 text-ink-2">
                     Completa lo que sepas (tipo de vehículo, marca, modelo) y
                     escríbenos. Prepararemos opciones a tu medida según tu caso.
                   </p>
@@ -834,19 +834,19 @@ function CalculatorSectionInner() {
                     target="_blank"
                     rel="noopener noreferrer"
                     size="lg"
-                    className="!text-black w-full"
+                    className="w-full"
                   >
                     Pedir asesoría por WhatsApp
                   </Button>
                 ) : null}
               </div>
             ) : (
-              <Button onClick={handleCalculate} size="lg" className="!text-black">
+              <Button onClick={handleCalculate} size="lg">
                 Calcular Estimado
               </Button>
             )}
 
-            <p className="text-xs text-white/40 leading-relaxed">
+            <p className="text-xs text-ink-4 leading-relaxed">
               Este es un estimado de importación. El valor final puede variar según
               la partida arancelaria, condición del vehículo y determinación de SUNAT.
             </p>
@@ -855,38 +855,38 @@ function CalculatorSectionInner() {
       ) : (
         /* RESULTADOS */
         <div ref={resultsRef} className="mt-8 md:mt-16 max-w-4xl mx-auto">
-          <div className="flex flex-col rounded-2xl md:rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/70 to-neutral-950/80 p-4 md:p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
+          <div className="flex flex-col rounded-lux md:rounded-lux-lg border border-line bg-surface-2 p-4 md:p-8 shadow-[var(--lux-shadow-lg)]">
             {estimate ? (
               <div className="flex flex-col gap-4 md:gap-6 h-full">
                   <div className="space-y-3 md:space-y-4">
                     <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                      <span className="rounded-full border border-line bg-surface-3 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.25em] text-ink-3">
                         {estimate.vehicleCategory.label}
                       </span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                      <span className="rounded-full border border-line bg-surface-3 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.25em] text-ink-3">
                         {estimate.planConfig.label}
                       </span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.35em] text-white/60">
+                      <span className="rounded-full border border-line bg-surface-3 px-2.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.25em] text-ink-3">
                         ISC {formatPercentage(estimate.iscRate)}
                       </span>
                     </div>
                     <div>
-                      <h3 className="text-xl md:text-2xl font-semibold text-white">
+                      <h3 className="text-xl md:text-2xl font-semibold text-ink">
                         Estimado de Importación
                       </h3>
-                      <p className="mt-1 text-sm text-white/50">
+                      <p className="mt-1 text-sm text-ink-3">
                         {estimate.input.brand} {estimate.input.model} {estimate.input.year}
                       </p>
                     </div>
                   </div>
 
-                <div className="rounded-2xl md:rounded-3xl border border-white/10 bg-white/5 p-4 md:p-6">
+                <div className="rounded-lux md:rounded-lux-lg border border-line bg-surface-3 p-4 md:p-6">
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4">
                     <div className="space-y-2 md:space-y-3 flex-1">
-                      <span className="text-xs uppercase tracking-[0.35em] text-white/50">
+                      <span className="text-xs uppercase tracking-[0.3em] text-ink-3">
                         Precio final estimado Lima
                       </span>
-                      <div className="text-2xl md:text-3xl font-bold text-white">
+                      <div className="text-2xl md:text-3xl font-bold tabular-nums text-silver-bright">
                         {formatCurrency(estimate.finalEstimate)}
                       </div>
                     </div>
@@ -906,7 +906,7 @@ function CalculatorSectionInner() {
                         handleReset();
                       }}
                       type="button"
-                      className="w-full md:w-auto md:flex-shrink-0 inline-flex items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 py-2 text-sm font-medium tracking-[0.08em] uppercase text-white transition-all duration-300 hover:bg-white/20 hover:border-white/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/70 focus-visible:ring-offset-black hover:-translate-y-0.5 hover:scale-[1.015] active:scale-[0.97]"
+                      className="w-full md:w-auto md:flex-shrink-0 inline-flex items-center justify-center rounded-full border border-line-strong bg-surface-2 px-6 py-2 text-sm font-medium tracking-[0.08em] uppercase text-ink transition-colors duration-300 hover:border-silver hover:bg-surface-3"
                     >
                       Nueva Simulación
                     </button>
@@ -936,8 +936,8 @@ function CalculatorSectionInner() {
                     }
                   />
                   {originInfo && (
-                    <div className="-mt-1 mb-1 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
-                      <p className="text-[11px] leading-snug text-white/45">
+                    <div className="-mt-1 mb-1 rounded-lux border border-line bg-surface px-3 py-2">
+                      <p className="text-[11px] leading-snug text-ink-4">
                         {originInfo.reason}
                       </p>
                       {(originInfo.mayQualifyWithCertificate ||
@@ -947,7 +947,7 @@ function CalculatorSectionInner() {
                           onClick={() => handleOriginOverride(
                             estimate.adValoremRate === 0 ? "otro" : "originario-usa",
                           )}
-                          className="mt-1.5 text-[11px] font-medium text-[#f5d072] underline underline-offset-2 hover:text-[#fbe5a4]"
+                          className="mt-1.5 text-[11px] font-medium text-silver-bright underline underline-offset-2 hover:text-ink"
                         >
                           {estimate.adValoremRate === 0
                             ? "No tengo certificado de origen · recalcular con 6%"
@@ -980,14 +980,14 @@ function CalculatorSectionInner() {
                     icon={<ServiceIcon size={16} />}
                     tooltip="Incluye State Compliance Fee (5%), Broker Fee (10%) y Extra FastTrack si aplica. Cubre inspección certificada, negociación, logística concierge y gestión documental."
                   />
-                  <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="mt-2 rounded-lux border border-line bg-surface-3 p-3">
                     <BreakdownItem
                       label={`Percepción IGV (${formatPercentage(estimate.percepcionRate)})`}
                       amount={estimate.percepcion}
                       icon={<TaxIcon size={16} />}
                       tooltip="Adelanto del IGV que se paga en aduanas y luego se recupera como crédito fiscal. No es un costo, pero sí es efectivo que hay que desembolsar."
                     />
-                    <p className="mt-1.5 text-[11px] leading-snug text-white/40">
+                    <p className="mt-1.5 text-[11px] leading-snug text-ink-4">
                       No es costo: se recupera como crédito fiscal. Efectivo total a
                       desembolsar {formatCurrency(estimate.cashRequired)}.
                     </p>
@@ -995,14 +995,14 @@ function CalculatorSectionInner() {
                 </div>
 
                 {whatsappLink && (
-                  <div className="pt-3 md:pt-4 border-t border-white/10">
+                  <div className="pt-3 md:pt-4 border-t border-line">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-3">
                       <Button
                         href={whatsappLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         size="lg"
-                        className="!text-black w-full"
+                        className="w-full"
                       >
                         Enviar WhatsApp
                       </Button>
@@ -1036,13 +1036,16 @@ type BreakdownItemProps = {
 
 function BreakdownItem({ label, amount, tooltip, icon }: BreakdownItemProps) {
   return (
-    <div className="flex items-center justify-between gap-3 md:gap-4 rounded-lg md:rounded-xl border border-white/5 bg-white/[0.03] px-3 md:px-4 py-2 md:py-2.5">
+    <div className="flex items-center justify-between gap-3 md:gap-4 rounded-lux border border-line bg-surface px-3 md:px-4 py-2 md:py-2.5">
       <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-        {icon && <span className="text-white/40 flex-shrink-0">{icon}</span>}
-        <span className="text-white/70 text-sm truncate">{label}</span>
+        {icon && <span className="text-ink-4 flex-shrink-0">{icon}</span>}
+        {/* Sin truncate: a 360px recortaba conceptos del desglose
+            ("Percepción IGV (4%)" perdía media etiqueta). Envuelve en dos
+            líneas; el monto no se comprime porque es flex-shrink-0. */}
+        <span className="min-w-0 text-sm leading-snug text-ink-2">{label}</span>
         {tooltip && <Tooltip content={tooltip} placement="top" />}
       </div>
-      <span className="font-semibold text-white tabular-nums text-sm md:text-base flex-shrink-0">
+      <span className="font-semibold text-ink tabular-nums text-sm md:text-base flex-shrink-0">
         {formatCurrency(amount)}
       </span>
     </div>
@@ -1053,9 +1056,9 @@ function CalculatorSectionFallback() {
   return (
     <section
       id="calculator"
-      className="scroll-mt-32 rounded-[40px] md:rounded-[40px] rounded-3xl border border-white/10 bg-gradient-to-br from-neutral-950/95 via-black/80 to-neutral-900 px-4 md:px-6 py-12 md:py-20 backdrop-blur lg:px-14"
+      className="scroll-mt-32 rounded-lux-lg md:rounded-lux-xl border border-line bg-surface px-4 md:px-6 py-12 md:py-20 lg:px-14"
     >
-      <div className="mx-auto max-w-3xl py-16 text-center text-sm text-white/50">
+      <div className="mx-auto max-w-3xl py-16 text-center text-sm text-ink-3">
         Cargando calculadora…
       </div>
     </section>

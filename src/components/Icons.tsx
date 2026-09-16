@@ -2,7 +2,9 @@ import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
-const DEFAULT_COLOR = "#f5d072";
+/* Los iconos heredan el color del contexto: cada punto de uso decide con un
+   token (text-silver, text-ink-3, ...). Sin color propio no hay hex suelto. */
+const DEFAULT_COLOR = "currentColor";
 
 export function VehicleIcon({ size = 18, ...props }: IconProps) {
   return (

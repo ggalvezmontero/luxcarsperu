@@ -1,6 +1,7 @@
 import { IMPORTER_RULES } from "./importerRules";
 import {
   PRICING_CONFIG,
+  resolveAdValoremRate,
   resolvePercepcionRate,
   type ImporterProfile,
   type PlanConfig,
@@ -149,7 +150,10 @@ export function calculateImportQuote(
     );
   }
 
-  const adValoremRate = PRICING_CONFIG.adValoremByOrigin[input.origin];
+  const adValoremRate = resolveAdValoremRate({
+    origin: input.origin,
+    condition: input.condition,
+  });
   const percepcionRate = resolvePercepcionRate({
     profile: input.importerProfile ?? "recurrente",
     condition: input.condition,

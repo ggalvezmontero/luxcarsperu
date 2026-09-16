@@ -38,8 +38,9 @@ export function Tooltip({
     <span className={cn("relative inline-flex items-center", className)}>
       <button
         type="button"
-        className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs text-white/70 transition hover:border-[#f5d072]/60 hover:bg-[#f5d072]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f5d072]/60"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface-2 text-xs text-ink-3 transition-colors hover:border-silver hover:text-silver-bright"
         aria-label={label ?? content}
+        aria-expanded={open}
         onMouseEnter={handleOpen}
         onMouseLeave={handleClose}
         onFocus={handleOpen}
@@ -52,16 +53,14 @@ export function Tooltip({
         <div
           role="tooltip"
           className={cn(
-            "absolute z-20 w-64 rounded-2xl border border-[#f5d072]/40 bg-black/90 p-4 text-left shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur",
-            placement === "top"
-              ? "bottom-full mb-3"
-              : "top-full mt-3",
+            "absolute z-20 w-56 max-w-[calc(100vw-2rem)] rounded-lux-lg border border-line-strong bg-surface-2 p-4 text-left shadow-2xl backdrop-blur sm:w-64",
+            placement === "top" ? "bottom-full mb-3" : "top-full mt-3",
           )}
         >
-          <p className="text-xs font-medium uppercase tracking-[0.3em] text-[#fbe5a4]">
+          <p className="text-xs font-medium uppercase tracking-[0.3em] text-silver-dim">
             Nota
           </p>
-          <p className="mt-2 text-sm text-white/75">{content}</p>
+          <p className="mt-2 text-sm text-ink-2">{content}</p>
         </div>
       ) : null}
     </span>

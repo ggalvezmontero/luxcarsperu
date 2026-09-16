@@ -3,7 +3,11 @@ import Link from "next/link";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
 
 type BaseProps = {
-  variant?: "primary" | "secondary" | "ghost";
+  /**
+   * `accent` es la variante en oro: como máximo una por pantalla.
+   * Ante la duda, usar `primary` (plata).
+   */
+  variant?: "primary" | "secondary" | "ghost" | "accent";
   size?: "md" | "lg";
   className?: string;
 };
@@ -14,20 +18,28 @@ type ButtonProps = BaseProps &
 type LinkProps = BaseProps &
   AnchorHTMLAttributes<HTMLAnchorElement> & { href: string };
 
+/**
+ * El foco visible se resuelve globalmente en globals.css: aquí no se
+ * redefine ni se anula con outline-none.
+ */
 const baseStyles =
-  "inline-flex items-center justify-center rounded-full font-medium tracking-[0.08em] uppercase transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/70 focus-visible:ring-offset-black hover:-translate-y-0.5 hover:scale-[1.015] active:scale-[0.97]";
+  "inline-flex max-w-full items-center justify-center gap-2 rounded-full text-center font-medium uppercase leading-none tracking-[0.16em] transition-colors duration-200 ease-out disabled:pointer-events-none disabled:opacity-45";
 
 const variants = {
-  primary:
-    "bg-white text-black shadow-[0_10px_45px_rgba(255,255,255,0.25)] hover:shadow-[0_14px_55px_rgba(255,255,255,0.35)] hover:bg-white/95",
+  /* Plata: el acento dominante del sistema. */
+  primary: "bg-silver text-void hover:bg-silver-bright",
+  /* Control delineado sobre fondo oscuro. */
   secondary:
-    "border border-white/25 bg-white/10 text-white hover:bg-white/20 hover:border-white/40",
-  ghost: "text-white/80 hover:text-white hover:bg-white/5",
+    "border border-line-strong bg-transparent text-ink hover:border-silver hover:bg-surface-2",
+  /* Acción terciaria, sin peso visual. */
+  ghost: "text-ink-2 hover:bg-surface hover:text-ink",
+  /* Oro: reservado a un único CTA por pantalla. */
+  accent: "bg-gold text-void hover:bg-gold-bright",
 };
 
 const sizes = {
-  md: "px-6 py-2 text-sm",
-  lg: "px-7 py-3 text-base",
+  md: "min-h-11 px-6 py-3 text-xs",
+  lg: "min-h-12 px-7 py-3.5 text-sm sm:px-8",
 };
 
 export function Button(props: ButtonProps | LinkProps) {

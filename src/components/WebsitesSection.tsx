@@ -19,71 +19,90 @@ export function WebsitesSection() {
   return (
     <section
       id="websites"
-      className="scroll-mt-32 rounded-[40px] border border-white/10 bg-black/70 px-6 py-20 backdrop-blur lg:px-14"
+      className="scroll-mt-32 rounded-lux-xl border border-line bg-surface/70 px-5 py-16 backdrop-blur sm:px-8 lg:px-14 lg:py-24"
     >
       <SectionHeading
         eyebrow="Dónde buscamos tu auto"
         title="Inventario curado en marketplaces y sitios oficiales"
         description="Analizamos oportunidades reales, verificamos vendedores y presentamos comparativas claras de precio, kilometraje y estado."
       />
-      <div className="mt-14 grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-        <div className="grid gap-6 sm:grid-cols-2">
-          {WEBSITE_LOGOS.map((site) => (
-            <article
-              key={site.name}
-              className="group relative flex items-center gap-4 overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-r from-white/10 via-black/60 to-black/80 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:border-[#f5d072]/50 hover:shadow-[0_28px_120px_rgba(245,208,114,0.25)]"
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(245,208,114,0.25),transparent_70%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              <div className="relative flex h-16 w-16 flex-none items-center justify-center rounded-2xl border border-white/10 bg-black/60 p-2">
+
+      <div className="mt-12 grid gap-8 lg:mt-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-10">
+        <div className="min-w-0">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.3em] text-ink-3">
+            Fuentes verificadas
+          </h3>
+          <ul className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lux border border-line bg-line sm:grid-cols-3">
+            {WEBSITE_LOGOS.map((site) => (
+              <li
+                key={site.name}
+                className="flex min-w-0 flex-col items-center justify-center gap-3 bg-surface px-3 py-6 transition-colors duration-300 hover:bg-surface-2"
+              >
                 <Image
                   src={`/images/websites/${site.file}`}
                   alt={`Logo ${site.name}`}
                   width={72}
                   height={72}
-                  className="h-full w-full object-contain"
+                  className="h-9 w-auto max-w-full object-contain opacity-70 grayscale transition duration-300 hover:opacity-100 hover:grayscale-0"
                 />
-              </div>
-              <div className="relative">
-                <p className="text-sm font-semibold text-white">{site.name}</p>
-                <p className="text-[11px] uppercase tracking-[0.35em] text-white/45">
-                  Fuente verificada
+                {/* Sin truncate: a 360px "Facebook Marketplace" perdia la ultima
+                    letra. La celda es flex-col centrada, asi que envolver solo
+                    la hace mas alta y la reticula mantiene el ritmo. */}
+                <p className="w-full text-balance text-center text-[11px] leading-tight tracking-wide text-ink-3">
+                  {site.name}
                 </p>
-              </div>
-            </article>
-          ))}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="space-y-6 rounded-[28px] border border-white/10 bg-gradient-to-br from-neutral-950 via-black/70 to-neutral-900 p-8 shadow-[0_25px_100px_rgba(0,0,0,0.35)]">
+
+        <div className="min-w-0 space-y-6 rounded-lux-lg border border-line bg-surface p-6 sm:p-8">
           <Image
             src="/images/how/search.jpg"
             alt="Selección de autos de lujo en marketplaces premium"
             width={640}
             height={360}
-            className="h-48 w-full rounded-2xl border border-white/10 object-cover"
+            className="h-44 w-full rounded-lux border border-line object-cover sm:h-48"
           />
-          <div className="space-y-4 text-sm text-white/70">
+          <div className="space-y-5 text-sm text-ink-2">
             <p>
               Complementamos la búsqueda con inventario directo de concesionarios
               certificados, subastas cerradas y colecciones privadas.
             </p>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-3">
               <li className="flex items-start gap-3">
-                <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-[#f5d072]" />
-                Validación de reputación del vendedor y condiciones de entrega.
+                <span
+                  aria-hidden="true"
+                  className="mt-[7px] inline-flex h-px w-4 flex-none bg-silver-dim"
+                />
+                <span className="min-w-0">
+                  Validación de reputación del vendedor y condiciones de entrega.
+                </span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-[#f5d072]" />
-                Comparativa de precios vs mercado peruano y oportunidades de ahorro.
+                <span
+                  aria-hidden="true"
+                  className="mt-[7px] inline-flex h-px w-4 flex-none bg-silver-dim"
+                />
+                <span className="min-w-0">
+                  Comparativa de precios vs mercado peruano y oportunidades de ahorro.
+                </span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-[#f5d072]" />
-                Negociación prioritaria gracias a relaciones con dealers boutique.
+                <span
+                  aria-hidden="true"
+                  className="mt-[7px] inline-flex h-px w-4 flex-none bg-silver-dim"
+                />
+                <span className="min-w-0">
+                  Negociación prioritaria gracias a relaciones con dealers boutique.
+                </span>
               </li>
             </ul>
           </div>
-          <div className="rounded-2xl border border-[#f5d072]/30 bg-[#f5d072]/10 p-4 text-sm text-[#fbe5a4]">
+          <p className="border-l-2 border-silver bg-surface-2 px-4 py-3 text-sm text-ink-2">
             {LUXCARS_CONFIG.brandName} revisa en promedio 12 portales por cliente
             antes de cerrar la compra ideal.
-          </div>
+          </p>
         </div>
       </div>
     </section>

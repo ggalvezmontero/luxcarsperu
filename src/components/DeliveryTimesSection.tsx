@@ -19,11 +19,17 @@ const HIGHLIGHTS = [
   },
 ];
 
+const BENEFITS = [
+  "Coordinación directa con navieras premium y seguros internacionales.",
+  "Monitoreo satelital + reporte semanal a tu WhatsApp.",
+  "Gestión anticipada ante SUNAT y liberación acelerada.",
+];
+
 export function DeliveryTimesSection() {
   return (
     <section
       id="services"
-      className="scroll-mt-32 rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950/90 via-black/75 to-neutral-900/80 px-6 py-20 lg:px-14"
+      className="scroll-mt-32 overflow-hidden rounded-lux-xl border border-line bg-surface px-5 py-16 sm:px-8 sm:py-20 lg:px-14"
     >
       <SectionHeading
         eyebrow="Tiempo de entrega"
@@ -31,49 +37,71 @@ export function DeliveryTimesSection() {
         description="Coordinamos todo el trayecto Miami → Lima con informes y evidencias en cada hito. Selecciona el plan que mejor se adapte a tu urgencia."
         align="center"
       />
-      <div className="mt-12 grid gap-6 lg:grid-cols-2">
+      <div className="mt-10 grid gap-5 sm:mt-12 sm:gap-6 lg:grid-cols-2">
         {HIGHLIGHTS.map((item) => {
           const window = LUXCARS_CONFIG.deliveryWindows[item.key];
+          const isFeatured = item.key === "fastTrack";
           return (
             <article
               key={item.title}
-              className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] p-8 shadow-[0_35px_120px_rgba(0,0,0,0.3)] transition hover:-translate-y-1 hover:border-[#f5d072]/60 hover:shadow-[0_35px_140px_rgba(245,208,114,0.25)]"
+              className={`group relative flex flex-col overflow-hidden rounded-lux-lg bg-surface-2 p-6 transition-colors duration-300 sm:p-8 ${
+                isFeatured
+                  ? "border border-silver bg-surface-3 hover:border-silver-bright"
+                  : "border border-line hover:border-line-strong"
+              }`}
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,208,114,0.25),transparent_65%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              <div className="relative space-y-4">
-                <div className="relative h-36 overflow-hidden rounded-2xl border border-white/10">
-                  <Image
-                    src={item.image}
-                    alt={`Plan ${item.title} timeline`}
-                    fill
-                    sizes="(min-width: 1024px) 320px, 100vw"
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                </div>
-                <span className="inline-flex items-center rounded-full border border-[#f5d072]/30 bg-[#f5d072]/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-[#fbe5a4]">
+              <div className="relative h-40 overflow-hidden rounded-lux border border-line sm:h-44">
+                <Image
+                  src={item.image}
+                  alt={`Plan ${item.title} timeline`}
+                  fill
+                  sizes="(min-width: 1024px) 520px, 100vw"
+                  className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-void via-transparent to-transparent" />
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <span
+                  className={`inline-flex items-center rounded-full px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.3em] ${
+                    isFeatured
+                      ? "border border-silver bg-surface text-silver-bright"
+                      : "border border-line text-ink-3"
+                  }`}
+                >
                   {item.title}
                 </span>
-                <h3 className="text-2xl font-semibold text-white">
-                  {window.label} ({window.days[0]} - {window.days[1]} días)
-                </h3>
-                <p className="text-sm text-white/65">{item.description}</p>
-                <ul className="space-y-3 text-sm text-white/70">
-                  <li className="flex items-center gap-3">
-                    <span className="inline-flex h-2 w-2 rounded-full bg-[#f5d072]" />
-                    Coordinación directa con navieras premium y seguros
-                    internacionales.
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <span className="inline-flex h-2 w-2 rounded-full bg-[#f5d072]" />
-                    Monitoreo satelital + reporte semanal a tu WhatsApp.
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <span className="inline-flex h-2 w-2 rounded-full bg-[#f5d072]" />
-                    Gestión anticipada ante SUNAT y liberación acelerada.
-                  </li>
-                </ul>
+                {isFeatured ? (
+                  <span className="text-[0.65rem] font-medium uppercase tracking-[0.3em] text-silver-dim">
+                    Plan recomendado
+                  </span>
+                ) : null}
               </div>
+
+              <h3 className="mt-4 text-2xl font-semibold text-ink sm:text-[1.75rem]">
+                {window.label}{" "}
+                <span className="block text-base font-normal text-ink-3 sm:mt-1">
+                  ({window.days[0]} - {window.days[1]} días)
+                </span>
+              </h3>
+
+              <p className="mt-3 text-sm leading-relaxed text-ink-3">
+                {item.description}
+              </p>
+
+              <ul className="mt-6 space-y-3 border-t border-line pt-6 text-sm text-ink-2">
+                {BENEFITS.map((benefit) => (
+                  <li key={benefit} className="flex items-start gap-3">
+                    <span
+                      aria-hidden="true"
+                      className={`mt-2 h-px w-4 flex-none ${
+                        isFeatured ? "bg-silver" : "bg-silver-dim"
+                      }`}
+                    />
+                    <span className="min-w-0">{benefit}</span>
+                  </li>
+                ))}
+              </ul>
             </article>
           );
         })}

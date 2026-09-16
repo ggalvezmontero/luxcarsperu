@@ -2,90 +2,78 @@ import Image from "next/image";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { SectionHeading } from "./SectionHeading";
 
-// Mapeo de imágenes únicas para cada diferenciador
-// IMPORTANTE: Cada diferenciador usa su PROPIA imagen sin duplicados y CONTEXTUALMENTE APROPIADA
-const WHY_US_IMAGE_MAP: Record<string, string> = {
-  "Transparencia total": "whyus/transparency.jpg",           // Documentos claros y transparencia
-  "Calculadora pública": "calculator/dashboard.jpg",          // Screenshot de calculadora
-  "Ticket premium": "whyus/exotics.jpg",                     // Autos premium/exóticos
-  "Servicio concierge Miami → Perú": "whyus/concierge.jpg",  // Servicio personalizado
-  "Somos tu broker": "whyus/broker.jpg",                     // Professional broker / advisor
-  "Inspección certificada": "whyus/inspection-certified.jpg", // Mecánico inspeccionando auto
-  "Asesoría de búsqueda": "whyus/search-advisory.jpg",       // Búsqueda online de autos
-  "Cupos limitados": "whyus/advisory.jpg",                   // Reunión VIP exclusiva
-  "Precio final sin sorpresas": "hero/main.jpg",             // Auto de lujo - resultado final
-};
+// Diferenciador destacado: es el único argumento realmente excluyente frente
+// a la competencia, por eso recibe el único acento dorado de la sección.
+const FEATURED_DIFFERENTIATOR = "Consignación sin exclusividad";
 
 export function WhyUsSection() {
   return (
     <section
       id="why-us"
-      className="scroll-mt-32 rounded-[40px] border border-white/10 bg-gradient-to-br from-neutral-950 via-black to-neutral-900 px-6 py-20 lg:px-14"
+      className="scroll-mt-32 overflow-hidden rounded-lux-xl border border-line bg-surface px-5 py-16 sm:px-8 lg:px-14 lg:py-24"
     >
       <SectionHeading
         eyebrow="Por qué LuxCars"
         title="Un broker boutique que protege tu inversión en cada etapa"
         description="Nuestro equipo opera como tu departamento de compras internacional. Transparencia total, gestión personalizada y acceso a inventario que no se publica abiertamente."
       />
-      <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {LUXCARS_CONFIG.differentiators.map((item) => {
-          const imageFile = WHY_US_IMAGE_MAP[item.title] || "whyus/advisory.jpg";
-          // Si ya incluye un directorio (contiene /), usar tal cual, si no agregar whyus/
-          const imagePath = imageFile.includes('/') 
-            ? `/images/${imageFile}` 
-            : `/images/whyus/${imageFile}`;
-          
+
+      <div className="mt-14 grid gap-x-10 gap-y-px sm:grid-cols-2 xl:grid-cols-3">
+        {LUXCARS_CONFIG.differentiators.map((item, index) => {
+          const isFeatured = item.title === FEATURED_DIFFERENTIATOR;
+
           return (
             <article
               key={item.title}
-              className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] p-6 shadow-[0_25px_100px_rgba(0,0,0,0.35)] transition hover:-translate-y-1 hover:border-[#f5d072]/60 hover:bg-[#f5d072]/10"
+              className="group relative border-t border-line pt-6 pb-8 transition-colors duration-300 hover:border-silver"
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(245,208,114,0.2),transparent_70%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              <div className="relative space-y-4">
-                <div className="relative h-28 overflow-hidden rounded-2xl border border-white/10">
-                  <Image
-                    src={imagePath}
-                    alt={item.title}
-                    fill
-                    sizes="(min-width: 1280px) 280px, (min-width: 1024px) 240px, 100vw"
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-transparent" />
-                  <span className="absolute left-4 top-3 inline-flex items-center rounded-full border border-[#f5d072]/30 bg-[#f5d072]/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-[#fbe5a4]">
-                    LuxCars
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-white">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-white/70">{item.description}</p>
-                </div>
+              <span
+                aria-hidden="true"
+                className={`absolute -top-px left-0 h-px w-12 transition-all duration-300 group-hover:w-24 ${
+                  isFeatured ? "bg-silver" : "bg-silver-dim"
+                }`}
+              />
+              <div className="flex items-baseline gap-4">
+                <span
+                  aria-hidden="true"
+                  className={`text-xs font-medium tabular-nums tracking-[0.2em] ${
+                    isFeatured ? "text-silver" : "text-ink-4"
+                  }`}
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h3 className="text-base font-semibold leading-snug tracking-tight text-ink sm:text-lg">
+                  {item.title}
+                </h3>
               </div>
+              <p className="mt-3 max-w-prose pl-0 text-sm leading-relaxed text-ink-3 sm:pl-10">
+                {item.description}
+              </p>
             </article>
           );
         })}
       </div>
-      <div className="mt-10 grid gap-6 rounded-3xl border border-white/10 bg-black/60 p-6 text-sm text-white/70 lg:grid-cols-[1.3fr_1fr] lg:items-center">
-        <p>
+
+      <div className="mt-12 grid gap-8 border-t border-line pt-10 text-sm text-ink-2 lg:grid-cols-[1.3fr_1fr] lg:items-center lg:gap-12">
+        <p className="max-w-2xl leading-relaxed">
           Sin stock propio, sin comisiones ocultas, sin presión de venta. Cada
           decisión se toma junto a ti. Te mostramos comparativas reales, modelos
           disponibles en tiempo real y trabajamos como tu equipo de compras en
           Miami.
         </p>
-        <div className="flex items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+        <div className="flex items-center gap-4 rounded-lux-lg border border-line bg-surface-2 p-4">
           <Image
             src="/images/contact/concierge.jpg"
-            alt="Asesoría concierge LuxCars"
+            alt="Asesor concierge de LuxCars atendiendo a un cliente"
             width={120}
             height={80}
-            className="h-16 w-20 rounded-2xl border border-white/10 object-cover"
+            className="h-16 w-20 shrink-0 rounded-lux border border-line object-cover"
           />
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-semibold text-ink">
               Concierge bilingüe dedicado
             </p>
-            <p className="text-xs text-white/60">
+            <p className="text-xs leading-relaxed text-ink-3">
               Miami · Lima · Disponibilidad 7/365 para acompañarte en todo el
               proceso.
             </p>
