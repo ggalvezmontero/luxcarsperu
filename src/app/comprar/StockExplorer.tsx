@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
+import type { VehicleCondition, VehicleStatus } from "@/lib/db/types";
 
 /* ===========================================================================
    MODELO DE DATOS DEL STOCK PROPIO
@@ -16,10 +17,16 @@ import { cn, formatCurrency, formatNumber } from "@/lib/utils";
    =========================================================================== */
 
 /** Estado comercial de la unidad. Manda sobre el CTA que se muestra. */
-export type StockStatus = "disponible" | "reservado" | "vendido";
+/**
+ * Los tipos vienen del esquema, NO se declaran aquí. Antes esta pantalla
+ * inventaba sus propias etiquetas ("seminuevo", "usado-selecto") y omitía
+ * "en_transito": el día que se conecte a Supabase, un auto en camino desde
+ * Miami no habría aparecido nunca y las condiciones no habrían mapeado.
+ */
+export type StockStatus = VehicleStatus;
 
 /** Condición física declarada. No es una promesa de garantía. */
-export type StockCondition = "nuevo" | "seminuevo" | "usado-selecto";
+export type StockCondition = VehicleCondition;
 
 /** Una línea del historial verificable de la unidad (dueños, CarFax, etc.). */
 export type StockHistoryEntry = {
@@ -59,19 +66,20 @@ export type StockVehicle = {
 
 const CONDITION_LABEL: Record<StockCondition, string> = {
   nuevo: "Nuevo · 0 km",
-  seminuevo: "Seminuevo",
-  "usado-selecto": "Usado selecto",
+  usado: "Usado certificado",
 };
 
 const STATUS_LABEL: Record<StockStatus, string> = {
   disponible: "Disponible",
   reservado: "Reservado",
   vendido: "Vendido",
+  en_transito: "En tránsito",
 };
 
 const STATUS_DOT: Record<StockStatus, string> = {
   disponible: "bg-ok",
   reservado: "bg-warn",
+  en_transito: "bg-info",
   vendido: "bg-ink-4",
 };
 
