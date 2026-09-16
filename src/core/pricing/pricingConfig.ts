@@ -88,7 +88,9 @@ export const PRICING_CONFIG = {
 
   /**
    * Antigüedad máxima de un vehículo usado para poder nacionalizarse, contada
-   * en años desde el año modelo.
+   * en años modelo INCLUYENDO el año en curso: en 2026 el año 1 es 2026 y el
+   * año 2 es 2025, así que el modelo más antiguo que entra es 2025. Ver
+   * `oldestImportableModelYear()`.
    */
   usedMaxAgeYears: 2,
 
@@ -123,6 +125,15 @@ export function resolvePercepcionRate(params: {
   return params.condition === "usado"
     ? percepcionRates.usado
     : percepcionRates.recurrenteNuevo;
+}
+
+/**
+ * Modelo más antiguo que se puede nacionalizar como usado en un año dado.
+ * El año en curso cuenta como el primero de los `usedMaxAgeYears`, por eso se
+ * resta uno: con 2 años, en 2026 entran modelos 2025 en adelante.
+ */
+export function oldestImportableModelYear(currentYear: number): number {
+  return currentYear - (PRICING_CONFIG.usedMaxAgeYears - 1);
 }
 
 export type PlanKey = keyof typeof PRICING_CONFIG.planConfigs;

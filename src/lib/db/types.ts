@@ -443,7 +443,10 @@ export const COMMISSION_TYPES: readonly CommissionType[] = [
  * implementaciones de la misma regla terminan discrepando.
  */
 export const IMPORT_COMPLIANCE_REFERENCE = {
-  /** Antigüedad máxima en años: en 2026, solo modelos 2024 en adelante. */
+  /**
+   * Antigüedad máxima en años, contando el año en curso como el primero: en
+   * 2026, solo modelos 2025 en adelante. Cálculo: `oldestImportableModelYear()`.
+   */
   maxVehicleAgeYears: 2,
   /** Diésel USADO: PROHIBIDO en autos y camionetas. Sin excepciones. */
   usedDieselAllowed: false,

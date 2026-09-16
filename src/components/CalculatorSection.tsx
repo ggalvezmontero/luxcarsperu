@@ -9,7 +9,7 @@ import {
   type PremiumImportQuote,
 } from "@/core/pricing/priceCalculator";
 import {
-  PRICING_CONFIG,
+  oldestImportableModelYear,
   type PlanKey,
   type VehicleCondition,
   type VehicleOrigin,
@@ -581,7 +581,7 @@ function CalculatorSectionInner() {
 
 
   const yearOptions = (() => {
-    const oldest = CURRENT_YEAR - PRICING_CONFIG.usedMaxAgeYears;
+    const oldest = oldestImportableModelYear(CURRENT_YEAR);
     return Array.from({ length: CURRENT_YEAR - oldest + 1 }, (_, i) => CURRENT_YEAR - i);
   })();
 
