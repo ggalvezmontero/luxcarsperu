@@ -64,27 +64,20 @@ export function Navbar() {
           onClick={handleLinkClick}
           className="flex items-center gap-3"
         >
-          <span className="relative inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-gradient-to-br from-white/10 to-white/5">
-            <Image
-              src="/images/logo-clean.svg"
-              alt="LuxCars insignia"
-              width={44}
-              height={44}
-              className="h-full w-full object-contain"
-              priority
-            />
-          </span>
-          <span className="flex flex-col leading-none">
-            <span className="text-lg font-semibold text-white">
-              {LUXCARS_CONFIG.brandName}
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.45em] text-white/50">
-              Miami · Lima
-            </span>
+          <Image
+            src="/brand/luxcars-blanco.svg"
+            alt={LUXCARS_CONFIG.brandName}
+            width={1254}
+            height={1254}
+            className="h-9 w-auto sm:h-10 lg:h-11"
+            priority
+          />
+          <span className="hidden text-[10px] uppercase tracking-[0.45em] text-white/40 sm:inline">
+            Miami · Lima
           </span>
         </Link>
 
-        <div className="hidden flex-1 items-center justify-center gap-6 text-xs font-medium uppercase tracking-[0.35em] text-white/70 sm:flex">
+        <div className="hidden flex-1 items-center justify-center gap-5 text-xs font-medium uppercase tracking-[0.2em] text-white/70 lg:flex lg:gap-6 lg:tracking-[0.35em]">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -98,7 +91,7 @@ export function Navbar() {
           ))}
         </div>
 
-        <div className="hidden sm:flex">
+        <div className="hidden lg:flex">
           <Button href="/#contact" size="md" className="shadow-lg !text-black">
             Contáctenos
           </Button>
@@ -106,7 +99,7 @@ export function Navbar() {
 
         <button
           onClick={() => setIsMenuOpen((prev) => !prev)}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:border-white/20 hover:bg-white/10 sm:hidden"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:border-white/20 hover:bg-white/10 lg:hidden"
           aria-label="Abrir navegación"
           aria-expanded={isMenuOpen}
           aria-controls="mobile-menu"
@@ -137,7 +130,7 @@ export function Navbar() {
       <div
         id="mobile-menu"
         className={cn(
-          "sm:hidden",
+          "lg:hidden",
           isMenuOpen
             ? "max-h-96 opacity-100 pointer-events-auto"
             : "max-h-0 opacity-0 pointer-events-none",

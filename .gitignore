@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# build alterno para dev cuando .next no es escribible
+/.next-dev/
+
+# generados por next dev (agentRules)
+/AGENTS.md
+/CLAUDE.md

@@ -167,7 +167,7 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
   doc.rect(0, 0, pageWidth, 30, 'F');
   
   // Logo de LuxCars (pequeño icono al lado del texto)
-  const companyLogoData = await getImageAsBase64('/images/logo-clean.svg');
+  const companyLogoData = await getImageAsBase64('/brand/luxcars-negro.svg');
   let textStartX = margin;
   
   if (companyLogoData) {
@@ -338,11 +338,12 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
   const tableData = [
     ['Precio Miami', formatCurrency(estimate.input.priceMiami)],
     ['Flete', formatCurrency(estimate.freight)],
-    ['Seguro (1.5%)', formatCurrency(estimate.insurance)],
+    ['Seguro internacional', formatCurrency(estimate.insurance)],
     ['CIF (Costo + Seguro + Flete)', formatCurrency(estimate.cif)],
-    ['Ad Valorem (6%)', formatCurrency(estimate.adValorem)],
-    [`ISC (${formatPercentage(estimate.iscRate)})`, formatCurrency(estimate.isc)],
-    ['IGV (18%)', formatCurrency(estimate.igv)],
+    [`Ad Valorem (${formatPercentage(estimate.adValoremRate)})`, formatCurrency(estimate.adValorem)],
+    [`ISC (${formatPercentage(estimate.iscRate)} sobre CIF + Ad Valorem)`, formatCurrency(estimate.isc)],
+    ['IGV (15.5% sobre CIF + Ad Valorem + ISC)', formatCurrency(estimate.igv)],
+    ['IPM (2.5% sobre la misma base)', formatCurrency(estimate.ipm)],
     ['State Compliance Fee (5%)', formatCurrency(estimate.stateComplianceFee)],
     ['Broker Fee (10%)', formatCurrency(estimate.brokerFee)],
   ];

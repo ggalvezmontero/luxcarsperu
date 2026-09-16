@@ -65,20 +65,15 @@ export function Footer() {
           {/* Brand Section */}
           <div className="lg:col-span-4">
             <div className="flex items-center gap-3 mb-6">
-              <div className="relative h-12 w-12 rounded-full border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-1">
-                <Image
-                  src="/images/logo-clean.svg"
-                  alt="LuxCars Logo"
-                  width={48}
-                  height={48}
-                  className="h-full w-full object-contain"
-                />
-              </div>
               <div>
-                <h2 className="text-xl font-bold text-white">
-                  {LUXCARS_CONFIG.brandName}
-                </h2>
-                <p className="text-xs text-white/50 uppercase tracking-wider">
+                <Image
+                  src="/brand/luxcars-blanco.svg"
+                  alt={LUXCARS_CONFIG.brandName}
+                  width={1254}
+                  height={1254}
+                  className="h-10 w-auto"
+                />
+                <p className="mt-2 text-xs text-white/40 uppercase tracking-[0.3em]">
                   Miami · Lima
                 </p>
               </div>

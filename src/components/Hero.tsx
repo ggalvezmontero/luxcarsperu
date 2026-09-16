@@ -44,7 +44,7 @@ export function Hero() {
         />
         <div className="absolute inset-0 bg-gradient-to-br from-black via-black/80 to-neutral-950/95" />
         <div className="absolute -left-32 top-32 h-72 w-72 rounded-full bg-[#f5d072]/20 blur-3xl" />
-        <div className="absolute -right-24 bottom-16 h-72 w-72 rounded-full bg-[#b68b2d]/30 blur-3xl" />
+        <div className="pointer-events-none absolute -right-24 bottom-16 h-72 w-72 rounded-full bg-[#b68b2d]/30 blur-3xl" aria-hidden="true" />
       </div>
       <div className="mx-auto grid max-w-6xl gap-10 md:gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>

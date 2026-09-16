@@ -2,14 +2,27 @@
 
 import {
   calculateImportQuote,
+  checkAdmissibility,
+  inferCondition,
+  UnsupportedQuoteError,
   type ImportCalculatorInput,
   type PremiumImportQuote,
 } from "@/core/pricing/priceCalculator";
-import { type PlanKey } from "@/core/pricing/pricingConfig";
 import {
+  PRICING_CONFIG,
+  type PlanKey,
+  type VehicleCondition,
+  type VehicleOrigin,
+} from "@/core/pricing/pricingConfig";
+import {
+  resolveIscRate,
   getVehicleCategory,
   VEHICLE_CATEGORIES,
 } from "@/core/pricing/vehicleCategories";
+import {
+  resolveOrigin,
+  type OriginInference,
+} from "@/core/pricing/originInference";
 import { getTrendingVehicleById } from "@/data/trendingVehicles";
 import { LUXCARS_CONFIG, type VehicleTypeId } from "@/lib/config";
 import { generatePDF } from "@/lib/pdfExport";
@@ -64,12 +77,22 @@ type FormState = {
   price: string;
   preferredPlan: PlanKey;
   missingYearAndPrice: boolean;
+  condition: VehicleCondition;
+  /** Opcional. Si viene, su primer carácter decide el país y manda sobre la tabla. */
+  vin: string;
+  /** Solo se llena si el usuario corrige la sugerencia desde el resultado. */
+  originOverride: VehicleOrigin | null;
 };
 
-const getInitialYear = () => {
-  const currentYear = new Date().getFullYear();
-  return (currentYear - 1).toString();
-};
+const CONDITION_OPTIONS: { id: VehicleCondition; label: string; hint: string }[] = [
+  { id: "nuevo", label: "Nuevo", hint: "Sin matricular, del año o del anterior" },
+  { id: "usado", label: "Usado", hint: "Ya matriculado en EE.UU." },
+];
+
+
+const CURRENT_YEAR = new Date().getFullYear();
+
+const getInitialYear = () => (CURRENT_YEAR - 1).toString();
 
 const INITIAL_FORM: FormState = {
   vehicleType: "",
@@ -79,6 +102,9 @@ const INITIAL_FORM: FormState = {
   price: "",
   preferredPlan: "fast",
   missingYearAndPrice: false,
+  condition: "nuevo",
+  vin: "",
+  originOverride: null,
 };
 
 const STORAGE_KEY = "luxcars:last-estimate";
@@ -125,6 +151,9 @@ function CalculatorSectionInner() {
                 parsed.missingYear ??
                 parsed.missingPrice,
             ),
+            condition: parsed.condition || INITIAL_FORM.condition,
+            vin: parsed.vin || INITIAL_FORM.vin,
+            originOverride: parsed.originOverride ?? null,
           };
         }
       }
@@ -134,8 +163,14 @@ function CalculatorSectionInner() {
     return INITIAL_FORM;
   };
 
-  const [form, setForm] = useState<FormState>(loadFormFromStorage);
+  // El primer render TIENE que coincidir con el del servidor, así que arranca
+  // siempre en INITIAL_FORM. Lo guardado en localStorage se aplica después de
+  // montar: leerlo durante el render rompe la hidratación y React descarta los
+  // valores del cliente sin avisar, perdiendo el formulario del usuario.
+  const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [hydrated, setHydrated] = useState(false);
   const [estimate, setEstimate] = useState<PremiumImportQuote | null>(null);
+  const [originInfo, setOriginInfo] = useState<OriginInference | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -177,12 +212,34 @@ function CalculatorSectionInner() {
       return;
     }
 
+    const admissibility = checkAdmissibility({
+      vehicleType: form.vehicleType,
+      condition: form.condition,
+      year: form.year.trim(),
+      currentYear: CURRENT_YEAR,
+    });
+    if (!admissibility.allowed) {
+      setError(admissibility.reason);
+      return;
+    }
+
+    const inferred = resolveOrigin(
+      form.brand.trim(),
+      form.model.trim(),
+      form.vin.trim() || undefined,
+    );
+    setOriginInfo(inferred);
+
     const parsed: ImportCalculatorInput = {
       brand: form.brand.trim(),
       model: form.model.trim(),
       year: form.year.trim(),
       priceMiami,
       vehicleType: form.vehicleType,
+      condition: form.condition,
+      // El usuario nunca elige el origen: se deduce del modelo (y del VIN si lo
+      // dio). Solo lo corrige desde el resultado, donde ve el monto en juego.
+      origin: form.originOverride ?? inferred.origin,
     };
 
     try {
@@ -194,7 +251,11 @@ function CalculatorSectionInner() {
       setShowResults(true);
     } catch (err) {
       console.error(err);
-      setError("Hubo un problema al generar el estimado. Intenta nuevamente.");
+      setError(
+        err instanceof UnsupportedQuoteError
+          ? err.message
+          : "Hubo un problema al generar el estimado. Intenta nuevamente.",
+      );
     }
   };
 
@@ -212,24 +273,31 @@ function CalculatorSectionInner() {
     router.replace("/", { scroll: false });
   };
 
-  // Guardar formulario en localStorage cada vez que cambie
+  // Restaurar el formulario guardado, ya montado y con la hidratación cerrada.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    setForm(loadFormFromStorage());
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Guardar el formulario cada vez que cambie, pero nunca antes de haberlo
+  // restaurado: si no, el INITIAL_FORM del primer render pisa lo guardado.
+  useEffect(() => {
+    if (!hydrated) return;
 
     try {
       window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(form));
     } catch (err) {
       console.warn("No se pudo guardar el formulario localmente", err);
     }
-  }, [form]);
+  }, [form, hydrated]);
 
   // Cargar estimate guardado si existe y el formulario está completo
   // Solo ejecutar una vez después de que el componente se monte
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!hydrated) return;
 
-    // Pequeño delay para asegurar que el formulario se haya cargado desde localStorage
-    const timer = setTimeout(() => {
+    {
       try {
         const params = new URLSearchParams(window.location.search);
         if (params.get("simular")) {
@@ -269,11 +337,9 @@ function CalculatorSectionInner() {
       } catch (err) {
         console.warn("No se pudo cargar el cálculo guardado", err);
       }
-    }, 150);
-
-    return () => clearTimeout(timer);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Solo ejecutar una vez al montar
+  }, [hydrated]);
 
   const simularPresetId = searchParams.get("simular");
 
@@ -287,6 +353,7 @@ function CalculatorSectionInner() {
     }
 
     const c = preset.calculator;
+    const presetOrigin = resolveOrigin(c.brand, c.model);
     const simYear = getInitialYear();
     const priceStr = String(Math.round(c.priceUsd));
     const preferredPlan = c.preferredPlan ?? "fast";
@@ -299,9 +366,15 @@ function CalculatorSectionInner() {
       price: priceStr,
       preferredPlan,
       missingYearAndPrice: false,
+      // Los presets de vehículos destacados son unidades nuevas traídas de
+      // Miami; el usuario puede cambiarlo después en el formulario.
+      condition: inferCondition(simYear, CURRENT_YEAR),
+      vin: "",
+      originOverride: null,
     };
 
     setForm(nextForm);
+    setOriginInfo(presetOrigin);
     setError(null);
 
     const parsed: ImportCalculatorInput = {
@@ -310,6 +383,8 @@ function CalculatorSectionInner() {
       year: simYear,
       priceMiami: c.priceUsd,
       vehicleType: c.vehicleType,
+      condition: nextForm.condition,
+      origin: presetOrigin.origin,
     };
 
     try {
@@ -385,6 +460,27 @@ function CalculatorSectionInner() {
           [field]: value,
         }));
       };
+
+  /** Recalcula el estimado cambiando solo el origen, sin volver al formulario. */
+  const handleOriginOverride = (next: VehicleOrigin) => {
+    if (!estimate) return;
+    setForm((prev) => ({ ...prev, originOverride: next }));
+    try {
+      setEstimate(
+        calculateImportQuote(
+          { ...estimate.input, origin: next },
+          estimate.planKey,
+        ),
+      );
+    } catch (err) {
+      console.error(err);
+      setError(
+        err instanceof UnsupportedQuoteError
+          ? err.message
+          : "Hubo un problema al recalcular el estimado.",
+      );
+    }
+  };
 
   const handleVehicleTypeSelect = (vehicleType: VehicleTypeId) => {
     setForm((prev) => ({
@@ -466,6 +562,46 @@ function CalculatorSectionInner() {
         /* FORMULARIO */
         <div className="mt-8 md:mt-16 max-w-3xl mx-auto">
           <div className="grid gap-5 md:gap-7 rounded-2xl md:rounded-3xl border border-white/10 bg-white/5 p-4 md:p-8 shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
+            <div className="grid gap-4 md:gap-5">
+              <div className="grid gap-2.5 text-sm text-white/70">
+                <div className="flex items-center gap-2 text-white">
+                  <span className="font-semibold tracking-wide text-sm md:text-base">
+                    Condición
+                  </span>
+                  <Tooltip content="El ISC que cobra SUNAT no es el mismo para un vehículo nuevo que para uno usado." />
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {CONDITION_OPTIONS.map((option) => {
+                    const isSelected = form.condition === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() =>
+                          setForm((prev) => ({ ...prev, condition: option.id }))
+                        }
+                        className={cn(
+                          "flex flex-col items-start gap-1 rounded-xl border px-3.5 py-3 text-left transition",
+                          isSelected
+                            ? "border-[#f5d072]/80 bg-[#f5d072]/10 text-white"
+                            : "border-white/10 bg-black/40 text-white/60 hover:border-white/20 hover:text-white",
+                        )}
+                      >
+                        <span className="text-sm font-semibold text-white">
+                          {option.label}
+                        </span>
+                        <span className="text-[11px] leading-tight text-white/40">
+                          {option.hint}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+
             <div className="grid gap-2.5 md:gap-3 text-sm text-white/70">
               <div className="flex items-center gap-2 text-white">
                 <VehicleIcon size={18} />
@@ -499,7 +635,16 @@ function CalculatorSectionInner() {
                         {option.label}
                       </span>
                       <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-white/40">
-                        <TaxIcon size={14} /> {formatPercentage(option.iscRate)}
+                        <TaxIcon size={14} />{" "}
+                        {(() => {
+                          const rate = resolveIscRate({
+                            category: option,
+                            condition: form.condition,
+                          });
+                          return rate === null
+                            ? "no importable"
+                            : formatPercentage(rate);
+                        })()}
                       </span>
                     </button>
                   );
@@ -540,6 +685,23 @@ function CalculatorSectionInner() {
                 />
               </label>
             </div>
+            <label className="grid gap-2 text-sm text-white/70">
+              <span className="flex items-center gap-2">
+                VIN
+                <span className="text-xs text-white/40">(opcional)</span>
+                <Tooltip content="Si tienes el VIN del vehículo, su primer carácter identifica el país de fabricación con certeza y ajusta el arancel automáticamente." />
+              </span>
+              <input
+                value={form.vin}
+                onChange={handleFieldChange("vin")}
+                placeholder="17 caracteres · afina el arancel"
+                maxLength={17}
+                autoComplete="off"
+                spellCheck={false}
+                className="h-11 md:h-12 rounded-xl md:rounded-2xl border border-white/10 bg-black/60 px-3 md:px-4 font-mono uppercase tracking-wider text-white shadow-inner shadow-black/40 placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-white/30 focus:border-[#f5d072] focus:outline-none focus:ring-2 focus:ring-[#f5d072]/40 text-base"
+                style={{ fontSize: '16px' }}
+              />
+            </label>
             <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
               <div className="grid gap-2 text-sm text-white/70">
                 <div className="flex items-center gap-2">
@@ -562,8 +724,14 @@ function CalculatorSectionInner() {
                 >
                   <option value="" className="bg-neutral-900 text-white/60">Selecciona</option>
                   {(() => {
-                    const currentYear = new Date().getFullYear();
-                    const years = [currentYear, currentYear - 1];
+                    // El rango se deriva de la regla de antigüedad, no se
+                    // escribe a mano: si cambia la norma, cambia el select.
+                    const newest = CURRENT_YEAR;
+                    const oldest = CURRENT_YEAR - PRICING_CONFIG.usedMaxAgeYears;
+                    const years = Array.from(
+                      { length: newest - oldest + 1 },
+                      (_, i) => newest - i,
+                    );
                     return years.map((year) => (
                       <option key={year} value={year.toString()} className="bg-neutral-900 text-white">
                         {year}
@@ -755,25 +923,56 @@ function CalculatorSectionInner() {
                     label="Flete + Seguro"
                     amount={estimate.freight + estimate.insurance}
                     icon={<TaxIcon size={16} />}
-                    tooltip="Flete marítimo desde Miami hasta Callao más seguro internacional (1.5% del CIF)."
+                    tooltip="Flete marítimo desde Miami hasta Callao más seguro internacional (0.35% sobre el 110% del FOB + flete, mínimo USD 45)."
                   />
                   <BreakdownItem
-                    label="Ad Valorem (6%)"
+                    label={`Ad Valorem (${formatPercentage(estimate.adValoremRate)})`}
                     amount={estimate.adValorem}
                     icon={<TaxIcon size={16} />}
-                    tooltip="Ad Valorem 6% calculado sobre el CIF (Costo + Seguro + Flete)."
+                    tooltip={
+                      estimate.adValoremRate === 0
+                        ? "Ad Valorem 0%: los vehículos originarios de EE.UU. entran libres de arancel por el APC Perú–Estados Unidos. Requiere certificado de origen."
+                        : `Ad Valorem ${formatPercentage(estimate.adValoremRate)} sobre el CIF. Solo baja a 0% si el vehículo es originario de EE.UU. y se presenta certificado de origen.`
+                    }
                   />
+                  {originInfo && (
+                    <div className="-mt-1 mb-1 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
+                      <p className="text-[11px] leading-snug text-white/45">
+                        {originInfo.reason}
+                      </p>
+                      {(originInfo.mayQualifyWithCertificate ||
+                        estimate.adValoremRate === 0) && (
+                        <button
+                          type="button"
+                          onClick={() => handleOriginOverride(
+                            estimate.adValoremRate === 0 ? "otro" : "originario-usa",
+                          )}
+                          className="mt-1.5 text-[11px] font-medium text-[#f5d072] underline underline-offset-2 hover:text-[#fbe5a4]"
+                        >
+                          {estimate.adValoremRate === 0
+                            ? "No tengo certificado de origen · recalcular con 6%"
+                            : "Sí tengo certificado de origen · recalcular con 0%"}
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <BreakdownItem
-                    label="ISC"
+                    label={`ISC (${formatPercentage(estimate.iscRate)})`}
                     amount={estimate.isc}
                     icon={<TaxIcon size={16} />}
-                    tooltip={`Impuesto Selectivo al Consumo ${formatPercentage(estimate.iscRate)}. Varía según el tipo de vehículo (gasolina, híbrido, diésel o eléctrico).`}
+                    tooltip={`Impuesto Selectivo al Consumo ${formatPercentage(estimate.iscRate)} sobre CIF + Ad Valorem. ${estimate.iscTooltip}`}
                   />
                   <BreakdownItem
-                    label="IGV (18%)"
+                    label="IGV (15.5%)"
                     amount={estimate.igv}
                     icon={<TaxIcon size={16} />}
-                    tooltip="Impuesto General a las Ventas 18% aplicado sobre CIF + Ad Valorem + ISC."
+                    tooltip="Impuesto General a las Ventas 15.5% sobre CIF + Ad Valorem + ISC."
+                  />
+                  <BreakdownItem
+                    label="IPM (2.5%)"
+                    amount={estimate.ipm}
+                    icon={<TaxIcon size={16} />}
+                    tooltip="Impuesto de Promoción Municipal 2.5%, sobre la misma base que el IGV. Juntos suman el 18% habitual."
                   />
                   <BreakdownItem
                     label="Fees & Servicios"
@@ -781,6 +980,18 @@ function CalculatorSectionInner() {
                     icon={<ServiceIcon size={16} />}
                     tooltip="Incluye State Compliance Fee (5%), Broker Fee (10%) y Extra FastTrack si aplica. Cubre inspección certificada, negociación, logística concierge y gestión documental."
                   />
+                  <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <BreakdownItem
+                      label={`Percepción IGV (${formatPercentage(estimate.percepcionRate)})`}
+                      amount={estimate.percepcion}
+                      icon={<TaxIcon size={16} />}
+                      tooltip="Adelanto del IGV que se paga en aduanas y luego se recupera como crédito fiscal. No es un costo, pero sí es efectivo que hay que desembolsar."
+                    />
+                    <p className="mt-1.5 text-[11px] leading-snug text-white/40">
+                      No es costo: se recupera como crédito fiscal. Efectivo total a
+                      desembolsar {formatCurrency(estimate.cashRequired)}.
+                    </p>
+                  </div>
                 </div>
 
                 {whatsappLink && (

@@ -14,12 +14,45 @@ export const LUXCARS_CONFIG = {
     "LXCARS",
     "LX Cars",
   ],
+  legalName: "LUX CARS IMPORT S.A.C.",
+  ruc: "20615410935",
   contact: {
-    whatsappNumber: "51987654321",
-    email: "concierge@luxcars.pe",
-    phone: "+51 987 654 321",
-    address: "Av. Javier Prado Este 4200, San Borja, Lima, Perú",
+    whatsappNumber: "51980794348",
+    email: "info@luxcars.pe",
+    phone: "+51 980 794 348",
+    address: "Calle Dionisio Derteano 184, Of. 1102, San Isidro",
+    city: "Lima",
+    region: "Lima",
+    country: "PE",
+    website: "https://luxcars.pe",
   },
+  /** Las cuatro líneas de negocio, tal como figuran en el material de marca. */
+  businessLines: [
+    {
+      id: "compra-venta",
+      label: "Compra y venta",
+      description:
+        "Compramos y vendemos vehículos premium con stock propio verificado.",
+    },
+    {
+      id: "importacion",
+      label: "Importación a pedido",
+      description:
+        "Buscamos, inspeccionamos e importamos el vehículo exacto que pides.",
+    },
+    {
+      id: "tasacion",
+      label: "Tasación y consignación",
+      description:
+        "Valorizamos tu vehículo y lo vendemos por ti. Sin contrato de exclusividad: sigues usando tu auto mientras lo vendemos.",
+    },
+    {
+      id: "documentaria",
+      label: "Gestión documentaria",
+      description:
+        "Nacionalización, homologación, placas y transferencias.",
+    },
+  ],
   services: {
     minimumVehiclePrice: IMPORTER_RULES.minimumVehiclePrice,
     finalRangeVariance: IMPORTER_RULES.finalRangeVariance,
@@ -58,6 +91,11 @@ export const LUXCARS_CONFIG = {
       question: "¿Cuál es la inversión mínima?",
       answer:
         `Trabajamos únicamente con vehículos premium y exóticos desde USD ${IMPORTER_RULES.minimumVehiclePrice.toLocaleString("en-US")} hacia arriba para asegurar calidad y exclusividad.`,
+    },
+    {
+      question: "¿Tengo que dejarles mi auto para venderlo en consignación?",
+      answer:
+        "No. Trabajamos sin contrato de exclusividad: publicamos y gestionamos la venta de tu vehículo mientras tú lo sigues usando con normalidad. Solo lo coordinamos para las visitas de compradores interesados, y si lo vendes por tu cuenta no pagas comisión.",
     },
     {
       question: "¿Qué pasa si no encuentro el auto ideal?",
@@ -111,6 +149,11 @@ export const LUXCARS_CONFIG = {
       title: "Ticket premium",
       description:
         `Solo trabajamos con autos desde USD ${IMPORTER_RULES.minimumVehiclePrice.toLocaleString("en-US")} para garantizar exclusividad real.`,
+    },
+    {
+      title: "Consignación sin exclusividad",
+      description:
+        "Dejas tu auto en venta con nosotros y sigues manejándolo. No firmas exclusividad ni lo inmovilizas: si lo vendes por tu cuenta, no nos debes nada.",
     },
     {
       title: "Servicio concierge Miami → Perú",
