@@ -10,21 +10,45 @@ function formatPriceRange(min: number, max: number) {
   return `${formatCurrency(min)} – ${formatCurrency(max)}`;
 }
 
-export function MostSoughtVehiclesSection() {
+type Props = {
+  /** Cuántos mostrar. Sin valor, salen todos (es el uso de /importar). */
+  limite?: number;
+  /** El adelanto de la home enlaza al catálogo completo en vez de a la calculadora. */
+  verTodosHref?: string;
+  eyebrow?: string;
+  titulo?: string;
+  descripcion?: string;
+  /** El adelanto de la home no lleva id para no competir con el ancla de /importar. */
+  id?: string;
+};
+
+export function MostSoughtVehiclesSection({
+  limite,
+  verTodosHref,
+  eyebrow = "Mercado Perú",
+  titulo = "Los autos más buscados con precios reales de referencia",
+  descripcion = "Ejemplos basados en anuncios y listados recientes en Miami y EE. UU. Toca un vehículo para abrir la calculadora con los datos completos y ver el desglose del estimado. Los montos son referenciales en USD.",
+  id = "mas-buscados",
+}: Props = {}) {
+  const vehiculos = limite
+    ? TRENDING_VEHICLES.slice(0, limite)
+    : TRENDING_VEHICLES;
+  const esAdelanto = Boolean(limite);
+
   return (
     <section
-      id="mas-buscados"
+      id={id}
       className="scroll-mt-32 rounded-lux-lg border border-line bg-surface px-4 py-12 md:rounded-lux-xl md:px-6 md:py-20 lg:px-14"
     >
       <SectionHeading
-        eyebrow="Mercado Perú"
-        title="Los autos más buscados con precios reales de referencia"
-        description="Ejemplos basados en anuncios y listados recientes en Miami y EE. UU. Toca un vehículo para abrir la calculadora con los datos completos y ver el desglose del estimado. Los montos son referenciales en USD."
+        eyebrow={eyebrow}
+        title={titulo}
+        description={descripcion}
         align="center"
       />
 
       <div className="mx-auto mt-10 grid max-w-5xl gap-4 sm:grid-cols-2 md:mt-14 md:gap-5 lg:grid-cols-3">
-        {TRENDING_VEHICLES.map((vehicle) => (
+        {vehiculos.map((vehicle) => (
           // El crédito va FUERA del <Link>: lleva enlaces propios (autor y
           // licencia) y un <a> no puede anidarse dentro de otro <a>.
           <div key={vehicle.id} className="flex flex-col">
@@ -106,14 +130,22 @@ export function MostSoughtVehiclesSection() {
       </div>
 
       <div className="mx-auto mt-10 max-w-2xl text-center md:mt-14">
-        <p className="text-xs leading-relaxed text-ink-4">
-          Cada simulación usa el punto medio del rango como precio Miami de
-          ejemplo, el año reciente admitido por la calculadora y el tipo de
-          motor/ISC más coherente con el modelo. El precio final en Lima depende
-          del CIF, SUNAT y tipo de cambio.
-        </p>
-        <Button href="/#calculator" size="lg" className="mt-6">
-          Simular otro vehículo
+        {!esAdelanto && (
+          <p className="text-xs leading-relaxed text-ink-4">
+            Cada simulación usa el punto medio del rango como precio Miami de
+            ejemplo, el año reciente admitido por la calculadora y el tipo de
+            motor/ISC más coherente con el modelo. El precio final en Lima
+            depende del CIF, SUNAT y tipo de cambio.
+          </p>
+        )}
+        <Button
+          href={verTodosHref ?? "/#calculator"}
+          size="lg"
+          className={esAdelanto ? "" : "mt-6"}
+        >
+          {verTodosHref
+            ? `Ver los ${TRENDING_VEHICLES.length} vehículos`
+            : "Simular otro vehículo"}
         </Button>
       </div>
     </section>

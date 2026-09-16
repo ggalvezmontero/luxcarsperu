@@ -5,6 +5,7 @@ import { LUXCARS_CONFIG } from "@/lib/config";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { MostSoughtVehiclesSection } from "@/components/MostSoughtVehiclesSection";
 
 /* ===========================================================================
    /importar — Importación a pedido
@@ -581,6 +582,15 @@ export default function ImportarPage() {
               </Link>
               .
             </p>
+          </div>
+        </section>
+
+        {/* Catálogo completo de referencia. Vive aquí y no en la home porque
+            son ejemplos de lo que se PUEDE traer, no stock disponible: eso
+            último es /comprar. La home lleva solo un adelanto de tres. */}
+        <section className="w-full bg-bg px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+          <div className="mx-auto w-full max-w-6xl">
+            <MostSoughtVehiclesSection />
           </div>
         </section>
       </main>

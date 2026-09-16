@@ -9,6 +9,7 @@ import { FAQSection } from "@/components/FAQSection";
 import { Footer } from "@/components/Footer";
 import { HeroNuevo } from "@/components/HeroNuevo";
 import { LineasNegocioSection } from "@/components/LineasNegocioSection";
+import { MostSoughtVehiclesSection } from "@/components/MostSoughtVehiclesSection";
 import { Navbar } from "@/components/Navbar";
 import { ProcesoSection } from "@/components/ProcesoSection";
 import { ScrollAnimation } from "@/components/ScrollAnimation";
@@ -108,6 +109,19 @@ export default function Home() {
         </ScrollAnimation>
 
         {/* 04 · CALCULADORA — el activo del sitio. */}
+        <Contenida className="pt-20 sm:pt-28 lg:pt-36">
+          <ScrollAnimation delay={0.05}>
+            <MostSoughtVehiclesSection
+              limite={3}
+              verTodosHref="/importar#mas-buscados"
+              id="referencias"
+              eyebrow="Mercado Perú"
+              titulo="Lo que más nos piden traer"
+              descripcion="Ejemplos con precio referencial de Miami. Toca uno y la calculadora se abre con sus datos cargados."
+            />
+          </ScrollAnimation>
+        </Contenida>
+
         <Contenida className="pt-24 sm:pt-32 lg:pt-40">
           <ScrollAnimation>
             <CalculatorSection />
