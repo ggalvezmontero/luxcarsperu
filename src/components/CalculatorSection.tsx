@@ -55,9 +55,11 @@ import { Section, SectionHeader } from "./ui/Section";
       fija muestra el total y lleva al desglose. Menos pasos, más contexto.
    2. Cuatro decisiones, en orden de impacto: condición, motor, el auto,
       entrega. Nada más es obligatorio.
-   3. El VIN sale del formulario. Solo sirve para afinar el ad valorem en los
-      pocos modelos con doble planta, así que se ofrece junto al ad valorem del
-      resultado, cuando el dato importa y con el monto en juego a la vista.
+   3. No se pide el VIN. Es un dato que el cliente casi nunca tiene a mano. El
+      origen (0% o 6% de ad valorem) se sugiere por marca y modelo con la regla
+      conservadora del motor de origen, y LuxCars lo verifica con el VIN de la
+      unidad antes de comprar. El cliente solo puede afinar una cosa: si el
+      vendedor emite certificado de origen.
    4. Los errores se muestran donde se corrigen (bajo el campo) y el panel de
       resultado dice qué falta, en vez de un alerta genérico al final.
    ------------------------------------------------------------------------- */
@@ -98,8 +100,6 @@ type FormState = {
   /** Solo dígitos. Se formatea con separadores al mostrarse. */
   price: string;
   preferredPlan: PlanKey;
-  /** Opcional. Su primer carácter decide el país y manda sobre la tabla. */
-  vin: string;
   /** Solo se llena si el usuario corrige la sugerencia desde el resultado. */
   originOverride: VehicleOrigin | null;
 };
@@ -132,7 +132,6 @@ const INITIAL_FORM: FormState = {
   year: String(CURRENT_YEAR - 1),
   price: "",
   preferredPlan: "fast",
-  vin: "",
   originOverride: null,
 };
 
@@ -160,7 +159,6 @@ function loadStoredForm(): FormState {
       year: YEAR_OPTIONS.includes(Number(year)) ? year : INITIAL_FORM.year,
       price: onlyDigits(String(parsed.price ?? "")),
       preferredPlan: parsed.preferredPlan === "standard" ? "standard" : "fast",
-      vin: parsed.vin || "",
       originOverride: parsed.originOverride ?? null,
     };
   } catch (err) {
@@ -204,11 +202,7 @@ function evaluate(form: FormState, priceSettled: boolean): Evaluation {
   });
   if (!admissibility.allowed) return { kind: "blocked", reason: admissibility.reason };
 
-  const originInfo = resolveOrigin(
-    form.brand.trim(),
-    form.model.trim(),
-    form.vin.trim() || undefined,
-  );
+  const originInfo = resolveOrigin(form.brand.trim(), form.model.trim());
 
   const input: ImportCalculatorInput = {
     brand: form.brand.trim(),
@@ -248,7 +242,6 @@ function CalculatorSectionInner() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [hydrated, setHydrated] = useState(false);
   const [priceTouched, setPriceTouched] = useState(false);
-  const [showVin, setShowVin] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [resultInView, setResultInView] = useState(false);
@@ -318,7 +311,6 @@ function CalculatorSectionInner() {
       year,
       price: onlyDigits(String(Math.round(c.priceUsd))),
       preferredPlan: c.preferredPlan ?? "fast",
-      vin: "",
       originOverride: null,
     });
     setPriceTouched(true);
@@ -345,10 +337,9 @@ function CalculatorSectionInner() {
     setForm((prev) => ({ ...prev, ...changes }));
 
   const handleText =
-    (field: "brand" | "model" | "vin") => (event: ChangeEvent<HTMLInputElement>) => {
-      const value = field === "vin" ? event.target.value.toUpperCase().slice(0, 17) : event.target.value;
+    (field: "brand" | "model") => (event: ChangeEvent<HTMLInputElement>) => {
       // Cambiar el auto invalida la corrección manual del origen.
-      patch({ [field]: value, originOverride: null });
+      patch({ [field]: event.target.value, originOverride: null });
     };
 
   const handlePrice = (event: ChangeEvent<HTMLInputElement>) => {
@@ -358,7 +349,6 @@ function CalculatorSectionInner() {
   const handleReset = () => {
     setForm(INITIAL_FORM);
     setPriceTouched(false);
-    setShowVin(false);
     setBreakdownOpen(false);
     setPdfError(null);
     try {
@@ -607,12 +597,8 @@ function CalculatorSectionInner() {
             evaluation={evaluation}
             estimate={estimate}
             originInfo={originInfo}
-            form={form}
             breakdownOpen={breakdownOpen}
             onToggleBreakdown={() => setBreakdownOpen((v) => !v)}
-            showVin={showVin}
-            onToggleVin={() => setShowVin((v) => !v)}
-            onVinChange={handleText("vin")}
             onOriginOverride={(next) => patch({ originOverride: next })}
             whatsappLink={whatsappLink}
             adviceLink={adviceLink}
@@ -664,12 +650,8 @@ type ResultPanelProps = {
   evaluation: Evaluation;
   estimate: PremiumImportQuote | null;
   originInfo: OriginInference | null;
-  form: FormState;
   breakdownOpen: boolean;
   onToggleBreakdown: () => void;
-  showVin: boolean;
-  onToggleVin: () => void;
-  onVinChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onOriginOverride: (next: VehicleOrigin) => void;
   whatsappLink: string | null;
   adviceLink: string;
@@ -683,12 +665,8 @@ function ResultPanel({
   evaluation,
   estimate,
   originInfo,
-  form,
   breakdownOpen,
   onToggleBreakdown,
-  showVin,
-  onToggleVin,
-  onVinChange,
   onOriginOverride,
   whatsappLink,
   adviceLink,
@@ -747,8 +725,10 @@ function ResultPanel({
   const servicio = estimate.stateComplianceFee + estimate.brokerFee + estimate.documentHandlingFee;
   const tributosShare = estimate.finalEstimate > 0 ? tributos / estimate.finalEstimate : 0;
   const conditionLabel = estimate.condition === "usado" ? "Usado" : "Nuevo";
-  const canToggleOrigin = originInfo.mayQualifyWithCertificate || estimate.adValoremRate === 0;
-  const vinHelps = originInfo.requiresVin || originInfo.confidence !== "alta";
+  // Un usado paga 6% haga lo que haga el certificado: no hay nada que corregir.
+  const canToggleOrigin =
+    estimate.condition === "nuevo" &&
+    (originInfo.mayQualifyWithCertificate || estimate.adValoremRate === 0);
 
   return (
     <div className="glow-lux rounded-[22px] border border-line p-6 sm:p-8">
@@ -854,52 +834,21 @@ function ResultPanel({
         ) : null}
       </div>
 
-      {/* Origen y VIN */}
+      {/* Origen */}
       <div className="mt-5 rounded-2xl border border-line bg-surface/60 p-4">
-        <p className="text-xs leading-relaxed text-ink-3">{originInfo.reason}</p>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-          {canToggleOrigin ? (
-            <button
-              type="button"
-              onClick={() => onOriginOverride(estimate.adValoremRate === 0 ? "otro" : "originario-usa")}
-              className="text-xs font-semibold text-silver underline underline-offset-2 hover:text-ink"
-            >
-              {estimate.adValoremRate === 0
-                ? "No tengo certificado de origen · recalcular con 6%"
-                : "Tengo certificado de origen · recalcular con 0%"}
-            </button>
-          ) : null}
-          {vinHelps || showVin ? (
-            <button
-              type="button"
-              aria-expanded={showVin}
-              aria-controls="calc-vin"
-              onClick={onToggleVin}
-              className="text-xs font-semibold text-silver underline underline-offset-2 hover:text-ink"
-            >
-              {showVin ? "Ocultar VIN" : "¿Tienes el VIN? Afina el arancel"}
-            </button>
-          ) : null}
-        </div>
-        {showVin ? (
-          <div id="calc-vin" className="mt-3">
-            <label htmlFor="calc-vin-input" className="block text-xs text-ink-2">
-              VIN <span className="text-ink-4">(17 caracteres, en la ficha o el parabrisas)</span>
-            </label>
-            <input
-              id="calc-vin-input"
-              value={form.vin}
-              onChange={onVinChange}
-              placeholder="WP1AB2A5XRLB12345"
-              maxLength={17}
-              autoComplete="off"
-              spellCheck={false}
-              className="field-lux mt-1.5 font-mono uppercase tracking-wider placeholder:font-sans placeholder:normal-case placeholder:tracking-normal"
-            />
-            <p className="mt-1.5 text-xs text-ink-4">
-              El primer carácter dice dónde se fabricó el auto. Solo lo usamos para el ad valorem.
-            </p>
-          </div>
+        <p className="text-xs leading-relaxed text-ink-3">
+          {describeOrigin(originInfo, estimate)}
+        </p>
+        {canToggleOrigin ? (
+          <button
+            type="button"
+            onClick={() => onOriginOverride(estimate.adValoremRate === 0 ? "otro" : "originario-usa")}
+            className="mt-2 text-xs font-semibold text-silver underline underline-offset-2 hover:text-ink"
+          >
+            {estimate.adValoremRate === 0
+              ? "No tengo certificado de origen · recalcular con 6%"
+              : "Tengo certificado de origen · recalcular con 0%"}
+          </button>
         ) : null}
       </div>
 
@@ -1078,6 +1027,39 @@ function Group({
       <div className="border-l border-line">{children}</div>
     </div>
   );
+}
+
+/**
+ * Explicación corta del ad valorem para el cliente. Las notas internas del
+ * motor de origen (`reason`) hablan de plantas, VIN y AALA: son para el
+ * asesor, no para la web pública. Aquí se resume con los campos estructurados.
+ */
+function describeOrigin(info: OriginInference, estimate: PremiumImportQuote): string {
+  const vehicle = `${estimate.input.brand} ${estimate.input.model}`.trim();
+  const country = info.assemblyCountry.replace(/\s*\(verificar VIN\)/i, "");
+  const verify = "Antes de comprar lo confirmamos con el VIN de la unidad.";
+
+  if (estimate.adValoremRate === 0) {
+    const where = info.plant ? `en ${info.plant}` : "en Estados Unidos";
+    return `Ad valorem 0%: el ${vehicle} se ensambla ${where} y califica al acuerdo Perú–EE.UU. si el vendedor emite el certificado de origen. ${verify}`;
+  }
+  if (estimate.condition === "usado") {
+    return `Ad valorem 6%: el acuerdo Perú–EE.UU. solo exonera vehículos nuevos. Un usado paga 6% aunque se haya ensamblado en Estados Unidos y tenga certificado de origen.`;
+  }
+  if (!info.matched) {
+    return `No reconocimos este modelo, así que cotizamos 6% por seguridad. Si se ensambla en Estados Unidos puede bajar a 0% con certificado de origen. ${verify}`;
+  }
+  const multiCountry = /,| o /.test(country);
+  if (info.requiresVin && multiCountry) {
+    return `Cotizamos 6% por seguridad: el ${vehicle} se fabrica en más de un país (${country}) y solo las unidades ensambladas en Estados Unidos califican al 0%. ${verify}`;
+  }
+  if (info.mayQualifyWithCertificate) {
+    return `Cotizamos 6% por seguridad. El ${vehicle} se ensambla en Estados Unidos y puede bajar a 0% si el vendedor emite el certificado de origen del acuerdo Perú–EE.UU. ${verify}`;
+  }
+  if (info.requiresVin) {
+    return `Cotizamos 6% por seguridad: el origen del ${vehicle} depende de la unidad concreta. ${verify}`;
+  }
+  return `Ad valorem 6%: el ${vehicle} se ensambla en ${country} y no califica al acuerdo Perú–EE.UU.`;
 }
 
 function listInSpanish(items: string[]) {
