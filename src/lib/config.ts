@@ -181,7 +181,7 @@ export const LUXCARS_CONFIG = {
     {
       question: "¿Puedo comprar un auto ya disponible en Lima, sin importar nada?",
       answer:
-        "Sí. El stock propio ya está nacionalizado, con placas y tarjeta de propiedad. Lo ves, lo pruebas y lo compras. De cada unidad publicamos marca, modelo, año, kilometraje y precio. Si un dato no está verificado, no lo publicamos.",
+        "Sí. El stock propio ya está nacionalizado, con placas y tarjeta de propiedad. Lo ves, lo pruebas y lo compras. También publicamos autos de clientes en consignación, marcados como tales: los verificamos igual y coordinamos la visita con el dueño. De cada unidad publicamos marca, modelo, año, kilometraje y precio. Si un dato no está verificado, no lo publicamos.",
     },
     {
       question: "¿Tengo que dejarles mi auto para venderlo en consignación?",

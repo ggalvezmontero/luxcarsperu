@@ -70,7 +70,7 @@ el portal en el paso 6.
 
 ## Paso 2 — Aplicar las migraciones
 
-Las 7 migraciones están en `supabase/migrations/`. **Nadie las ha ejecutado
+Las 9 migraciones están en `supabase/migrations/`. **Nadie las ha ejecutado
 todavía** contra tu proyecto: fueron probadas contra un PostgreSQL 17 local
 descartable con los roles de Supabase recreados, y ahí quedaron limpias (7
 tablas, 1 vista, 30 políticas RLS, 45 índices, 22 tasas cargadas).

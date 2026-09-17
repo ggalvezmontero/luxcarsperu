@@ -39,6 +39,7 @@ function demo(
     currency: "USD",
     priceNegotiable: false,
     status: "disponible",
+    source: "carga_manual",
     location: "San Isidro, Lima",
     title: `${partial.brand} ${partial.model} ${partial.year}`,
     description: null,
@@ -96,6 +97,9 @@ export const DEMO_STOCK: StockVehicle[] = [
     bodyStyle: "SUV",
     drivetrain: "xDrive",
     exteriorColor: "Azul",
+    // Consignado: auto de un cliente, vendido a través de LuxCars.
+    source: "consignacion",
+    location: "Surco, Lima",
     highlights: ["Paquete M Sport", "1 dueño", "Garantía de fábrica vigente"],
   }),
   demo({

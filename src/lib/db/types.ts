@@ -118,6 +118,11 @@ export type Vehicle = {
   priceNegotiable: boolean; // precio_negociable
 
   status: VehicleStatus; // estado
+  /**
+   * `fuente`. Procedencia del dato. Para la web pública lo único que importa es
+   * si vale `consignacion`: el auto es de un cliente y se dice así.
+   */
+  source: VehicleSource;
   location: string | null; // ubicacion
   title: string; // titular, con respaldo armado desde marca/modelo/año
   description: string | null; // descripcion
@@ -291,6 +296,11 @@ export type PublicVehicleRow = {
   publicado_en: string | null;
   foto_portada_url: string | null;
   foto_portada_alt: string | null;
+  /**
+   * `vehicles.fuente`, expuesta por la migración 0009. Opcional a propósito:
+   * si la vista todavía no se actualizó, el mapeo asume stock propio.
+   */
+  fuente?: string | null;
 };
 
 /** Fila de `public.vehicle_photos`, limitada a las columnas con GRANT a `anon`. */

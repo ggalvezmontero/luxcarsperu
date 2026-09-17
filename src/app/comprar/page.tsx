@@ -13,7 +13,7 @@ import { StockExplorer } from "./StockExplorer";
 export const metadata: Metadata = {
   title: "Comprar auto de lujo en Lima · Stock disponible",
   description:
-    "Autos premium en Lima, verificados y listos para entregar. Stock propio de LuxCars en San Isidro: documentos en orden y entrega inmediata.",
+    "Autos premium en Lima, verificados y listos para entregar. Stock propio de LuxCars y autos de clientes en consignación, siempre identificados: documentos en orden y entrega en días.",
   alternates: { canonical: "/comprar" },
   openGraph: {
     type: "website",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 const PROMESAS: { icon: IconName; title: string; text: string }[] = [
-  { icon: "mapPin", title: "Está en Lima", text: "Lo ves y lo manejas en San Isidro." },
+  { icon: "mapPin", title: "Está en Lima", text: "Lo ves y lo manejas con cita, sin esperar un barco." },
   { icon: "fileCheck", title: "Papeles listos", text: "Nacionalizado, con placa y transferencia incluida." },
   { icon: "clock", title: "Entrega en días", text: "Sin tránsito marítimo ni aduanas." },
 ];
@@ -49,12 +49,12 @@ export default async function ComprarPage() {
           />
           <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-void/85 via-void/60 to-void" />
           <div className="container-lux relative">
-            <p className="eyebrow">Stock propio</p>
+            <p className="eyebrow">Disponibles en Lima</p>
             <h1 className="mt-3 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
               Autos disponibles hoy en Lima
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
-              Verificados, con documentos en regla y listos para entregar.
+              Stock propio y autos de clientes en consignación, siempre identificados. Verificados, con documentos en regla y listos para entregar.
             </p>
             <ul className="mt-8 grid gap-3 sm:grid-cols-3">
               {PROMESAS.map((p) => (

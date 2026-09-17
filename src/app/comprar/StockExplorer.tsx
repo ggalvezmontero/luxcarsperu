@@ -6,10 +6,23 @@ import { VehicleCard } from "@/components/VehicleCard";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { LUXCARS_CONFIG } from "@/lib/config";
-import { CATEGORY_LABEL, type StockVehicle } from "@/lib/stockLabels";
+import {
+  CATEGORY_LABEL,
+  CONSIGNMENT_LABEL,
+  OWN_STOCK_LABEL,
+  isConsignment,
+  type StockVehicle,
+} from "@/lib/stockLabels";
 import { cn } from "@/lib/utils";
 
 type PriceBucket = "todos" | "hasta-50" | "50-90" | "desde-90";
+type Origin = "todos" | "propio" | "consignacion";
+
+const ORIGINS: { id: Origin; label: string }[] = [
+  { id: "todos", label: "Todos" },
+  { id: "propio", label: OWN_STOCK_LABEL },
+  { id: "consignacion", label: CONSIGNMENT_LABEL },
+];
 type Sort = "recientes" | "precio-asc" | "precio-desc" | "km-asc";
 
 const PRICE_BUCKETS: { id: PriceBucket; label: string }[] = [
@@ -43,7 +56,11 @@ export function StockExplorer({ stock }: { stock: StockVehicle[] }) {
   const [brand, setBrand] = useState("todas");
   const [bucket, setBucket] = useState<PriceBucket>("todos");
   const [category, setCategory] = useState<string>("todas");
+  const [origin, setOrigin] = useState<Origin>("todos");
   const [sort, setSort] = useState<Sort>("recientes");
+  // El filtro de origen solo aparece si conviven propios y consignados.
+  const hasConsigned = stock.some(isConsignment);
+  const hasOwn = stock.some((v) => !isConsignment(v));
 
   const brands = useMemo(
     () => Array.from(new Set(stock.map((v) => v.brand))).sort(),
@@ -60,6 +77,7 @@ export function StockExplorer({ stock }: { stock: StockVehicle[] }) {
       (v) =>
         (brand === "todas" || v.brand === brand) &&
         (category === "todas" || v.category === category) &&
+        (origin === "todos" || (origin === "consignacion") === isConsignment(v)) &&
         inBucket(v.price, bucket) &&
         (!q || `${v.brand} ${v.model} ${v.trim ?? ""} ${v.year}`.toLowerCase().includes(q)),
     );
@@ -70,14 +88,16 @@ export function StockExplorer({ stock }: { stock: StockVehicle[] }) {
       case "km-asc": return [...list].sort((a, b) => a.mileageKm - b.mileageKm);
       default: return list;
     }
-  }, [stock, query, brand, category, bucket, sort]);
+  }, [stock, query, brand, category, origin, bucket, sort]);
 
-  const filtered = query || brand !== "todas" || category !== "todas" || bucket !== "todos";
+  const filtered =
+    query || brand !== "todas" || category !== "todas" || bucket !== "todos" || origin !== "todos";
   const reset = () => {
     setQuery("");
     setBrand("todas");
     setCategory("todas");
     setBucket("todos");
+    setOrigin("todos");
   };
   const demo = stock.some((v) => v.isDemo);
 
@@ -128,6 +148,24 @@ export function StockExplorer({ stock }: { stock: StockVehicle[] }) {
               {results.length === 1 ? "unidad" : "unidades"}
             </p>
             {demo ? <Badge tone="warn">Demostración</Badge> : null}
+            {hasConsigned && hasOwn ? (
+              <div role="group" aria-label="Origen" className="flex rounded-full border border-line bg-surface p-0.5">
+                {ORIGINS.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    aria-pressed={origin === o.id}
+                    onClick={() => setOrigin(o.id)}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                      origin === o.id ? "bg-ink text-void" : "text-ink-3 hover:text-ink",
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {filtered ? (
               <button type="button" onClick={reset} className="text-sm font-medium text-silver underline-offset-4 hover:underline">
                 Limpiar filtros

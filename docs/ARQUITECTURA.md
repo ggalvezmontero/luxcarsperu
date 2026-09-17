@@ -182,7 +182,9 @@ supabase.from("vehicles").select("*")   // ❌ permission denied para anon
 
 Hay que **pedir columnas explícitas** o consultar la vista
 **`vehiculos_publicos`** (declarada `security_invoker = true`, así que respeta
-RLS en vez de eludirlo como haría una vista `SECURITY DEFINER`).
+RLS en vez de eludirlo como haría una vista `SECURITY DEFINER`). Desde la
+migración 0009 la vista expone también `fuente`: la web publica los autos en
+consignación junto al stock propio, pero siempre etiquetados como tales.
 
 **Si alguien "arregla" este error abriendo los permisos, está publicando el
 margen del negocio.**
