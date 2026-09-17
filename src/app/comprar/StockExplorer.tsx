@@ -195,6 +195,7 @@ export function StockExplorer({ stock }: { stock: StockVehicle[] }) {
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               {stock.length ? <Button onClick={reset} variant="secondary">Quitar filtros</Button> : null}
+              <Button href="/cuenta/comprar" variant="secondary">Pedir que lo busquen</Button>
               <Button href={SEARCH_WHATSAPP} variant="whatsapp">Dejar mi búsqueda</Button>
             </div>
           </div>

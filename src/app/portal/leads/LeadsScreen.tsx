@@ -42,7 +42,7 @@ import {
 const SETUP_STEPS = [
   "Crea el proyecto en Supabase (organización zvwegcanushbpmjtohnp) y aplica las migraciones de supabase/migrations/.",
   "Carga NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en Vercel y en .env.local.",
-  "Crea a mano los usuarios del equipo en Supabase → Authentication → Users y desactiva el alta pública.",
+  "Crea tu cuenta en luxcars.pe/cuenta/login y pide a un administrador que te asigne el rol admin desde /portal/usuarios.",
 ];
 
 export function LeadsScreen() {

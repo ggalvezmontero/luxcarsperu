@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { label: "Vender", href: "/vender" },
   { label: "Calculadora", href: "/#calculator" },
   { label: "Cómo funciona", href: "/como-funciona" },
+  { label: "Mi cuenta", href: "/cuenta" },
 ];
 
 const WA_HREF = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}`;

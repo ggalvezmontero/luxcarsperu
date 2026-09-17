@@ -70,7 +70,7 @@ el portal en el paso 6.
 
 ## Paso 2 — Aplicar las migraciones
 
-Las 9 migraciones están en `supabase/migrations/`. **Nadie las ha ejecutado
+Las 10 migraciones están en `supabase/migrations/`. **Nadie las ha ejecutado
 todavía** contra tu proyecto: fueron probadas contra un PostgreSQL 17 local
 descartable con los roles de Supabase recreados, y ahí quedaron limpias (7
 tablas, 1 vista, 30 políticas RLS, 45 índices, 22 tasas cargadas).
@@ -105,38 +105,51 @@ mostrar `vehicle_models`, `vehicles`, `vehicle_photos`, `leads`, `quotes`,
 
 ---
 
-## Paso 3 — ⚠ Desactivar el alta pública. El paso más importante de todos.
+## Paso 3 — Registro público ABIERTO, portal cerrado por rol
 
-**Si te saltas este paso, cualquier persona de internet puede crearse una cuenta
-y entrar a ver tus leads, tus márgenes y el precio mínimo de cada consignación.**
-
-Las políticas de la base dan acceso de equipo a **cualquier usuario
-autenticado**, que es lo que se pidió. La llave anónima es pública por diseño
-(viaja en el navegador). Si el registro queda abierto, esas dos cosas juntas
-significan que registrarse **es** entrar al equipo.
+Desde la migración `20260917100000_cuentas_y_roles.sql` los clientes crean
+cuenta en **luxcars.pe/cuenta** para pedir búsquedas y ofrecer su auto. Por eso
+el alta pública **debe quedar activa**:
 
 1. Supabase → **Authentication → Sign In / Providers → Email**.
-2. Desactiva **"Allow new users to sign up"**.
-3. Guarda.
+2. **"Allow new users to sign up"** activado.
+3. Decide si exiges confirmar el correo (**"Confirm email"**). Recomendado:
+   activado. El formulario ya lo contempla: si no llega sesión al registrarse,
+   le dice al cliente que revise su bandeja.
 
-> **Cómo verificar:** abre una ventana de incógnito e intenta registrarte con la
-> API de tu proyecto. Debe rechazarlo con *"Signups not allowed for this
-> instance"*.
+**Por qué esto ya no abre el negocio:** toda cuenta nueva nace con rol
+`cliente`. Todas las políticas del portal exigen `public.es_admin()`, así que
+un cliente con sesión recibe cero filas de leads, vehículos sin publicar,
+consignaciones y márgenes, exactamente igual que un anónimo. Lo que ve es lo
+suyo: sus solicitudes.
+
+> **Cómo verificar:** regístrate en una ventana de incógnito y abre
+> `/portal`. Debe decir "Esta cuenta no es del equipo".
 
 ---
 
-## Paso 4 — Crear los usuarios del equipo a mano
+## Paso 4 — El primer administrador y los siguientes
 
-No hay registro en el portal y no lo habrá.
+- **Si ya había usuarios** en Authentication → Users al aplicar la migración,
+  todos pasaron a `admin` automáticamente (eran el equipo).
+- **Si el proyecto está vacío**, regístrate en `/cuenta/login` con tu correo y
+  luego, en Supabase → **SQL Editor**, ejecuta:
 
-1. Supabase → **Authentication → Users → Add user → Create new user**.
-2. Uno por persona del equipo: correo y contraseña inicial.
-3. Marca **Auto Confirm User** para que no tenga que confirmar por correo.
-4. Pásale la contraseña por un canal seguro y pídele que la cambie.
+  ```sql
+  update public.profiles set rol = 'admin' where email = 'tu@correo.pe';
+  ```
 
-**Crea solo las cuentas que hacen falta.** Hoy todo usuario autenticado ve
-todo: no hay diferencia entre un vendedor y el dueño. Una cuenta de más es un
-juego completo de llaves de más.
+  Desde el editor SQL no hay sesión, así que el trigger de protección no
+  interfiere. Este paso solo hace falta una vez.
+- **Los siguientes admins** no se crean en Supabase: cada persona del equipo se
+  registra en `/cuenta/login` y tú le cambias el rol desde
+  **/portal/usuarios → Hacer admin**. Ahí mismo se quita el rol o se desactiva
+  una cuenta cuando alguien deja el equipo.
+
+**Da el rol admin solo a quien lo necesite.** Todo admin ve todo: leads,
+márgenes y precio mínimo de cada consignación. Un admin de más es un juego
+completo de llaves de más. Las contraseñas se restablecen desde
+Authentication → Users.
 
 ---
 

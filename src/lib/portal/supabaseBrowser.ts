@@ -1,5 +1,6 @@
 /**
- * Cliente de Supabase CON SESIÓN, exclusivo del portal de administración.
+ * Cliente de Supabase CON SESIÓN, compartido por el portal de administración
+ * (/portal) y el área de cuenta del cliente (/cuenta).
  *
  * ¿Por qué no se reusa `getSupabaseClient()` de `src/lib/db/client.ts`?
  * Porque aquel se construye con `persistSession: false` y `autoRefreshToken:
@@ -17,10 +18,11 @@
  *
  * 2. La verdadera barrera NO es la pantalla de login: es RLS en Postgres. Las
  *    tablas `leads`, `consignments` y las columnas de margen de `vehicles`
- *    hacen `revoke all ... from anon` y solo otorgan a `authenticated`
- *    (ver supabase/migrations/). Sin sesión válida, las consultas del tablero
- *    vuelven vacías aunque alguien renderice el HTML del portal a la fuerza.
- *    El guard de la UI es comodidad, no el candado.
+ *    hacen `revoke all ... from anon` y, desde la migración 0010, sus
+ *    políticas para `authenticated` exigen `public.es_admin()`: un cliente
+ *    con sesión recibe cero filas, igual que un anónimo. Sin rol admin, las
+ *    consultas del tablero vuelven vacías aunque alguien renderice el HTML
+ *    del portal a la fuerza. El guard de la UI es comodidad, no el candado.
  *
  * 3. Por eso el tablero consulta desde el NAVEGADOR con esta llave anónima +
  *    sesión, y NO desde el servidor con `service_role`. La llave de servicio
@@ -33,11 +35,12 @@
  *    agregar dependencias es decisión del dueño. Mientras tanto, el guard vive
  *    en el cliente y RLS protege los datos.
  *
- * 5. NO existe registro público. El dueño crea a cada usuario del equipo a mano
- *    en Supabase → Authentication → Users, y debe DESACTIVAR el alta pública en
- *    Authentication → Providers → Email → "Allow new users to sign up". Si eso
- *    queda activo, cualquiera con la llave anónima se crea una cuenta y, al ser
- *    `authenticated`, RLS le abre los leads.
+ * 5. SÍ existe registro público (luxcars.pe/cuenta/login), desde la migración
+ *    0010: los clientes crean cuenta para pedir búsquedas y ofrecer su auto.
+ *    Toda cuenta nueva nace con rol `cliente`. Registrarse NO da acceso al
+ *    portal: `es_admin()` lo niega, y el rol admin solo lo asigna otro
+ *    administrador desde /portal/usuarios. Este cliente de navegador lo
+ *    comparten el portal y el área de cuenta: una sola sesión por navegador.
  * ──────────────────────────────────────────────────────────────────────────
  */
 

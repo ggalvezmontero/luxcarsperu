@@ -328,6 +328,20 @@ export function PortalDashboard({ dbStatus }: { dbStatus: DbStatus }) {
             caption="Importaciones en camino a Callao."
             loading={loading}
           />
+          <MetricCard
+            label="Autos por aprobar"
+            value={metrics.ventasPorAprobar}
+            caption="Clientes que ofrecieron su auto. No se publica hasta aprobarlo."
+            tone={metrics.ventasPorAprobar > 0 ? "atencion" : "neutro"}
+            loading={loading}
+          />
+          <MetricCard
+            label="Búsquedas nuevas"
+            value={metrics.busquedasNuevas}
+            caption="Pedidos de autos que no tenemos. Nadie los tomó todavía."
+            tone={metrics.busquedasNuevas > 0 ? "atencion" : "neutro"}
+            loading={loading}
+          />
         </div>
 
         {metrics.sinPublicar > 0 ? (

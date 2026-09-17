@@ -20,6 +20,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ConsignmentStatus,
   LeadStatus,
+  PurchaseRequestStatus,
+  SaleRequestStatus,
   VehicleStatus,
 } from "@/lib/db/types";
 
@@ -38,6 +40,8 @@ const ESTADO_VENDIDO: VehicleStatus = "vendido";
 const ESTADO_EN_TRANSITO: VehicleStatus = "en_transito";
 const LEAD_NUEVO: LeadStatus = "nuevo";
 const CONSIGNACION_ACTIVA: ConsignmentStatus = "activa";
+const VENTA_PENDIENTE: SaleRequestStatus = "pendiente";
+const COMPRA_NUEVA: PurchaseRequestStatus = "nueva";
 
 /** Lo que el dueño mira todos los días, en el orden en que le importa. */
 export type PortalMetrics = {
@@ -55,6 +59,10 @@ export type PortalMetrics = {
   enTransito: number;
   /** Disponibles pero con `publicado = false`: no las ve nadie en la web. */
   sinPublicar: number;
+  /** `solicitudes_venta.estado = 'pendiente'`: autos de clientes esperando aprobación. */
+  ventasPorAprobar: number;
+  /** `solicitudes_compra.estado = 'nueva'`: pedidos de búsqueda sin tomar. */
+  busquedasNuevas: number;
 };
 
 export const EMPTY_METRICS: PortalMetrics = {
@@ -65,6 +73,8 @@ export const EMPTY_METRICS: PortalMetrics = {
   consignacionesActivas: 0,
   enTransito: 0,
   sinPublicar: 0,
+  ventasPorAprobar: 0,
+  busquedasNuevas: 0,
 };
 
 export type PortalMetricsResult = {
@@ -171,6 +181,24 @@ const COUNT_SPECS: CountSpec[] = [
         .select("id", { count: "exact", head: true })
         .eq("estado", ESTADO_DISPONIBLE)
         .eq("publicado", false),
+  },
+  {
+    key: "ventasPorAprobar",
+    label: "autos por aprobar",
+    run: (c) =>
+      c
+        .from("solicitudes_venta")
+        .select("id", { count: "exact", head: true })
+        .eq("estado", VENTA_PENDIENTE),
+  },
+  {
+    key: "busquedasNuevas",
+    label: "pedidos de búsqueda nuevos",
+    run: (c) =>
+      c
+        .from("solicitudes_compra")
+        .select("id", { count: "exact", head: true })
+        .eq("estado", COMPRA_NUEVA),
   },
 ];
 

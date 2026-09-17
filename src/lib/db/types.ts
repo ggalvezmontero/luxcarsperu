@@ -71,6 +71,27 @@ export type VehicleSource =
 /** `public.moneda`. */
 export type Currency = "USD" | "PEN";
 
+/**
+ * `public.rol_usuario`. Cada usuario de Supabase Auth tiene un perfil con rol.
+ * `cliente` solo ve y escribe sus propias solicitudes; `admin` es el equipo y
+ * entra al portal. Es lo que evalúa `public.es_admin()` en cada política RLS.
+ */
+export type UserRole = "cliente" | "admin";
+
+/** `public.estado_solicitud_compra`. Pedido de búsqueda de un auto. */
+export type PurchaseRequestStatus =
+  | "nueva"
+  | "en_busqueda"
+  | "propuesta_enviada"
+  | "cerrada"
+  | "descartada";
+
+/** `public.estado_solicitud_venta`. Auto ofrecido en consignación, con aprobación. */
+export type SaleRequestStatus = "pendiente" | "aprobada" | "rechazada" | "retirada";
+
+/** Condición que pide el cliente al buscar un auto. Texto, no enum del motor. */
+export type PurchaseRequestCondition = "nuevo" | "usado" | "indistinto";
+
 /** Foto de la galería. `path` es la ruta dentro del bucket de Storage. */
 export type VehiclePhoto = {
   id: string;
@@ -380,6 +401,63 @@ export type ConsignmentRow = {
   created_at: string;
 };
 
+/** Fila de `public.profiles`. */
+export type ProfileRow = {
+  id: string;
+  rol: string;
+  activo: boolean;
+  nombre: string;
+  telefono: string | null;
+  email: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Fila de `public.solicitudes_compra`. */
+export type PurchaseRequestRow = {
+  id: string;
+  user_id: string;
+  marca: string;
+  modelo: string;
+  anio_min: number | null;
+  anio_max: number | null;
+  condicion: string;
+  presupuesto_max_usd: number | string | null;
+  notas: string | null;
+  estado: string;
+  respuesta_luxcars: string | null;
+  atendido_por: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Fila de `public.solicitudes_venta`. */
+export type SaleRequestRow = {
+  id: string;
+  user_id: string;
+  marca: string;
+  modelo: string;
+  version: string | null;
+  anio: number;
+  categoria: string;
+  kilometraje_km: number;
+  color: string | null;
+  placa: string | null;
+  condicion_declarada: string | null;
+  descripcion: string | null;
+  precio_pedido: number | string;
+  moneda: string | null;
+  telefono_contacto: string;
+  estado: string;
+  motivo_rechazo: string | null;
+  revisado_por: string | null;
+  revisado_en: string | null;
+  consignment_id: string | null;
+  vehicle_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /* ========================================================================== */
 /* Constantes de validación (espejo de los enums de Postgres)                 */
 /* ========================================================================== */
@@ -442,6 +520,29 @@ export const CONSIGNMENT_STATUSES: readonly ConsignmentStatus[] = [
 export const COMMISSION_TYPES: readonly CommissionType[] = [
   "porcentaje",
   "monto_fijo",
+];
+
+export const USER_ROLES: readonly UserRole[] = ["cliente", "admin"];
+
+export const PURCHASE_REQUEST_STATUSES: readonly PurchaseRequestStatus[] = [
+  "nueva",
+  "en_busqueda",
+  "propuesta_enviada",
+  "cerrada",
+  "descartada",
+];
+
+export const SALE_REQUEST_STATUSES: readonly SaleRequestStatus[] = [
+  "pendiente",
+  "aprobada",
+  "rechazada",
+  "retirada",
+];
+
+export const PURCHASE_REQUEST_CONDITIONS: readonly PurchaseRequestCondition[] = [
+  "nuevo",
+  "usado",
+  "indistinto",
 ];
 
 /**
