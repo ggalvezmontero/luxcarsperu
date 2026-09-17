@@ -132,15 +132,31 @@ suyo: sus solicitudes.
 
 - **Si ya había usuarios** en Authentication → Users al aplicar la migración,
   todos pasaron a `admin` automáticamente (eran el equipo).
-- **Si el proyecto está vacío**, regístrate en `/cuenta/login` con tu correo y
-  luego, en Supabase → **SQL Editor**, ejecuta:
+- **Si el proyecto está vacío**, hay tres formas de crear el primer admin.
+  Elige una; las tres son idempotentes.
 
-  ```sql
-  update public.profiles set rol = 'admin' where email = 'tu@correo.pe';
-  ```
+  1. **Script (recomendado).** Con `SUPABASE_SERVICE_ROLE_KEY` y
+     `NEXT_PUBLIC_SUPABASE_URL` en `.env.local`:
 
-  Desde el editor SQL no hay sesión, así que el trigger de protección no
-  interfiere. Este paso solo hace falta una vez.
+     ```bash
+     npm run admin:crear -- tu@correo.pe 'Contraseña-Provisional' "Tu Nombre"
+     ```
+
+     Crea la cuenta por la API de administración de Auth (correo confirmado)
+     y pone el perfil en rol `admin`. Si la cuenta ya existía, solo la
+     promueve.
+  2. **Seed SQL.** Edita los tres valores del bloque `config` de
+     `supabase/seed_admin.sql` y pégalo en Supabase → **SQL Editor**. Inserta
+     el usuario en `auth.users` con la contraseña cifrada y lo promueve.
+  3. **A mano.** Regístrate en `/cuenta/login` y luego, en el SQL Editor:
+
+     ```sql
+     update public.profiles set rol = 'admin' where email = 'tu@correo.pe';
+     ```
+
+  Desde el editor SQL o con `service_role` no hay sesión, así que el trigger
+  de protección no interfiere. **Cambia la contraseña provisional después del
+  primer ingreso** (Authentication → Users → Reset password).
 - **Los siguientes admins** no se crean en Supabase: cada persona del equipo se
   registra en `/cuenta/login` y tú le cambias el rol desde
   **/portal/usuarios → Hacer admin**. Ahí mismo se quita el rol o se desactiva
