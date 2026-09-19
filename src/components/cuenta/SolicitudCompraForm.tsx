@@ -8,6 +8,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { BrandModelPicker } from "@/components/BrandModelPicker";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
@@ -93,12 +94,16 @@ export function SolicitudCompraForm() {
 
         <form onSubmit={onSubmit} noValidate className="mt-8 rounded-[22px] border border-line bg-surface p-6 sm:p-8">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Marca" htmlFor="sc-marca">
-              <input id="sc-marca" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Ej. Porsche" autoCapitalize="words" className="field-lux" />
-            </Field>
-            <Field label="Modelo" htmlFor="sc-modelo">
-              <input id="sc-modelo" value={model} onChange={(e) => setModel(e.target.value)} placeholder="Ej. Macan S" autoCapitalize="words" className="field-lux" />
-            </Field>
+            <BrandModelPicker
+              idPrefix="sc"
+              brand={brand}
+              model={model}
+              onChange={(next) => {
+                setBrand(next.brand);
+                setModel(next.model);
+              }}
+              renderField={Field}
+            />
             <Field label="Año desde" htmlFor="sc-anio-min" hint="Opcional">
               <input id="sc-anio-min" inputMode="numeric" value={yearMin} onChange={(e) => setYearMin(digits(e.target.value).slice(0, 4))} placeholder={String(CURRENT_YEAR - 3)} className="field-lux tabular-nums" />
             </Field>

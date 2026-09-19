@@ -41,6 +41,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import { BrandModelPicker } from "./BrandModelPicker";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { Icon } from "./ui/Icon";
@@ -64,32 +65,6 @@ import { Section, SectionHeader } from "./ui/Section";
       resultado dice qué falta, en vez de un alerta genérico al final.
    ------------------------------------------------------------------------- */
 
-const BRAND_SUGGESTIONS = [
-  "Aston Martin",
-  "Audi",
-  "Bentley",
-  "BMW",
-  "Cadillac",
-  "Chevrolet",
-  "Chrysler",
-  "Dodge",
-  "Ferrari",
-  "Ford",
-  "GMC",
-  "Jeep",
-  "Lamborghini",
-  "Land Rover",
-  "Lexus",
-  "Lincoln",
-  "Maserati",
-  "McLaren",
-  "Mercedes-Benz",
-  "Porsche",
-  "RAM",
-  "Rolls-Royce",
-  "Tesla",
-  "Toyota",
-];
 
 type FormState = {
   condition: VehicleCondition;
@@ -336,12 +311,6 @@ function CalculatorSectionInner() {
   const patch = (changes: Partial<FormState>) =>
     setForm((prev) => ({ ...prev, ...changes }));
 
-  const handleText =
-    (field: "brand" | "model") => (event: ChangeEvent<HTMLInputElement>) => {
-      // Cambiar el auto invalida la corrección manual del origen.
-      patch({ [field]: event.target.value, originOverride: null });
-    };
-
   const handlePrice = (event: ChangeEvent<HTMLInputElement>) => {
     patch({ price: onlyDigits(event.target.value) });
   };
@@ -467,34 +436,14 @@ function CalculatorSectionInner() {
           {/* 3 · El auto */}
           <Step n={3} title="El auto">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Marca" htmlFor="calc-brand">
-                <input
-                  id="calc-brand"
-                  list="calc-brands"
-                  value={form.brand}
-                  onChange={handleText("brand")}
-                  placeholder="Ej. Porsche"
-                  autoComplete="off"
-                  autoCapitalize="words"
-                  className="field-lux"
-                />
-                <datalist id="calc-brands">
-                  {BRAND_SUGGESTIONS.map((brand) => (
-                    <option key={brand} value={brand} />
-                  ))}
-                </datalist>
-              </Field>
-              <Field label="Modelo" htmlFor="calc-model">
-                <input
-                  id="calc-model"
-                  value={form.model}
-                  onChange={handleText("model")}
-                  placeholder="Ej. Macan S"
-                  autoComplete="off"
-                  autoCapitalize="words"
-                  className="field-lux"
-                />
-              </Field>
+              <BrandModelPicker
+                idPrefix="calc"
+                brand={form.brand}
+                model={form.model}
+                // Cambiar el auto invalida la corrección manual del origen.
+                onChange={({ brand, model }) => patch({ brand, model, originOverride: null })}
+                renderField={Field}
+              />
               <div>
                 <span id="calc-year-label" className="block text-sm text-ink-2">Año modelo</span>
                 <div
