@@ -93,6 +93,40 @@ const MOTOR_SHORT_LABEL: Record<VehicleTypeId, string> = {
   phev: "Híbrido enchufable",
 };
 
+/**
+ * Opciones de motor que ve el cliente. Híbrido, híbrido enchufable y eléctrico
+ * se muestran como UNA sola opción: tributariamente son iguales (ISC 0% nuevo,
+ * 40% usado) y solo difieren en unos cientos de dólares de flete base. El motor
+ * de cálculo conserva las cinco categorías; al elegir la opción agrupada se
+ * cotiza como `hev`, y un preset que llegue como `ev` o `phev` se muestra
+ * seleccionado en la misma opción sin perder su categoría.
+ */
+const MOTOR_OPTIONS: readonly {
+  id: string;
+  label: string;
+  categories: readonly VehicleTypeId[];
+  tooltip: string;
+}[] = [
+  {
+    id: "gasolina",
+    label: "Gasolina",
+    categories: ["gasolina"],
+    tooltip: "Nuevo: ISC escalonado por cilindrada (5% hasta 1,400 cc, 7.5% hasta 1,500 cc, 10% por encima). Usado: 40%.",
+  },
+  {
+    id: "electrificado",
+    label: "Híbrido o eléctrico",
+    categories: ["hev", "phev", "ev"],
+    tooltip: "Híbrido, híbrido enchufable o 100% eléctrico. Nuevo: ISC 0% en los tres casos. Usado: 40%.",
+  },
+  {
+    id: "diesel",
+    label: "Diésel",
+    categories: ["diesel"],
+    tooltip: "Nuevo: ISC 20%. Usado: no se puede importar (D. Leg. 843).",
+  },
+];
+
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = (() => {
   const oldest = oldestImportableModelYear(CURRENT_YEAR);
@@ -409,17 +443,22 @@ function CalculatorSectionInner() {
 
           {/* 2 · Motor */}
           <Step n={2} title="Motor" tooltip="El tipo de motor define el porcentaje de ISC que aplica SUNAT.">
-            <div role="group" aria-label="Tipo de motor" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {VEHICLE_CATEGORIES.map((option) => {
-                const rate = resolveIscRate({ category: option, condition: form.condition });
+            <div role="group" aria-label="Tipo de motor" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {MOTOR_OPTIONS.map((option) => {
+                const representative = VEHICLE_CATEGORIES.find((c) => c.id === option.categories[0]);
+                const rate = representative
+                  ? resolveIscRate({ category: representative, condition: form.condition })
+                  : null;
                 const blocked = rate === null;
+                const on = form.vehicleType !== "" && option.categories.includes(form.vehicleType);
                 return (
                   <Choice
                     key={option.id}
-                    on={form.vehicleType === option.id}
+                    on={on}
                     disabled={blocked}
-                    onClick={() => patch({ vehicleType: option.id })}
-                    title={MOTOR_SHORT_LABEL[option.id]}
+                    // Si ya está dentro del grupo (p. ej. un preset `ev`), no se pisa.
+                    onClick={() => (on ? undefined : patch({ vehicleType: option.categories[0] }))}
+                    title={option.label}
                     hint={blocked ? "No entra usado" : `ISC ${formatPercentage(rate)}`}
                     tooltip={option.tooltip}
                   />
