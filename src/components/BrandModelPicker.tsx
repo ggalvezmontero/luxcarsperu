@@ -24,8 +24,15 @@ type Props = {
   onChange: (next: { brand: string; model: string }) => void;
   /** Prefijo de los `id` de los campos, para que las etiquetas apunten bien. */
   idPrefix: string;
-  /** Envoltorio de cada campo (etiqueta + control). Por defecto, uno simple. */
-  renderField?: (props: { label: string; htmlFor: string; children: ReactNode }) => ReactNode;
+  /**
+   * Envoltorio de cada campo (etiqueta + control). Por defecto, uno simple.
+   * Tiene que ser una función ESTABLE (definida fuera del render): si cambia
+   * de identidad, React desmonta los campos y se pierde el foco.
+   */
+  renderField?: (props: { label: string; htmlFor: string; children: ReactNode; error?: string }) => ReactNode;
+  /** Error a mostrar bajo cada campo, si el envoltorio lo sabe pintar. */
+  brandError?: string;
+  modelError?: string;
 };
 
 function DefaultField({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
@@ -39,7 +46,7 @@ function DefaultField({ label, htmlFor, children }: { label: string; htmlFor: st
   );
 }
 
-export function BrandModelPicker({ brand, model, onChange, idPrefix, renderField }: Props) {
+export function BrandModelPicker({ brand, model, onChange, idPrefix, renderField, brandError, modelError }: Props) {
   const Field = renderField ?? DefaultField;
 
   const catalogBrand = findCatalogBrand(brand);
@@ -80,7 +87,7 @@ export function BrandModelPicker({ brand, model, onChange, idPrefix, renderField
 
   return (
     <>
-      <Field label="Marca" htmlFor={`${idPrefix}-brand`}>
+      <Field label="Marca" htmlFor={`${idPrefix}-brand`} error={brandError}>
         <select
           id={`${idPrefix}-brand`}
           value={brandSelectValue}
@@ -109,7 +116,7 @@ export function BrandModelPicker({ brand, model, onChange, idPrefix, renderField
         ) : null}
       </Field>
 
-      <Field label="Modelo" htmlFor={showBrandText ? `${idPrefix}-model-text` : `${idPrefix}-model`}>
+      <Field label="Modelo" htmlFor={showBrandText ? `${idPrefix}-model-text` : `${idPrefix}-model`} error={modelError}>
         {!showBrandText ? (
           <select
             id={`${idPrefix}-model`}

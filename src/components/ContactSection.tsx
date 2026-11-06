@@ -8,6 +8,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "./Button";
 import { Icon, WhatsAppIcon } from "./ui/Icon";
 import { Section, SectionHeader } from "./ui/Section";
+import { PhoneInput } from "@/components/PhoneInput";
+import { errorDeTelefono, telefonoValido } from "@/lib/telefono";
 
 type FormState = {
   name: string;
@@ -33,6 +35,7 @@ type StoredPayload = {
 };
 
 const STORAGE_KEY = "luxcars:last-estimate";
+const PHONE_FIELD_ID = "contact-phone";
 const { contact } = LUXCARS_CONFIG;
 
 /** Un estimado guardado se adjunta al contacto solo durante este tiempo. */
@@ -69,7 +72,6 @@ export function ContactSection() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  const phoneRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const load = () => {
@@ -117,9 +119,15 @@ export function ContactSection() {
     setError(null);
     setFeedback(null);
 
-    if (!form.name.trim() || !form.phone.trim()) {
+    if (!form.name.trim()) {
       setError("Completa tu nombre y un teléfono de contacto.");
-      (form.name.trim() ? phoneRef : nameRef).current?.focus();
+      nameRef.current?.focus();
+      return;
+    }
+    const errorTelefono = errorDeTelefono(form.phone);
+    if (errorTelefono) {
+      setError(errorTelefono);
+      document.getElementById(PHONE_FIELD_ID)?.focus();
       return;
     }
 
@@ -222,21 +230,18 @@ export function ContactSection() {
                 className="field-lux"
               />
             </label>
-            <label className="grid gap-1.5 text-sm font-medium text-ink-2">
-              WhatsApp
-              <input
-                ref={phoneRef}
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                aria-required="true"
-                aria-invalid={Boolean(error) && !form.phone}
+            {/* `div` y no `label` envolvente: el campo tiene dos controles (país
+                y número) y la etiqueta debe apuntar al número. */}
+            <div className="grid gap-1.5 text-sm font-medium text-ink-2">
+              <label htmlFor={PHONE_FIELD_ID}>WhatsApp</label>
+              <PhoneInput
+                id={PHONE_FIELD_ID}
+                required
+                invalid={Boolean(error) && !telefonoValido(form.phone)}
                 value={form.phone}
-                onChange={handleChange("phone")}
-                placeholder="+51 999 999 999"
-                className="field-lux"
+                onChange={(phone) => setForm((prev) => ({ ...prev, phone }))}
               />
-            </label>
+            </div>
           </div>
           <label className="mt-4 grid gap-1.5 text-sm font-medium text-ink-2">
             Correo <span className="font-normal text-ink-4">(opcional)</span>

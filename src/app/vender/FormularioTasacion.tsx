@@ -5,6 +5,8 @@ import { Icon, WhatsAppIcon } from "@/components/ui/Icon";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { formatNumber } from "@/lib/utils";
 import { useState, type FormEvent } from "react";
+import { PhoneInput } from "@/components/PhoneInput";
+import { errorDeTelefono } from "@/lib/telefono";
 
 /**
  * Formulario de tasación. Sin backend: arma el enlace wa.me con el mensaje
@@ -54,11 +56,18 @@ const label = "grid gap-1.5 text-sm font-medium text-ink-2";
 export function FormularioTasacion() {
   const [campos, setCampos] = useState<Campos>(INICIAL);
   const [enviado, setEnviado] = useState(false);
+  const [errorTelefono, setErrorTelefono] = useState<string | null>(null);
   const set = (k: keyof Campos) => (v: string) => setCampos((p) => ({ ...p, [k]: v }));
   const anioActual = new Date().getFullYear();
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const problema = errorDeTelefono(campos.telefono);
+    if (problema) {
+      setErrorTelefono(problema);
+      document.getElementById("tasacion-telefono")?.focus();
+      return;
+    }
     setEnviado(true);
     window.open(enlace(campos), "_blank", "noopener,noreferrer");
   };
@@ -88,10 +97,25 @@ export function FormularioTasacion() {
             {CONDICIONES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
-        <label className={label} htmlFor="tasacion-telefono">
-          WhatsApp
-          <input id="tasacion-telefono" type="tel" required autoComplete="tel" placeholder="+51 9…" value={campos.telefono} onChange={(e) => set("telefono")(e.target.value)} className="field-lux" />
-        </label>
+        <div className={label}>
+          <label htmlFor="tasacion-telefono">WhatsApp</label>
+          <PhoneInput
+            id="tasacion-telefono"
+            required
+            invalid={Boolean(errorTelefono)}
+            aria-describedby={errorTelefono ? "tasacion-telefono-error" : undefined}
+            value={campos.telefono}
+            onChange={(v) => {
+              set("telefono")(v);
+              setErrorTelefono(null);
+            }}
+          />
+          {errorTelefono ? (
+            <p id="tasacion-telefono-error" role="alert" className="text-xs font-normal text-danger">
+              {errorTelefono}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

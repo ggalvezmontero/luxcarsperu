@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { VerificarCorreo } from "@/components/auth/VerificarCorreo";
 import { Button } from "@/components/Button";
+import { PhoneInput } from "@/components/PhoneInput";
 import { Icon } from "@/components/ui/Icon";
 import { useCuentaSession } from "@/components/cuenta/cuentaSession";
 import { updateOwnProfile } from "@/lib/auth/perfil";
@@ -28,6 +29,7 @@ import {
   getPortalAuthMissingEnv,
 } from "@/lib/portal/portalClient";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { errorDeTelefono } from "@/lib/telefono";
 import { cn } from "@/lib/utils";
 
 type Mode = "ingresar" | "registro";
@@ -79,8 +81,9 @@ export function CuentaAuthForm() {
         setError("Dinos tu nombre para poder atenderte.");
         return;
       }
-      if (telefono.trim().length < 6) {
-        setError("Necesitamos un WhatsApp para responderte.");
+      const errorTelefono = errorDeTelefono(telefono);
+      if (errorTelefono) {
+        setError(errorTelefono);
         return;
       }
       if (password.length < 8) {
@@ -252,16 +255,7 @@ export function CuentaAuthForm() {
                 />
               </Field>
               <Field label="WhatsApp" htmlFor="cuenta-telefono">
-                <input
-                  id="cuenta-telefono"
-                  type="tel"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
-                  className="field-lux"
-                  placeholder="+51 9…"
-                />
+                <PhoneInput id="cuenta-telefono" value={telefono} onChange={setTelefono} />
               </Field>
             </>
           ) : null}
