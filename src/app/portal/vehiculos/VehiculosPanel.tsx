@@ -10,7 +10,7 @@
  *
  * POR QUÉ ES UN COMPONENTE DE CLIENTE Y NO SE RENDERIZA EN EL SERVIDOR: porque
  * muestra el margen del negocio. Un componente de servidor tendría que leer con
- * `service_role`, que salta RLS, y Next mandaría ese HTML —precio de compra
+ * `DATABASE_URL`, que salta RLS, y Next mandaría ese HTML —precio de compra
  * incluido— a cualquiera que abriera la URL con `curl`, sin ejecutar una línea
  * de JavaScript. Consultando desde el navegador con la sesión del equipo, el
  * candado es RLS en Postgres: sin sesión no hay filas. El detalle está en el
@@ -335,7 +335,7 @@ function AvisoSinConfigurar() {
       </p>
       <p className="mt-2 text-sm leading-relaxed text-ink-2">
         El portal funciona, pero no hay stock que mostrar ni dónde guardarlo.
-        Faltan las variables de Supabase: se configuran en Vercel → Project
+        Faltan las variables de Neon: se configuran en Vercel → Project
         Settings → Environment Variables (o en{" "}
         <code className="font-mono">.env.local</code>) y están documentadas en{" "}
         <code className="font-mono">.env.example</code>.

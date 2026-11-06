@@ -4,7 +4,7 @@
  * Pantalla de consignaciones del portal.
  *
  * Lee con la sesión del equipo desde el NAVEGADOR (RLS evalúa `authenticated`),
- * nunca desde el servidor con `service_role`. Acá hay teléfonos de dueños y
+ * nunca desde el servidor con `DATABASE_URL`. Acá hay teléfonos de dueños y
  * precios mínimos autorizados: ver el encabezado de `queries.ts`.
  *
  * FUNCIONA CON DATOS VACÍOS.
@@ -38,8 +38,8 @@ import {
 } from "./queries";
 
 const SETUP_STEPS = [
-  "Crea el proyecto en Supabase (organización zvwegcanushbpmjtohnp) y aplica las migraciones de supabase/migrations/.",
-  "Carga NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en Vercel y en .env.local.",
+  "Aplica las migraciones de db/migrations/ en el proyecto de Neon y activa ahí la Data API y Neon Auth.",
+  "Carga NEXT_PUBLIC_NEON_URL y NEON_AUTH_COOKIE_SECRET en Vercel y en .env.local.",
   "Registra la primera consignación con el precio pedido y el piso autorizado por el dueño.",
 ];
 
@@ -202,8 +202,8 @@ export function ConsignmentsScreen() {
       {sessionStatus === "sin-configurar" ? (
         <Notice tone="warn" label="Sin base de datos conectada">
           La pantalla funciona, pero no hay nada que listar todavía. Las
-          consignaciones se registran a mano desde el portal en cuanto exista el
-          proyecto de Supabase.
+          consignaciones se registran a mano desde el portal en cuanto se conecte
+          la base de Neon.
         </Notice>
       ) : null}
 

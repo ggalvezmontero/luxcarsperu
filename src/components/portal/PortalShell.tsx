@@ -3,16 +3,16 @@
 /**
  * Armazón del portal: barra lateral, guard de sesión y cierre de sesión.
  *
- * La pantalla de login vive bajo la misma ruta (/portal/login) y por lo tanto
- * comparte este layout, pero no debe mostrar la navegación ni exigir sesión.
- * Se distingue por `usePathname()`.
+ * Las pantallas de acceso (/portal/login y /portal/recuperar) viven bajo la
+ * misma ruta y por lo tanto comparten este layout, pero no deben mostrar la
+ * navegación ni exigir sesión. Se distinguen por `usePathname()`.
  *
  * ADVERTENCIA: este guard es COMODIDAD DE INTERFAZ, no el control de acceso.
- * El control real es RLS en Postgres (`revoke all ... from anon` en `leads`,
+ * El control real es RLS en Postgres (`revoke all ... from anonymous` en `leads`,
  * `consignments` y las columnas de margen de `vehicles`). Si algún día alguien
- * mueve el tablero a renderizado en servidor con `service_role`, este guard
+ * mueve el tablero a renderizado en servidor con `DATABASE_URL`, este guard
  * dejaría de significar nada y los leads quedarían expuestos. Ver el
- * encabezado de `src/lib/portal/supabaseBrowser.ts`.
+ * encabezado de `src/lib/portal/portalClient.ts`.
  */
 
 import { useEffect, useState } from "react";
@@ -24,6 +24,8 @@ import {
 } from "@/components/portal/portalSession";
 
 const LOGIN_PATH = "/portal/login";
+/** Crear o recuperar contraseña: se llega sin sesión, desde el enlace del correo. */
+const RECOVERY_PATH = "/portal/recuperar";
 
 type NavItem = {
   href: string;
@@ -207,20 +209,27 @@ function SessionFooter() {
 }
 
 /** Redirige según el estado de sesión. No renderiza nada. */
-function SessionGuard({ isLogin }: { isLogin: boolean }) {
+function SessionGuard({
+  isLogin,
+  isPublic,
+}: {
+  isLogin: boolean;
+  /** Pantalla a la que se puede llegar sin sesión. */
+  isPublic: boolean;
+}) {
   const { status } = usePortalSession();
   const router = useRouter();
 
   useEffect(() => {
     if (status === "verificando" || status === "sin-configurar") return;
-    if (status === "anonimo" && !isLogin) {
+    if (status === "anonimo" && !isPublic) {
       router.replace(LOGIN_PATH);
       return;
     }
     if (status === "autenticado" && isLogin) {
       router.replace("/portal");
     }
-  }, [status, isLogin, router]);
+  }, [status, isLogin, isPublic, router]);
 
   return null;
 }
@@ -231,11 +240,11 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
   const { status } = usePortalSession();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // El login se muestra solo, centrado y sin navegación.
-  if (isLogin) {
+  // Las pantallas de acceso se muestran solas, centradas y sin navegación.
+  if (isLogin || pathname === RECOVERY_PATH) {
     return (
       <>
-        <SessionGuard isLogin />
+        <SessionGuard isLogin={isLogin} isPublic />
         <main className="flex min-h-screen items-center justify-center px-4 py-12">
           {children}
         </main>
@@ -249,7 +258,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <SessionGuard isLogin={false} />
+      <SessionGuard isLogin={false} isPublic={false} />
 
       <div className="min-h-screen lg:flex">
         {/* Barra superior — solo móvil */}

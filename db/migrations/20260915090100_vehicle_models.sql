@@ -172,7 +172,7 @@ comment on function public.sugerir_categoria_vpic(text, text) is
 -- -----------------------------------------------------------------------------
 alter table public.vehicle_models enable row level security;
 
-revoke all on public.vehicle_models from anon, authenticated;
+revoke all on public.vehicle_models from anonymous, authenticated;
 grant select, insert, update, delete on public.vehicle_models to authenticated;
 
 drop policy if exists "vehicle_models: el equipo lee" on public.vehicle_models;

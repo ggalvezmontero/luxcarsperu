@@ -128,7 +128,7 @@ create table if not exists public.vehicles (
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  created_by uuid references auth.users (id) on delete set null,
+  created_by uuid references neon_auth."user" (id) on delete set null,
 
   -- Publicar un auto sin precio deja al cliente sin nada que decidir y obliga a
   -- preguntar por WhatsApp solo para saber cuánto cuesta. No se permite.
@@ -148,9 +148,9 @@ comment on table public.vehicles is
 comment on column public.vehicles.fuente is
   'LISTA BLANCA de procedencia del dato. Agregar un valor exige migración y justificación legal.';
 comment on column public.vehicles.notas_internas is
-  'Uso interno. No se expone a anon: revisa los GRANT por columna más abajo.';
+  'Uso interno. No se expone a anonymous: revisa los GRANT por columna más abajo.';
 comment on column public.vehicles.precio_compra is
-  'Margen del negocio. Reservado: nunca se otorga a anon.';
+  'Margen del negocio. Reservado: nunca se otorga a anonymous.';
 comment on column public.vehicles.kilometraje_km is
   'Sin tope acá a propósito. El límite de 32,000 km (M1) / 36,000 km (N1) aplica al importar, no al inventariar.';
 
@@ -209,7 +209,7 @@ create trigger vehicles_sellar_publicacion
 -- -----------------------------------------------------------------------------
 --  RLS + PRIVILEGIOS POR COLUMNA
 -- -----------------------------------------------------------------------------
---  RLS filtra FILAS, no columnas. Una política "anon lee los publicados" sin
+--  RLS filtra FILAS, no columnas. Una política "anonymous lee los publicados" sin
 --  más dejaría a cualquiera leer `precio_compra` y `notas_internas` de los
 --  autos publicados, que es justamente el margen del negocio.
 --
@@ -218,12 +218,12 @@ create trigger vehicles_sellar_publicacion
 --    · GRANT(col)   → qué columnas (nunca compra, margen ni notas)
 --
 --  Consecuencia práctica para quien consulte desde el front público:
---  `select *` FALLA para anon. Hay que pedir columnas explícitas, o usar la
+--  `select *` FALLA para anonymous. Hay que pedir columnas explícitas, o usar la
 --  vista `vehiculos_publicos` definida al final.
 -- -----------------------------------------------------------------------------
 alter table public.vehicles enable row level security;
 
-revoke all on public.vehicles from anon, authenticated;
+revoke all on public.vehicles from anonymous, authenticated;
 
 grant select (
   id, marca, modelo, version, anio, carroceria, categoria, cilindrada_cc,
@@ -231,7 +231,7 @@ grant select (
   kilometraje_km, condicion, precio_venta, moneda_venta, precio_negociable,
   estado, ubicacion, fecha_ingreso, publicado, publicado_en, slug, titular,
   descripcion, destacados, created_at, updated_at
-) on public.vehicles to anon;
+) on public.vehicles to anonymous;
 
 grant select, insert, update, delete on public.vehicles to authenticated;
 
@@ -240,7 +240,7 @@ grant select, insert, update, delete on public.vehicles to authenticated;
 drop policy if exists "vehicles: lectura pública de publicados" on public.vehicles;
 create policy "vehicles: lectura pública de publicados"
   on public.vehicles for select
-  to anon
+  to anonymous
   using (publicado);
 
 drop policy if exists "vehicles: el equipo lee todo" on public.vehicles;

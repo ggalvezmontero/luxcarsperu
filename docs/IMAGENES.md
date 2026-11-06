@@ -91,7 +91,7 @@ auditoría:
 - Los logos de marcas y de portales van con `width`/`height` fijos, que es lo
   correcto para un tamaño que no depende del viewport.
 - Única excepción deliberada: `src/components/portal/SubidorFotos.tsx` usa
-  `<img>` porque previsualiza blobs locales y objetos de Supabase Storage antes
+  `<img>` porque previsualiza blobs locales y objetos de Neon Object Storage antes
   de que existan. Está documentado en el propio archivo.
 
 ### 2.6 `next.config.ts` — se cerró la puerta a dominios remotos
@@ -234,7 +234,7 @@ Checklist corto para quien suba una imagen nueva:
 - [ ] ¿El `alt` describe lo que se ve, no lo que la sección promete?
 - [ ] ¿Usa `next/image`? ¿Con `sizes` si lleva `fill`? ¿Con `priority` solo si
       está sobre el pliegue?
-- [ ] ¿Está en `public/` o en el bucket propio de Supabase — nunca hotlinkeada
+- [ ] ¿Está en `public/` o en el bucket propio de Neon — nunca hotlinkeada
       desde un dealer o un marketplace?
 - [ ] Si reemplaza una foto existente: **cambiarle el nombre de archivo.** La URL
       optimizada de `next/image` no lleva hash de contenido y el caché dura 30

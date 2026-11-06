@@ -1,7 +1,8 @@
 # Arquitectura — LUX CARS IMPORT S.A.C.
 
 Next.js 16.3.5 (App Router) · React 19 · TypeScript strict · Tailwind v4 ·
-Supabase · despliegue **solo en Vercel**, sin backend aparte.
+Neon (Postgres, Data API, Auth y Object Storage) · despliegue **solo en Vercel**,
+sin backend aparte.
 
 Este documento explica **cómo está armado el sistema y por qué**. Para poner el
 sitio en producción, ver [`PUESTA_EN_MARCHA.md`](./PUESTA_EN_MARCHA.md).
@@ -30,7 +31,7 @@ exposición legal para la empresa.
 
 | Forma | ¿Prohibido? |
 |---|---|
-| `INSERT` en Supabase | Sí |
+| `INSERT` en la base de datos | Sí |
 | Un `.json` commiteado al repo | Sí |
 | Caché de Vercel / ISR / `revalidate` | Sí |
 | Un índice de búsqueda | Sí |
@@ -78,7 +79,7 @@ auto en venta" es la misma mentira que un precio inventado, y ya pasó una vez
 no eran el auto).
 
 Esta sección se repite, a propósito, en `src/lib/db/types.ts`,
-`next.config.ts`, `supabase/README.md`, `src/lib/portal/photoGuide.ts` y en la
+`next.config.ts`, `db/README.md`, `src/lib/portal/photoGuide.ts` y en la
 pantalla del portal. Quien vaya a "optimizar" esto dentro de seis meses tiene
 que tropezársela.
 
@@ -91,14 +92,14 @@ Cliente (sin cuenta)                    Equipo LuxCars (con cuenta)
         │                                          │
         ▼                                          ▼
   Sitio público                              /portal  (noindex)
-  /  /comprar  /vender  /importar            login con Supabase Auth
+  /  /comprar  /vender  /importar            login con Neon Auth
   /como-funciona  /faq                              │
         │                                          │
         │ formularios                              │ lee y escribe DESDE EL
         ▼                                          │ NAVEGADOR con la sesión
   WhatsApp  ◄── fallback siempre                    ▼
-        │                                     Supabase (RLS = candado)
-        └──► createLead()  [service_role, servidor] ──►  leads
+        │                                     Neon (RLS = candado)
+        └──► createLead()  [DATABASE_URL, servidor] ──►  leads
                                                           vehicles
   src/core/pricing/  ← motor de cálculo                   vehicle_photos
   (TypeScript, verificado, NO se toca)                    consignments
@@ -123,7 +124,7 @@ cambia su lógica.**
   IPM, percepción) y la admisibilidad del vehículo.
 - **No fue reimplementado en SQL a propósito.** Dos implementaciones de la misma
   norma terminan discrepando, y la verificada es esta.
-- La tabla `tax_rates` de Supabase es el **registro normativo** (qué tasa, desde
+- La tabla `tax_rates` de la base es el **registro normativo** (qué tasa, desde
   cuándo, con qué norma citada), no la calculadora. Guarda a propósito el
   IGV 16% + IPM 2% histórico junto al 15.5% + 2.5% de la Ley 32387, para poder
   reproducir una cotización antigua.
@@ -146,9 +147,10 @@ Cuatro archivos. Sirven al **sitio público**.
 | Archivo | Qué hace |
 |---|---|
 | `types.ts` | **Fuente de verdad de los tipos.** Espejo del esquema SQL. |
-| `client.ts` | Construye los clientes de Supabase. Devuelve `null` si falta configuración. |
+| `neonConfig.ts` | Deriva las direcciones de la Data API y de Neon Auth desde `NEXT_PUBLIC_NEON_URL`. |
+| `client.ts` | Construye el cliente anónimo de la Data API y la conexión directa. Devuelve `null` si falta configuración. |
 | `vehicles.ts` | Lecturas públicas del stock. |
-| `leads.ts` | Alta de leads. **Único consumidor de `service_role` en todo el proyecto.** |
+| `leads.ts` | Alta de leads. **Único consumidor de `DATABASE_URL` en todo el proyecto.** |
 
 ### Regla número uno: **nunca lanza**
 
@@ -177,7 +179,7 @@ dejaría leer `precio_compra` y `notas_internas` — **el margen del negocio**.
 Consecuencia práctica, y va a parecer un bug cuando pase:
 
 ```ts
-supabase.from("vehicles").select("*")   // ❌ permission denied para anon
+client.from("vehicles").select("*")   // ❌ permission denied para anonymous
 ```
 
 Hay que **pedir columnas explícitas** o consultar la vista
@@ -190,12 +192,12 @@ margen del negocio.**
 ### Regla número tres: **los formularios públicos no escriben directo**
 
 El cliente no tiene cuenta, así que alguien tiene que hacer el `INSERT`. **No se
-le dio `INSERT` a `anon`**: su llave viaja al navegador, y con eso cualquiera
+le dio `INSERT` a `anonymous`**: ese acceso es público, y con eso cualquiera
 inyecta leads en masa desde la consola o escribe `estado = 'ganado'`.
 
-Las escrituras entran por el servidor con `service_role`, y el estado inicial lo
+Las escrituras entran por el servidor con `DATABASE_URL`, y el estado inicial lo
 fija el servidor en `'nuevo'`. `createLead()` **no** cae al cliente anónimo si
-falta la llave de servicio: sería un intento condenado al fracaso que solo suma
+falta `DATABASE_URL`: sería un intento condenado al fracaso que solo suma
 latencia antes del mismo fallback a WhatsApp.
 
 ### Nombres: columnas en español, dominio en inglés
@@ -258,7 +260,8 @@ miente sin que nadie se entere.
 | Ruta | Qué hace |
 |---|---|
 | `/portal` | Tablero: stock, reservadas, vendidas del mes, leads sin atender, consignaciones activas, en tránsito, disponibles sin publicar |
-| `/portal/login` | Acceso con Supabase Auth (`signInWithPassword`) |
+| `/portal/login` | Acceso con Neon Auth (`signInWithPassword`) |
+| `/portal/recuperar` | Crear o recuperar la contraseña con un enlace por correo |
 | `/portal/vehiculos` | Listado con filtros por estado y búsqueda |
 | `/portal/vehiculos/nuevo` | Alta con el **VIN** como protagonista |
 | `/portal/vehiculos/[id]/fotos` | Subida de fotos, compresión, orden y portada |
@@ -268,21 +271,21 @@ miente sin que nadie se entere.
 ### El modelo de seguridad, que es lo importante
 
 **Las pantallas del portal leen y escriben DESDE EL NAVEGADOR con la sesión del
-equipo, no desde el servidor con `service_role`.**
+equipo, no desde el servidor con `DATABASE_URL`.**
 
-Es deliberadamente incómodo y es la decisión de fondo. `service_role` **salta
-todas las políticas RLS**. Una pantalla de servidor que lea con esa llave hace
+Es deliberadamente incómodo y es la decisión de fondo. `DATABASE_URL` **salta
+todas las políticas RLS**. Una pantalla de servidor que lea con esa conexión hace
 que Next renderice el HTML **con los datos dentro** y lo envíe antes de que corra
 ningún guard de cliente: un `curl` sin ejecutar JavaScript se lleva nombres,
 teléfonos y correos de clientes — **datos personales bajo Ley 29733**.
 
-Leyendo desde el cliente con la llave anónima + sesión, **RLS es el candado
+Leyendo desde el cliente, por la Data API y con la sesión, **RLS es el candado
 real**: sin sesión, Postgres devuelve cero filas.
 
 > **El login es comodidad. El candado es la base de datos.**
 
 Verificado con `grep` sobre toda `src/`: **ninguna pantalla del portal usa
-`service_role`.** Los dos archivos que lo hacían (`portal/leads/data.ts` y
+`DATABASE_URL`.** Los dos archivos que lo hacían (`portal/leads/data.ts` y
 `portal/vehiculos/data.ts`) fueron borrados y sus pantallas reescritas.
 
 ### Lo que sigue abierto, y hay que cerrarlo
@@ -291,13 +294,14 @@ Verificado con `grep` sobre toda `src/`: **ninguna pantalla del portal usa
 No filtra datos (RLS lo impide), pero la URL responde. Además, el build
 prerenderiza `/portal`, `/portal/login`, `/portal/leads` y
 `/portal/consignaciones` como **HTML estático**: no hay servidor donde poner un
-guard sin agregar un `middleware.ts`.
+guard sin agregar un `proxy.ts`.
 
 Dos caminos, y el segundo es gratis:
 
-- **A)** Instalar `@supabase/ssr` + un `middleware.ts` que valide la sesión antes
-  de responder cualquier `/portal/*`. Es la vía oficial. **Agrega una
-  dependencia: lo decide el dueño**, por eso no se hizo.
+- **A)** Agregar un `proxy.ts` con `auth.middleware()` de Neon Auth que valide la
+  sesión antes de responder cualquier `/portal/*`. Es la vía oficial y ya no
+  agrega dependencias (la instancia vive en `src/lib/portal/authServer.ts`),
+  pero cambia cómo se sirve el portal: **lo decide el dueño**, por eso no se hizo.
 - **B)** Activar **Deployment Protection** en Vercel. Corta el acceso al HTML en
   el borde, antes de que Next responda. **Cuesta cero y es lo que hay que hacer
   hoy.** Ver `PUESTA_EN_MARCHA.md`.
@@ -313,7 +317,7 @@ No hay separación entre un vendedor y el dueño: cualquiera del equipo ve
 pidió, pero si mañana entra un vendedor externo o un practicante, se vuelve un
 problema. Se resuelve con una tabla de roles; hoy no está.
 
-**Por eso desactivar el alta pública en Supabase no es opcional** — si queda
+**Por eso mantener desactivada el alta pública en Neon Auth no es opcional** — si queda
 abierta, cualquiera se registra, queda como `authenticated` y RLS le abre los
 leads y los márgenes. Es el paso que más fácil se olvida y el que más caro sale.
 

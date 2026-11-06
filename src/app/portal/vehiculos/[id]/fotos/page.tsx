@@ -49,7 +49,7 @@ export default async function FotosVehiculoPage({
 
       <footer className="border-t border-line pt-6 text-xs leading-relaxed text-ink-4">
         Las fotos se comprimen en tu teléfono antes de subir y se guardan en el
-        bucket <code>vehiculos</code> de Supabase Storage. Solo fotos propias o
+        bucket <code>vehiculos</code> de Neon Object Storage. Solo fotos propias o
         del fabricante con derecho de uso.
       </footer>
     </div>

@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
     // un 4x4 genérico rotulado "Ford Bronco Raptor" y un pickup cualquiera
     // rotulado "Tesla Cybertruck". Toda foto de vehículo que se publique tiene
     // que ser de la unidad real, servida desde public/ o desde el bucket propio
-    // de Supabase Storage.
+    // de Neon Object Storage.
     //
     // Y NO se habilitan aquí los CDN de MarketCheck, Auto.dev, eBay,
     // Autotrader, CarGurus, Cars.com, TrueCar, AutoTempest ni Facebook

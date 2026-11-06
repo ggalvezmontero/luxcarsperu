@@ -1,19 +1,30 @@
 /**
- * Cliente de Supabase con detección de configuración.
+ * Clientes de Neon con detección de configuración.
  *
  * REGLA INNEGOCIABLE DE ESTE ARCHIVO: nunca lanza. El sitio de LuxCars debe
  * compilar y renderizar HOY, sin base de datos y sin variables de entorno. Si
- * falta configuración, `getSupabaseClient()` devuelve `null` y cada consumidor
- * decide su respaldo (lista vacía, WhatsApp, etc.). Un `throw` aquí tumba el
- * build de Vercel y la página entera; un `null` solo apaga una sección.
+ * falta configuración, `getPublicClient()` y `getSql()` devuelven `null` y cada
+ * consumidor decide su respaldo (lista vacía, WhatsApp, etc.). Un `throw` aquí
+ * tumba el build de Vercel y la página entera; un `null` solo apaga una sección.
+ *
+ * Hay DOS caminos a la misma base, con permisos distintos a propósito:
+ *
+ *  · `getPublicClient()` → Data API de Neon como rol `anonymous`. Respeta RLS y
+ *    los GRANT por columna: solo ve vehículos publicados y sus fotos.
+ *  · `getSql()` → conexión directa con `DATABASE_URL`, como dueño de la base.
+ *    NO pasa por RLS. Es para escrituras del servidor (leads de formularios
+ *    públicos), nunca para pintar pantallas.
  */
 
-// Candado: este módulo lee SUPABASE_SERVICE_ROLE_KEY, que salta RLS. Si un
-// componente cliente lo importa, el build FALLA en vez de arrastrarlo al
-// navegador. Lo que sí puede usar el cliente vive en `db/storage.ts`.
+// Candado: este módulo lee DATABASE_URL, que salta RLS. Si un componente
+// cliente lo importa, el build FALLA en vez de arrastrarlo al navegador. Lo
+// que sí puede usar el cliente vive en `db/storage.ts` y `db/neonConfig.ts`.
 import "server-only";
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import { createClient } from "@neon/neon-js/supabase";
+
+import { getNeonUrls, isNeonConfigured } from "./neonConfig";
 
 /** Lectura de env a prueba de bundle de navegador (donde `process` puede no existir). */
 function readEnv(key: string): string {
@@ -22,37 +33,22 @@ function readEnv(key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-/**
- * Next.js reemplaza `process.env.NEXT_PUBLIC_*` de forma estática, así que las
- * públicas se leen por nombre literal para que el inlining funcione en el
- * bundle del cliente. Las privadas solo existen en el servidor.
- */
-const SUPABASE_URL =
-  (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim() ||
-  readEnv("SUPABASE_URL");
-
-const SUPABASE_ANON_KEY =
-  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim() ||
-  (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
-
-const SUPABASE_SERVICE_ROLE_KEY = readEnv("SUPABASE_SERVICE_ROLE_KEY");
+const DATABASE_URL = readEnv("DATABASE_URL");
 
 export { VEHICLE_PHOTOS_BUCKET, getPublicStorageUrl } from "./storage";
-import { VEHICLE_PHOTOS_BUCKET } from "./storage";
 
-function isUsableUrl(value: string): boolean {
+function isPostgresUrl(value: string): boolean {
   if (!value) return false;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
+    return url.protocol === "postgresql:" || url.protocol === "postgres:";
   } catch {
     return false;
   }
 }
 
-const HAS_PUBLIC_CONFIG = isUsableUrl(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 0;
-const HAS_SERVICE_CONFIG =
-  isUsableUrl(SUPABASE_URL) && SUPABASE_SERVICE_ROLE_KEY.length > 0;
+const HAS_PUBLIC_CONFIG = isNeonConfigured();
+const HAS_WRITE_CONFIG = isPostgresUrl(DATABASE_URL);
 
 /**
  * ¿Hay base de datos disponible para lectura pública?
@@ -65,52 +61,56 @@ export function isDatabaseConfigured(): boolean {
 }
 
 /**
- * ¿Hay llave de servicio para escrituras del servidor (inserción de leads,
+ * ¿Hay conexión directa para escrituras del servidor (inserción de leads,
  * operaciones del admin)? Nunca es `true` en el navegador.
  */
 export function isDatabaseWriteConfigured(): boolean {
-  return HAS_SERVICE_CONFIG;
+  return HAS_WRITE_CONFIG;
 }
 
-/** Diagnóstico para el panel de administración. No expone ninguna llave. */
+/** Diagnóstico para el panel de administración. No expone ningún secreto. */
 export function getDatabaseStatus(): {
   configured: boolean;
   writeConfigured: boolean;
   missing: string[];
 } {
   const missing: string[] = [];
-  if (!isUsableUrl(SUPABASE_URL)) missing.push("NEXT_PUBLIC_SUPABASE_URL");
-  if (!SUPABASE_ANON_KEY) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  if (!SUPABASE_SERVICE_ROLE_KEY) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  if (!HAS_PUBLIC_CONFIG) missing.push("NEXT_PUBLIC_NEON_URL");
+  if (!HAS_WRITE_CONFIG) missing.push("DATABASE_URL");
   return {
     configured: HAS_PUBLIC_CONFIG,
-    writeConfigured: HAS_SERVICE_CONFIG,
+    writeConfigured: HAS_WRITE_CONFIG,
     missing,
   };
 }
 
-let publicClient: SupabaseClient | null = null;
+/** Cliente de la Data API tal como lo construye `@neon/neon-js`. */
+export type DataApiClient = ReturnType<typeof createClient>;
+
+let publicClient: DataApiClient | null = null;
 let publicClientResolved = false;
-let serviceClient: SupabaseClient | null = null;
-let serviceClientResolved = false;
 
 /**
- * Cliente con llave anónima (respeta RLS). `null` si no hay configuración.
- * Se memoiza: `createClient` no debe llamarse por render.
+ * Cliente de la Data API como visitante anónimo (respeta RLS). `null` si no hay
+ * configuración. Se memoiza: `createClient` no debe llamarse por render.
+ *
+ * `allowAnonymous` hace que el SDK pida a Neon Auth un token anónimo de corta
+ * duración y lo reutilice: Postgres evalúa cada consulta como rol `anonymous`.
  */
-export function getSupabaseClient(): SupabaseClient | null {
+export function getPublicClient(): DataApiClient | null {
   if (publicClientResolved) return publicClient;
   publicClientResolved = true;
 
-  if (!HAS_PUBLIC_CONFIG) {
+  const urls = getNeonUrls();
+  if (!urls) {
     publicClient = null;
     return null;
   }
 
   try {
-    publicClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: { "x-application-name": "luxcars-web" } },
+    publicClient = createClient({
+      auth: { url: urls.auth, allowAnonymous: true },
+      dataApi: { url: urls.dataApi },
     });
   } catch {
     // Configuración malformada: se degrada a "sin base de datos".
@@ -119,33 +119,33 @@ export function getSupabaseClient(): SupabaseClient | null {
   return publicClient;
 }
 
-/**
- * Cliente con service role. SOLO servidor: salta RLS.
- *
- * Nunca lo importes desde un componente cliente ni desde código que llegue al
- * navegador. Devuelve `null` en el navegador aunque hubiera llave.
- */
-export function getSupabaseAdminClient(): SupabaseClient | null {
-  if (typeof window !== "undefined") return null;
-  if (serviceClientResolved) return serviceClient;
-  serviceClientResolved = true;
+let sqlClient: NeonQueryFunction<false, false> | null = null;
+let sqlClientResolved = false;
 
-  if (!HAS_SERVICE_CONFIG) {
-    serviceClient = null;
+/**
+ * Conexión directa a Postgres (HTTP, apta para funciones serverless). SOLO
+ * servidor: entra como dueño de la base y salta RLS.
+ *
+ * Nunca la importes desde un componente cliente ni desde código que llegue al
+ * navegador. Devuelve `null` en el navegador aunque hubiera variable.
+ */
+export function getSql(): NeonQueryFunction<false, false> | null {
+  if (typeof window !== "undefined") return null;
+  if (sqlClientResolved) return sqlClient;
+  sqlClientResolved = true;
+
+  if (!HAS_WRITE_CONFIG) {
+    sqlClient = null;
     return null;
   }
 
   try {
-    serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: { "x-application-name": "luxcars-server" } },
-    });
+    sqlClient = neon(DATABASE_URL);
   } catch {
-    serviceClient = null;
+    sqlClient = null;
   }
-  return serviceClient;
+  return sqlClient;
 }
-
 
 const warnedKeys = new Set<string>();
 

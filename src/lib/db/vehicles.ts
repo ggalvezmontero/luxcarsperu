@@ -2,7 +2,7 @@
  * Lectura del stock PROPIO y curado.
  *
  * ADVERTENCIA CONTRACTUAL (detalle completo en `types.ts` y en la migración
- * `supabase/migrations/20260915090200_vehicles.sql`): las filas de `vehicles`
+ * `db/migrations/20260915090200_vehicles.sql`): las filas de `vehicles`
  * solo pueden nacer de carga manual en el admin, del decodificador de VIN de
  * NHTSA vPIC o de feeds de dealers partner con licencia firmada. Queda
  * PROHIBIDO insertar inventario de MarketCheck, Auto.dev, eBay, Autotrader,
@@ -19,7 +19,7 @@
 
 import {
   getPublicStorageUrl,
-  getSupabaseClient,
+  getPublicClient,
   isDatabaseConfigured,
   warnOnce,
 } from "./client";
@@ -46,7 +46,7 @@ import {
 const PUBLIC_VIEW = "vehiculos_publicos";
 const PHOTOS_TABLE = "vehicle_photos";
 
-/** Columnas de `vehicle_photos` con GRANT para `anon`. Pedir `*` fallaría. */
+/** Columnas de `vehicle_photos` con GRANT para `anonymous`. Pedir `*` fallaría. */
 const PHOTO_COLUMNS =
   "id, vehicle_id, storage_path, url_publica, alt, orden, es_principal, ancho_px, alto_px";
 
@@ -159,7 +159,7 @@ function mapVehicle(row: PublicVehicleRow, photos: VehiclePhoto[] = []): Vehicle
 
 /**
  * Lo mínimo que necesitamos del builder de PostgREST para ordenar, sin
- * acoplarnos a los genéricos internos de supabase-js (cambian entre menores).
+ * acoplarnos a los genéricos internos del SDK (cambian entre menores).
  */
 type Orderable<T> = {
   order(
@@ -205,11 +205,11 @@ function applySort<T extends Orderable<T>>(
 export async function getPublishedVehicles(
   filters: VehicleFilters = {},
 ): Promise<Vehicle[]> {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
+  const client = getPublicClient();
+  if (!client) {
     warnOnce(
       "vehicles:no-db",
-      "Sin Supabase configurado: getPublishedVehicles() devuelve []. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY (ver .env.example).",
+      "Sin Neon configurado: getPublishedVehicles() devuelve []. Define NEXT_PUBLIC_NEON_URL (ver .env.example).",
     );
     return [];
   }
@@ -219,7 +219,7 @@ export async function getPublishedVehicles(
 
   try {
     // La vista ya filtra `publicado`; no hace falta repetirlo.
-    let query = supabase.from(PUBLIC_VIEW).select("*");
+    let query = client.from(PUBLIC_VIEW).select("*");
 
     if (filters.category) {
       query = Array.isArray(filters.category)
@@ -292,11 +292,11 @@ export async function getVehicleById(id: string): Promise<Vehicle | null> {
   const key = id?.trim();
   if (!key) return null;
 
-  const supabase = getSupabaseClient();
-  if (!supabase) {
+  const client = getPublicClient();
+  if (!client) {
     warnOnce(
       "vehicles:no-db",
-      "Sin Supabase configurado: getVehicleById() devuelve null. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY (ver .env.example).",
+      "Sin Neon configurado: getVehicleById() devuelve null. Define NEXT_PUBLIC_NEON_URL (ver .env.example).",
     );
     return null;
   }
@@ -305,7 +305,7 @@ export async function getVehicleById(id: string): Promise<Vehicle | null> {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key);
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from(PUBLIC_VIEW)
       .select("*")
       .eq(isUuid ? "id" : "slug", key)
@@ -342,11 +342,11 @@ export async function getVehicleById(id: string): Promise<Vehicle | null> {
  * ver fotos de autos no publicados, así que esto no filtra nada de más.
  */
 export async function getVehiclePhotos(vehicleId: string): Promise<VehiclePhoto[]> {
-  const supabase = getSupabaseClient();
-  if (!supabase || !vehicleId) return [];
+  const client = getPublicClient();
+  if (!client || !vehicleId) return [];
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from(PHOTOS_TABLE)
       .select(PHOTO_COLUMNS)
       .eq("vehicle_id", vehicleId)

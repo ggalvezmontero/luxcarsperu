@@ -7,11 +7,15 @@
 --  El cliente final NUNCA crea cuenta: cotiza, llena formularios y continúa
 --  por WhatsApp. Por lo tanto:
 --
---    · `anon`          → solo lee vehículos PUBLICADOS y sus fotos.
+--    · `anonymous`     → solo lee vehículos PUBLICADOS y sus fotos.
 --    · `authenticated` → el dueño y su equipo. Acceso completo vía RLS.
---    · `service_role`  → usado por los Route Handlers de Next.js en Vercel
---                        para insertar leads y cotizaciones desde los
---                        formularios públicos (ver nota en 0005 y 0006).
+--    · `neondb_owner`  → conexión directa del servidor (`DATABASE_URL`), que
+--                        no pasa por RLS. La usan los Route Handlers de
+--                        Next.js en Vercel para insertar leads y cotizaciones
+--                        desde los formularios públicos (ver 0005 y 0006).
+--
+--  `anonymous` y `authenticated` son los roles de la Data API de Neon: los
+--  crea Neon al activarla, y Neon Auth emite el JWT que decide cuál aplica.
 --
 --  Convención: los identificadores de tipo que cruzan el límite TypeScript ↔
 --  SQL están escritos EXACTAMENTE igual que las uniones literales de
@@ -22,7 +26,7 @@
 -- texto combinada con solapamiento de rangos de fechas). Sin él, dos tasas
 -- vigentes del mismo tributo podrían solaparse y una cotización histórica
 -- dejaría de ser reproducible.
-create extension if not exists btree_gist with schema extensions;
+create extension if not exists btree_gist;
 
 
 -- -----------------------------------------------------------------------------

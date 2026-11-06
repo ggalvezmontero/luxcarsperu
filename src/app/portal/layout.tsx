@@ -6,7 +6,7 @@ import { PortalShell } from "@/components/portal/PortalShell";
  * Layout del portal de administración.
  *
  * Monta `PortalShell`, que a su vez provee `PortalSessionProvider` (la sesión
- * de Supabase Auth que consumen todas las pantallas con `usePortalSession()`) y
+ * de Neon Auth que consumen todas las pantallas con `usePortalSession()`) y
  * la barra lateral. Cualquier pantalla nueva bajo `/portal` la hereda sin hacer
  * nada.
  *
@@ -16,7 +16,7 @@ import { PortalShell } from "@/components/portal/PortalShell";
  *
  * ESTO NO ES CONTROL DE ACCESO: `noindex` le pide a un buscador que no indexe,
  * no impide que alguien abra la URL. El control real es RLS en Postgres, como
- * explica el encabezado de `src/lib/portal/supabaseBrowser.ts`.
+ * explica el encabezado de `src/lib/portal/portalClient.ts`.
  *
  * ⚠ ESTE ARCHIVO LO TOCAN DOS EQUIPOS EN PARALELO. Si lo cambias, FUSIONA en
  * lugar de reemplazar: ya se perdió una versión completa una vez. `PortalShell`
@@ -30,17 +30,17 @@ import { PortalShell } from "@/components/portal/PortalShell";
  * pantallas que leen con la sesión del equipo, porque ahí el candado de verdad
  * es RLS: sin sesión, Postgres devuelve cero filas.
  *
- * NO sirve para un componente de SERVIDOR que lea con `service_role`. Esa
- * llave salta todas las políticas: Next renderiza el HTML con los datos
+ * NO sirve para un componente de SERVIDOR que lea con `DATABASE_URL`. Esa
+ * conexión salta todas las políticas: Next renderiza el HTML con los datos
  * dentro y lo envía ANTES de que ningún guard de cliente llegue a correr.
  * Quien pida la ruta con `curl` —sin ejecutar JavaScript— se lleva los datos.
  * Con leads eso significa nombres, teléfonos y correos: Ley 29733.
  *
- * Es decir: una pantalla de servidor con `service_role` queda EXPUESTA aunque
+ * Es decir: una pantalla de servidor con `DATABASE_URL` queda EXPUESTA aunque
  * el portal tenga login.
  *
  * ESTADO AL 2026-09-15: ese agujero está CERRADO. Los dos archivos que leían
- * con `service_role` (`portal/leads/data.ts` y `portal/vehiculos/data.ts`) ya
+ * saltándose RLS (`portal/leads/data.ts` y `portal/vehiculos/data.ts`) ya
  * no existen; leads, consignaciones, vehículos y fotos leen desde el navegador
  * con la sesión del equipo, así que el candado es RLS. Lo que queda abierto es
  * la CÁSCARA: `curl /portal/leads` devuelve 200 con el HTML vacío, sin datos.
@@ -48,12 +48,13 @@ import { PortalShell } from "@/components/portal/PortalShell";
  * La regla para la próxima pantalla sigue en pie. Tres caminos, en orden de
  * solidez:
  *
- *   A) Instalar `@supabase/ssr` (hoy NO está en package.json: es decisión del
- *      dueño) y agregar un `middleware.ts` que valide la sesión y redirija a
- *      /portal/login antes de responder cualquier /portal/*. Es la vía oficial.
+ *   A) Agregar un `proxy.ts` con `auth.middleware()` de Neon Auth (la
+ *      instancia ya existe en `src/lib/portal/authServer.ts`) que valide la
+ *      sesión y redirija a /portal/login antes de responder cualquier
+ *      /portal/*. Es la vía oficial.
  *   B) Que esas pantallas lean con la sesión del equipo desde el cliente (como
- *      hace el tablero) y dejar `service_role` únicamente en Route Handlers
- *      protegidos por `verificarAccesoPortal()` de `src/lib/portal/auth.ts`.
+ *      hace el tablero) y dejar `DATABASE_URL` únicamente en Route Handlers
+ *      protegidos por `verificarSesionPortal()` de `src/lib/portal/authServer.ts`.
  *   C) Mientras tanto, activar Deployment Protection en Vercel sobre /portal:
  *      corta el acceso al HTML en el borde, antes de que Next renderice.
  *

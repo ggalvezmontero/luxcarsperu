@@ -19,7 +19,7 @@
  * incumplimiento de contrato con revocación de llave de API.
  *
  * Esto aplica también a un script de "sincronización nocturna", a un job de
- * Vercel Cron, a un snapshot "temporal" en Supabase y a un JSON commiteado al
+ * Vercel Cron, a un snapshot "temporal" en la base de datos y a un JSON commiteado al
  * repo. El formato no cambia la prohibición: persistir es persistir.
  *
  * ┌──────────────────────────────────────────────────────────────────────────┐

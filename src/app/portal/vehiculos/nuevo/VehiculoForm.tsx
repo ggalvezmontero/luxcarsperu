@@ -14,10 +14,10 @@
  * prohíben textualmente. vPIC sí, porque es del gobierno de EE.UU., devuelve
  * ficha técnica y no inventario, y no tiene cláusula que lo impida.
  *
- * DÓNDE GUARDA: en Supabase, desde el navegador, con la sesión del equipo
- * (`usePortalSession()`). No hay Server Action ni `service_role`: una acción de
+ * DÓNDE GUARDA: en Neon, desde el navegador, con la sesión del equipo
+ * (`usePortalSession()`). No hay Server Action ni `DATABASE_URL`: una acción de
  * servidor sin autenticar sería un endpoint público capaz de insertar en el
- * inventario del dueño, y `service_role` salta RLS. Acá el candado es Postgres
+ * inventario del dueño, y `DATABASE_URL` salta RLS. Acá el candado es Postgres
  * — sin sesión, el INSERT se rechaza. Ver `src/app/portal/layout.tsx`.
  *
  * REGLAS DE COMPORTAMIENTO DEL AUTOCOMPLETADO
@@ -37,7 +37,7 @@ import {
 } from "@/components/portal/portalSession";
 import { insertarVehiculo } from "../consultas";
 import { validarVehiculo, type ErroresCampo } from "./validacion";
-import { getPortalAuthMissingEnv } from "@/lib/portal/supabaseBrowser";
+import { getPortalAuthMissingEnv } from "@/lib/portal/portalClient";
 import {
   CATEGORIA_LABEL,
   CONDICION_LABEL,
@@ -152,7 +152,7 @@ type EstadoVin =
 
 export function VehiculoForm({ anioActual }: { anioActual: number }) {
   /**
-   * La sesión del equipo es la que guarda. NO se usa `service_role` desde el
+   * La sesión del equipo es la que guarda. NO se usa `DATABASE_URL` desde el
    * servidor: esa llave salta RLS, y una acción de servidor sin autenticar
    * sería un endpoint público capaz de insertar en el inventario del dueño.
    * Acá el candado es Postgres — sin sesión, el INSERT se rechaza.
@@ -1357,7 +1357,7 @@ function AvisoNoSeGuarda({ sesion }: { sesion: PortalSessionStatus }) {
       <Alerta tono="warn" titulo="Sin base de datos: esto NO se va a guardar">
         <p>
           Puedes recorrer el formulario completo y decodificar VINs contra NHTSA,
-          pero al enviar no se guardará nada. Falta conectar Supabase.
+          pero al enviar no se guardará nada. Falta conectar la base de Neon.
         </p>
         {faltantes.length > 0 ? (
           <p className="mt-3 text-xs text-ink-3">

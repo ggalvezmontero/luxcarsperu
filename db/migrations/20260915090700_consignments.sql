@@ -110,7 +110,7 @@ create table if not exists public.consignments (
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  created_by uuid references auth.users (id) on delete set null,
+  created_by uuid references neon_auth."user" (id) on delete set null,
 
   -- Coherencia entre el flag y el estado: si el dueño lo vendió, el estado lo
   -- refleja, y no se le cobra comisión.
@@ -193,7 +193,7 @@ create trigger consignments_sellar_venta_propia
 -- -----------------------------------------------------------------------------
 alter table public.consignments enable row level security;
 
-revoke all on public.consignments from anon, authenticated;
+revoke all on public.consignments from anonymous, authenticated;
 grant select, insert, update, delete on public.consignments to authenticated;
 
 drop policy if exists "consignments: el equipo lee" on public.consignments;

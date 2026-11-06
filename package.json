@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.116.0",
+    "@neon/neon-js": "^0.10.2",
+    "@neondatabase/serverless": "^1.2.0",
+    "aws4fetch": "^1.0.20",
     "framer-motion": "^11.11.17",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.3",

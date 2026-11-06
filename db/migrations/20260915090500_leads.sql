@@ -7,19 +7,19 @@
 --  El cliente nunca se registra: llena un formulario y sigue por WhatsApp.
 --  Entonces, ¿quién hace el INSERT?
 --
---  DECISIÓN: lo hace un Route Handler de Next.js en Vercel usando la
---  SUPABASE_SERVICE_ROLE_KEY (variable de entorno SOLO de servidor, jamás
---  NEXT_PUBLIC_*). El rol `service_role` no pasa por RLS, así que esta tabla
---  NO otorga ningún permiso de escritura a `anon`.
+--  DECISIÓN: lo hace un Route Handler de Next.js en Vercel conectado con
+--  DATABASE_URL (variable de entorno SOLO de servidor, jamás NEXT_PUBLIC_*).
+--  Esa conexión entra como dueño de la base y no pasa por RLS, así que esta
+--  tabla NO otorga ningún permiso de escritura a `anonymous`.
 --
---  POR QUÉ NO SE LE DA INSERT A `anon`
+--  POR QUÉ NO SE LE DA INSERT A `anonymous`
 --  ---------------------------------------------------------------------------
---  Porque la llave anónima viaja al navegador y es pública por diseño.
+--  Porque el acceso anónimo de la Data API es público por diseño.
 --  Cualquiera podría insertar leads en masa desde la consola, o escribir
 --  directamente `estado = 'ganado'` y ensuciar el embudo. Con el Route Handler
 --  de por medio, el servidor valida, limpia y decide qué campos se escriben.
 --
---  Si en algún momento se decide abrir el INSERT a `anon`, hace falta además:
+--  Si en algún momento se decide abrir el INSERT a `anonymous`, hace falta además:
 --  rate limiting, captcha y una política WITH CHECK que fije `estado = 'nuevo'`
 --  y prohíba escribir los campos internos. No es un cambio de una línea.
 --
@@ -67,7 +67,7 @@ create table if not exists public.leads (
   utm_campaign text,
 
   -- --- Seguimiento interno --------------------------------------------------
-  asignado_a uuid references auth.users (id) on delete set null,
+  asignado_a uuid references neon_auth."user" (id) on delete set null,
   notas_internas text,
   contactado_en timestamptz,
   cerrado_en timestamptz,
@@ -82,7 +82,7 @@ create table if not exists public.leads (
 );
 
 comment on table public.leads is
-  'Consultas entrantes. Se escriben desde Route Handlers de Vercel con service_role: anon no tiene INSERT. Contiene datos personales (Ley 29733).';
+  'Consultas entrantes. Se escriben desde Route Handlers de Vercel con DATABASE_URL: anonymous no tiene INSERT. Contiene datos personales (Ley 29733).';
 comment on column public.leads.vehicle_id is
   'Auto del stock consultado. NULL en importación a pedido, donde la unidad todavía no existe.';
 comment on column public.leads.notas_internas is
@@ -152,7 +152,7 @@ create trigger leads_sellar_embudo
 -- -----------------------------------------------------------------------------
 alter table public.leads enable row level security;
 
-revoke all on public.leads from anon, authenticated;
+revoke all on public.leads from anonymous, authenticated;
 grant select, insert, update, delete on public.leads to authenticated;
 
 drop policy if exists "leads: el equipo lee" on public.leads;

@@ -5,11 +5,11 @@
  * POR QUÉ ESTE MÓDULO RECIBE EL CLIENTE Y NO LO CONSTRUYE
  * ────────────────────────────────────────────────────────────────────────────
  * Estas funciones se ejecutan EN EL NAVEGADOR, con el cliente que trae la
- * sesión del equipo (`usePortalSession()`). No usan `service_role`, y eso es
+ * sesión del equipo (`usePortalSession()`). No usan `DATABASE_URL`, y eso es
  * deliberado.
  *
  * La razón está escrita en `src/app/portal/layout.tsx` y en
- * `src/lib/portal/supabaseBrowser.ts`: `service_role` salta TODAS las políticas
+ * `src/lib/portal/portalClient.ts`: `DATABASE_URL` salta TODAS las políticas
  * RLS. Si el listado se renderizara en el servidor con esa llave, Next mandaría
  * el HTML con el precio de compra, el margen y las notas internas ANTES de que
  * corriera ningún guard del navegador. Un `curl` a /portal/vehiculos —sin
@@ -19,18 +19,18 @@
  * candado de verdad:
  *   · con sesión del equipo (`authenticated`): se ve todo el stock, borradores
  *     y precios de compra incluidos;
- *   · sin sesión (`anon`): la política solo deja ver publicados y los GRANT por
+ *   · sin sesión (`anonymous`): la política solo deja ver publicados y los GRANT por
  *     columna ni siquiera otorgan `precio_compra`, así que la consulta vuelve
  *     vacía. No hay nada que filtrar.
  *
- * El día que se instale `@supabase/ssr` y haya un `middleware.ts` que valide la
- * sesión antes de responder, esto puede volver al servidor. Hoy no.
+ * El día que haya un `proxy.ts` que valide la sesión de Neon Auth antes de
+ * responder, esto puede volver al servidor. Hoy no.
  *
  * ────────────────────────────────────────────────────────────────────────────
  * RESTRICCIÓN LEGAL DURA — NO LA "OPTIMICES"
  * ────────────────────────────────────────────────────────────────────────────
  * (Detalle completo en `src/lib/db/types.ts` y en la migración
- * `supabase/migrations/20260915090200_vehicles.sql`.)
+ * `db/migrations/20260915090200_vehicles.sql`.)
  *
  * Las filas de `vehicles` solo pueden nacer de: carga manual curada en este
  * portal —con autocompletado por VIN contra NHTSA vPIC, cuya respuesta sí se
@@ -54,7 +54,7 @@
  * motivo en español, listo para mostrar.
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PortalClient } from "@/lib/portal/portalClient";
 import type {
   Currency,
   VehicleCategoryId,
@@ -68,7 +68,7 @@ const TABLE = "vehicles";
 /**
  * Columnas explícitas, nunca `*`.
  *
- * `public.vehicles` tiene GRANT por columna: `anon` no tiene permiso sobre
+ * `public.vehicles` tiene GRANT por columna: `anonymous` no tiene permiso sobre
  * `precio_compra` ni `notas_internas`, así que un `select *` FALLA sin sesión.
  * Eso es a propósito (protege el margen), pero significa que pedir columnas por
  * nombre no es una manía de estilo: es lo que hace que la consulta funcione.
@@ -266,7 +266,7 @@ function sanitizeSearch(raw: string): string {
  * vacía, que es exactamente lo que debe pasar.
  */
 export async function listarVehiculos(
-  client: SupabaseClient,
+  client: PortalClient,
   filtros: AdminVehicleFilters = {},
 ): Promise<ResultadoListado> {
   const limit = Math.min(Math.max(filtros.limit ?? DEFAULT_LIMIT, 1), 500);
@@ -366,7 +366,7 @@ export type ResultadoAlta =
  * Inserta un vehículo con la sesión del equipo. Nunca lanza.
  *
  * La escritura va por RLS (política "vehicles: el equipo inserta", concedida a
- * `authenticated`), no por `service_role`. Así el alta no depende de un
+ * `authenticated`), no por `DATABASE_URL`. Así el alta no depende de un
  * endpoint de servidor sin autenticar: sin sesión, Postgres rechaza el INSERT.
  *
  * `fuente` viaja siempre en la fila y la base la valida contra su lista blanca
@@ -374,7 +374,7 @@ export type ResultadoAlta =
  * propio un inventario cuya licencia no lo permite.
  */
 export async function insertarVehiculo(
-  client: SupabaseClient,
+  client: PortalClient,
   fila: NuevoVehiculoRow,
 ): Promise<ResultadoAlta> {
   try {

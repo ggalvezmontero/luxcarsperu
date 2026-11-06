@@ -4,9 +4,9 @@
  * Tablero del portal.
  *
  * Los indicadores se piden desde el navegador con la sesión del equipo, para
- * que RLS los evalúe como `authenticated`. NO se usa `service_role`: esa llave
+ * que RLS los evalúe como `authenticated`. NO se usa `DATABASE_URL`: esa conexión
  * salta todas las políticas y pintaría los leads para cualquiera que abra
- * /portal. Ver `src/lib/portal/supabaseBrowser.ts`.
+ * /portal. Ver `src/lib/portal/portalClient.ts`.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -73,7 +73,7 @@ function SetupNotice({ status }: { status: DbStatus }) {
   const faltaLectura = status.missing.filter((key) =>
     key.startsWith("NEXT_PUBLIC_"),
   );
-  const faltaEscritura = status.missing.includes("SUPABASE_SERVICE_ROLE_KEY");
+  const faltaEscritura = status.missing.includes("DATABASE_URL");
 
   return (
     <section
@@ -89,15 +89,16 @@ function SetupNotice({ status }: { status: DbStatus }) {
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-2">
         Nada está roto: el sitio público sigue funcionando y los formularios
         derivan al cliente a WhatsApp. Faltan variables de entorno del proyecto
-        de Supabase (organización <code className="text-silver">zvwegcanushbpmjtohnp</code>).
+        de Neon (<code className="text-silver">luxcarsperu</code>).
       </p>
 
       <ol className="mt-5 space-y-4 text-sm text-ink-2">
         <li>
           <span className="font-medium text-ink">1. Aplicar el esquema.</span>{" "}
           Correr las migraciones de{" "}
-          <code className="text-silver">supabase/migrations/</code> en el
-          proyecto de Supabase. Crean tablas, RLS y el bucket de fotos.
+          <code className="text-silver">db/migrations/</code> en el proyecto de
+          Neon, con la Data API y Neon Auth activadas. Crean tablas y RLS; el
+          bucket de fotos se crea aparte, en Object Storage.
         </li>
         <li>
           <span className="font-medium text-ink">
@@ -127,19 +128,19 @@ function SetupNotice({ status }: { status: DbStatus }) {
           ) : null}
           {faltaEscritura ? (
             <p className="mt-2 text-xs text-ink-3">
-              Sin la llave de servicio no se guardan los leads: los formularios
+              Sin la conexión directa no se guardan los leads: los formularios
               siguen derivando a WhatsApp. Es secreta y solo de servidor, jamás
               con prefijo <code className="text-silver">NEXT_PUBLIC_</code>.
             </p>
           ) : null}
         </li>
         <li>
-          <span className="font-medium text-ink">3. Crear los usuarios</span> a
-          mano en Supabase → Authentication → Users, uno por persona del equipo.
-          Después, <span className="text-ink">desactivar el alta pública</span>{" "}
-          en Authentication → Providers → Email → “Allow new users to sign up”.
-          Si queda activa, cualquiera podría crearse una cuenta y RLS lo trataría
-          como parte del equipo.
+          <span className="font-medium text-ink">3. Crear los usuarios</span> en
+          la consola de Neon → Auth → Users, uno por persona del equipo; cada
+          quien define su contraseña desde «Crear o recuperar contraseña» en el
+          login. El <span className="text-ink">alta pública debe seguir
+          desactivada</span>: si se activa, cualquiera podría crearse una cuenta
+          y RLS lo trataría como parte del equipo.
         </li>
         <li>
           <span className="font-medium text-ink">4. Volver a desplegar.</span>{" "}
@@ -179,7 +180,7 @@ function LegalNotice() {
       </p>
       <p className="mt-3 text-xs text-ink-3">
         La vía legal para escalar son feeds XML de dealers partner con licencia
-        firmada. Detalle en <code className="text-silver">supabase/README.md</code>{" "}
+        firmada. Detalle en <code className="text-silver">db/README.md</code>{" "}
         y <code className="text-silver">src/lib/db/types.ts</code>.
       </p>
     </section>

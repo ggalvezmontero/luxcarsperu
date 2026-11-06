@@ -1,7 +1,7 @@
 /**
  * Tipos de dominio de la capa de datos de LuxCars.
  *
- * FUENTE DE VERDAD DEL ESQUEMA: `supabase/migrations/`. Este archivo es su
+ * FUENTE DE VERDAD DEL ESQUEMA: `db/migrations/`. Este archivo es su
  * espejo en TypeScript, nada más. Las columnas en Postgres están en español
  * (`marca`, `anio`, `precio_venta`); el dominio expuesto a la UI está en inglés
  * camelCase para que encaje sin traducción con el motor de precios de
@@ -88,7 +88,7 @@ export type VehiclePhoto = {
  * Vehículo publicado, tal como lo ve el sitio público.
  *
  * Solo campos publicables: `precio_compra`, `precio_final` y `notas_internas`
- * no están acá porque `anon` no tiene GRANT sobre esas columnas. Son el margen
+ * no están acá porque `anonymous` no tiene GRANT sobre esas columnas. Son el margen
  * del negocio; no deben poder filtrarse a un componente por descuido.
  */
 export type Vehicle = {
@@ -261,7 +261,7 @@ export type CommissionType = "porcentaje" | "monto_fijo";
 /**
  * Fila de `public.vehiculos_publicos`, la vista con `security_invoker` que el
  * front público debe usar. NO se consulta `public.vehicles` con `select *`:
- * los GRANT son por columna y esa consulta FALLA para `anon`, a propósito.
+ * los GRANT son por columna y esa consulta FALLA para `anonymous`, a propósito.
  */
 export type PublicVehicleRow = {
   id: string;
@@ -293,7 +293,7 @@ export type PublicVehicleRow = {
   foto_portada_alt: string | null;
 };
 
-/** Fila de `public.vehicle_photos`, limitada a las columnas con GRANT a `anon`. */
+/** Fila de `public.vehicle_photos`, limitada a las columnas con GRANT a `anonymous`. */
 export type VehiclePhotoRow = {
   id: string;
   vehicle_id: string;
@@ -306,7 +306,7 @@ export type VehiclePhotoRow = {
   alto_px: number | null;
 };
 
-/** Fila de `public.leads`. Solo accesible con service_role o sesión del equipo. */
+/** Fila de `public.leads`. Solo accesible con DATABASE_URL o sesión del equipo. */
 export type LeadRow = {
   id: string;
   origen: string;

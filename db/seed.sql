@@ -5,7 +5,7 @@
 --  Este archivo NO es necesario para que el sistema funcione. Sirve para tener
 --  algo en pantalla mientras se construye el admin.
 --
---  Lo corre automáticamente `supabase db reset` en local. NO lo apliques en
+--  Se aplica a mano (`psql "$DATABASE_URL" -f db/seed.sql`). NO lo apliques en
 --  producción.
 --
 --  ---------------------------------------------------------------------------

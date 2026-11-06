@@ -4,11 +4,11 @@
  * Pantalla de leads del portal.
  *
  * Lee con la sesión del equipo desde el NAVEGADOR (RLS evalúa `authenticated`),
- * nunca desde el servidor con `service_role`: esa llave salta las políticas y
+ * nunca desde el servidor con `DATABASE_URL`: esa conexión salta las políticas y
  * el HTML saldría con los datos personales dentro antes de cualquier guard.
- * Ver `queries.ts` y `src/lib/portal/supabaseBrowser.ts`.
+ * Ver `queries.ts` y `src/lib/portal/portalClient.ts`.
  *
- * FUNCIONA CON DATOS VACÍOS: sin Supabase configurado muestra el estado vacío
+ * FUNCIONA CON DATOS VACÍOS: sin Neon configurado muestra el estado vacío
  * con los pasos de configuración; sin leads, explica de dónde van a salir.
  */
 
@@ -40,9 +40,9 @@ import {
 } from "./queries";
 
 const SETUP_STEPS = [
-  "Crea el proyecto en Supabase (organización zvwegcanushbpmjtohnp) y aplica las migraciones de supabase/migrations/.",
-  "Carga NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en Vercel y en .env.local.",
-  "Crea a mano los usuarios del equipo en Supabase → Authentication → Users y desactiva el alta pública.",
+  "Aplica las migraciones de db/migrations/ en el proyecto de Neon y activa ahí la Data API y Neon Auth.",
+  "Carga NEXT_PUBLIC_NEON_URL y NEON_AUTH_COOKIE_SECRET en Vercel y en .env.local.",
+  "Agrega a cada persona del equipo en la consola de Neon → Auth → Users; el alta pública ya está desactivada.",
 ];
 
 export function LeadsScreen() {

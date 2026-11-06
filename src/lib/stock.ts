@@ -11,7 +11,7 @@ export { STATUS_LABEL, CATEGORY_LABEL } from "@/lib/stockLabels";
 /**
  * Capa única de lectura del stock para la web pública.
  *
- * Con Supabase configurado, devuelve el inventario real (vista pública).
+ * Con Neon configurado, devuelve el inventario real (vista pública).
  * Sin base de datos, devuelve unidades de DEMOSTRACIÓN claramente marcadas,
  * para que el diseño de la ficha se pueda ver y probar. Ninguna unidad demo
  * lleva foto: no existe una foto honesta de ellas y no se usa stock ajeno.

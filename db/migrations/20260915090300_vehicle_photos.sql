@@ -27,7 +27,7 @@ create table if not exists public.vehicle_photos (
   vehicle_id uuid not null
     references public.vehicles (id) on delete cascade,
 
-  -- Ruta dentro del bucket 'vehiculos' de Supabase Storage.
+  -- Ruta dentro del bucket 'vehiculos' de Neon Object Storage.
   -- Convención: {vehicle_id}/{uuid}.{ext}
   storage_path text not null unique,
 
@@ -45,7 +45,7 @@ create table if not exists public.vehicle_photos (
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  subida_por uuid references auth.users (id) on delete set null
+  subida_por uuid references neon_auth."user" (id) on delete set null
 );
 
 comment on table public.vehicle_photos is
@@ -118,17 +118,17 @@ create trigger vehicle_photos_acomodar
 --  RLS
 -- -----------------------------------------------------------------------------
 --  Lectura pública SOLO de fotos cuyo vehículo está publicado. El EXISTS se
---  evalúa bajo el RLS de `vehicles` para el mismo rol, así que anon no puede
+--  evalúa bajo el RLS de `vehicles` para el mismo rol, así que anonymous no puede
 --  usarlo para deducir la existencia de stock no publicado.
 -- -----------------------------------------------------------------------------
 alter table public.vehicle_photos enable row level security;
 
-revoke all on public.vehicle_photos from anon, authenticated;
+revoke all on public.vehicle_photos from anonymous, authenticated;
 
 grant select (
   id, vehicle_id, storage_path, url_publica, alt, orden, es_principal,
   ancho_px, alto_px, created_at
-) on public.vehicle_photos to anon;
+) on public.vehicle_photos to anonymous;
 
 grant select, insert, update, delete on public.vehicle_photos to authenticated;
 
@@ -136,7 +136,7 @@ drop policy if exists "vehicle_photos: lectura pública si el auto está publica
   on public.vehicle_photos;
 create policy "vehicle_photos: lectura pública si el auto está publicado"
   on public.vehicle_photos for select
-  to anon
+  to anonymous
   using (
     exists (
       select 1
@@ -175,7 +175,7 @@ create policy "vehicle_photos: el equipo borra"
 -- -----------------------------------------------------------------------------
 --  VISTA PÚBLICA DE STOCK
 -- -----------------------------------------------------------------------------
---  `select *` sobre `vehicles` falla para anon a propósito (los GRANT son por
+--  `select *` sobre `vehicles` falla para anonymous a propósito (los GRANT son por
 --  columna). Esta vista es el camino cómodo para el front público: expone solo
 --  lo publicable y ya trae la portada resuelta.
 --
@@ -222,50 +222,21 @@ where v.publicado;
 comment on view public.vehiculos_publicos is
   'Stock publicado para el sitio público, con portada resuelta. security_invoker: respeta el RLS de quien consulta.';
 
-grant select on public.vehiculos_publicos to anon, authenticated;
+grant select on public.vehiculos_publicos to anonymous, authenticated;
 
 
 -- -----------------------------------------------------------------------------
 --  BUCKET DE STORAGE
 -- -----------------------------------------------------------------------------
---  Público en lectura (las fotos del stock se muestran en el sitio) y escritura
---  solo para el equipo autenticado. Tope de 15 MB: una foto de celular moderno
---  entra de sobra y evita que una subida accidental de un video tumbe la cuota.
+--  En Neon el bucket NO se crea con SQL: Object Storage vive fuera de Postgres
+--  y no tiene tablas ni políticas RLS. El bucket `vehiculos` se crea una vez
+--  por rama, con lectura pública (`public_read`):
+--
+--      neon buckets create vehiculos --access-level public_read
+--
+--  Lectura: abierta a cualquiera (las fotos del stock se muestran en el sitio).
+--  Escritura: exige una credencial `storage:write`, que solo conoce el
+--  servidor. El equipo sube con URLs prefirmadas que entrega
+--  `src/app/api/portal/fotos/route.ts` después de comprobar su sesión; el tope
+--  de tamaño y los tipos de imagen admitidos se validan ahí.
 -- -----------------------------------------------------------------------------
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values (
-  'vehiculos',
-  'vehiculos',
-  true,
-  15728640,  -- 15 MB
-  array['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic']
-)
-on conflict (id) do update
-  set public             = excluded.public,
-      file_size_limit    = excluded.file_size_limit,
-      allowed_mime_types = excluded.allowed_mime_types;
-
-drop policy if exists "vehiculos: lectura pública" on storage.objects;
-create policy "vehiculos: lectura pública"
-  on storage.objects for select
-  to anon, authenticated
-  using (bucket_id = 'vehiculos');
-
-drop policy if exists "vehiculos: el equipo sube" on storage.objects;
-create policy "vehiculos: el equipo sube"
-  on storage.objects for insert
-  to authenticated
-  with check (bucket_id = 'vehiculos');
-
-drop policy if exists "vehiculos: el equipo actualiza" on storage.objects;
-create policy "vehiculos: el equipo actualiza"
-  on storage.objects for update
-  to authenticated
-  using (bucket_id = 'vehiculos')
-  with check (bucket_id = 'vehiculos');
-
-drop policy if exists "vehiculos: el equipo borra" on storage.objects;
-create policy "vehiculos: el equipo borra"
-  on storage.objects for delete
-  to authenticated
-  using (bucket_id = 'vehiculos');

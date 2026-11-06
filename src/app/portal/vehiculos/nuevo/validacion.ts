@@ -1,12 +1,12 @@
 /**
  * Validación del alta de vehículo: `FormData` → fila lista para Postgres.
  *
- * Es una función pura, sin React y sin Supabase, por dos razones: se puede
- * probar sola, y el día que el alta vuelva al servidor (con `@supabase/ssr` y
- * un `middleware.ts` que valide la sesión) se reutiliza tal cual.
+ * Es una función pura, sin React y sin base de datos, por dos razones: se puede
+ * probar sola, y el día que el alta vuelva al servidor (con un `proxy.ts` que
+ * valide la sesión de Neon Auth) se reutiliza tal cual.
  *
  * QUÉ VALIDA Y POR QUÉ, SI LA BASE YA VALIDA: las reglas de abajo son espejo de
- * los CHECK de `supabase/migrations/20260915090200_vehicles.sql`. La barrera de
+ * los CHECK de `db/migrations/20260915090200_vehicles.sql`. La barrera de
  * verdad es Postgres —acá corre en el navegador, así que no protege de nada—,
  * pero sirve para devolver "para publicar hace falta el precio de venta" en vez
  * de un `violates check constraint "vehicles_publicado_exige_precio"` en inglés

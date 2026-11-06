@@ -15,7 +15,7 @@
  *     dueño venda su propio auto es un desenlace previsto y se cierra en cero,
  *     sin comisión y sin fricción. Ponerlo a mano es reflejar el negocio.
  *
- * Presentación pura: no habla con Supabase. Recibe las filas ya mapeadas y dos
+ * Presentación pura: no habla con la base. Recibe las filas ya mapeadas y dos
  * funciones que la pantalla resuelve con la sesión del equipo, para que este
  * archivo no pueda terminar consultando con una llave que salte RLS.
  */

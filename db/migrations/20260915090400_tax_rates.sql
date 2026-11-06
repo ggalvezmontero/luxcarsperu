@@ -197,7 +197,7 @@ comment on function public.tasas_vigentes(date) is
 -- -----------------------------------------------------------------------------
 alter table public.tax_rates enable row level security;
 
-revoke all on public.tax_rates from anon, authenticated;
+revoke all on public.tax_rates from anonymous, authenticated;
 grant select, insert, update, delete on public.tax_rates to authenticated;
 
 drop policy if exists "tax_rates: el equipo lee" on public.tax_rates;

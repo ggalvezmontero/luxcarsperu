@@ -14,8 +14,8 @@ ningún desarrollador puede hacerlas por él, y ningún agente debería.
 
 El sitio **ya funciona sin base de datos**. No hay páginas rotas ni errores de
 build: la capa de datos devuelve listas vacías y los formularios derivan al
-cliente a WhatsApp. Eso significa que puedes desplegar hoy y configurar
-Supabase mañana.
+cliente a WhatsApp. Eso significa que puedes desplegar hoy y terminar de
+configurar Neon mañana.
 
 Lo que **no** funciona sin esto: no se guarda ni un solo lead, el portal no
 muestra números y no se puede cargar stock.
@@ -50,89 +50,94 @@ el portal en el paso 6.
 
 ---
 
-## Paso 1 — Crear el proyecto en Supabase
+## Paso 1 — El proyecto en Neon
 
-1. Entra a [supabase.com/dashboard](https://supabase.com/dashboard) con la cuenta
-   de la organización **`zvwegcanushbpmjtohnp`**.
-2. **New project**:
-   - **Name**: `luxcars-produccion`
-   - **Database password**: genérala con el botón y **guárdala en el gestor de
-     contraseñas**. Supabase no vuelve a mostrarla y sin ella no se puede
-     conectar por CLI.
-   - **Region**: `East US (North Virginia)` — es la más cercana a Perú con buena
-     latencia, y la misma región donde Vercel sirve por defecto.
-   - **Plan**: el gratuito alcanza para empezar. Súbelo a Pro cuando el stock
-     real y las fotos crezcan (el límite de Storage del gratuito es 1 GB, que son
-     más o menos 3.000 fotos ya comprimidas por el portal).
-3. Espera a que termine de aprovisionar (~2 minutos).
+La base vive en **Neon**: organización `GIANFRANCO`, proyecto **`luxcarsperu`**
+(`long-cell-98759372`), región AWS US East (N. Virginia) — la más cercana a
+Perú con buena latencia, y la misma donde Vercel sirve por defecto.
+
+**Estado al 2026-11-05: ya está creado**, con sus tres piezas activas en la rama
+`main`:
+
+| Pieza | Para qué |
+|---|---|
+| **Data API** | Las consultas del sitio y del portal, con RLS como candado |
+| **Neon Auth** | El login del equipo |
+| **Object Storage** | El bucket `vehiculos` con las fotos del stock, de lectura pública |
+
+Si algún día hay que rehacerlo desde cero: [console.neon.tech](https://console.neon.tech)
+→ **New project**, activar **Data API** (con Neon Auth como proveedor) y crear
+el bucket `vehiculos` con acceso `public_read` en **Object storage**.
+
+El plan gratuito alcanza para empezar. Revísalo cuando el stock real y las fotos
+crezcan.
 
 ---
 
 ## Paso 2 — Aplicar las migraciones
 
-Las 7 migraciones están en `supabase/migrations/`. **Nadie las ha ejecutado
-todavía** contra tu proyecto: fueron probadas contra un PostgreSQL 17 local
-descartable con los roles de Supabase recreados, y ahí quedaron limpias (7
-tablas, 1 vista, 30 políticas RLS, 45 índices, 22 tasas cargadas).
+Las 7 migraciones están en `db/migrations/`. **Estado al 2026-11-05: ya están
+aplicadas** en `luxcarsperu` (7 tablas, 1 vista, las políticas RLS y 22 tasas
+cargadas).
+
+Para aplicarlas en una base nueva hace falta `psql` y la cadena de conexión
+(Neon → **Connect**):
 
 ```bash
-# 1. Instalar la CLI (una sola vez)
-npm install -g supabase
-
-# 2. Iniciar sesión — abre el navegador
-supabase login
-
-# 3. Enlazar con tu proyecto
-#    El <ref> es el "Project ref" de Settings → General (algo como abcdefghijklm)
 cd /ruta/al/proyecto/luxcarsperu
-supabase link --project-ref <ref>
-
-# 4. Aplicar el esquema
-supabase db push
+for f in db/migrations/*.sql; do
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"
+done
 ```
 
-**Qué debe pasar:** lista las 7 migraciones y termina sin errores.
+**Orden obligatorio:** primero activar la Data API y Neon Auth (paso 1). Las
+migraciones otorgan permisos a los roles `anonymous` y `authenticated` y
+referencian `neon_auth."user"`; todo eso lo crea Neon al activarlas.
 
-**Verificación (no te saltes esto):** en el dashboard, **Table Editor** debe
-mostrar `vehicle_models`, `vehicles`, `vehicle_photos`, `leads`, `quotes`,
-`consignments` y `tax_rates`. En **Storage** debe existir el bucket
-**`vehiculos`**.
+**Verificación (no te saltes esto):** en la consola, **Tables** debe mostrar
+`vehicle_models`, `vehicles`, `vehicle_photos`, `leads`, `quotes`,
+`consignments` y `tax_rates`.
 
-> **No cargues el seed.** `supabase/seed.sql` es solo para desarrollo local.
+> **No cargues el seed.** `db/seed.sql` es solo para desarrollo local.
 > Siembra dos filas marcadas `FILA DEMO`, sin publicar y sin fotos. Si por
 > cualquier motivo lo corriste contra producción, **borra esas dos filas antes
 > de publicar cualquier auto**.
 
 ---
 
-## Paso 3 — ⚠ Desactivar el alta pública. El paso más importante de todos.
+## Paso 3 — ⚠ El alta pública debe quedar desactivada. El paso más importante de todos.
 
-**Si te saltas este paso, cualquier persona de internet puede crearse una cuenta
+**Si el registro se abre, cualquier persona de internet puede crearse una cuenta
 y entrar a ver tus leads, tus márgenes y el precio mínimo de cada consignación.**
 
 Las políticas de la base dan acceso de equipo a **cualquier usuario
-autenticado**, que es lo que se pidió. La llave anónima es pública por diseño
-(viaja en el navegador). Si el registro queda abierto, esas dos cosas juntas
-significan que registrarse **es** entrar al equipo.
+autenticado**, que es lo que se pidió. Si el registro queda abierto, registrarse
+**es** entrar al equipo.
 
-1. Supabase → **Authentication → Sign In / Providers → Email**.
-2. Desactiva **"Allow new users to sign up"**.
-3. Guarda.
+**Estado al 2026-11-05: ya está desactivada** (`disable_sign_up`). Para
+comprobarlo o cambiarlo: consola de Neon → **Auth** → configuración de
+**Sign-in with Email** → el registro de usuarios nuevos debe estar apagado.
 
-> **Cómo verificar:** abre una ventana de incógnito e intenta registrarte con la
-> API de tu proyecto. Debe rechazarlo con *"Signups not allowed for this
-> instance"*.
+> **Cómo verificar:** el sitio lo confirma solo. Un registro contra
+> `/api/auth/sign-up/email` debe responder
+> *"Email and password sign up is not enabled"*.
 
 ---
 
-## Paso 4 — Crear los usuarios del equipo a mano
+## Paso 4 — Crear los usuarios del equipo
 
 No hay registro en el portal y no lo habrá.
 
-1. Supabase → **Authentication → Users → Add user → Create new user**.
-2. Uno por persona del equipo: correo y contraseña inicial.
-3. Marca **Auto Confirm User** para que no tenga que confirmar por correo.
-4. Pásale la contraseña por un canal seguro y pídele que la cambie.
+1. Consola de Neon → **Auth → Users → crear usuario**. Solo pide el **correo**
+   (y un nombre). Uno por persona del equipo.
+2. Esa persona abre **`/portal/recuperar`**, escribe su correo y recibe un
+   enlace (vence en 15 minutos) para **definir su propia contraseña**. Nadie le
+   dicta una clave a nadie.
+3. La misma pantalla sirve el día que alguien la olvida.
+
+El correo sale del remitente compartido de Neon (`auth@mail.myneon.app`). Sirve
+para empezar; para producción conviene configurar un remitente propio en
+**Auth → Email provider**, o el enlace puede caer en spam.
 
 **Crea solo las cuentas que hacen falta.** Hoy todo usuario autenticado ve
 todo: no hay diferencia entre un vendedor y el dueño. Una cuenta de más es un
@@ -142,26 +147,39 @@ juego completo de llaves de más.
 
 ## Paso 5 — Variables de entorno en Vercel
 
-Ve a **Vercel → proyecto → Settings → Environment Variables**. Los valores están
-en Supabase → **Project Settings → API Keys** (y la URL en **Data API**).
+Ve a **Vercel → proyecto `luxcarspe` → Settings → Environment Variables**. Los
+valores salen de Neon → **Connect**.
 
-| Variable | Valor | Entornos | ¿Secreta? |
-|---|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Project URL (`https://xxx.supabase.co`) | Production, Preview, Development | No |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Llave `anon` / publishable | Production, Preview, Development | No |
-| `SUPABASE_SERVICE_ROLE_KEY` | Llave `service_role` | **Solo Production** | **SÍ** |
+| Variable | Valor | ¿Secreta? |
+|---|---|---|
+| `NEXT_PUBLIC_NEON_URL` | Dirección https de la base, sin credenciales (`https://ep-xxx….neon.tech/neondb`) | No |
+| `DATABASE_URL` | Cadena de conexión de Postgres (la "pooled") | **SÍ** |
+| `NEON_AUTH_COOKIE_SECRET` | Texto aleatorio de 32+ caracteres (`openssl rand -base64 32`) | **SÍ** |
+| `NEXT_PUBLIC_NEON_STORAGE_URL` | Pestaña **Storage** → `AWS_ENDPOINT_URL_S3` | No |
+| `NEON_STORAGE_ACCESS_KEY_ID` | Pestaña **Storage** → `AWS_ACCESS_KEY_ID` | **SÍ** |
+| `NEON_STORAGE_SECRET_ACCESS_KEY` | Pestaña **Storage** → `AWS_SECRET_ACCESS_KEY` | **SÍ** |
 
-### Sobre `SUPABASE_SERVICE_ROLE_KEY`, que es la peligrosa
+Las de Storage llevan nombre propio porque Vercel reserva los `AWS_*` para su
+entorno y no deja definirlos.
+
+### Sobre `DATABASE_URL`, que es la peligrosa
 
 - **Salta todas las políticas RLS.** Quien la tenga puede leer y escribir la base
   entera.
 - **JAMÁS le pongas el prefijo `NEXT_PUBLIC_`.** Ese prefijo la mete en el bundle
   del navegador y deja tu base abierta a cualquiera que abra las herramientas de
-  desarrollo. No hay forma de deshacerlo salvo rotar la llave.
+  desarrollo. No hay forma de deshacerlo salvo cambiar la contraseña del rol.
 - **Jamás en el repositorio**, ni siquiera en una rama.
 - Sin ella los formularios siguen funcionando, pero **ningún lead se guarda**:
   todo se va por WhatsApp. Es la variable que hay que priorizar si quieres dejar
   de perder el rastro de las consultas.
+
+### Dominios de confianza de Neon Auth
+
+Neon Auth solo acepta el login desde los dominios que conoce. Ya están
+`https://www.luxcars.pe` y `https://luxcars.pe`. Si el sitio se sirve desde otro
+dominio (por ejemplo, una URL de preview de Vercel), agrégalo en Neon → **Auth**
+→ dominios de confianza, o el login de ese dominio va a fallar.
 
 > **Después de guardar las variables hay que volver a desplegar.** Vercel las lee
 > en el build, así que un deploy anterior no las ve. **Deployments → … →
@@ -184,9 +202,9 @@ Next conteste.
    tiene cuentas de Vercel).
 3. Guarda y vuelve a desplegar.
 
-**Cuesta cero y es lo que hay que hacer hoy.** La solución definitiva —instalar
-`@supabase/ssr` y un `middleware.ts` que valide la sesión en el servidor— agrega
-una dependencia al proyecto y es decisión tuya; está explicada en
+**Cuesta cero y es lo que hay que hacer hoy.** La solución definitiva —un
+`proxy.ts` que valide la sesión de Neon Auth en el servidor antes de responder
+cualquier `/portal/*`— es decisión tuya; está explicada en
 [`ARQUITECTURA.md`](./ARQUITECTURA.md#5-el-portal--portal).
 
 > **Ojo:** Password Protection cubre **todo** el sitio, incluido el público. Si
@@ -199,8 +217,9 @@ una dependencia al proyecto y es decisión tuya; está explicada en
 
 Con el sitio desplegado, en este orden:
 
-1. **`/portal/login`** — entra con uno de los usuarios que creaste. Si entra, el
-   paso 4 y las variables están bien.
+1. **`/portal/recuperar`** y luego **`/portal/login`** — define tu contraseña
+   con el enlace del correo y entra. Si entra, el paso 4 y las variables están
+   bien.
 2. **`/portal`** — el aviso de "falta configurar" debe haber desaparecido y los
    indicadores mostrar ceros reales (no hay datos todavía).
 3. **`/portal/vehiculos/nuevo`** — carga un auto de verdad con su VIN. El
@@ -263,8 +282,8 @@ Nada de esto lo puede resolver el código.
 
 ### Decisiones técnicas que agregan dependencias
 
-11. **¿Se instala `@supabase/ssr`?** Habilita proteger el portal en el servidor.
-    Mientras tanto, el paso 6 es la red de seguridad.
+11. **¿Se agrega un `proxy.ts` con Neon Auth?** Habilita proteger el portal en
+    el servidor. Mientras tanto, el paso 6 es la red de seguridad.
 12. **Cookies.** El banner existe pero **no gobierna nada**: hoy ni "aceptar" ni
     "rechazar" activan o bloquean ningún script. El día que agregues analítica,
     tiene que leer la clave `luxcars-cookie-consent` **antes** de cargarse, o el

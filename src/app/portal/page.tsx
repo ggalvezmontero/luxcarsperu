@@ -5,7 +5,7 @@
  * CONFIGURACIÓN —qué variables de entorno faltan, incluida la llave de
  * servicio, que el navegador no puede ver— y se lo pasa al tablero. Los datos
  * del negocio los pide el componente cliente con la sesión del equipo, para
- * que RLS los filtre. Acá NO se consulta la base con `service_role`: eso le
+ * que RLS los filtre. Acá NO se consulta la base con `DATABASE_URL`: eso le
  * mostraría los leads a cualquiera que abra esta ruta.
  */
 

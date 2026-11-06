@@ -12,6 +12,13 @@ import { ImportBand } from "@/components/home/ImportBand";
 import { StockSection } from "@/components/home/StockSection";
 
 /**
+ * El bloque de stock sale de la base: se vuelve a generar cada cinco minutos
+ * para que un auto recién publicado aparezca sin esperar al próximo despliegue.
+ * Mismo criterio que /comprar.
+ */
+export const revalidate = 300;
+
+/**
  * HOME — siete bloques, cada uno con una sola idea:
  *   1. Portada: qué somos y los cuatro caminos.
  *   2. Stock disponible (tarjetas con foto).

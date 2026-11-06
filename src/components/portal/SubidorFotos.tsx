@@ -18,15 +18,15 @@
  *  · Reordenar tiene flechas además de arrastrar. Arrastrar con el pulgar, al
  *    sol, en una pantalla táctil no funciona; una flecha sí. Y las flechas son
  *    además el único camino accesible por teclado.
- *  · Sube directo del navegador a Supabase Storage con la sesión del equipo
+ *  · Sube directo del navegador a Neon Object Storage con la sesión del equipo
  *    (ver `src/lib/portal/vehiclePhotos.ts`): RLS es el candado, no hace falta
- *    `service_role`, y de paso se esquiva el límite de ~4.5 MB que tiene el
+ *    `DATABASE_URL`, y de paso se esquiva el límite de ~4.5 MB que tiene el
  *    cuerpo de una función serverless en Vercel.
- *  · Sin Supabase configurado la pantalla NO se bloquea: comprime, muestra,
+ *  · Sin Neon configurado la pantalla NO se bloquea: comprime, muestra,
  *    deja ordenar y permite descargar las fotos ya optimizadas, avisando en
  *    claro que nada se está guardando.
  *
- * SOBRE `<img>` EN LUGAR DE `next/image`: las fotos viven en Supabase Storage
+ * SOBRE `<img>` EN LUGAR DE `next/image`: las fotos viven en Neon Object Storage
  * (dominio no declarado en `next.config.ts`) y, en modo local, son `blob:` de
  * esta sesión. `next/image` fallaría en ambos casos. Además este es el panel
  * interno: no hay SEO ni Core Web Vitals que optimizar acá.
@@ -61,7 +61,7 @@ import {
 /* ========================================================================== */
 
 /**
- * Foto en pantalla. Unifica la guardada en Supabase con la que solo existe en
+ * Foto en pantalla. Unifica la guardada en Neon con la que solo existe en
  * esta pestaña (modo sin base de datos), para que la galería tenga UN camino de
  * renderizado en vez de dos que se desincronizan.
  */
@@ -140,7 +140,7 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
 
   /**
    * Modo local = hay pantalla pero no hay dónde guardar (falta configurar
-   * Supabase). Se comprime y se ordena igual, y se avisa. Es mejor que un
+   * Neon). Se comprime y se ordena igual, y se avisa. Es mejor que un
    * formulario muerto: el equipo puede fotografiar hoy y subir cuando el dueño
    * termine de configurar.
    */
@@ -559,7 +559,7 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
             Modo sin almacenamiento: estas fotos NO se están guardando.
           </p>
           <p className="mt-2 text-sm leading-relaxed text-ink-2">
-            Supabase no está configurado, así que no hay dónde guardar. Puedes
+            La base de Neon no está configurada, así que no hay dónde guardar. Puedes
             fotografiar, comprimir, ordenar y descargar las fotos ya optimizadas,
             pero se pierden al cerrar la pestaña. Define las variables de{" "}
             <code className="text-ink-3">.env.example</code> en Vercel y vuelve a

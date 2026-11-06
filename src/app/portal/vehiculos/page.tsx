@@ -7,7 +7,7 @@ import type { VehicleStatus } from "@/lib/db/types";
  *
  * La página es deliberadamente delgada: lee los filtros de la URL y nada más.
  * NO consulta la base de datos. El listado muestra precio de compra y notas
- * internas, y un componente de servidor tendría que leerlos con `service_role`
+ * internas, y un componente de servidor tendría que leerlos con `DATABASE_URL`
  * —que salta RLS—, de modo que el HTML con el margen del negocio viajaría a
  * cualquiera que abriera la URL, sin ejecutar JavaScript. La consulta vive en
  * `VehiculosPanel`, en el navegador, con la sesión del equipo. El razonamiento

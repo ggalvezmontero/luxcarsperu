@@ -3,7 +3,7 @@
  *
  * No importa nada de servidor ni abre conexiones: se puede usar desde un
  * componente "use client" sin arrastrar al navegador la capa de datos del
- * sitio público (que se construye para `service_role`).
+ * sitio público (que lee `DATABASE_URL`).
  *
  * Las columnas de Postgres están en español (`nombre`, `interes_marca`); el
  * dominio que consume la UI está en inglés camelCase, igual que en

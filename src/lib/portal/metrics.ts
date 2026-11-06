@@ -12,10 +12,10 @@
  *
  * Las consultas corren en el NAVEGADOR con la sesión del equipo, así que RLS
  * las evalúa como `authenticated`. Sin sesión, Postgres responde cero filas —
- * que es justo lo que debe pasar. Ver el encabezado de `supabaseBrowser.ts`.
+ * que es justo lo que debe pasar. Ver el encabezado de `portalClient.ts`.
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PortalClient } from "@/lib/portal/portalClient";
 
 import type {
   ConsignmentStatus,
@@ -93,7 +93,7 @@ export function currentMonthLabel(now: Date = new Date()): string {
 type CountSpec = {
   key: keyof PortalMetrics;
   label: string;
-  run: (client: SupabaseClient) => PromiseLike<{
+  run: (client: PortalClient) => PromiseLike<{
     count: number | null;
     error: { message: string } | null;
   }>;
@@ -101,7 +101,7 @@ type CountSpec = {
 
 /**
  * Definición de cada indicador. Los nombres de tabla y columna están en
- * español porque así está el esquema (ver `supabase/migrations/`); la
+ * español porque así está el esquema (ver `db/migrations/`); la
  * traducción a inglés vive en la capa de datos, no acá.
  */
 const COUNT_SPECS: CountSpec[] = [
@@ -181,14 +181,14 @@ const COUNT_SPECS: CountSpec[] = [
  * muestran igual. Nunca lanza.
  */
 export async function fetchPortalMetrics(
-  client: SupabaseClient | null,
+  client: PortalClient | null,
 ): Promise<PortalMetricsResult> {
   if (!client) {
     return {
       metrics: { ...EMPTY_METRICS },
       ok: false,
       issues: [
-        "Sin conexión a Supabase: los indicadores muestran cero porque no hay de dónde leerlos.",
+        "Sin conexión a Neon: los indicadores muestran cero porque no hay de dónde leerlos.",
       ],
     };
   }

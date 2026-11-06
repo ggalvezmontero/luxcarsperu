@@ -1,24 +1,24 @@
 /**
  * Consultas de leads, ejecutadas DESDE EL NAVEGADOR con la sesión del equipo.
  *
- * ┌── POR QUÉ NO SE LEE EN EL SERVIDOR CON service_role ─────────────────────┐
- * │ `service_role` salta todas las políticas RLS. Un componente de servidor  │
+ * ┌── POR QUÉ NO SE LEE EN EL SERVIDOR CON DATABASE_URL ─────────────────────┐
+ * │ `DATABASE_URL` salta todas las políticas RLS. Un componente de servidor  │
  * │ que la use manda el HTML con los leads DENTRO, antes de que el guard de  │
  * │ sesión del portal llegue a correr: quien pida /portal/leads con `curl`   │
  * │ se lleva nombres, teléfonos y correos de clientes (Ley 29733).           │
  * │                                                                          │
- * │ Por eso estas consultas corren en el navegador con la llave anónima más  │
- * │ la sesión de Supabase Auth. Postgres las evalúa como `authenticated` y,  │
+ * │ Por eso estas consultas corren en el navegador, por la Data API y con    │
+ * │ la sesión de Neon Auth. Postgres las evalúa como `authenticated` y,      │
  * │ sin sesión, `public.leads` devuelve cero filas — que es exactamente lo   │
  * │ que debe pasar. El candado es RLS, no la pantalla de login.              │
- * │ Ver el encabezado de `src/lib/portal/supabaseBrowser.ts`.                │
+ * │ Ver el encabezado de `src/lib/portal/portalClient.ts`.                │
  * └──────────────────────────────────────────────────────────────────────────┘
  *
  * NINGUNA FUNCIÓN LANZA: devuelven un resultado con el error ya redactado en
  * español. La pantalla lo muestra tal cual.
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PortalClient } from "@/lib/portal/portalClient";
 import type { LeadStatus } from "@/lib/db/types";
 import {
   mapLead,
@@ -63,7 +63,7 @@ function sanitizeSearch(value: string): string {
  * importa más que el nombre del auto.
  */
 export async function fetchLeads(
-  client: SupabaseClient,
+  client: PortalClient,
   filters: PortalLeadFilters = {},
 ): Promise<LeadsQueryResult> {
   const limit = Math.min(Math.max(filters.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
@@ -104,7 +104,7 @@ export async function fetchLeads(
       return {
         leads: [],
         error:
-          "No se pudieron leer los leads. Verifica tu sesión y la conexión con Supabase.",
+          "No se pudieron leer los leads. Verifica tu sesión y la conexión con Neon.",
       };
     }
 
@@ -131,7 +131,7 @@ export async function fetchLeads(
  * antes de enviar para dar un mensaje claro en vez de un error de Postgres.
  */
 export async function updateLeadStatus(
-  client: SupabaseClient,
+  client: PortalClient,
   input: { id: string; status: LeadStatus; lostReason?: string | null },
 ): Promise<LeadMutationResult> {
   const lostReason = (input.lostReason ?? "").trim().slice(0, 500);
@@ -174,7 +174,7 @@ export async function updateLeadStatus(
  * debe estorbar el contacto.
  */
 export async function markWhatsappOpened(
-  client: SupabaseClient,
+  client: PortalClient,
   id: string,
 ): Promise<void> {
   try {

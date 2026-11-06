@@ -1,17 +1,17 @@
 /**
  * Captura de leads.
  *
- * Filosofía: el lead NUNCA se pierde. Si no hay base de datos, si falta la
- * llave de servicio o si Supabase está caído, `createLead` devuelve un
+ * Filosofía: el lead NUNCA se pierde. Si no hay base de datos, si falta
+ * `DATABASE_URL` o si Neon está caído, `createLead` devuelve un
  * resultado con `fallback: "whatsapp"` para que la UI empuje al cliente al
  * enlace de WhatsApp con el mensaje ya armado (`src/lib/whatsapp.ts`). Ese es
  * el canal que el negocio ya usa hoy; la base de datos solo lo complementa.
  *
  * SOLO SERVIDOR. La tabla `public.leads` no otorga INSERT al rol anónimo (ver
- * `supabase/migrations/20260915090500_leads.sql`): la llave anónima viaja al
- * navegador y cualquiera podría inyectar leads en masa. La escritura va con
- * `service_role` desde un Route Handler o Server Action. Nunca importes este
- * módulo desde un componente con "use client".
+ * `db/migrations/20260915090500_leads.sql`): el acceso anónimo de la Data API
+ * es público y cualquiera podría inyectar leads en masa. La escritura va por
+ * la conexión directa (`DATABASE_URL`) desde un Route Handler o Server Action.
+ * Nunca importes este módulo desde un componente con "use client".
  *
  * Además hay datos personales de ciudadanos peruanos (Ley 29733): se guarda lo
  * mínimo para poder responder, y a propósito no se registran IP ni huella de
@@ -20,7 +20,7 @@
  * Este módulo NUNCA lanza.
  */
 
-import { getSupabaseAdminClient, isDatabaseWriteConfigured, warnOnce } from "./client";
+import { getSql, isDatabaseWriteConfigured, warnOnce } from "./client";
 import {
   LEAD_ORIGINS,
   LEAD_STATUSES,
@@ -31,8 +31,6 @@ import {
   type LeadRow,
   type LeadStatus,
 } from "./types";
-
-const TABLE = "leads";
 
 const WHATSAPP_MESSAGE =
   "No pudimos registrar tu solicitud en línea. Escríbenos por WhatsApp y te respondemos de inmediato.";
@@ -127,13 +125,13 @@ export async function createLead(
     };
   }
 
-  // Solo service_role: `anon` no tiene INSERT sobre `leads`, a propósito.
-  const supabase = getSupabaseAdminClient();
+  // Solo la conexión directa: `anonymous` no tiene INSERT sobre `leads`, a propósito.
+  const sql = getSql();
 
-  if (!supabase) {
+  if (!sql) {
     warnOnce(
       "leads:no-db",
-      "Sin SUPABASE_SERVICE_ROLE_KEY: createLead() no persiste nada y responde con fallback a WhatsApp (ver .env.example).",
+      "Sin DATABASE_URL: createLead() no persiste nada y responde con fallback a WhatsApp (ver .env.example).",
     );
     return {
       ok: false,
@@ -144,42 +142,48 @@ export async function createLead(
   }
 
   try {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .insert({
-        origen: pickFrom<LeadOrigin>(input.origin, LEAD_ORIGINS, "contacto"),
-        // El estado siempre nace en 'nuevo': lo decide el servidor, no el
-        // formulario. Nadie debe poder entrar al embudo como 'ganado'.
-        estado: "nuevo",
-        nombre: name,
-        telefono: phone,
-        email,
-        mensaje: clean(input.message, 4000),
-        vehicle_id: input.vehicleId ?? null,
-        interes_marca: clean(input.interestBrand, 80),
-        interes_modelo: clean(input.interestModel, 120),
-        interes_anio:
-          typeof input.interestYear === "number" &&
-          input.interestYear >= 1980 &&
-          input.interestYear <= 2100
-            ? input.interestYear
-            : null,
-        presupuesto_usd: toPositiveNumberOrNull(input.budgetUsd),
-        pagina_origen: clean(input.sourcePath, 300),
-        utm_source: clean(input.utmSource, 120),
-        utm_medium: clean(input.utmMedium, 120),
-        utm_campaign: clean(input.utmCampaign, 120),
-        whatsapp_enviado: input.whatsappSent === true,
-      })
-      .select(
-        "id, origen, estado, nombre, telefono, email, mensaje, vehicle_id, interes_marca, interes_modelo, interes_anio, presupuesto_usd, pagina_origen, created_at",
-      )
-      .single();
+    const interestYear =
+      typeof input.interestYear === "number" &&
+      input.interestYear >= 1980 &&
+      input.interestYear <= 2100
+        ? input.interestYear
+        : null;
 
-    if (error || !data) {
+    // El estado siempre nace en 'nuevo': lo decide el servidor, no el
+    // formulario. Nadie debe poder entrar al embudo como 'ganado'.
+    const rows = await sql`
+      insert into public.leads (
+        origen, estado, nombre, telefono, email, mensaje, vehicle_id,
+        interes_marca, interes_modelo, interes_anio, presupuesto_usd,
+        pagina_origen, utm_source, utm_medium, utm_campaign, whatsapp_enviado
+      ) values (
+        ${pickFrom<LeadOrigin>(input.origin, LEAD_ORIGINS, "contacto")},
+        'nuevo',
+        ${name},
+        ${phone},
+        ${email},
+        ${clean(input.message, 4000)},
+        ${input.vehicleId ?? null},
+        ${clean(input.interestBrand, 80)},
+        ${clean(input.interestModel, 120)},
+        ${interestYear},
+        ${toPositiveNumberOrNull(input.budgetUsd)},
+        ${clean(input.sourcePath, 300)},
+        ${clean(input.utmSource, 120)},
+        ${clean(input.utmMedium, 120)},
+        ${clean(input.utmCampaign, 120)},
+        ${input.whatsappSent === true}
+      )
+      returning id, origen, estado, nombre, telefono, email, mensaje,
+        vehicle_id, interes_marca, interes_modelo, interes_anio,
+        presupuesto_usd, pagina_origen, created_at
+    `;
+
+    const data = rows[0];
+    if (!data) {
       warnOnce(
-        `leads:error:${error?.code ?? "unknown"}`,
-        `createLead() falló (${error?.message ?? "sin datos"}). Se responde con fallback a WhatsApp.`,
+        "leads:error:sin-datos",
+        "createLead() no devolvió la fila insertada. Se responde con fallback a WhatsApp.",
       );
       return {
         ok: false,
@@ -189,7 +193,16 @@ export async function createLead(
       };
     }
 
-    return { ok: true, lead: mapLead(data as unknown as LeadRow) };
+    // El driver entrega `timestamptz` como Date; el resto del código espera ISO.
+    const createdAt =
+      data.created_at instanceof Date
+        ? data.created_at.toISOString()
+        : String(data.created_at);
+
+    return {
+      ok: true,
+      lead: mapLead({ ...data, created_at: createdAt } as unknown as LeadRow),
+    };
   } catch (error) {
     warnOnce(
       "leads:exception",

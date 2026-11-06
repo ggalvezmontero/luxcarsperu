@@ -3,7 +3,7 @@
  *
  * Este módulo es COMPARTIDO entre el navegador (el formulario de alta valida
  * mientras el usuario escribe) y el servidor (el Route Handler valida otra vez
- * antes de salir a la red). Por eso no importa nada de Supabase ni de Node: se
+ * antes de salir a la red). Por eso no importa nada de la base ni de Node: se
  * queda en tipos, expresiones regulares y funciones puras.
  *
  * ────────────────────────────────────────────────────────────────────────────

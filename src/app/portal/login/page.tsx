@@ -5,7 +5,7 @@
  * NO indexable: `noindex, nofollow`, igual que el resto del portal. Tampoco va
  * en el sitemap.
  *
- * La autenticación la resuelve Supabase Auth dentro de `PortalLoginForm`. No
+ * La autenticación la resuelve Neon Auth dentro de `PortalLoginForm`. No
  * hay registro público, no se guardan contraseñas y no se emite ninguna sesión
  * propia.
  */

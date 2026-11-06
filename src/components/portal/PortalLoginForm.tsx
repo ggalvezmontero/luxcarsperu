@@ -3,15 +3,15 @@
 /**
  * Acceso al portal.
  *
- * Autenticación 100% delegada a Supabase Auth (`signInWithPassword`):
+ * Autenticación 100% delegada a Neon Auth (`signInWithPassword`):
  *   - No se guarda ninguna contraseña, ni en claro ni con hash.
- *   - No se emite ninguna cookie ni token propio.
- *   - La sesión la persiste y la refresca el SDK de Supabase.
+ *   - No se emite ningún token propio.
+ *   - La sesión la persiste y la refresca el SDK de Neon, con una cookie que
+ *     deja el puente `/api/auth` en este mismo dominio.
  *
- * NO HAY REGISTRO. El dueño da de alta a cada persona del equipo en
- * Supabase → Authentication → Users. Tampoco hay "recordarme" ni "recuperar
- * contraseña" propios: el restablecimiento se hace desde el panel de Supabase
- * (o activando el correo de recuperación ahí mismo).
+ * NO HAY REGISTRO. El dueño da de alta a cada persona del equipo, solo con su
+ * correo, en la consola de Neon → Auth → Users. La contraseña la define cada
+ * quien en /portal/recuperar, que también sirve para restablecerla.
  */
 
 import { useState } from "react";
@@ -20,9 +20,9 @@ import Link from "next/link";
 import {
   describeAuthError,
   getPortalAuthMissingEnv,
-  getPortalSupabaseClient,
+  getPortalClient,
   isPortalAuthConfigured,
-} from "@/lib/portal/supabaseBrowser";
+} from "@/lib/portal/portalClient";
 
 export function PortalLoginForm() {
   const router = useRouter();
@@ -46,11 +46,11 @@ export function PortalLoginForm() {
 
     // Sin configuración no hay a quién preguntarle. Se dice exactamente eso,
     // en vez de fingir un error de credenciales.
-    const supabase = getPortalSupabaseClient();
-    if (!supabase) {
+    const client = getPortalClient();
+    if (!client) {
       setError(
-        `Supabase no está configurado en este despliegue. Falta definir ${
-          missing.join(" y ") || "las variables de Supabase"
+        `El acceso no está configurado en este despliegue. Falta definir ${
+          missing.join(" y ") || "las variables de Neon"
         } en Vercel → Environment Variables (ver .env.example) y volver a desplegar.`,
       );
       return;
@@ -58,7 +58,7 @@ export function PortalLoginForm() {
 
     setSubmitting(true);
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { error: authError } = await client.auth.signInWithPassword({
         email: correo,
         password,
       });
@@ -114,7 +114,7 @@ export function PortalLoginForm() {
             role="status"
             className="mt-5 rounded-lux border border-warn/40 bg-surface-2 px-4 py-3 text-xs leading-relaxed text-ink-2"
           >
-            <span className="text-warn">Falta configurar Supabase.</span> El
+            <span className="text-warn">Falta configurar Neon.</span> El
             formulario funciona, pero no hay servidor de autenticación al que
             preguntar. Define{" "}
             {missing.map((key, index) => (
@@ -195,9 +195,15 @@ export function PortalLoginForm() {
         </button>
 
         <p className="mt-5 text-[0.68rem] leading-relaxed text-ink-4">
-          No hay registro: las cuentas las crea el administrador en Supabase.
-          ¿Olvidaste la contraseña? Pídele al administrador que la restablezca
-          desde el panel.
+          No hay registro: las cuentas las crea el administrador. Si es tu
+          primera vez o la olvidaste,{" "}
+          <Link
+            href="/portal/recuperar"
+            className="text-ink-3 underline underline-offset-4 transition-colors hover:text-silver"
+          >
+            crea o recupera tu contraseña
+          </Link>
+          .
         </p>
       </form>
 

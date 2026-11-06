@@ -7,7 +7,7 @@
  * ESTE ARCHIVO NO LEE DATOS A PROPÓSITO. Todo el trabajo lo hace
  * `ConsignmentsScreen` en el navegador, con la sesión del equipo, para que RLS
  * evalúe cada consulta como `authenticated`. Si esta página leyera en el
- * servidor con `service_role`, el HTML saldría con el teléfono del dueño y su
+ * servidor con `DATABASE_URL`, el HTML saldría con el teléfono del dueño y su
  * piso de negociación DENTRO, antes de que corra ningún guard de sesión.
  * Ver el encabezado de `src/app/portal/layout.tsx`.
  *

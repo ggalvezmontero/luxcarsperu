@@ -26,7 +26,7 @@
 --  legible que se escribe en el mismo INSERT.
 --
 --  QUIÉN ESCRIBE: igual que `leads`, un Route Handler de Vercel con
---  service_role. `anon` no tiene ningún permiso acá.
+--  DATABASE_URL. `anonymous` no tiene ningún permiso acá.
 -- =============================================================================
 
 create sequence if not exists public.quote_number_seq;
@@ -114,7 +114,7 @@ create table if not exists public.quotes (
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  created_by uuid references auth.users (id) on delete set null,
+  created_by uuid references neon_auth."user" (id) on delete set null,
 
   constraint quotes_rango_coherente
     check (rango_max >= rango_min),
@@ -171,11 +171,11 @@ create trigger quotes_set_updated_at
 --  La cotización se le entrega al cliente como PDF y por WhatsApp, no como una
 --  fila consultable. Si más adelante se quiere una URL pública para reabrirla,
 --  se hace con un token firmado y una función SECURITY DEFINER acotada a ese
---  token, NO abriendo SELECT a `anon`.
+--  token, NO abriendo SELECT a `anonymous`.
 -- -----------------------------------------------------------------------------
 alter table public.quotes enable row level security;
 
-revoke all on public.quotes from anon, authenticated;
+revoke all on public.quotes from anonymous, authenticated;
 grant select, insert, update, delete on public.quotes to authenticated;
 grant usage, select on sequence public.quote_number_seq to authenticated;
 

@@ -24,6 +24,14 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * El stock sale de la base. Sin esto la página se congela con lo que había al
+ * momento del build y un auto recién publicado no aparece hasta el siguiente
+ * despliegue. Cinco minutos: lo publicado se ve casi enseguida y la base no
+ * recibe una consulta por visita.
+ */
+export const revalidate = 300;
+
 const PROMESAS: { icon: IconName; title: string; text: string }[] = [
   { icon: "mapPin", title: "Está en Lima", text: "Lo ves y lo manejas en San Isidro." },
   { icon: "fileCheck", title: "Papeles listos", text: "Nacionalizado, con placa y transferencia incluida." },

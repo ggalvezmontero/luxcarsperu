@@ -3,7 +3,7 @@
 /**
  * Tabla del embudo de leads.
  *
- * Presentación pura: no habla con Supabase. Recibe las filas ya mapeadas y dos
+ * Presentación pura: no habla con la base. Recibe las filas ya mapeadas y dos
  * funciones (`onUpdateStatus`, `onWhatsappOpen`) que la pantalla resuelve con
  * la sesión del equipo. Así este archivo no puede, ni por accidente, terminar
  * consultando con una llave que salte RLS.

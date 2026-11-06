@@ -4,23 +4,24 @@
  * ────────────────────────────────────────────────────────────────────────────
  * POR QUÉ ESTO CORRE EN EL NAVEGADOR Y NO EN UNA RUTA DE API DEL SERVIDOR
  * ────────────────────────────────────────────────────────────────────────────
- * Las políticas de `vehicle_photos` y del bucket `vehiculos` ya otorgan
- * insert/update/delete al rol `authenticated` (ver la migración
- * 20260915090300_vehicle_photos.sql). Con la sesión del equipo, el navegador
- * tiene exactamente los permisos que necesita y ni uno más: RLS sigue siendo el
- * candado.
+ * Las políticas de `vehicle_photos` ya otorgan insert/update/delete al rol
+ * `authenticated` (ver la migración 20260915090300_vehicle_photos.sql). Con la
+ * sesión del equipo, el navegador tiene exactamente los permisos que necesita
+ * y ni uno más: RLS sigue siendo el candado de las FILAS.
  *
- * La alternativa —una ruta `/api` que escriba con `service_role`— sería un
- * retroceso de seguridad: esa llave SALTA TODAS LAS POLÍTICAS, así que la ruta
- * tendría que reimplementar por su cuenta el control de acceso que Postgres ya
- * hace bien, y cualquier error ahí abre el inventario entero. Es la misma
- * decisión, y por las mismas razones, que documenta el encabezado de
- * `src/lib/portal/supabaseBrowser.ts`.
+ * La alternativa —una ruta `/api` que escriba con `DATABASE_URL`— sería un
+ * retroceso de seguridad: esa conexión SALTA TODAS LAS POLÍTICAS, así que la
+ * ruta tendría que reimplementar por su cuenta el control de acceso que
+ * Postgres ya hace bien, y cualquier error ahí abre el inventario entero. Es
+ * la misma decisión, y por las mismas razones, que documenta el encabezado de
+ * `src/lib/portal/portalClient.ts`.
  *
- * DE REGALO, RESUELVE EL PROBLEMA QUE MÁS IMPORTA ACÁ: subir directo del
- * teléfono a Supabase Storage esquiva el límite de ~4.5 MB que tiene el cuerpo
- * de una función serverless en Vercel, y ahorra un salto de red en una conexión
- * móvil que ya es lenta.
+ * LOS ARCHIVOS SON LA EXCEPCIÓN. El bucket de Neon Object Storage no tiene
+ * políticas por usuario, así que escribir o borrar un archivo pide permiso a
+ * `/api/portal/fotos`, que comprueba la sesión y firma la operación. La foto
+ * igual sube directo del teléfono al bucket con esa URL firmada: esquiva el
+ * límite de ~4.5 MB que tiene el cuerpo de una función serverless en Vercel y
+ * ahorra un salto de red en una conexión móvil que ya es lenta.
  *
  * ────────────────────────────────────────────────────────────────────────────
  * RESTRICCIÓN LEGAL — NO LA "OPTIMICES" DENTRO DE SEIS MESES
@@ -38,9 +39,8 @@
  * pueda mostrar un mensaje entendible parado al lado del auto.
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-import { VEHICLE_PHOTOS_BUCKET, getPublicStorageUrl } from "@/lib/db/storage";
+import { getPublicStorageUrl } from "@/lib/db/storage";
+import type { PortalClient } from "@/lib/portal/portalClient";
 
 /* ========================================================================== */
 /* Tipos                                                                      */
@@ -85,16 +85,17 @@ const COLUMNAS = "id, storage_path, url_publica, alt, orden, es_principal, bytes
 const RE_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Tope del bucket `vehiculos`, fijado en la migración. */
+/** Tope por foto. `/api/portal/fotos` aplica el mismo. */
 export const BYTES_MAXIMOS = 15 * 1024 * 1024;
 
-const EXTENSION_POR_TIPO: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/avif": "avif",
-  "image/heic": "heic",
-};
+/** Los mismos tipos que acepta `/api/portal/fotos`, que es quien decide la extensión. */
+const TIPOS_ADMITIDOS = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+  "image/heic",
+]);
 
 /* ========================================================================== */
 /* Utilidades                                                                 */
@@ -147,6 +148,77 @@ function sinSesion<T>(): ResultadoFoto<T> {
 }
 
 /* ========================================================================== */
+/* Archivos del bucket                                                        */
+/* ========================================================================== */
+
+/** Ruta de este sitio que firma las escrituras del bucket tras comprobar la sesión. */
+const RUTA_FOTOS = "/api/portal/fotos";
+
+type PermisoSubida = {
+  path: string;
+  url: string;
+  headers: Record<string, string>;
+  publicUrl: string | null;
+};
+
+async function leerMensaje(respuesta: Response, porDefecto: string): Promise<string> {
+  try {
+    const cuerpo = (await respuesta.json()) as { mensaje?: unknown };
+    return typeof cuerpo.mensaje === "string" && cuerpo.mensaje
+      ? cuerpo.mensaje
+      : porDefecto;
+  } catch {
+    return porDefecto;
+  }
+}
+
+/** Pide al servidor una URL firmada para subir UNA foto de este vehículo. */
+async function pedirPermisoSubida(
+  vehicleId: string,
+  contentType: string,
+  bytes: number,
+): Promise<ResultadoFoto<PermisoSubida>> {
+  const respuesta = await fetch(RUTA_FOTOS, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ vehicleId, contentType, bytes }),
+  });
+  if (!respuesta.ok) {
+    return {
+      ok: false,
+      mensaje: await leerMensaje(respuesta, "No se pudo preparar la subida."),
+    };
+  }
+  const cuerpo = (await respuesta.json()) as Partial<PermisoSubida>;
+  if (!cuerpo.path || !cuerpo.url) {
+    return { ok: false, mensaje: "No se pudo preparar la subida." };
+  }
+  return {
+    ok: true,
+    data: {
+      path: cuerpo.path,
+      url: cuerpo.url,
+      headers: cuerpo.headers ?? {},
+      publicUrl: cuerpo.publicUrl ?? null,
+    },
+  };
+}
+
+/** Quita archivos del bucket. `false` si el servidor no pudo; nunca lanza. */
+async function quitarArchivos(paths: string[]): Promise<boolean> {
+  try {
+    const respuesta = await fetch(RUTA_FOTOS, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paths }),
+    });
+    return respuesta.ok;
+  } catch {
+    return false;
+  }
+}
+
+/* ========================================================================== */
 /* Lectura                                                                    */
 /* ========================================================================== */
 
@@ -157,7 +229,7 @@ function sinSesion<T>(): ResultadoFoto<T> {
  * lista del portal; obligarlos a distinguir sería una fuente tonta de errores.
  */
 export async function obtenerFichaVehiculo(
-  client: SupabaseClient | null,
+  client: PortalClient | null,
   idOSlug: string,
 ): Promise<ResultadoFoto<FichaVehiculo>> {
   if (!client) return sinSesion();
@@ -216,7 +288,7 @@ export async function obtenerFichaVehiculo(
 
 /** Galería completa, portada primero y después por `orden`. */
 export async function listarFotos(
-  client: SupabaseClient | null,
+  client: PortalClient | null,
   vehicleId: string,
 ): Promise<ResultadoFoto<FotoVehiculo[]>> {
   if (!client) return sinSesion();
@@ -258,7 +330,7 @@ export type EntradaSubida = {
 /**
  * Sube el archivo al bucket y registra la fila.
  *
- * ORDEN DELIBERADO — primero Storage, después la fila. Si el INSERT falla se
+ * ORDEN DELIBERADO — primero el archivo, después la fila. Si el INSERT falla se
  * borra el objeto recién subido para no dejar archivos huérfanos pagando cuota.
  * Al revés sería peor: una fila apuntando a un archivo inexistente rompe la
  * ficha pública con una imagen rota, que es un problema visible para el cliente.
@@ -268,7 +340,7 @@ export type EntradaSubida = {
  * Duplicar esa lógica en el cliente crearía dos verdades que se separan.
  */
 export async function subirFoto(
-  client: SupabaseClient | null,
+  client: PortalClient | null,
   entrada: EntradaSubida,
 ): Promise<ResultadoFoto<FotoVehiculo>> {
   if (!client) return sinSesion();
@@ -281,24 +353,29 @@ export async function subirFoto(
   }
 
   const tipo = entrada.contentType.toLowerCase();
-  const extension = EXTENSION_POR_TIPO[tipo] ?? entrada.extension ?? "jpg";
-  // Convención de la migración: {vehicle_id}/{uuid}.{ext}. El UUID evita que
-  // dos fotos que el celular llamó igual (IMG_0001.jpg) se pisen.
-  const storagePath = `${entrada.vehicleId}/${crypto.randomUUID()}.${extension}`;
+  if (!TIPOS_ADMITIDOS.has(tipo)) {
+    return { ok: false, mensaje: "Solo se aceptan fotos JPEG, PNG, WebP, AVIF o HEIC." };
+  }
 
   try {
-    const { error: errorStorage } = await client.storage
-      .from(VEHICLE_PHOTOS_BUCKET)
-      .upload(storagePath, entrada.blob, {
-        contentType: tipo,
-        upsert: false,
-        // Las fotos son inmutables: la ruta lleva UUID, así que nunca cambia el
-        // contenido de una URL. Un año de caché es seguro y gratis.
-        cacheControl: "31536000",
-      });
+    // La ruta ({vehicle_id}/{uuid}.{ext}) la decide el servidor al firmar.
+    const permiso = await pedirPermisoSubida(entrada.vehicleId, tipo, entrada.blob.size);
+    if (!permiso.ok) return permiso;
+    const storagePath = permiso.data.path;
 
-    if (errorStorage) {
-      return { ok: false, mensaje: describirError(errorStorage) };
+    const subida = await fetch(permiso.data.url, {
+      method: "PUT",
+      headers: permiso.data.headers,
+      body: entrada.blob,
+    });
+    if (!subida.ok) {
+      return {
+        ok: false,
+        mensaje:
+          subida.status === 403
+            ? "El permiso de subida venció. Vuelve a intentarlo."
+            : `El almacenamiento rechazó la foto (${subida.status}). Vuelve a intentarlo.`,
+      };
     }
 
     const { data, error } = await client
@@ -306,7 +383,7 @@ export async function subirFoto(
       .insert({
         vehicle_id: entrada.vehicleId,
         storage_path: storagePath,
-        url_publica: getPublicStorageUrl(storagePath),
+        url_publica: permiso.data.publicUrl ?? getPublicStorageUrl(storagePath),
         alt: entrada.alt.slice(0, 300),
         ancho_px: entrada.anchoPx,
         alto_px: entrada.altoPx,
@@ -317,7 +394,7 @@ export async function subirFoto(
 
     if (error || !data) {
       // Sin fila, el archivo no le sirve a nadie: se limpia.
-      await client.storage.from(VEHICLE_PHOTOS_BUCKET).remove([storagePath]);
+      await quitarArchivos([storagePath]);
       return {
         ok: false,
         mensaje: error
@@ -343,7 +420,7 @@ export async function subirFoto(
 
 /** Guarda el orden nuevo. `ids` va en el orden final que se ve en pantalla. */
 export async function guardarOrden(
-  client: SupabaseClient | null,
+  client: PortalClient | null,
   vehicleId: string,
   ids: string[],
 ): Promise<ResultadoFoto<null>> {
@@ -382,7 +459,7 @@ export async function guardarOrden(
  * el UPDATE choca contra el índice.
  */
 export async function marcarPortada(
-  client: SupabaseClient | null,
+  client: PortalClient | null,
   vehicleId: string,
   photoId: string,
 ): Promise<ResultadoFoto<null>> {
@@ -422,7 +499,7 @@ export async function marcarPortada(
 
 /** Guarda el texto alternativo. Sin alt no hay accesibilidad ni SEO. */
 export async function guardarAlt(
-  client: SupabaseClient | null,
+  client: PortalClient | null,
   vehicleId: string,
   photoId: string,
   alt: string,
@@ -457,7 +534,7 @@ export async function guardarAlt(
  * huérfano cuesta centavos, una galería que no se deja corregir cuesta una venta.
  */
 export async function borrarFoto(
-  client: SupabaseClient | null,
+  client: PortalClient | null,
   vehicleId: string,
   foto: FotoVehiculo,
 ): Promise<ResultadoFoto<{ aviso?: string }>> {
@@ -472,9 +549,7 @@ export async function borrarFoto(
 
     if (error) return { ok: false, mensaje: describirError(error) };
 
-    const { error: errorArchivo } = await client.storage
-      .from(VEHICLE_PHOTOS_BUCKET)
-      .remove([foto.path]);
+    const archivoQuitado = await quitarArchivos([foto.path]);
 
     if (foto.esPortada) {
       const { data: siguiente } = await client
@@ -498,9 +573,9 @@ export async function borrarFoto(
     return {
       ok: true,
       data: {
-        aviso: errorArchivo
-          ? "La foto se quitó de la ficha, pero el archivo quedó en el almacenamiento."
-          : undefined,
+        aviso: archivoQuitado
+          ? undefined
+          : "La foto se quitó de la ficha, pero el archivo quedó en el almacenamiento.",
       },
     };
   } catch (error) {

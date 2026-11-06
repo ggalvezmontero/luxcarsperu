@@ -2,22 +2,22 @@
  * Consultas de consignaciones, ejecutadas DESDE EL NAVEGADOR con la sesión del
  * equipo.
  *
- * ┌── POR QUÉ NO SE LEE EN EL SERVIDOR CON service_role ─────────────────────┐
- * │ `service_role` salta todas las políticas RLS. Un componente de servidor  │
+ * ┌── POR QUÉ NO SE LEE EN EL SERVIDOR CON DATABASE_URL ─────────────────────┐
+ * │ `DATABASE_URL` salta todas las políticas RLS. Un componente de servidor  │
  * │ que la use manda el HTML con los datos DENTRO, antes de que corra ningún │
  * │ guard de sesión: quien pida la ruta con `curl` se lleva el teléfono del  │
  * │ dueño y —peor— el PRECIO MÍNIMO que autorizó para negociar.              │
  * │                                                                          │
- * │ Acá se consulta con la llave anónima más la sesión de Supabase Auth.     │
- * │ `public.consignments` hace `revoke all ... from anon` y solo otorga a    │
- * │ `authenticated`: sin sesión, Postgres devuelve cero filas. El candado es │
- * │ RLS, no la pantalla de login.                                            │
+ * │ Acá se consulta por la Data API con la sesión de Neon Auth.              │
+ * │ `public.consignments` hace `revoke all ... from anonymous` y solo        │
+ * │ otorga a `authenticated`: sin sesión, Postgres devuelve cero filas. El   │
+ * │ candado es RLS, no la pantalla de login.                                 │
  * └──────────────────────────────────────────────────────────────────────────┘
  *
  * NINGUNA FUNCIÓN LANZA.
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PortalClient } from "@/lib/portal/portalClient";
 import {
   MANAGEABLE_CONSIGNMENT_STATUSES,
   mapConsignment,
@@ -50,7 +50,7 @@ function sanitizeSearch(value: string): string {
 
 /** Lista las consignaciones, las más recientes primero. */
 export async function fetchConsignments(
-  client: SupabaseClient,
+  client: PortalClient,
   filters: PortalConsignmentFilters = {},
 ): Promise<ConsignmentsQueryResult> {
   const limit = Math.min(Math.max(filters.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
@@ -82,7 +82,7 @@ export async function fetchConsignments(
       return {
         consignments: [],
         error:
-          "No se pudieron leer las consignaciones. Verifica tu sesión y la conexión con Supabase.",
+          "No se pudieron leer las consignaciones. Verifica tu sesión y la conexión con Neon.",
       };
     }
 
@@ -116,7 +116,7 @@ function today(): string {
  * cierre es correcto incluso contra una base sin ese trigger.
  */
 export async function markSoldByOwner(
-  client: SupabaseClient,
+  client: PortalClient,
   input: { id: string; notes?: string | null; soldOn?: string | null },
 ): Promise<ConsignmentMutationResult> {
   const soldOn =
@@ -162,7 +162,7 @@ export async function markSoldByOwner(
  * TODO(cierre): formulario de venta por LuxCars con precio final y comisión.
  */
 export async function updateConsignmentStatus(
-  client: SupabaseClient,
+  client: PortalClient,
   input: { id: string; status: ConsignmentStatus },
 ): Promise<ConsignmentMutationResult> {
   if (!MANAGEABLE_CONSIGNMENT_STATUSES.includes(input.status)) {

@@ -15,7 +15,7 @@ import { VehiculoForm } from "./VehiculoForm";
  *
  * LA PÁGINA NO LEE NI ESCRIBE EN LA BASE. Es un marco estático; todo el trabajo
  * con datos ocurre en el navegador, con la sesión del equipo, para no renderizar
- * información reservada en el servidor con `service_role` (ver el encabezado de
+ * información reservada en el servidor con `DATABASE_URL` (ver el encabezado de
  * `src/app/portal/layout.tsx`).
  *
  * El `<main>` y el ancho los pone `PortalShell` desde el layout del portal:

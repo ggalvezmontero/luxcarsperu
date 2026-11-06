@@ -1,6 +1,7 @@
 # Base de datos — LUX CARS IMPORT S.A.C.
 
-Esquema de Supabase para el **portal de administración** de LuxCars. Lo usan el
+Esquema de Postgres en **Neon** (proyecto `luxcarsperu`) para el **portal de
+administración** de LuxCars. Lo usan el
 dueño y su equipo. El cliente final **nunca crea cuenta**: cotiza, llena
 formularios y continúa por WhatsApp.
 
@@ -87,7 +88,7 @@ decir, el margen del negocio. Por eso hay **dos capas**:
 | RLS | Qué filas (solo `publicado = true`) |
 | `GRANT` por columna | Qué columnas (nunca compra, margen ni notas internas) |
 
-**Consecuencia práctica:** `select *` como `anon` **falla a propósito**. Desde el
+**Consecuencia práctica:** `select *` como `anonymous` **falla a propósito**. Desde el
 front público hay que pedir columnas explícitas o usar la vista
 `vehiculos_publicos` (declarada `security_invoker = true`, así que respeta el RLS
 de quien consulta en lugar de eludirlo).
@@ -96,26 +97,33 @@ Resumen de acceso:
 
 | Rol | Acceso |
 |---|---|
-| `anon` | Solo lectura de vehículos publicados y sus fotos, solo columnas públicas |
+| `anonymous` | Solo lectura de vehículos publicados y sus fotos, solo columnas públicas |
 | `authenticated` | El equipo: acceso completo vía RLS |
-| `service_role` | Route Handlers de Vercel (formularios públicos). No pasa por RLS |
+| `neondb_owner` (vía `DATABASE_URL`) | Route Handlers de Vercel (formularios públicos). No pasa por RLS |
 
 ### Los formularios públicos no escriben directo
 
-`leads` y `quotes` **no** otorgan `INSERT` a `anon`. Las escrituras entran por un
-Route Handler de Next.js con `SUPABASE_SERVICE_ROLE_KEY` (variable **solo de
-servidor**, jamás `NEXT_PUBLIC_*`). La llave anónima viaja al navegador: con
-`INSERT` abierto, cualquiera podría inyectar leads en masa o escribir
+`leads` y `quotes` **no** otorgan `INSERT` a `anonymous`. Las escrituras entran
+por un Route Handler de Next.js con `DATABASE_URL` (variable **solo de
+servidor**, jamás `NEXT_PUBLIC_*`). El acceso anónimo de la Data API es público:
+con `INSERT` abierto, cualquiera podría inyectar leads en masa o escribir
 `estado = 'ganado'` y ensuciar el embudo.
 
-> Si algún día se decide abrir el `INSERT` a `anon`, hace falta además rate
+> Si algún día se decide abrir el `INSERT` a `anonymous`, hace falta además rate
 > limiting, captcha y una política `WITH CHECK` que fije `estado = 'nuevo'`. No
 > es un cambio de una línea.
 
-**Pendiente de configuración:** desactivar el registro público de usuarios en el
-panel de Supabase (*Authentication → Providers → Disable signup*). Las políticas
-otorgan acceso de equipo a **cualquier usuario autenticado**, tal como se pidió;
-si el registro queda abierto, cualquiera que se registre entra como equipo.
+**El registro público debe seguir desactivado** en Neon Auth (`disable_sign_up`,
+ya aplicado). Las políticas otorgan acceso de equipo a **cualquier usuario
+autenticado**, tal como se pidió; si el registro se abre, cualquiera que se
+registre entra como equipo.
+
+### Las fotos no viven en Postgres
+
+El bucket `vehiculos` es de Neon Object Storage, que no tiene tablas ni RLS:
+lectura pública, y escritura solo con una credencial `storage:write` que conoce
+el servidor. El equipo sube con URLs prefirmadas que entrega
+`/api/portal/fotos` después de comprobar su sesión.
 
 ---
 
@@ -151,12 +159,16 @@ peruano puede tener 150,000 km legítimamente y debe poder registrarse.
 
 ## Cómo aplicar
 
+Primero se activan la Data API y Neon Auth en el proyecto (crean los roles
+`anonymous` y `authenticated` y el esquema `neon_auth`). Después:
+
 ```bash
-supabase link --project-ref <ref>   # organización zvwegcanushbpmjtohnp
-supabase db push                    # aplica supabase/migrations/
+for f in db/migrations/*.sql; do
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"
+done
 ```
 
-En local, `supabase db reset` aplica las migraciones y luego `seed.sql`.
+El seed se aplica aparte y solo en desarrollo: `psql "$DATABASE_URL" -f db/seed.sql`.
 
 ### El seed es opcional y no publica nada
 
