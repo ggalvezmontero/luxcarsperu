@@ -15,11 +15,11 @@ export function ConsignmentBand() {
       <div className="grid overflow-hidden rounded-[28px] border border-line bg-surface lg:grid-cols-2">
         <div className="relative min-h-[260px] lg:min-h-[460px]">
           <Image
-            src="/images/timeline/journey.jpg"
-            alt="Mercedes-AMG GT amarillo circulando sobre una carretera despejada"
+            src="/images/portadas/vender-range-rover-casa.webp"
+            alt="Range Rover Sport negra estacionada frente al garaje de una casa moderna"
             fill
             sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover"
+            className="object-cover object-[66%_62%]"
           />
           <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent lg:bg-gradient-to-r" />
         </div>

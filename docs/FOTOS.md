@@ -274,10 +274,28 @@ tenían imagen (Búsqueda e Inspección).
 | `embarque-buque.webp` | Embarque | Buque portacontenedores en mar abierto | Haydn | [unsplash.com/photos/ZT3i-6XW8J8](https://unsplash.com/photos/a-large-cargo-ship-with-lots-of-containers-on-its-back-ZT3i-6XW8J8) |
 | `aduanas-puerto-autos.webp` | Aduanas | Vehículos nuevos estacionados en un puerto | PortCalls Asia | [unsplash.com/photos/e_xq6P6NeHE](https://unsplash.com/photos/cars-parked-at-a-port-with-ships-in-the-background-e_xq6P6NeHE) |
 | `entrega-llave-auto.webp` | Entrega | Mano con la llave de un Audi frente al auto | Swansway Motor Group | [unsplash.com/photos/tgUdTefRlSw](https://unsplash.com/photos/a-person-holding-a-car-key-in-front-of-a-silver-car-tgUdTefRlSw) |
-| `escaneo-diagnostico.webp` | Portada de `/escaneo` | Técnico con una laptop de diagnóstico dentro de un auto | Mehmet Talha Onuk | [unsplash.com/photos/dSosKR6g-W8](https://unsplash.com/photos/a-man-sitting-in-a-car-using-a-laptop-computer-dSosKR6g-W8) |
+| `portadas/escaneo-laptop-diagnostico.webp` | Portada de `/escaneo` | Técnico con una laptop de diagnóstico dentro de un auto | Mehmet Talha Onuk | [unsplash.com/photos/dSosKR6g-W8](https://unsplash.com/photos/a-man-sitting-in-a-car-using-a-laptop-computer-dSosKR6g-W8) |
 
-`images/how/shipping.jpg` (terminal de contenedores) sigue en uso solo como
-portada de `/importar`.
+### Portadas a pantalla completa (`public/images/portadas/`)
+
+Desde el 6 de noviembre de 2026 las portadas que ocupan todo el ancho viven en
+`public/images/portadas/`, a **2 400 px de ancho**. Una portada se estira
+al ancho del monitor: con menos de ~1 900 px se ve pixelada en pantallas grandes
+(pasó con `how/shipping.jpg`, de 800 × 600, en `/importar`).
+
+| Archivo | Dónde | Qué muestra | Autor | Licencia | Fuente |
+|---|---|---|---|---|---|
+| `importar-corvettes-en-camion.webp` | Portada de `/importar` | Camión portavehículos con Corvette nuevos enfundados | Roger Starnes Sr | Licencia Unsplash | [unsplash.com/photos/xDhuMgWBrXU](https://unsplash.com/photos/a-truck-with-a-car-on-the-back-of-it-xDhuMgWBrXU) |
+| `vender-range-rover-casa.webp` | Portada de `/vender` y banda de consignación de la home | Range Rover Sport negra frente al garaje de una casa | Luke Miller | Licencia Unsplash | [unsplash.com/photos/2l4JGCzzP2Q](https://unsplash.com/photos/a-black-range-rover-parked-in-front-of-a-house-2l4JGCzzP2Q) |
+| `escaneo-laptop-diagnostico.webp` | Portada de `/escaneo` | La misma foto de antes, a 2 400 px | Mehmet Talha Onuk | Licencia Unsplash | (ver tabla de arriba) |
+
+Se retiraron `how/shipping.jpg` (terminal de contenedores, 800 × 600) y
+`timeline/journey.jpg` (Mercedes-AMG GT amarillo, 1 200 × 1 500, sin relación
+con vender un auto). Las otras portadas no cambiaron: `hero/main.jpg` (home) y
+`lima/costa-verde-noche.webp` (`/comprar`) miden 1 920 px. La de
+`/como-funciona` reutiliza `vehiculos/ford-bronco-raptor.webp` (1 600 px) bajo
+un velo del 85 %: no se nota pixelada, pero la foto casi no se ve; es candidata
+a una toma propia panorámica.
 
 **Son ilustrativas del paso, no operaciones de LuxCars.** En cuanto existan
 fotos propias (el Corvette en el patio del Callao, una entrega real con permiso

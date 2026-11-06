@@ -50,7 +50,7 @@ export const FOTOS_PROCESO: Record<
     alt: "Una mano sostiene la llave de un Audi frente a un Audi plateado",
   },
   escaneo: {
-    src: "/images/how/escaneo-diagnostico.webp",
+    src: "/images/portadas/escaneo-laptop-diagnostico.webp",
     alt: "Un técnico sentado en un auto trabaja con una laptop de diagnóstico conectada al vehículo",
   },
 };

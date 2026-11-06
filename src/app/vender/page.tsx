@@ -62,14 +62,14 @@ export default function VenderPage() {
         {/* Portada */}
         <section className="relative isolate flex min-h-[70svh] w-full items-end overflow-hidden bg-void pt-[var(--lux-nav-h)]">
           <Image
-            src="/images/timeline/journey.jpg"
-            alt="Mercedes-AMG GT amarillo circulando sobre una carretera despejada"
+            src="/images/portadas/vender-range-rover-casa.webp"
+            alt="Range Rover Sport negra estacionada frente al garaje de una casa moderna"
             fill
             priority
             sizes="100vw"
-            className="-z-20 object-cover object-[center_60%]"
+            className="-z-20 object-cover object-[66%_62%]"
           />
-          <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-void via-void/75 to-void/20" />
+          <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-void via-void/55 to-void/10" />
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 z-0 h-48 bg-gradient-to-b from-void/80 to-transparent"
