@@ -45,7 +45,7 @@ muestra el placeholder "Foto pendiente". Nunca se rellena con una foto genérica
 | RAM 3500 Limited 2026<br>`ram-3500-limited` | Wikimedia Commons (originada en Flickr) — `Ram 3500 Limited Longhorn Crew Cab 4x4 Long Box (2026) (55213412374).jpg` | Charles, Port Chester NY (Flickr); subida a Commons por usf1fan2 | **CC0 1.0** | No | [File:Ram 3500 Limited Longhorn…](https://commons.wikimedia.org/wiki/File:Ram_3500_Limited_Longhorn_Crew_Cab_4x4_Long_Box_(2026)_(55213412374).jpg) |
 | Toyota Tundra TRD 2026<br>`toyota-tundra-trd` | Wikimedia Commons — `24 Toyota Tundra TRD Pro HV.jpg` | HJUdall (obra propia) | **CC0 1.0** | No | [File:24 Toyota Tundra TRD Pro HV.jpg](https://commons.wikimedia.org/wiki/File:24_Toyota_Tundra_TRD_Pro_HV.jpg) |
 | Chevrolet Corvette Z06 Coupé 2026<br>`chevrolet-corvette-z06` | Wikimedia Commons — `25 Chevrolet Corvette Z06.jpg` | HJUdall (obra propia) | **CC0 1.0** | No | [File:25 Chevrolet Corvette Z06.jpg](https://commons.wikimedia.org/wiki/File:25_Chevrolet_Corvette_Z06.jpg) |
-| Chevrolet Corvette Stingray C8 2026<br>`chevrolet-corvette-c8-stingray` | Wikimedia Commons — `Chevrolet Corvette Stingray (C8) Washington DC Metro Area, USA (3).jpg` | OWS Photography (obra propia) | **CC BY 4.0** | **SÍ — obligatoria** | [File:Chevrolet Corvette Stingray (C8)…](https://commons.wikimedia.org/wiki/File:Chevrolet_Corvette_Stingray_(C8)_Washington_DC_Metro_Area,_USA_(3).jpg) |
+| Chevrolet Corvette Stingray C8 2026<br>`chevrolet-corvette-c8-stingray` | Unsplash — `chevrolet-corvette-stingray-azul.webp` (desde el 2026-11-06; antes una CC BY 4.0 de Commons) | Dragon White Munthe (@fotomagi) | **Licencia Unsplash** | No | [unsplash.com/photos/…qkmdMVsVqx0](https://unsplash.com/photos/blue-sports-car-parked-in-front-of-a-wooden-building-qkmdMVsVqx0) |
 | Tesla Cybertruck 2026<br>`tesla-cybertruck` | Wikimedia Commons — `2024 Tesla Cybertruck, front left, 07-27-2024.jpg` | Cutlass (obra propia) | **CC0 1.0** | No | [File:2024 Tesla Cybertruck, front left…](https://commons.wikimedia.org/wiki/File:2024_Tesla_Cybertruck,_front_left,_07-27-2024.jpg) |
 | Geely Coolray 2026<br>`geely-coolray-2026` | Wikimedia Commons — `Geely Binyue L 001.jpg` | JustAnotherCarDesigner (obra propia) | **CC0 1.0** | No | [File:Geely Binyue L 001.jpg](https://commons.wikimedia.org/wiki/File:Geely_Binyue_L_001.jpg) |
 | Toyota GR Supra MkV Final Edition 2026<br>`toyota-gr-supra-final-edition` | — **SIN FOTO** | — | — | — | — |
@@ -53,20 +53,17 @@ muestra el placeholder "Foto pendiente". Nunca se rellena con una foto genérica
 
 ---
 
-## La única foto que obliga a dar crédito
+## Ninguna foto del catálogo obliga a dar crédito
 
-**Chevrolet Corvette Stingray C8 — CC BY 4.0.**
+Hasta el 6 de noviembre de 2026 el Corvette Stingray usaba una foto CC BY 4.0
+(OWS Photography, Commons), que obligaba a publicar el crédito bajo la tarjeta.
+El dueño pidió quitar las líneas de crédito, y la única forma de hacerlo sin
+infringir la licencia era cambiar la foto: ahora es una de Unsplash, cuya
+licencia permite usarla sin nombrar al autor. Las demás son CC0.
 
-Las otras ocho son CC0 (dedicación al dominio público): no obligan a nada. Esta sí.
-La cláusula 3(a)(1) de CC BY 4.0 exige nombrar al autor, enlazar la licencia,
-enlazar la obra e indicar si la imagen fue modificada. **Si el crédito no se
-publica, el sitio está infringiendo la licencia.**
-
-El crédito se publica bajo la tarjeta mediante `src/components/CreditoFoto.tsx`,
-que se pinta automáticamente cuando `imageLicense` lo exige y no se pinta cuando no.
-Texto publicado:
-
-> Foto: [OWS Photography](https://commons.wikimedia.org/wiki/File:Chevrolet_Corvette_Stingray_(C8)_Washington_DC_Metro_Area,_USA_(3).jpg) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) · imagen recortada
+`src/components/CreditoFoto.tsx` sigue ahí: se pinta solo cuando `imageLicense`
+lo exige (familia CC BY). Si se vuelve a cargar una foto así, el crédito
+reaparece solo. Para que no aparezca, usar CC0, Licencia Unsplash o foto propia.
 
 `buildTrendingVehicles()` en `src/data/trendingVehicles.ts` revienta el build si
 una foto con licencia que exige atribución se queda sin `imageCredit` o sin
@@ -115,7 +112,7 @@ es broker y no tiene la unidad en patio.
 | RAM 3500 Limited | Dos: (a) el acabado real es **Limited Longhorn**, que en la gama RAM es distinto del "Limited" a secas; (b) la unidad es **Cummins turbodiésel**, y la propia tarjeta advierte que el diésel usado no entra a Perú. A tamaño de tarjeta el badge no es legible, pero un cliente que amplíe la foto podría señalarlo. |
 | Toyota Tundra TRD | Unidad **MY2024**, acabado TRD Pro. Generación XK70 idéntica al 2026: se comparó contra una foto genuinamente MY2026 y solo cambia el color de pintura. |
 | Chevrolet Corvette Z06 | Unidad **MY2025**. El Z06 C8 no tuvo cambio visual entre 2025 y 2026. |
-| Chevrolet Corvette Stingray C8 | Foto del 25/04/2025, así que la unidad es **MY2020-2025**. El refresh de 2026 fue de interior (tres pantallas, consola nueva); el exterior no cambia de chapa. |
+| Chevrolet Corvette Stingray C8 | Tres: (a) la unidad es **convertible** (techo rígido retráctil, cerrado en la foto) y la tarjeta dice "Coupé"; es el mismo modelo y la misma chapa hasta el pilar B. (b) Se ve desde atrás: las cuatro salidas de escape en las esquinas y la carrocería estrecha confirman Stingray (el Z06 las lleva al centro); otra toma de la misma serie muestra la placa "Stingray". (c) La matrícula de prueba noruega se **difuminó**. Unidad MY2020-2025; el refresh de 2026 fue de interior. |
 | Tesla Cybertruck | Unidad **MY2024**. El Cybertruck tiene una sola generación desde su lanzamiento, sin facelift. No se puede distinguir AWD de Cyberbeast en la foto. **Marcas**: CC0 cubre el copyright de la foto, no las marcas "Tesla" y "Cybertruck". El uso es nominativo (ilustrar un vehículo que se intermedia); la tarjeta no debe sugerir patrocinio ni afiliación de Tesla. |
 | Geely Coolray | La foto es del **Geely Binyue L**, el modelo donante chino del New Coolray que Geely vende en Perú desde diciembre de 2025. Es el mismo vehículo: coinciden largo (4,380 mm), emblema Geely plateado, parrilla de listones horizontales con marco plateado, faros LED partidos y el color Purple Grey tornasolado de la paleta de lanzamiento peruana. Se descartaron a propósito todos los archivos de `Category:Geely Coolray`, que son el SX11 anterior (parrilla de malla, filete rojo, emblema negro): publicar uno de esos habría repetido el error de Unsplash en versión sutil. |
 
@@ -249,7 +246,7 @@ público o CC0 por no alcanzar el umbral de originalidad (texto y formas simples
 
 | Archivo | Fuente | Autor | Licencia | Crédito |
 |---|---|---|---|---|
-| `images/lima/miraflores-atardecer.jpg` | [File:Miraflores - Lima, Peru at Night.jpg](https://commons.wikimedia.org/wiki/File:Miraflores_-_Lima,_Peru_at_Night.jpg) | geezaweezer (Flickr) | **CC BY 2.0** | **Obligatorio**: se publica con `<CreditoFoto />` en la portada de /comprar. |
+| `images/lima/costa-verde-noche.webp` | [unsplash.com/photos/…5YW0c-q4fvM](https://unsplash.com/photos/coastal-city-at-night-with-luminous-car-trails-and-ocean-5YW0c-q4fvM) | paolo candelo (@paolocandelo) | **Licencia Unsplash** | No exigido. Portada de /comprar desde el 2026-11-06: la Costa Verde de noche con el muelle de La Rosa Náutica. Reemplazó a `miraflores-atardecer.jpg` (CC BY 2.0, geezaweezer), que obligaba a publicar el crédito. |
 
 ---
 

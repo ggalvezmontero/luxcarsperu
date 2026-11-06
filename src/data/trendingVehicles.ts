@@ -214,8 +214,8 @@ export function simulationPresets(vehiculos: readonly TrendingVehicle[]): Simula
 /**
  * ¿Esta licencia obliga a publicar el crédito?
  *
- * CC0, dominio público y las fotos PROPIAS de LuxCars NO obligan (el crédito se
- * guarda igual, por trazabilidad). Toda la familia CC BY —con o sin SA— SÍ obliga: la cláusula
+ * CC0, dominio público, la Licencia Unsplash y las fotos PROPIAS de LuxCars NO
+ * obligan (el crédito se guarda igual, por trazabilidad). Toda la familia CC BY —con o sin SA— SÍ obliga: la cláusula
  * 3(a)(1) exige nombrar al autor, enlazar la licencia y enlazar la obra. Si el
  * crédito no se publica, se está infringiendo la licencia.
  *
@@ -230,6 +230,8 @@ export function licenciaExigeAtribucion(licencia?: string | null): boolean {
   }
   // "Foto propia de LuxCars": la tomó el equipo, no hay a quién atribuir.
   if (l.startsWith("FOTO PROPIA") || l.startsWith("PROPIA")) return false;
+  // Licencia Unsplash: permite usar la foto sin nombrar al autor.
+  if (l.includes("UNSPLASH")) return false;
   return true;
 }
 

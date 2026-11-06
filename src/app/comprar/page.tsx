@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { CreditoFoto } from "@/components/CreditoFoto";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { ScanBand } from "@/components/home/ScanBand";
@@ -57,17 +56,17 @@ export default async function ComprarPage() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main id="contenido" className="w-full flex-1">
-        {/* Portada con foto de Lima (CC BY 2.0, crédito obligatorio abajo) */}
+        {/* Portada con foto de Lima (Licencia Unsplash; procedencia en docs/FOTOS.md) */}
         <section className="relative isolate w-full overflow-hidden bg-void pt-[calc(var(--lux-nav-h)+3rem)] pb-10 sm:pt-[calc(var(--lux-nav-h)+4rem)] sm:pb-14">
           <Image
-            src="/images/lima/miraflores-atardecer.jpg"
-            alt="Avenida de Miraflores, Lima, al atardecer con luces de autos en movimiento y el mar al fondo"
+            src="/images/lima/costa-verde-noche.webp"
+            alt="La Costa Verde de Lima de noche, con las estelas de luz de los autos junto al mar y el muelle de La Rosa Náutica"
             fill
             priority
             sizes="100vw"
             className="-z-20 object-cover object-[center_60%]"
           />
-          <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-void/85 via-void/60 to-void" />
+          <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-void/75 via-void/35 to-void" />
           <div className="container-lux relative">
             <p className="eyebrow">Disponibles en Lima</p>
             <h1 className="mt-3 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
@@ -89,12 +88,6 @@ export default async function ComprarPage() {
                 </li>
               ))}
             </ul>
-            <CreditoFoto
-              credito="geezaweezer"
-              licencia="CC BY 2.0"
-              fuenteUrl="https://commons.wikimedia.org/wiki/File:Miraflores_-_Lima,_Peru_at_Night.jpg"
-              className="mt-6"
-            />
           </div>
         </section>
 
