@@ -112,7 +112,10 @@ export const LUXCARS_CONFIG = {
     city: "Lima",
     region: "Lima",
     country: "PE",
-    website: "https://luxcars.pe",
+    // Con "www": es el host que sirve el sitio (luxcars.pe redirige acá). De
+    // este valor salen canonicals, sitemap, robots y datos estructurados; si
+    // apunta al host que redirige, Google reparte el índice entre los dos.
+    website: "https://www.luxcars.pe",
   },
   /**
    * Las cuatro líneas de negocio. Los `id` son contrato: `LineasNegocioSection`
