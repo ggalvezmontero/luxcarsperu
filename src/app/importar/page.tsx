@@ -91,12 +91,12 @@ export default function ImportarPage() {
         {/* Portada con foto */}
         <section className="relative isolate flex min-h-[70svh] w-full items-end overflow-hidden bg-void pt-[var(--lux-nav-h)]">
           <Image
-            src="/images/portadas/importar-corvettes-en-camion.webp"
-            alt="Camión portavehículos cargado con Corvette nuevos, cubiertos con fundas blancas de transporte"
+            src="/images/portadas/importar-terminal-contenedores.webp"
+            alt="Vista aérea de un terminal portuario con contenedores y grúas"
             fill
             priority
             sizes="100vw"
-            className="-z-20 object-cover object-[center_60%]"
+            className="-z-20 object-cover"
           />
           <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-void via-void/75 to-void/20" />
           <div

@@ -285,11 +285,12 @@ al ancho del monitor: con menos de ~1 900 px se ve pixelada en pantallas grandes
 
 | Archivo | Dónde | Qué muestra | Autor | Licencia | Fuente |
 |---|---|---|---|---|---|
-| `importar-corvettes-en-camion.webp` | Portada de `/importar` | Camión portavehículos con Corvette nuevos enfundados | Roger Starnes Sr | Licencia Unsplash | [unsplash.com/photos/xDhuMgWBrXU](https://unsplash.com/photos/a-truck-with-a-car-on-the-back-of-it-xDhuMgWBrXU) |
+| `importar-terminal-contenedores.webp` | Portada de `/importar` | Vista aérea de un terminal de contenedores con grúas. Es la MISMA foto que tenía la portada desde 2025 (`how/shipping.jpg`), ahora a 2 400 px. El dueño rechazó el reemplazo por un camión con Corvette enfundados ("no es representativa"): quería esta, pero nítida. | CHUTTERSNAP | Licencia Unsplash | [unsplash.com/photos/eqwFWHfQipg](https://unsplash.com/photos/intermodal-containers-on-dock-eqwFWHfQipg) |
 | `vender-range-rover-casa.webp` | Portada de `/vender` y banda de consignación de la home | Range Rover Sport negra frente al garaje de una casa | Luke Miller | Licencia Unsplash | [unsplash.com/photos/2l4JGCzzP2Q](https://unsplash.com/photos/a-black-range-rover-parked-in-front-of-a-house-2l4JGCzzP2Q) |
 | `escaneo-laptop-diagnostico.webp` | Portada de `/escaneo` | La misma foto de antes, a 2 400 px | Mehmet Talha Onuk | Licencia Unsplash | (ver tabla de arriba) |
 
-Se retiraron `how/shipping.jpg` (terminal de contenedores, 800 × 600) y
+Se retiraron `how/shipping.jpg` (la copia de 800 × 600 de la portada de
+`/importar`) y
 `timeline/journey.jpg` (Mercedes-AMG GT amarillo, 1 200 × 1 500, sin relación
 con vender un auto). Las otras portadas no cambiaron: `hero/main.jpg` (home) y
 `lima/costa-verde-noche.webp` (`/comprar`) miden 1 920 px. La de

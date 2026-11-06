@@ -66,8 +66,8 @@ const PASOS: { icon: IconName; title: string; text: string }[] = [
 
 const GRATIS: { title: string; text: string }[] = [
   {
-    title: "El auto cuesta USD 15,000 o más",
-    text: "Y aceptas que grabemos el escaneo. Cubrimos placas y rostros, y nunca nombramos al vendedor.",
+    title: "Nos dejas grabar el escaneo",
+    text: "Si el auto que vas a comprar cuesta USD 15,000 o más y aceptas que publiquemos el video en nuestras redes, no pagas. Cubrimos placas y rostros, y nunca nombramos al vendedor.",
   },
   {
     title: "Nos encargas buscar el auto",
