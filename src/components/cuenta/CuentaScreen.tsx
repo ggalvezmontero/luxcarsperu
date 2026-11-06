@@ -212,9 +212,17 @@ export function CuentaScreen() {
         description="Pide un auto que no tenemos y lo buscamos, o publica el tuyo para venderlo en consignación. Acá ves el estado de cada solicitud."
         action={
           <div className="flex flex-wrap gap-2">
-            {profile?.role === "admin" ? (
-              <Button href="/portal" variant="secondary" size="sm">
-                Ir al portal
+            {/* Solo lo ve un administrador activo. Para un cliente no existe:
+                aunque escribiera /portal a mano, el portal lo rechaza por rol. */}
+            {profile?.role === "admin" && profile.active ? (
+              <Button
+                href="/portal"
+                variant="secondary"
+                size="sm"
+                title="Stock, leads, consignaciones y solicitudes. Solo para el equipo de LuxCars."
+              >
+                <Icon name="shield" size={14} />
+                Panel de administración
               </Button>
             ) : null}
             <Button
