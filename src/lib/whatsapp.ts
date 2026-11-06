@@ -48,7 +48,7 @@ export function buildWhatsappLink(
     `State Compliance Fee (5%): ${formatCurrency(estimate.stateComplianceFee)}`,
     `Broker Fee (10%): ${formatCurrency(estimate.brokerFee)}`,
     estimate.documentHandlingFee > 0
-      ? `Extra FastTrack: ${formatCurrency(estimate.documentHandlingFee)}`
+      ? `Fast Track (cargo fijo): ${formatCurrency(estimate.documentHandlingFee)}`
       : undefined,
     `Precio final estimado Lima: ${formatCurrency(estimate.finalEstimate)}`,
     `Percepción IGV ${formatRate(estimate.percepcionRate)} (adelanto recuperable, no es costo): ${formatCurrency(estimate.percepcion)}`,

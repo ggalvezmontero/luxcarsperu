@@ -165,6 +165,11 @@ const INITIAL_FORM: FormState = {
   originOverride: null,
 };
 
+/** Lo que Fast Track cuesta por encima de Estándar. Sale del motor, no se escribe acá. */
+const FAST_TRACK_EXTRA =
+  PRICING_CONFIG.planConfigs.fast.documentHandlingFee -
+  PRICING_CONFIG.planConfigs.standard.documentHandlingFee;
+
 const STORAGE_KEY = "luxcars:last-estimate";
 const FORM_STORAGE_KEY = "luxcars:form-state";
 const RESULT_ID = "calc-resultado";
@@ -684,7 +689,11 @@ export function CalculatorSection() {
                   on={form.preferredPlan === plan.key}
                   onClick={() => patch({ preferredPlan: plan.key })}
                   title={plan.label}
-                  hint={`${plan.days[0]}–${plan.days[1]} días`}
+                  hint={
+                    plan.key === "fast" && FAST_TRACK_EXTRA > 0
+                      ? `${plan.days[0]}–${plan.days[1]} días · +${formatCurrency(FAST_TRACK_EXTRA)}`
+                      : `${plan.days[0]}–${plan.days[1]} días`
+                  }
                 />
               ))}
             </div>

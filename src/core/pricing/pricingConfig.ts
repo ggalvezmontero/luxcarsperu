@@ -96,12 +96,22 @@ export const PRICING_CONFIG = {
 
   stateComplianceRate: 0.05,
   brokerFeeRate: 0.1,
+  /**
+   * FAST TRACK CUESTA USD 1,200 MÁS QUE ESTÁNDAR, FIJOS (decisión del dueño,
+   * 2026-11-06). Es un cargo de servicio: no toca el flete, así que no cambia
+   * el CIF ni los tributos, y la diferencia entre los dos planes es la misma
+   * para cualquier auto.
+   *
+   * Antes eran +15% de flete y USD 150 de gestión, que con los tributos encima
+   * daban entre USD 540 y 700 según el auto: ni fijo ni lo que se cobra.
+   * Para cambiar el monto se toca solo `documentHandlingFee`.
+   */
   planConfigs: {
     fast: {
       key: "fast",
       label: "Fast Track",
-      fleteAdjustment: 1.15,
-      documentHandlingFee: 150,
+      fleteAdjustment: 1,
+      documentHandlingFee: 1200,
       timelineLabel: "30-40 días",
     },
     standard: {
