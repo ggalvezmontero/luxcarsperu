@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { BrandsMarquee } from "@/components/BrandsMarquee";
 import { Button } from "@/components/Button";
+import { CreditoFoto } from "@/components/CreditoFoto";
 import { CtaBand } from "@/components/CtaBand";
 import { FAQSection } from "@/components/FAQSection";
 import { Footer } from "@/components/Footer";
@@ -9,6 +10,7 @@ import { Navbar } from "@/components/Navbar";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { FOTOS_PROCESO, type FotoProceso } from "@/lib/fotosProceso";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 
 // El <title> sale de la plantilla del layout ("%s | marca"); Open Graph y
@@ -38,16 +40,16 @@ type Paso = {
   title: string;
   text: string;
   day: string;
-  foto?: { src: string; alt: string };
+  foto?: FotoProceso;
 };
 
 const PASOS: Paso[] = [
-  { icon: "search", title: "Búsqueda", day: "Día 1", text: "Comparamos dealers y portales verificados y te enviamos una comparativa clara." },
-  { icon: "scan", title: "Inspección", day: "Día 2–4", text: "CarFax, AutoCheck, título limpio e inspección presencial de 150 puntos." },
-  { icon: "handshake", title: "Compra", day: "Día 5", text: "Negociamos y cerramos a tu nombre. El informe llega antes de transferir dinero.", foto: { src: "/images/how/purchase.jpg", alt: "Dos personas cierran un acuerdo con un apretón de manos" } },
-  { icon: "ship", title: "Embarque", day: "Día 6–20", text: "Flete marítimo asegurado hasta el Callao con seguimiento semanal.", foto: { src: "/images/how/shipping.jpg", alt: "Terminal portuario con contenedores y grúas" } },
-  { icon: "fileCheck", title: "Aduanas", day: "Día 21–28", text: "Despacho ante SUNAT, pago de tributos y nacionalización.", foto: { src: "/images/how/customs.jpg", alt: "Firma de documentos sobre un escritorio" } },
-  { icon: "key", title: "Entrega", day: "Día 29–35", text: "Homologación, placas y entrega en tu cochera, listo para circular.", foto: { src: "/images/how/delivery.jpg", alt: "Camioneta plateada recién lavada, estacionada al aire libre" } },
+  { icon: "search", title: "Búsqueda", day: "Día 1", text: "Comparamos dealers y portales verificados y te enviamos una comparativa clara.", foto: FOTOS_PROCESO.busqueda },
+  { icon: "scan", title: "Inspección", day: "Día 2–4", text: "CarFax, AutoCheck, título limpio e inspección presencial de 150 puntos.", foto: FOTOS_PROCESO.inspeccion },
+  { icon: "handshake", title: "Compra", day: "Día 5", text: "Negociamos y cerramos a tu nombre. El informe llega antes de transferir dinero.", foto: FOTOS_PROCESO.compra },
+  { icon: "ship", title: "Embarque", day: "Día 6–20", text: "Flete marítimo asegurado hasta el Callao con seguimiento semanal.", foto: FOTOS_PROCESO.embarque },
+  { icon: "fileCheck", title: "Aduanas", day: "Día 21–28", text: "Despacho ante SUNAT, pago de tributos y nacionalización.", foto: FOTOS_PROCESO.aduanas },
+  { icon: "key", title: "Entrega", day: "Día 29–35", text: "Homologación, placas y entrega en tu cochera, listo para circular.", foto: FOTOS_PROCESO.entrega },
 ];
 
 const PLANES = [
@@ -113,6 +115,14 @@ export default function ComoFuncionaPage() {
                     <h3 className="text-lg font-semibold text-ink">{p.title}</h3>
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-ink-3">{p.text}</p>
+                  {p.foto?.credito ? (
+                    <CreditoFoto
+                      credito={p.foto.credito.autor}
+                      licencia={p.foto.credito.licencia}
+                      fuenteUrl={p.foto.credito.fuenteUrl}
+                      className="mt-auto pt-4"
+                    />
+                  ) : null}
                 </div>
               </li>
             ))}

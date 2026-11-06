@@ -48,6 +48,8 @@ const PATHS = {
   globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0 0c2.5-2.5 3.5-5.5 3.5-9S14.5 5.5 12 3m0 18c-2.5-2.5-3.5-5.5-3.5-9S9.5 5.5 12 3M3 12h18",
   plane: "M2 12 21 3l-4 18-6-7-9-2Zm9 2 10-11",
   scan: "M4 8V5a1 1 0 0 1 1-1h3m8 0h3a1 1 0 0 1 1 1v3m0 8v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3m0-4h16",
+  activity: "M3 12h4l3-8 4 16 3-8h4",
+  battery: "M4 8h13a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Zm17 3v2M7 11v2m3-2v2m3-2v2",
 } as const;
 
 export type IconName = keyof typeof PATHS;

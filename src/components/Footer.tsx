@@ -12,6 +12,7 @@ const COLUMNS = [
       { label: "Comprar un auto", href: "/comprar" },
       { label: "Importar a pedido", href: "/importar" },
       { label: "Vender o consignar", href: "/vender" },
+      { label: "Escaneo pre-compra", href: "/escaneo" },
       { label: "Gestión documentaria", href: "/#contact" },
     ],
   },

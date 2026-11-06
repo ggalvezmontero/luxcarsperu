@@ -1,40 +1,39 @@
 import Image from "next/image";
+import { FOTOS_PROCESO, type FotoProceso } from "@/lib/fotosProceso";
 import { Button } from "../Button";
+import { CreditoFoto } from "../CreditoFoto";
 import { Icon } from "../ui/Icon";
 import { Section, SectionHeader } from "../ui/Section";
 
 /**
- * Cómo importamos, en cuatro pasos con foto. Reemplaza a la fila de iconos:
- * las cuatro fotos ya existen en /public y describen literalmente cada paso.
+ * Cómo importamos, en cuatro pasos con foto. Las fotos son las mismas que usa
+ * /como-funciona (src/lib/fotosProceso.ts): una sola fuente para la imagen, su
+ * `alt` y su crédito.
  */
-const PASOS = [
+const PASOS: { n: string; title: string; text: string; foto: FotoProceso }[] = [
   {
     n: "01",
     title: "Compra verificada",
     text: "Buscamos el modelo, lo inspeccionamos con CarFax y AutoCheck y cerramos a tu nombre.",
-    foto: "/images/how/purchase.jpg",
-    alt: "Dos personas cierran un acuerdo con un apretón de manos",
+    foto: FOTOS_PROCESO.compra,
   },
   {
     n: "02",
     title: "Embarque asegurado",
     text: "Flete marítimo con seguro internacional hasta el Callao.",
-    foto: "/images/how/shipping.jpg",
-    alt: "Terminal portuario con contenedores y grúas",
+    foto: FOTOS_PROCESO.embarque,
   },
   {
     n: "03",
     title: "Aduanas y placas",
     text: "Despacho SUNAT, homologación, revisión técnica y tarjeta de propiedad.",
-    foto: "/images/how/customs.jpg",
-    alt: "Firma de documentos sobre un escritorio",
+    foto: FOTOS_PROCESO.aduanas,
   },
   {
     n: "04",
     title: "Entrega en tu cochera",
     text: "Listo para circular, entre 30 y 60 días según el plan.",
-    foto: "/images/how/delivery.jpg",
-    alt: "Camioneta plateada recién lavada, estacionada al aire libre",
+    foto: FOTOS_PROCESO.entrega,
   },
 ];
 
@@ -57,8 +56,8 @@ export function ImportBand() {
           <li key={p.n} className="group overflow-hidden rounded-[22px] border border-line bg-surface">
             <div className="relative aspect-[4/3] w-full">
               <Image
-                src={p.foto}
-                alt={p.alt}
+                src={p.foto.src}
+                alt={p.foto.alt}
                 fill
                 sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                 className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
@@ -70,6 +69,14 @@ export function ImportBand() {
             <div className="p-5">
               <h3 className="text-lg font-semibold text-ink">{p.title}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-3">{p.text}</p>
+              {"credito" in p.foto && p.foto.credito ? (
+                <CreditoFoto
+                  credito={p.foto.credito.autor}
+                  licencia={p.foto.credito.licencia}
+                  fuenteUrl={p.foto.credito.fuenteUrl}
+                  className="mt-3"
+                />
+              ) : null}
             </div>
           </li>
         ))}

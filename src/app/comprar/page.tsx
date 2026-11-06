@@ -3,6 +3,7 @@ import Image from "next/image";
 import { CreditoFoto } from "@/components/CreditoFoto";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import { ScanBand } from "@/components/home/ScanBand";
 import { CtaBand } from "@/components/CtaBand";
 import { Section } from "@/components/ui/Section";
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -98,6 +99,8 @@ export default async function ComprarPage() {
         </section>
 
         <StockExplorer stock={stock} />
+
+        <ScanBand />
 
         <Section tone="void" padding="tight">
           <CtaBand

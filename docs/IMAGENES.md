@@ -1,5 +1,12 @@
 # Imágenes del sitio — auditoría, reglas y lista de tomas pendientes
 
+> **Actualización 2026-11-06.** Los pasos del proceso ya no usan las fotos de
+> banco genéricas ni quedan sin imagen: `how/purchase.jpg`, `how/customs.jpg` y
+> `how/delivery.jpg` se borraron y los seis pasos (más la portada de `/escaneo`)
+> usan fotos con licencia libre que muestran literalmente el paso. Procedencia y
+> créditos en `docs/FOTOS.md`; el código, en `src/lib/fotosProceso.ts`. Lo que
+> sigue pendiente es lo de la sección 4: fotos propias.
+
 Última auditoría: 2026-09-15. Se revisó `public/` completo y **todas** las
 referencias a imágenes en `src/`, abriendo cada archivo para comparar lo que la
 foto muestra contra lo que su `alt` y su contexto afirmaban.

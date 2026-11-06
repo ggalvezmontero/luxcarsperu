@@ -250,3 +250,37 @@ público o CC0 por no alcanzar el umbral de originalidad (texto y formas simples
 | Archivo | Fuente | Autor | Licencia | Crédito |
 |---|---|---|---|---|
 | `images/lima/miraflores-atardecer.jpg` | [File:Miraflores - Lima, Peru at Night.jpg](https://commons.wikimedia.org/wiki/File:Miraflores_-_Lima,_Peru_at_Night.jpg) | geezaweezer (Flickr) | **CC BY 2.0** | **Obligatorio**: se publica con `<CreditoFoto />` en la portada de /comprar. |
+
+---
+
+## Fotos de los pasos del proceso y de la portada de `/escaneo`
+
+Agregadas el 6 de noviembre de 2026. Viven en `public/images/how/` y se usan
+desde `src/lib/fotosProceso.ts` (home, `/como-funciona` y `/escaneo`). Mismas
+tres pruebas que el catálogo: muestran literalmente lo que dice el paso, la
+licencia permite uso comercial y el archivo se descargó y se abrió para
+verificarlo. Todas se recortaron a 16:10 (1600 × 1000) y se convirtieron a WebP.
+
+Reemplazan a tres fotos de banco genéricas que se borraron del repositorio
+(`purchase.jpg`, un apretón de manos; `customs.jpg`, una firma sobre un
+escritorio; `delivery.jpg`, una RAV4 cualquiera) y llenan los dos pasos que no
+tenían imagen (Búsqueda e Inspección).
+
+| Archivo | Paso | Qué muestra | Autor | Licencia | ¿Atribución exigida? | URL de origen |
+|---|---|---|---|---|---|---|
+| `busqueda-concesionario.webp` | Búsqueda | Concesionario Porsche de noche, con autos tras la vidriera | Eden, Janine and Jim (Flickr) | **CC BY 2.0** | **SÍ** | [File:Porsche Showroom (51347492434).jpg](https://commons.wikimedia.org/wiki/File:Porsche_Showroom_(51347492434).jpg) |
+| `inspeccion-diagnostico.webp` | Inspección y portada de `/escaneo` | Una mano con un conector de diagnóstico OBD dentro de un auto, junto a una laptop | Nenad Stojkovic (Flickr) | **CC BY 2.0** | **SÍ** | [File:Man holding Obd2 jack for car software diagnostic.jpg](https://commons.wikimedia.org/wiki/File:Man_holding_Obd2_jack_for_car_software_diagnostic.jpg) |
+| `compra-concesionario.webp` | Compra | Concesionario Mercedes-AMG en Bethesda, Maryland (EE.UU.) | G. Edward Johnson (obra propia) | **CC BY 4.0** | **SÍ** | [File:EuroMotorcars Bethesda MD 2021-12-12 09-44-18 1.jpg](https://commons.wikimedia.org/wiki/File:EuroMotorcars_Bethesda_MD_2021-12-12_09-44-18_1.jpg) |
+| `aduanas-callao.webp` | Aduanas | Vista aérea del puerto del Callao | GORE Callao (Flickr) | **Dominio público** | No | [File:Vista del Puerto del Callao.jpg](https://commons.wikimedia.org/wiki/File:Vista_del_Puerto_del_Callao.jpg) |
+| `entrega-llave.webp` | Entrega | Una mano extiende la llave de un auto | @kaboompics | **CC0** | No | [File:Someone handing a key over.jpg](https://commons.wikimedia.org/wiki/File:Someone_handing_a_key_over.jpg) |
+
+Las tres CC BY pintan su crédito con `CreditoFoto` debajo del paso (y bajo los
+botones de la portada de `/escaneo`). Si se quita el crédito hay que quitar la
+foto.
+
+**Son ilustrativas del paso, no operaciones de LuxCars.** Los dos concesionarios
+son tiendas reales de Estados Unidos que ilustran dónde se busca y se compra: no
+afirman una relación comercial con ellas. En cuanto existan fotos propias (una
+unidad en el patio del Callao, una entrega real con permiso del cliente, un
+escaneo propio), reemplazan a estas: ver la lista de tomas en
+`docs/IMAGENES.md`, sección 4.
