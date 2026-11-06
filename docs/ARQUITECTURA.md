@@ -88,30 +88,34 @@ que tropezársela.
 ## 1. Mapa del sistema
 
 ```
-Cliente (sin cuenta)                    Equipo LuxCars (con cuenta)
-        │                                          │
-        ▼                                          ▼
-  Sitio público                              /portal  (noindex)
-  /  /comprar  /vender  /importar            login con Neon Auth
-  /como-funciona  /faq                              │
-        │                                          │
-        │ formularios                              │ lee y escribe DESDE EL
-        ▼                                          │ NAVEGADOR con la sesión
-  WhatsApp  ◄── fallback siempre                    ▼
-        │                                     Neon (RLS = candado)
-        └──► createLead()  [DATABASE_URL, servidor] ──►  leads
-                                                          vehicles
-  src/core/pricing/  ← motor de cálculo                   vehicle_photos
-  (TypeScript, verificado, NO se toca)                    consignments
-                                                          tax_rates (normativa)
+Visitante (sin cuenta)      Cliente (rol `cliente`)        Equipo (rol `admin`)
+        │                           │                              │
+        ▼                           ▼                              ▼
+  Sitio público               /cuenta  (noindex)             /portal  (noindex)
+  /  /comprar  /vender        registro y login               login con Neon Auth
+  /importar  /faq …           con Neon Auth                         │
+        │                           │                              │
+        │ formularios               │ escribe SUS solicitudes      │ lee y escribe TODO
+        ▼                           │ desde el navegador           │ desde el navegador
+  WhatsApp ◄── fallback             ▼                              ▼
+        │                     Neon (RLS = candado; `es_admin()` decide)
+        └──► createLead()           solicitudes_compra   leads · vehicles
+             [DATABASE_URL]         solicitudes_venta    vehicle_photos · consignments
+                                    profiles (rol)       tax_rates · quotes
+  src/core/pricing/  ← motor de cálculo (TypeScript, verificado, NO se toca)
 ```
 
 **Cuatro líneas de negocio**: compra-venta con stock propio · importación a
 pedido desde Miami · tasación y consignación **sin contrato de exclusividad** ·
 gestión documentaria.
 
-**El portal es solo para administración.** El cliente nunca crea cuenta. No hay
-marketplace ni vendedores externos.
+**Tres tipos de persona, dos con cuenta.** El visitante cotiza y sigue por
+WhatsApp sin registrarse, como siempre. El **cliente** crea cuenta en `/cuenta`
+para dos cosas: pedir un auto que no está en stock (`solicitudes_compra`, el
+equipo lo busca) y ofrecer el suyo en consignación (`solicitudes_venta`, que
+**no se publica hasta que un admin la aprueba**). El **equipo** entra al
+portal solo si su perfil tiene rol `admin`. No hay marketplace: el cliente
+nunca publica nada por su cuenta.
 
 ---
 
@@ -170,10 +174,10 @@ El aviso de "no hay base de datos" se registra **una sola vez por proceso**
 > Por eso existe `getDatabaseStatus()`, que dice qué variable falta sin exponer
 > ninguna llave, y el tablero del portal lo muestra.
 
-### Regla número dos: **`select *` como `anon` FALLA, y es a propósito**
+### Regla número dos: **`select *` como `anonymous` FALLA, y es a propósito**
 
 El esquema combina **RLS** (qué *filas* se ven) con **GRANT por columna** (qué
-*columnas* se ven). Sin los grants por columna, "anon lee los publicados"
+*columnas* se ven). Sin los grants por columna, "anonymous lee los publicados"
 dejaría leer `precio_compra` y `notas_internas` — **el margen del negocio**.
 
 Consecuencia práctica, y va a parecer un bug cuando pase:
@@ -184,21 +188,32 @@ client.from("vehicles").select("*")   // ❌ permission denied para anonymous
 
 Hay que **pedir columnas explícitas** o consultar la vista
 **`vehiculos_publicos`** (declarada `security_invoker = true`, así que respeta
-RLS en vez de eludirlo como haría una vista `SECURITY DEFINER`).
+RLS en vez de eludirlo como haría una vista `SECURITY DEFINER`). Desde la
+migración 0009 la vista expone también `fuente`: la web publica los autos en
+consignación junto al stock propio, pero siempre etiquetados como tales.
 
 **Si alguien "arregla" este error abriendo los permisos, está publicando el
 margen del negocio.**
 
-### Regla número tres: **los formularios públicos no escriben directo**
+### Regla número tres: **los formularios sin cuenta no escriben directo**
 
-El cliente no tiene cuenta, así que alguien tiene que hacer el `INSERT`. **No se
-le dio `INSERT` a `anonymous`**: ese acceso es público, y con eso cualquiera
-inyecta leads en masa desde la consola o escribe `estado = 'ganado'`.
+El visitante no tiene identidad, así que alguien tiene que hacer el `INSERT`.
+**No se le dio `INSERT` a `anonymous`**: ese acceso es público, y con eso
+cualquiera inyecta leads en masa desde la consola o escribe `estado = 'ganado'`.
 
 Las escrituras entran por el servidor con `DATABASE_URL`, y el estado inicial lo
 fija el servidor en `'nuevo'`. `createLead()` **no** cae al cliente anónimo si
 falta `DATABASE_URL`: sería un intento condenado al fracaso que solo suma
 latencia antes del mismo fallback a WhatsApp.
+
+**El cliente con cuenta sí escribe directo, y está bien.** Tiene identidad
+(`auth.uid()`), así que `solicitudes_compra` y `solicitudes_venta` le dan
+`INSERT` con una política `WITH CHECK` que fija `user_id = auth.uid()` y el
+estado inicial (`nueva` / `pendiente`), y un trigger que le impide tocar los
+campos de revisión. Es el mismo principio del portal: RLS es el candado. Lo que
+no puede pasar es que un cliente lea leads, márgenes o el precio mínimo de una
+consignación: todas esas políticas exigen `public.es_admin()` desde la
+migración 0010.
 
 ### Nombres: columnas en español, dominio en inglés
 
@@ -267,6 +282,17 @@ miente sin que nadie se entere.
 | `/portal/vehiculos/[id]/fotos` | Subida de fotos, compresión, orden y portada |
 | `/portal/leads` | Embudo, cambio de etapa, WhatsApp por fila |
 | `/portal/consignaciones` | Cartera, comisión, "Vendido por el dueño" |
+| `/portal/solicitudes` | Autos ofrecidos por clientes (aprobar → crea consignación + ficha; rechazar con motivo) y pedidos de búsqueda con respuesta visible al cliente |
+| `/portal/usuarios` | Cuentas y roles: hacer admin, quitar admin, desactivar |
+
+Y del lado del cliente:
+
+| Ruta | Qué hace |
+|---|---|
+| `/cuenta/login` | Registro e ingreso (Neon Auth; el trigger copia el nombre al perfil y el formulario le agrega el WhatsApp apenas hay sesión) |
+| `/cuenta` | Sus solicitudes con estado, respuesta de LuxCars y motivo de rechazo |
+| `/cuenta/comprar` | Pedir un auto que no está en stock ni en consignación |
+| `/cuenta/vender` | Ofrecer su auto en consignación; queda pendiente hasta la aprobación |
 
 ### El modelo de seguridad, que es lo importante
 
@@ -310,16 +336,36 @@ Dos caminos, y el segundo es gratis:
 `noindex`. `noindex` le pide a un buscador que no indexe; no impide que alguien
 abra la URL.
 
-### Rol autenticado = acceso total
+### Roles: `cliente` y `admin` (migración 0010)
 
-No hay separación entre un vendedor y el dueño: cualquiera del equipo ve
-`precio_compra`, márgenes y el precio mínimo de cada consignación. Es lo que se
-pidió, pero si mañana entra un vendedor externo o un practicante, se vuelve un
-problema. Se resuelve con una tabla de roles; hoy no está.
+`public.profiles` tiene una fila por usuario de `neon_auth."user"`, creada por
+trigger al registrarse, con `rol` (`cliente` por defecto) y `activo`. La
+función `public.es_admin()` (SECURITY DEFINER, estable) dice si `auth.uid()`
+es admin activo, y **todas** las políticas "el equipo …" de las tablas del
+negocio la exigen. Consecuencias:
 
-**Por eso mantener desactivada el alta pública en Neon Auth no es opcional** — si queda
-abierta, cualquiera se registra, queda como `authenticated` y RLS le abre los
-leads y los márgenes. Es el paso que más fácil se olvida y el que más caro sale.
+- **El registro público queda abierto a propósito.** Registrarse da una
+  cuenta de cliente, no acceso al portal. Un cliente que abre `/portal` ve
+  "Esta cuenta no es del equipo" y, aunque forzara el HTML, RLS le devuelve
+  cero filas.
+- **El primer admin** es quien ya tenía cuenta al aplicar la migración (hasta
+  entonces solo el equipo la tenía). Los siguientes se promueven desde
+  `/portal/usuarios`. Sin sesión (psql o el editor SQL de Neon) los triggers de
+  protección no aplican, así que el dueño siempre puede promover a alguien con
+  `update public.profiles set rol = 'admin' where email = '…'`.
+- **Un admin no puede quitarse su propio rol ni desactivarse** (trigger
+  `profiles_proteger`): evita quedarse fuera por error.
+- **Aprobar una solicitud de venta** es una función SQL
+  (`aprobar_solicitud_venta`) que crea consignación, ficha con
+  `fuente = 'consignacion'` y los enlaces en una sola transacción. Desde el
+  navegador en tres pasos quedarían estados a medias si uno fallara.
+- **Las fotos no las cuida RLS** (el bucket vive fuera de Postgres): las cuida
+  `/api/portal/fotos`, que antes de firmar una subida comprueba sesión y rol
+  admin con `verificarSesionPortal()`.
+
+Sigue sin haber diferencia entre un vendedor y el dueño dentro del equipo:
+todo admin ve todo. Si hiciera falta un rol intermedio, se agrega al enum y a
+`es_admin()`, no a la interfaz.
 
 ---
 

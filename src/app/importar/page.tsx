@@ -11,6 +11,9 @@ import { Section, SectionHeader } from "@/components/ui/Section";
 import { LUXCARS_CONFIG } from "@/lib/config";
 
 const { contact, legalName, brandName } = LUXCARS_CONFIG;
+const antiguedad = LUXCARS_CONFIG.hardFacts.find(
+  (fact) => fact.id === "antiguedad",
+);
 
 export const metadata: Metadata = {
   title: "Importar auto de Estados Unidos a Perú",
@@ -26,7 +29,11 @@ export const metadata: Metadata = {
 };
 
 const REGLAS: { icon: IconName; title: string; text: string }[] = [
-  { icon: "calendar", title: "Hasta 2 años", text: "En 2026 entran modelos 2024 en adelante." },
+  {
+    icon: "calendar",
+    title: `Hasta ${antiguedad?.value ?? "2 años"}`,
+    text: antiguedad?.detail ?? "Contados desde el año modelo, incluyendo el año en curso.",
+  },
   { icon: "ban", title: "Diésel usado: no", text: "Prohibido en autos y camionetas. Diésel nuevo sí." },
   { icon: "steering", title: "Timón izquierdo", text: "De fábrica. No se aceptan conversiones." },
   { icon: "gauge", title: "Tope de kilómetros", text: "Se contrasta el odómetro con el historial CarFax." },

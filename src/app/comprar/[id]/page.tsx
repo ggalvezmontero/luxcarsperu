@@ -11,6 +11,7 @@ import { Icon, WhatsAppIcon, type IconName } from "@/components/ui/Icon";
 import { findBrandLogo } from "@/lib/brandLogos";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { CATEGORY_LABEL, STATUS_LABEL, getStock, getStockUnit } from "@/lib/stock";
+import { CONSIGNMENT_LABEL, isConsignment } from "@/lib/stockLabels";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 type Params = { params: Promise<{ id: string }> };
@@ -23,7 +24,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title: `${v.title} · Stock en Lima`,
     description:
       v.description ??
-      `${v.brand} ${v.model} ${v.year}, ${formatNumber(v.mileageKm)} km. Disponible en San Isidro, Lima.`,
+      `${v.brand} ${v.model} ${v.year}, ${formatNumber(v.mileageKm)} km. ${isConsignment(v) ? "En consignación, disponible en Lima." : "Disponible en San Isidro, Lima."}`,
     alternates: { canonical: `/comprar/${v.slug ?? v.id}` },
   };
 }
@@ -39,10 +40,13 @@ export default async function VehiculoPage({ params }: Params) {
   const photos = v.photos.length ? v.photos : v.coverPhoto?.url ? [{ id: "cover", url: v.coverPhoto.url, alt: v.coverPhoto.alt }] : [];
   const logo = findBrandLogo(v.brand);
   const sold = v.status === "vendido";
+  const consigned = isConsignment(v);
 
   const wa = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(
     [
-      `Hola LuxCars, me interesa el ${v.brand} ${v.model} ${v.year} de su stock.`,
+      consigned
+        ? `Hola LuxCars, me interesa el ${v.brand} ${v.model} ${v.year} que tienen en consignación.`
+        : `Hola LuxCars, me interesa el ${v.brand} ${v.model} ${v.year} de su stock.`,
       `Referencia: ${(v.slug ?? v.id).toUpperCase()}`,
       "Quisiera coordinar una visita y conocer el precio final.",
     ].join("\n"),
@@ -79,8 +83,9 @@ export default async function VehiculoPage({ params }: Params) {
                 ) : (
                   <VehiclePlaceholder brand={v.brand} logo={logo} large />
                 )}
-                <div className="absolute left-4 top-4 flex gap-2">
+                <div className="absolute left-4 right-4 top-4 flex flex-wrap gap-2">
                   <Badge tone={STATUS_TONE[v.status]} dot>{STATUS_LABEL[v.status]}</Badge>
+                  {consigned ? <Badge tone="silver" className="bg-void/70 backdrop-blur">{CONSIGNMENT_LABEL}</Badge> : null}
                   {v.isDemo ? <Badge tone="warn">Demostración</Badge> : null}
                 </div>
               </div>
@@ -127,9 +132,21 @@ export default async function VehiculoPage({ params }: Params) {
                   </Button>
                 </div>
 
+                {consigned ? (
+                  <div className="mt-6 rounded-2xl border border-silver/30 bg-silver/5 p-4">
+                    <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-silver-bright">
+                      <Icon name="handshake" size={15} />
+                      {CONSIGNMENT_LABEL}
+                    </p>
+                    <p className="mt-1.5 text-sm leading-relaxed text-ink-2">
+                      Este auto es de un cliente que nos lo confió para venderlo. LuxCars verifica historial y documentos, coordina la visita con el dueño y acompaña la transferencia hasta la tarjeta de propiedad.
+                    </p>
+                  </div>
+                ) : null}
+
                 <ul className="mt-6 space-y-2.5 border-t border-line pt-5 text-sm text-ink-3">
-                  <li className="flex items-center gap-2"><Icon name="fileCheck" size={16} className="text-silver" />Nacionalizado, con placa y transferencia incluida</li>
-                  <li className="flex items-center gap-2"><Icon name="eye" size={16} className="text-silver" />Se ve y se maneja en San Isidro</li>
+                  <li className="flex items-center gap-2"><Icon name="fileCheck" size={16} className="text-silver" />{consigned ? "Con placa y transferencia acompañada por LuxCars" : "Nacionalizado, con placa y transferencia incluida"}</li>
+                  <li className="flex items-center gap-2"><Icon name="eye" size={16} className="text-silver" />{consigned ? "Se ve y se maneja en Lima, con cita coordinada" : "Se ve y se maneja en San Isidro"}</li>
                   <li className="flex items-center gap-2"><Icon name="shield" size={16} className="text-silver" />Historial y documentos a la vista antes de la visita</li>
                 </ul>
                 <p className="mt-5 text-xs leading-relaxed text-ink-4">

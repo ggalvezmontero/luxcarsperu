@@ -33,10 +33,12 @@ import type {
   VehiclePhoto,
   VehiclePhotoRow,
   VehicleSort,
+  VehicleSource,
   VehicleStatus,
 } from "./types";
 import {
   CURRENCIES,
+  VEHICLE_SOURCES,
   VEHICLE_CATEGORY_IDS,
   VEHICLE_CONDITIONS,
   VEHICLE_STATUSES,
@@ -142,6 +144,7 @@ function mapVehicle(row: PublicVehicleRow, photos: VehiclePhoto[] = []): Vehicle
     priceNegotiable: row.precio_negociable !== false,
 
     status: pickFrom<VehicleStatus>(row.estado, VEHICLE_STATUSES, "disponible"),
+    source: pickFrom<VehicleSource>(row.fuente, VEHICLE_SOURCES, "carga_manual"),
     location: row.ubicacion,
     title,
     description: row.descripcion,

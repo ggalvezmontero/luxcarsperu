@@ -8,7 +8,9 @@
  *     en el dominio propio.
  *  2. `verificarSesionPortal()`, la puerta de los Route Handlers del portal que
  *     hacen algo que RLS no puede cuidar (hoy: firmar subidas al bucket de
- *     fotos, que vive fuera de Postgres).
+ *     fotos, que vive fuera de Postgres). Exige sesión Y rol admin: desde que
+ *     los clientes tienen cuenta, "tiene sesión" ya no significa "es del
+ *     equipo".
  *
  * Igual que `db/client.ts`, NUNCA lanza: sin configuración devuelve `null` y
  * la ruta contesta 503 con el nombre de la variable que falta. Un portal que no
@@ -19,6 +21,7 @@ import "server-only";
 
 import { createNeonAuth } from "@neon/neon-js/auth/next/server";
 
+import { getSql } from "@/lib/db/client";
 import { getNeonUrls } from "@/lib/db/neonConfig";
 
 /** Largo mínimo que exige el SDK para firmar la cookie de sesión. */
@@ -66,14 +69,21 @@ export type ResultadoSesion =
   | { ok: true; userId: string; email: string | null }
   | {
       ok: false;
-      /** 401: no hay sesión válida. 503: el acceso no está configurado. */
-      status: 401 | 503;
-      codigo: "sin_sesion" | "portal_sin_configurar";
+      /**
+       * 401: no hay sesión válida. 403: hay sesión pero no es de un
+       * administrador. 503: el acceso no está configurado.
+       */
+      status: 401 | 403 | 503;
+      codigo: "sin_sesion" | "sin_permiso" | "portal_sin_configurar";
       mensaje: string;
     };
 
 /**
- * ¿Esta petición viene de alguien del equipo con sesión abierta?
+ * ¿Esta petición viene de un administrador con sesión abierta?
+ *
+ * El rol se lee de `public.profiles` con la conexión directa (`DATABASE_URL`),
+ * no del navegador: es el mismo criterio que `public.es_admin()` aplica en
+ * las políticas RLS — perfil con rol `admin` y activo.
  *
  * Lee la cookie de la petición en curso, así que solo sirve dentro de un Route
  * Handler o Server Action. Nunca lanza: devuelve el motivo para que la ruta
@@ -81,12 +91,14 @@ export type ResultadoSesion =
  */
 export async function verificarSesionPortal(): Promise<ResultadoSesion> {
   const auth = getPortalAuth();
-  if (!auth) {
+  const sql = getSql();
+  if (!auth || !sql) {
+    const falta = [...getPortalAuthServerMissingEnv(), ...(sql ? [] : ["DATABASE_URL"])];
     return {
       ok: false,
       status: 503,
       codigo: "portal_sin_configurar",
-      mensaje: `Ruta cerrada: falta ${getPortalAuthServerMissingEnv().join(" y ")}. Defínela en Vercel → Project Settings → Environment Variables y vuelve a desplegar.`,
+      mensaje: `Ruta cerrada: falta ${falta.join(" y ")}. Defínela en Vercel → Project Settings → Environment Variables y vuelve a desplegar.`,
     };
   }
 
@@ -101,9 +113,26 @@ export async function verificarSesionPortal(): Promise<ResultadoSesion> {
         mensaje: "Tu sesión venció. Vuelve a entrar al portal.",
       };
     }
+
+    const admin = await sql`
+      select 1
+      from public.profiles
+      where id = ${user.id}::uuid
+        and rol = 'admin'
+        and activo
+      limit 1
+    `;
+    if (admin.length === 0) {
+      return {
+        ok: false,
+        status: 403,
+        codigo: "sin_permiso",
+        mensaje: "Esta cuenta no tiene rol de administrador.",
+      };
+    }
     return { ok: true, userId: user.id, email: user.email ?? null };
   } catch {
-    // Neon Auth inalcanzable: se niega, no se deja pasar.
+    // Neon Auth o la base inalcanzables: se niega, no se deja pasar.
     return {
       ok: false,
       status: 401,

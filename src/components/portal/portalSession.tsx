@@ -4,7 +4,8 @@
  * Estado de sesión del portal, compartido entre el armazón y las pantallas.
  *
  * Quien decide si hay sesión es Neon Auth, no este archivo: acá solo se
- * escucha `onAuthStateChange` y se guarda el resultado. No se persiste nada a
+ * escucha (`onAuthStateChange` para otras pestañas, `alCambiarSesion` para
+ * esta) y se guarda el resultado. No se persiste nada a
  * mano, no se guarda ninguna contraseña y no se emite ningún token propio.
  */
 
@@ -17,7 +18,10 @@ import {
   useState,
 } from "react";
 
+import { fetchOwnProfile, type Profile } from "@/lib/auth/perfil";
 import {
+  alCambiarSesion,
+  avisarCambioDeSesion,
   getPortalClient,
   isPortalAuthConfigured,
   type PortalAuthSession,
@@ -28,20 +32,29 @@ import {
  * - `verificando`: todavía se está leyendo la sesión guardada (primer render).
  * - `autenticado`: hay sesión válida de Neon Auth.
  * - `anonimo`: no hay sesión; corresponde mandar a /portal/login.
+ * - `sin-permiso`: hay sesión pero el perfil NO es administrador (un cliente
+ *   del sitio). El portal no se muestra; RLS ya le devolvería cero filas,
+ *   esto solo evita una pantalla vacía y confusa.
  * - `sin-configurar`: no hay variables de Neon. No tiene sentido pedir
  *   login porque no hay a quién preguntarle: se muestra el portal en modo
  *   demostración, con todo en cero y el aviso de qué falta.
+ *
+ * `autenticado` significa, desde la migración 0010, "sesión válida Y rol
+ * admin activo". Ninguna pantalla del portal tiene que volver a comprobarlo.
  */
 export type PortalSessionStatus =
   | "verificando"
   | "autenticado"
   | "anonimo"
+  | "sin-permiso"
   | "sin-configurar";
 
 export type PortalSessionValue = {
   status: PortalSessionStatus;
   /** Correo del usuario con sesión, para mostrarlo en la barra lateral. */
   email: string | null;
+  /** Perfil (`public.profiles`) del usuario con sesión. `null` sin sesión. */
+  profile: Profile | null;
   /** Cliente con sesión. `null` si no hay configuración. */
   client: PortalClient | null;
   /** Cierra la sesión en Neon Auth y devuelve al login. */
@@ -69,6 +82,7 @@ export function PortalSessionProvider({
     configured ? "verificando" : "sin-configurar",
   );
   const [email, setEmail] = useState<string | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     if (!configured) return;
@@ -87,29 +101,46 @@ export function PortalSessionProvider({
       };
     }
 
-    client.auth
-      .getSession()
-      .then(({ data }: { data: { session: PortalAuthSession } }) => {
-        if (cancelled) return;
-        const session = data.session;
-        setEmail(session?.user?.email ?? null);
-        setStatus(session ? "autenticado" : "anonimo");
-      })
-      .catch(() => {
-        // Neon Auth inalcanzable: se trata como "sin sesión", no como error
-        // fatal. El usuario verá el login y el mensaje al intentar entrar.
-        if (!cancelled) setStatus("anonimo");
-      });
+    // Con sesión, el estado final depende del ROL del perfil, no solo de que
+    // exista la sesión. Sin perfil (o inactivo, o cliente) no hay portal.
+    const resolve = async (session: PortalAuthSession) => {
+      if (cancelled) return;
+      setEmail(session?.user?.email ?? null);
+      if (!session) {
+        setProfile(null);
+        setStatus("anonimo");
+        return;
+      }
+      const own = await fetchOwnProfile(client);
+      if (cancelled) return;
+      setProfile(own);
+      setStatus(own?.role === "admin" && own.active ? "autenticado" : "sin-permiso");
+    };
+
+    const releer = () =>
+      client.auth
+        .getSession()
+        .then(({ data }: { data: { session: PortalAuthSession } }) =>
+          resolve(data.session),
+        )
+        .catch(() => {
+          // Neon Auth inalcanzable: se trata como "sin sesión", no como error
+          // fatal. El usuario verá el login y el mensaje al intentar entrar.
+          if (!cancelled) setStatus("anonimo");
+        });
+
+    void releer();
+    const dejarDeOir = alCambiarSesion(releer);
 
     const { data: listener } = client.auth.onAuthStateChange(
       (_event: string, session: PortalAuthSession) => {
-        setEmail(session?.user?.email ?? null);
-        setStatus(session ? "autenticado" : "anonimo");
+        void resolve(session);
       },
     );
 
     return () => {
       cancelled = true;
+      dejarDeOir();
       listener.subscription.unsubscribe();
     };
   }, [configured, client]);
@@ -118,16 +149,18 @@ export function PortalSessionProvider({
     if (!client) return;
     try {
       await client.auth.signOut();
+      await avisarCambioDeSesion();
     } catch {
-      // Si la red falla, el listener no se disparará: se fuerza el estado.
+      // Si la red falla no hay nada que releer: se fuerza el estado.
       setStatus("anonimo");
       setEmail(null);
+      setProfile(null);
     }
   }, [client]);
 
   const value = useMemo<PortalSessionValue>(
-    () => ({ status, email, client, signOut }),
-    [status, email, client, signOut],
+    () => ({ status, email, profile, client, signOut }),
+    [status, email, profile, client, signOut],
   );
 
   return (

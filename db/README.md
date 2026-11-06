@@ -1,9 +1,9 @@
 # Base de datos — LUX CARS IMPORT S.A.C.
 
 Esquema de Postgres en **Neon** (proyecto `luxcarsperu`) para el **portal de
-administración** de LuxCars. Lo usan el
-dueño y su equipo. El cliente final **nunca crea cuenta**: cotiza, llena
-formularios y continúa por WhatsApp.
+administración** de LuxCars y el **área de cuenta** del cliente. El equipo
+(rol `admin`) lo ve todo; el cliente (rol `cliente`) crea cuenta solo para
+pedir una búsqueda u ofrecer su auto, y ve únicamente lo suyo.
 
 ---
 
@@ -62,6 +62,9 @@ escribir una migración y justificarlo. **Esa fricción es intencional.**
 | `quotes` | Cotizaciones de la calculadora, reproducibles |
 | `consignments` | Autos en consignación, **sin exclusividad** |
 | `tax_rates` | Tasas tributarias con vigencia y sustento normativo |
+| `profiles` | Una fila por cuenta de Neon Auth: rol (`cliente` / `admin`), activo, nombre, WhatsApp |
+| `solicitudes_compra` | Pedidos de búsqueda de un cliente con cuenta |
+| `solicitudes_venta` | Autos que un cliente ofrece en consignación; un admin aprueba o rechaza |
 
 ### Reglas de negocio que viven en el esquema
 
@@ -79,7 +82,7 @@ escribir una migración y justificarlo. **Esa fricción es intencional.**
 
 ## Seguridad: RLS + privilegios por columna
 
-RLS filtra **filas**, no columnas. Una política "anon lee los publicados" sin más
+RLS filtra **filas**, no columnas. Una política "anonymous lee los publicados" sin más
 dejaría leer `precio_compra` y `notas_internas` de los autos publicados — es
 decir, el margen del negocio. Por eso hay **dos capas**:
 
@@ -98,7 +101,8 @@ Resumen de acceso:
 | Rol | Acceso |
 |---|---|
 | `anonymous` | Solo lectura de vehículos publicados y sus fotos, solo columnas públicas |
-| `authenticated` | El equipo: acceso completo vía RLS |
+| `authenticated` con perfil `admin` activo | El equipo: acceso completo vía RLS (`public.es_admin()`) |
+| `authenticated` con perfil `cliente` | Solo su perfil y sus propias solicitudes |
 | `neondb_owner` (vía `DATABASE_URL`) | Route Handlers de Vercel (formularios públicos). No pasa por RLS |
 
 ### Los formularios públicos no escriben directo
@@ -113,17 +117,18 @@ con `INSERT` abierto, cualquiera podría inyectar leads en masa o escribir
 > limiting, captcha y una política `WITH CHECK` que fije `estado = 'nuevo'`. No
 > es un cambio de una línea.
 
-**El registro público debe seguir desactivado** en Neon Auth (`disable_sign_up`,
-ya aplicado). Las políticas otorgan acceso de equipo a **cualquier usuario
-autenticado**, tal como se pidió; si el registro se abre, cualquiera que se
-registre entra como equipo.
+**El registro público está abierto a propósito** desde la migración
+`20260917100000_cuentas_y_roles.sql`: toda cuenta nueva nace `cliente` y las
+políticas del negocio exigen `public.es_admin()`. Abrirlo **antes** de aplicar
+esa migración sí sería abrir el negocio: las políticas anteriores daban acceso
+de equipo a cualquier usuario autenticado.
 
 ### Las fotos no viven en Postgres
 
 El bucket `vehiculos` es de Neon Object Storage, que no tiene tablas ni RLS:
 lectura pública, y escritura solo con una credencial `storage:write` que conoce
 el servidor. El equipo sube con URLs prefirmadas que entrega
-`/api/portal/fotos` después de comprobar su sesión.
+`/api/portal/fotos` después de comprobar su sesión y su rol admin.
 
 ---
 
@@ -169,6 +174,9 @@ done
 ```
 
 El seed se aplica aparte y solo en desarrollo: `psql "$DATABASE_URL" -f db/seed.sql`.
+
+Para dar rol admin a una cuenta que ya existe: `npm run admin:crear -- correo "Nombre"`
+(o `db/seed_admin.sql`). No crea la cuenta ni maneja contraseñas.
 
 ### El seed es opcional y no publica nada
 

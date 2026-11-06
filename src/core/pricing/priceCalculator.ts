@@ -1,6 +1,7 @@
 import { IMPORTER_RULES } from "./importerRules";
 import {
   PRICING_CONFIG,
+  oldestImportableModelYear,
   resolveAdValoremRate,
   resolvePercepcionRate,
   type ImporterProfile,
@@ -108,13 +109,12 @@ export function checkAdmissibility(params: {
   const modelYear = Number.parseInt(params.year, 10);
   if (!Number.isFinite(modelYear)) return { allowed: true };
 
-  const age = params.currentYear - modelYear;
-  if (age > PRICING_CONFIG.usedMaxAgeYears) {
-    const oldest = params.currentYear - PRICING_CONFIG.usedMaxAgeYears;
+  const oldest = oldestImportableModelYear(params.currentYear);
+  if (modelYear < oldest) {
     return {
       allowed: false,
       reason:
-        `Un vehículo usado no puede tener más de ${PRICING_CONFIG.usedMaxAgeYears} años desde su año modelo. ` +
+        `Un vehículo usado no puede tener más de ${PRICING_CONFIG.usedMaxAgeYears} años desde su año modelo, contando el año en curso. ` +
         `En ${params.currentYear} el más antiguo que se puede nacionalizar es del ${oldest}.`,
     };
   }

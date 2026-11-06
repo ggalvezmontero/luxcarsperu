@@ -76,8 +76,8 @@ crezcan.
 
 ## Paso 2 — Aplicar las migraciones
 
-Las 7 migraciones están en `db/migrations/`. **Estado al 2026-11-05: ya están
-aplicadas** en `luxcarsperu` (7 tablas, 1 vista, las políticas RLS y 22 tasas
+Las 10 migraciones están en `db/migrations/`. **Estado al 2026-11-06: ya están
+aplicadas** en `luxcarsperu` (10 tablas, 1 vista, las políticas RLS y 22 tasas
 cargadas).
 
 Para aplicarlas en una base nueva hace falta `psql` y la cadena de conexión
@@ -96,7 +96,8 @@ referencian `neon_auth."user"`; todo eso lo crea Neon al activarlas.
 
 **Verificación (no te saltes esto):** en la consola, **Tables** debe mostrar
 `vehicle_models`, `vehicles`, `vehicle_photos`, `leads`, `quotes`,
-`consignments` y `tax_rates`.
+`consignments`, `tax_rates`, `profiles`, `solicitudes_compra` y
+`solicitudes_venta`.
 
 > **No cargues el seed.** `db/seed.sql` es solo para desarrollo local.
 > Siembra dos filas marcadas `FILA DEMO`, sin publicar y sin fotos. Si por
@@ -105,43 +106,84 @@ referencian `neon_auth."user"`; todo eso lo crea Neon al activarlas.
 
 ---
 
-## Paso 3 — ⚠ El alta pública debe quedar desactivada. El paso más importante de todos.
+## Paso 3 — Registro público ABIERTO, portal cerrado por rol
 
-**Si el registro se abre, cualquier persona de internet puede crearse una cuenta
-y entrar a ver tus leads, tus márgenes y el precio mínimo de cada consignación.**
+Desde la migración `20260917100000_cuentas_y_roles.sql` los clientes crean
+cuenta en **luxcars.pe/cuenta** para pedir búsquedas y ofrecer su auto. Por eso
+el alta pública **debe quedar activa**, y **solo después de aplicar esa
+migración**: antes de ella, cualquier cuenta nueva leería los leads.
 
-Las políticas de la base dan acceso de equipo a **cualquier usuario
-autenticado**, que es lo que se pidió. Si el registro queda abierto, registrarse
-**es** entrar al equipo.
+**Estado al 2026-11-06: ya está activa.** Para comprobarlo o cambiarlo: consola
+de Neon → **Auth** → configuración de **Sign-in with Email**.
 
-**Estado al 2026-11-05: ya está desactivada** (`disable_sign_up`). Para
-comprobarlo o cambiarlo: consola de Neon → **Auth** → configuración de
-**Sign-in with Email** → el registro de usuarios nuevos debe estar apagado.
+Hoy **no se exige confirmar el correo**: quien se registra entra en el acto. Si
+más adelante lo activas, el formulario ya lo contempla: cuando no llega sesión
+al registrarse, le dice al cliente que revise su bandeja.
 
-> **Cómo verificar:** el sitio lo confirma solo. Un registro contra
-> `/api/auth/sign-up/email` debe responder
-> *"Email and password sign up is not enabled"*.
+**Por qué esto ya no abre el negocio:** toda cuenta nueva nace con rol
+`cliente`. Todas las políticas del portal exigen `public.es_admin()`, así que
+un cliente con sesión recibe cero filas de leads, vehículos sin publicar,
+consignaciones y márgenes, exactamente igual que un anónimo. Lo que ve es lo
+suyo: sus solicitudes. Las fotos, que viven fuera de Postgres, las cuida
+`/api/portal/fotos` con la misma regla.
+
+> **Cómo verificar:** regístrate en una ventana de incógnito y abre
+> `/portal`. Debe decir "Esta cuenta no es del equipo".
 
 ---
 
-## Paso 4 — Crear los usuarios del equipo
+## Paso 4 — El primer administrador y los siguientes
 
-No hay registro en el portal y no lo habrá.
+- **Si ya había usuarios** en Neon → Auth → Users al aplicar la migración por
+  primera vez, todos pasaron a `admin` automáticamente (eran el equipo).
+- **Si el proyecto estaba vacío**, o para sumar a alguien sin entrar al portal:
 
-1. Consola de Neon → **Auth → Users → crear usuario**. Solo pide el **correo**
-   (y un nombre). Uno por persona del equipo.
-2. Esa persona abre **`/portal/recuperar`**, escribe su correo y recibe un
-   enlace (vence en 15 minutos) para **definir su propia contraseña**. Nadie le
-   dicta una clave a nadie.
-3. La misma pantalla sirve el día que alguien la olvida.
+  En Neon la cuenta y el rol son dos pasos: **nadie escribe ni dicta una
+  contraseña**. Primero existe la cuenta, después se le da el rol.
 
-El correo sale del remitente compartido de Neon (`auth@mail.myneon.app`). Sirve
-para empezar; para producción conviene configurar un remitente propio en
-**Auth → Email provider**, o el enlace puede caer en spam.
+  **Crear la cuenta** (una de dos):
 
-**Crea solo las cuentas que hacen falta.** Hoy todo usuario autenticado ve
-todo: no hay diferencia entre un vendedor y el dueño. Una cuenta de más es un
-juego completo de llaves de más.
+  - La persona se registra en `/cuenta/login` (Crear cuenta).
+  - Tú la agregas en la consola de Neon → **Auth → Users** (solo pide el
+    correo y un nombre) y ella abre **`/portal/recuperar`**, escribe su correo
+    y recibe un enlace (vence en 15 minutos) para definir su contraseña. La
+    misma pantalla sirve el día que alguien la olvida.
+
+  **Darle el rol admin** (una de tres):
+
+  1. **Script (recomendado).** Con `DATABASE_URL` en `.env.local`:
+
+     ```bash
+     npm run admin:crear -- tu@correo.pe "Tu Nombre"
+     ```
+
+     Busca la cuenta por correo y pone su perfil en rol `admin`. Si la cuenta
+     no existe todavía, lo dice y no toca nada.
+  2. **Seed SQL.** Edita los dos valores del bloque `config` de
+     `db/seed_admin.sql` y pégalo en el editor SQL de Neon, o córrelo con
+     `psql "$DATABASE_URL" -f db/seed_admin.sql`.
+  3. **A mano**, en el editor SQL de Neon:
+
+     ```sql
+     update public.profiles set rol = 'admin' where email = 'tu@correo.pe';
+     ```
+
+  Desde el editor SQL o con `DATABASE_URL` no hay sesión, así que el trigger
+  de protección no interfiere.
+
+  El correo de `/portal/recuperar` sale del remitente compartido de Neon
+  (`auth@mail.myneon.app`). Sirve para empezar; para producción conviene
+  configurar un remitente propio en **Auth → Email provider**, o el enlace
+  puede caer en spam.
+- **Los siguientes admins** no se crean en la consola: cada persona del equipo se
+  registra en `/cuenta/login` y tú le cambias el rol desde
+  **/portal/usuarios → Hacer admin**. Ahí mismo se quita el rol o se desactiva
+  una cuenta cuando alguien deja el equipo.
+
+**Da el rol admin solo a quien lo necesite.** Todo admin ve todo: leads,
+márgenes y precio mínimo de cada consignación. Un admin de más es un juego
+completo de llaves de más. Cada quien restablece su contraseña desde
+`/portal/recuperar`.
 
 ---
 

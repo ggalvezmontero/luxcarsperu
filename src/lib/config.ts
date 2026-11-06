@@ -1,5 +1,8 @@
 import { IMPORTER_RULES } from "@/core/pricing/importerRules";
-import { PRICING_CONFIG } from "@/core/pricing/pricingConfig";
+import {
+  PRICING_CONFIG,
+  oldestImportableModelYear,
+} from "@/core/pricing/pricingConfig";
 import {
   USED_ISC_RATE,
   VEHICLE_CATEGORIES,
@@ -40,8 +43,7 @@ export const BRAND_THEME_COLOR = "#050505";
  * desajustes de hidratación cada 1 de enero. Es una línea a actualizar por año.
  */
 const REFERENCE_YEAR = 2026;
-const OLDEST_IMPORTABLE_MODEL_YEAR =
-  REFERENCE_YEAR - IMPORT_COMPLIANCE_REFERENCE.maxVehicleAgeYears;
+const OLDEST_IMPORTABLE_MODEL_YEAR = oldestImportableModelYear(REFERENCE_YEAR);
 
 /** 0.155 → "15.5", 0.05 → "5". Sin ceros decimales de relleno. */
 const pct = (rate: number): string => {
@@ -179,7 +181,7 @@ export const LUXCARS_CONFIG = {
     {
       question: "¿Puedo comprar un auto ya disponible en Lima, sin importar nada?",
       answer:
-        "Sí. El stock propio ya está nacionalizado, con placas y tarjeta de propiedad. Lo ves, lo pruebas y lo compras. De cada unidad publicamos marca, modelo, año, kilometraje y precio. Si un dato no está verificado, no lo publicamos.",
+        "Sí. El stock propio ya está nacionalizado, con placas y tarjeta de propiedad. Lo ves, lo pruebas y lo compras. También publicamos autos de clientes en consignación, marcados como tales: los verificamos igual y coordinamos la visita con el dueño. De cada unidad publicamos marca, modelo, año, kilometraje y precio. Si un dato no está verificado, no lo publicamos.",
     },
     {
       question: "¿Tengo que dejarles mi auto para venderlo en consignación?",
@@ -199,7 +201,7 @@ export const LUXCARS_CONFIG = {
     {
       question: `¿Qué vehículos usados se pueden importar al Perú en ${REFERENCE_YEAR}?`,
       answer:
-        `Cuatro condiciones, todas obligatorias. Máximo ${IMPORT_COMPLIANCE_REFERENCE.maxVehicleAgeYears} años de antigüedad contados desde el año modelo: en ${REFERENCE_YEAR} entran modelos ${OLDEST_IMPORTABLE_MODEL_YEAR} en adelante. Timón izquierdo de fábrica. Tope de kilometraje de ${MAX_KM_M1} km en autos y SUV (categoría M1) y ${MAX_KM_N1} km en camionetas y pickups (N1). Y no ser diésel usado. Si el vehículo que te gusta no cumple, te lo decimos en la primera conversación.`,
+        `Cuatro condiciones, todas obligatorias. Máximo ${IMPORT_COMPLIANCE_REFERENCE.maxVehicleAgeYears} años de antigüedad contados desde el año modelo, y el año en curso cuenta como uno: en ${REFERENCE_YEAR} entran modelos ${OLDEST_IMPORTABLE_MODEL_YEAR} en adelante. Timón izquierdo de fábrica. Tope de kilometraje de ${MAX_KM_M1} km en autos y SUV (categoría M1) y ${MAX_KM_N1} km en camionetas y pickups (N1). Y no ser diésel usado. Si el vehículo que te gusta no cumple, te lo decimos en la primera conversación.`,
     },
     {
       question: "¿Puedo importar una camioneta diésel usada?",
@@ -368,7 +370,7 @@ export const LUXCARS_CONFIG = {
       id: "antiguedad",
       title: "Antigüedad máxima",
       value: `${IMPORT_COMPLIANCE_REFERENCE.maxVehicleAgeYears} años`,
-      detail: `Contados desde el año modelo. En ${REFERENCE_YEAR}, solo modelos ${OLDEST_IMPORTABLE_MODEL_YEAR} en adelante.`,
+      detail: `Contados desde el año modelo, incluyendo el año en curso. En ${REFERENCE_YEAR}, solo modelos ${OLDEST_IMPORTABLE_MODEL_YEAR} en adelante.`,
     },
     {
       id: "kilometraje",

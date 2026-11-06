@@ -1,4 +1,10 @@
-import { CATEGORY_LABEL, STATUS_LABEL, type StockVehicle } from "@/lib/stockLabels";
+import {
+  CATEGORY_LABEL,
+  CONSIGNMENT_LABEL,
+  STATUS_LABEL,
+  isConsignment,
+  type StockVehicle,
+} from "@/lib/stockLabels";
 import { findBrandLogo, LOGO_MODE_CLASS, type LogoMode } from "@/lib/brandLogos";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import Image from "next/image";
@@ -48,10 +54,13 @@ export function VehicleCard({
         ) : (
           <VehiclePlaceholder brand={vehicle.brand} logo={logo} />
         )}
-        <div className="absolute left-3 top-3 flex gap-2">
+        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           <Badge tone={STATUS_TONE[vehicle.status]} dot>
             {STATUS_LABEL[vehicle.status]}
           </Badge>
+          {isConsignment(vehicle) ? (
+            <Badge tone="silver" className="bg-void/70 backdrop-blur">{CONSIGNMENT_LABEL}</Badge>
+          ) : null}
         </div>
         {vehicle.photos.length > 1 ? (
           <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-void/70 px-2.5 py-1 text-[11px] font-medium text-silver-bright backdrop-blur">

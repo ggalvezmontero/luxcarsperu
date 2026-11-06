@@ -6,10 +6,15 @@ export function CtaBand({
   title = "¿Tienes un auto en mente?",
   text = "Cuéntanos cuál y te decimos si conviene traerlo, cuánto cuesta puesto en Lima y en cuánto tiempo llega.",
   message = "Hola LuxCars, tengo un auto en mente y quiero saber si conviene importarlo.",
+  secondaryHref = "/#contact",
+  secondaryLabel = "Dejar mis datos",
 }: {
   title?: string;
   text?: string;
   message?: string;
+  /** Acción secundaria: por defecto el formulario de contacto. */
+  secondaryHref?: string;
+  secondaryLabel?: string;
 }) {
   const href = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(message)}`;
   return (
@@ -25,8 +30,8 @@ export function CtaBand({
             <WhatsAppIcon size={20} />
             Escribir por WhatsApp
           </Button>
-          <Button href="/#contact" variant="secondary" size="lg">
-            Dejar mis datos
+          <Button href={secondaryHref} variant="secondary" size="lg">
+            {secondaryLabel}
           </Button>
         </div>
       </div>

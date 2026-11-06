@@ -42,7 +42,7 @@ import {
 const SETUP_STEPS = [
   "Aplica las migraciones de db/migrations/ en el proyecto de Neon y activa ahí la Data API y Neon Auth.",
   "Carga NEXT_PUBLIC_NEON_URL y NEON_AUTH_COOKIE_SECRET en Vercel y en .env.local.",
-  "Agrega a cada persona del equipo en la consola de Neon → Auth → Users; el alta pública ya está desactivada.",
+  "Crea tu cuenta en luxcars.pe/cuenta/login y pide a un administrador que te asigne el rol admin desde /portal/usuarios.",
 ];
 
 export function LeadsScreen() {

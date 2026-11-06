@@ -22,6 +22,7 @@ const COLUMNS = [
       { label: "Cómo funciona", href: "/como-funciona" },
       { label: "Preguntas frecuentes", href: "/faq" },
       { label: "Contacto", href: "/#contact" },
+      { label: "Mi cuenta", href: "/cuenta" },
     ],
   },
   {

@@ -9,15 +9,21 @@
  *   - La sesión la persiste y la refresca el SDK de Neon, con una cookie que
  *     deja el puente `/api/auth` en este mismo dominio.
  *
- * NO HAY REGISTRO. El dueño da de alta a cada persona del equipo, solo con su
- * correo, en la consola de Neon → Auth → Users. La contraseña la define cada
- * quien en /portal/recuperar, que también sirve para restablecerla.
+ * El registro público vive en /cuenta/login (clientes). Acá no hay registro:
+ * una cuenta entra al portal solo si su perfil tiene rol `admin`, y ese rol
+ * lo asigna otro administrador desde /portal/usuarios. Si la sesión es de un
+ * cliente, se cierra en el acto y se explica.
+ *
+ * La contraseña la define o la restablece cada quien en /portal/recuperar,
+ * con un enlace que Neon Auth manda a su correo.
  */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { fetchOwnProfile } from "@/lib/auth/perfil";
 import {
+  avisarCambioDeSesion,
   describeAuthError,
   getPortalAuthMissingEnv,
   getPortalClient,
@@ -70,6 +76,19 @@ export function PortalLoginForm() {
 
       // La contraseña no queda en memoria más de lo necesario.
       setPassword("");
+
+      // Solo entra un administrador. Un cliente con sesión válida vería un
+      // portal vacío (RLS), así que se le cierra la sesión y se le explica.
+      const profile = await fetchOwnProfile(client);
+      if (!profile || profile.role !== "admin" || !profile.active) {
+        await client.auth.signOut();
+        await avisarCambioDeSesion();
+        setError(
+          "Esta cuenta no es del equipo. Si eres cliente, tus solicitudes están en luxcars.pe/cuenta. Si eres del equipo, pide a un administrador que te asigne el rol.",
+        );
+        return;
+      }
+      await avisarCambioDeSesion();
       router.replace("/portal");
     } catch (caught) {
       setError(
@@ -105,8 +124,11 @@ export function PortalLoginForm() {
       >
         <h1 className="text-base font-medium text-ink">Acceso del equipo</h1>
         <p className="mt-1 text-xs leading-relaxed text-ink-3">
-          Uso exclusivo de LUX CARS IMPORT S.A.C. Si eres cliente, escríbenos
-          por WhatsApp: no necesitas cuenta para cotizar.
+          Uso exclusivo de LUX CARS IMPORT S.A.C. Si eres cliente, entra por{" "}
+          <Link href="/cuenta/login" className="text-silver underline underline-offset-4">
+            luxcars.pe/cuenta
+          </Link>
+          .
         </p>
 
         {!configured ? (
@@ -195,8 +217,8 @@ export function PortalLoginForm() {
         </button>
 
         <p className="mt-5 text-[0.68rem] leading-relaxed text-ink-4">
-          No hay registro: las cuentas las crea el administrador. Si es tu
-          primera vez o la olvidaste,{" "}
+          Solo entran cuentas con rol de administrador, asignado desde
+          Usuarios en el portal. Si es tu primera vez o la olvidaste,{" "}
           <Link
             href="/portal/recuperar"
             className="text-ink-3 underline underline-offset-4 transition-colors hover:text-silver"

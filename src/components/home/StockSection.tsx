@@ -14,7 +14,7 @@ export async function StockSection() {
       <SectionHeader
         eyebrow="Disponible en Lima"
         title="Stock verificado, listo para entregar"
-        description="Cada unidad está en San Isidro, con documentos en regla. Sin esperas de importación."
+        description="Stock propio y autos de clientes en consignación, identificados como tales. Todos en Lima, verificados y con documentos en regla."
         action={
           <Button href="/comprar" variant="secondary">
             Ver todo el stock
