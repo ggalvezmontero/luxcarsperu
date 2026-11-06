@@ -256,31 +256,33 @@ público o CC0 por no alcanzar el umbral de originalidad (texto y formas simples
 ## Fotos de los pasos del proceso y de la portada de `/escaneo`
 
 Agregadas el 6 de noviembre de 2026. Viven en `public/images/how/` y se usan
-desde `src/lib/fotosProceso.ts` (home, `/como-funciona` y `/escaneo`). Mismas
-tres pruebas que el catálogo: muestran literalmente lo que dice el paso, la
-licencia permite uso comercial y el archivo se descargó y se abrió para
-verificarlo. Todas se recortaron a 16:10 (1600 × 1000) y se convirtieron a WebP.
+desde `src/lib/fotosProceso.ts` (home, `/como-funciona` y `/escaneo`). Todas se
+recortaron a 16:10 (1600 × 1000) y se convirtieron a WebP.
+
+Salen de **Unsplash** bajo la [Licencia Unsplash](https://unsplash.com/license):
+uso comercial permitido y **sin atribución obligatoria**, por eso no llevan
+crédito en pantalla. Se eligieron solo fotos del catálogo gratuito (no
+Unsplash+) y se abrió cada archivo para verificar lo que muestra.
 
 Reemplazan a tres fotos de banco genéricas que se borraron del repositorio
 (`purchase.jpg`, un apretón de manos; `customs.jpg`, una firma sobre un
 escritorio; `delivery.jpg`, una RAV4 cualquiera) y llenan los dos pasos que no
 tenían imagen (Búsqueda e Inspección).
 
-| Archivo | Paso | Qué muestra | Autor | Licencia | ¿Atribución exigida? | URL de origen |
-|---|---|---|---|---|---|---|
-| `busqueda-concesionario.webp` | Búsqueda | Concesionario Porsche de noche, con autos tras la vidriera | Eden, Janine and Jim (Flickr) | **CC BY 2.0** | **SÍ** | [File:Porsche Showroom (51347492434).jpg](https://commons.wikimedia.org/wiki/File:Porsche_Showroom_(51347492434).jpg) |
-| `inspeccion-diagnostico.webp` | Inspección y portada de `/escaneo` | Una mano con un conector de diagnóstico OBD dentro de un auto, junto a una laptop | Nenad Stojkovic (Flickr) | **CC BY 2.0** | **SÍ** | [File:Man holding Obd2 jack for car software diagnostic.jpg](https://commons.wikimedia.org/wiki/File:Man_holding_Obd2_jack_for_car_software_diagnostic.jpg) |
-| `compra-concesionario.webp` | Compra | Concesionario Mercedes-AMG en Bethesda, Maryland (EE.UU.) | G. Edward Johnson (obra propia) | **CC BY 4.0** | **SÍ** | [File:EuroMotorcars Bethesda MD 2021-12-12 09-44-18 1.jpg](https://commons.wikimedia.org/wiki/File:EuroMotorcars_Bethesda_MD_2021-12-12_09-44-18_1.jpg) |
-| `aduanas-callao.webp` | Aduanas | Vista aérea del puerto del Callao | GORE Callao (Flickr) | **Dominio público** | No | [File:Vista del Puerto del Callao.jpg](https://commons.wikimedia.org/wiki/File:Vista_del_Puerto_del_Callao.jpg) |
-| `entrega-llave.webp` | Entrega | Una mano extiende la llave de un auto | @kaboompics | **CC0** | No | [File:Someone handing a key over.jpg](https://commons.wikimedia.org/wiki/File:Someone_handing_a_key_over.jpg) |
+| Archivo | Paso | Qué muestra | Autor | Página de origen |
+|---|---|---|---|---|
+| `busqueda-patio-suv.webp` | Búsqueda | Fila de SUV Lincoln negras en un patio, al atardecer | Obi | [unsplash.com/photos/JplHTAFLGDQ](https://unsplash.com/photos/black-lincoln-suvs-on-parking-lot-JplHTAFLGDQ) |
+| `inspeccion-taller.webp` | Inspección | Mecánico revisando el motor de un Mercedes-Benz en un taller | Dextar Studio | [unsplash.com/photos/XP8o9_Arwqg](https://unsplash.com/photos/mechanic-working-on-a-car-engine-in-a-workshop-XP8o9_Arwqg) |
+| `compra-showroom.webp` | Compra | Audi RS en un showroom | Robert Solcan | [unsplash.com/photos/kWeFLzcbafg](https://unsplash.com/photos/audi-rs-5-in-car-dealership-kWeFLzcbafg) |
+| `embarque-buque.webp` | Embarque | Buque portacontenedores en mar abierto | Haydn | [unsplash.com/photos/ZT3i-6XW8J8](https://unsplash.com/photos/a-large-cargo-ship-with-lots-of-containers-on-its-back-ZT3i-6XW8J8) |
+| `aduanas-puerto-autos.webp` | Aduanas | Vehículos nuevos estacionados en un puerto | PortCalls Asia | [unsplash.com/photos/e_xq6P6NeHE](https://unsplash.com/photos/cars-parked-at-a-port-with-ships-in-the-background-e_xq6P6NeHE) |
+| `entrega-llave-auto.webp` | Entrega | Mano con la llave de un Audi frente al auto | Swansway Motor Group | [unsplash.com/photos/tgUdTefRlSw](https://unsplash.com/photos/a-person-holding-a-car-key-in-front-of-a-silver-car-tgUdTefRlSw) |
+| `escaneo-diagnostico.webp` | Portada de `/escaneo` | Técnico con una laptop de diagnóstico dentro de un auto | Mehmet Talha Onuk | [unsplash.com/photos/dSosKR6g-W8](https://unsplash.com/photos/a-man-sitting-in-a-car-using-a-laptop-computer-dSosKR6g-W8) |
 
-Las tres CC BY pintan su crédito con `CreditoFoto` debajo del paso (y bajo los
-botones de la portada de `/escaneo`). Si se quita el crédito hay que quitar la
-foto.
+`images/how/shipping.jpg` (terminal de contenedores) sigue en uso solo como
+portada de `/importar`.
 
-**Son ilustrativas del paso, no operaciones de LuxCars.** Los dos concesionarios
-son tiendas reales de Estados Unidos que ilustran dónde se busca y se compra: no
-afirman una relación comercial con ellas. En cuanto existan fotos propias (una
-unidad en el patio del Callao, una entrega real con permiso del cliente, un
-escaneo propio), reemplazan a estas: ver la lista de tomas en
+**Son ilustrativas del paso, no operaciones de LuxCars.** En cuanto existan
+fotos propias (el Corvette en el patio del Callao, una entrega real con permiso
+del cliente, un escaneo propio), reemplazan a estas: ver la lista de tomas en
 `docs/IMAGENES.md`, sección 4.

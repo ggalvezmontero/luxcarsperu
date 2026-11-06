@@ -89,8 +89,9 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
     loadRaster("/brand/logo-blanco.svg", 1000),
     (() => {
       const logo = findBrandLogo(estimate.input.brand);
-      // Sobre papel blanco solo sirven los logos oscuros (los blancos se pierden).
-      return logo && logo.mode === "invert" ? loadRaster(logo.src, 600) : Promise.resolve(null);
+      // Sobre papel blanco solo sirven los logos oscuros o de color: los que
+      // ya son blancos (`none`: BMW, Tesla, Bentley) se pierden.
+      return logo && logo.mode !== "none" ? loadRaster(logo.src, 600) : Promise.resolve(null);
     })(),
   ]);
 

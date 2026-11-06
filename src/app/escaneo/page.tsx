@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/Button";
-import { CreditoFoto } from "@/components/CreditoFoto";
 import { CtaBand } from "@/components/CtaBand";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
@@ -215,10 +214,9 @@ export default function EscaneoPage() {
       <main id="contenido" className="w-full flex-1">
         {/* Portada */}
         <section className="relative isolate w-full overflow-hidden bg-void pt-[calc(var(--lux-nav-h)+3rem)] pb-14 sm:pt-[calc(var(--lux-nav-h)+4rem)] sm:pb-20">
-          {/* Foto de un diagnóstico por el puerto OBD (CC BY 2.0, crédito obligatorio abajo) */}
           <Image
-            src={FOTOS_PROCESO.inspeccion.src}
-            alt={FOTOS_PROCESO.inspeccion.alt}
+            src={FOTOS_PROCESO.escaneo.src}
+            alt={FOTOS_PROCESO.escaneo.alt}
             fill
             priority
             sizes="100vw"
@@ -248,12 +246,6 @@ export default function EscaneoPage() {
                   Ver qué revisamos
                 </Button>
               </div>
-              <CreditoFoto
-                credito={FOTOS_PROCESO.inspeccion.credito.autor}
-                licencia={FOTOS_PROCESO.inspeccion.credito.licencia}
-                fuenteUrl={FOTOS_PROCESO.inspeccion.credito.fuenteUrl}
-                className="mt-6"
-              />
             </div>
             <div className="lg:col-span-5">
               <InformeDeEjemplo />

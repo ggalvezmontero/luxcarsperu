@@ -3,8 +3,8 @@
 > **Actualización 2026-11-06.** Los pasos del proceso ya no usan las fotos de
 > banco genéricas ni quedan sin imagen: `how/purchase.jpg`, `how/customs.jpg` y
 > `how/delivery.jpg` se borraron y los seis pasos (más la portada de `/escaneo`)
-> usan fotos con licencia libre que muestran literalmente el paso. Procedencia y
-> créditos en `docs/FOTOS.md`; el código, en `src/lib/fotosProceso.ts`. Lo que
+> usan fotos de Unsplash (licencia sin atribución) con un auto en cada paso. Procedencia
+> en `docs/FOTOS.md`; el código, en `src/lib/fotosProceso.ts`. Lo que
 > sigue pendiente es lo de la sección 4: fotos propias.
 
 Última auditoría: 2026-09-15. Se revisó `public/` completo y **todas** las

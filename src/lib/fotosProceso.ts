@@ -2,13 +2,15 @@
  * Fotos de los pasos del proceso de importación (home y /como-funciona) y de
  * la portada de /escaneo.
  *
- * Misma regla que el resto del sitio (docs/IMAGENES.md): cada foto muestra
- * literalmente lo que dice su paso —un concesionario de EE.UU., un diagnóstico
- * por el puerto OBD, el puerto del Callao, una llave que se entrega— y no
- * aparenta ser una operación de LuxCars. Todas salen de Wikimedia Commons con
- * licencia de uso comercial y están autohospedadas; la procedencia de cada una
- * está en docs/FOTOS.md. Las CC BY llevan `credito`, que se pinta con
- * `CreditoFoto` porque la licencia lo exige.
+ * Cada foto muestra el paso con un auto dentro: un patio de unidades, un
+ * mecánico revisando un motor, un showroom, un buque, autos en un puerto, una
+ * llave que se entrega. Son ilustrativas: no aparentan ser una operación de
+ * LuxCars. Salen de Unsplash bajo la Licencia Unsplash (uso comercial, sin
+ * atribución obligatoria) y están autohospedadas; el autor y la página de
+ * origen de cada una están en docs/FOTOS.md.
+ *
+ * `credito` queda para el día que entre una foto con licencia que SÍ exija
+ * atribución (CC BY): los componentes la pintan con `CreditoFoto`.
  *
  * El `alt` describe lo que se ve, no el paso que ilustra.
  */
@@ -19,44 +21,36 @@ export type FotoProceso = {
   credito?: { autor: string; licencia: string; fuenteUrl: string };
 };
 
-export const FOTOS_PROCESO = {
+export const FOTOS_PROCESO: Record<
+  "busqueda" | "inspeccion" | "compra" | "embarque" | "aduanas" | "entrega" | "escaneo",
+  FotoProceso
+> = {
   busqueda: {
-    src: "/images/how/busqueda-concesionario.webp",
-    alt: "Concesionario Porsche de noche, con autos blancos iluminados tras la vidriera",
-    credito: {
-      autor: "Eden, Janine and Jim",
-      licencia: "CC BY 2.0",
-      fuenteUrl: "https://commons.wikimedia.org/wiki/File:Porsche_Showroom_(51347492434).jpg",
-    },
+    src: "/images/how/busqueda-patio-suv.webp",
+    alt: "Fila de SUV negras estacionadas en el patio de un concesionario al atardecer",
   },
   inspeccion: {
-    src: "/images/how/inspeccion-diagnostico.webp",
-    alt: "Una mano sostiene un conector de diagnóstico OBD dentro de un auto, junto a una laptop abierta",
-    credito: {
-      autor: "Nenad Stojkovic",
-      licencia: "CC BY 2.0",
-      fuenteUrl: "https://commons.wikimedia.org/wiki/File:Man_holding_Obd2_jack_for_car_software_diagnostic.jpg",
-    },
+    src: "/images/how/inspeccion-taller.webp",
+    alt: "Un mecánico revisa el motor de un Mercedes-Benz con el capó abierto en un taller",
   },
   compra: {
-    src: "/images/how/compra-concesionario.webp",
-    alt: "Fachada de vidrio de un concesionario Mercedes-AMG en Estados Unidos, en un día despejado",
-    credito: {
-      autor: "G. Edward Johnson",
-      licencia: "CC BY 4.0",
-      fuenteUrl: "https://commons.wikimedia.org/wiki/File:EuroMotorcars_Bethesda_MD_2021-12-12_09-44-18_1.jpg",
-    },
+    src: "/images/how/compra-showroom.webp",
+    alt: "Audi RS gris oscuro visto desde atrás dentro de un showroom luminoso",
   },
   embarque: {
-    src: "/images/how/shipping.jpg",
-    alt: "Terminal portuario con contenedores y grúas",
+    src: "/images/how/embarque-buque.webp",
+    alt: "Buque portacontenedores navegando en mar abierto, visto desde el aire",
   },
   aduanas: {
-    src: "/images/how/aduanas-callao.webp",
-    alt: "Vista aérea del puerto del Callao, con grúas y contenedores apilados junto al mar",
+    src: "/images/how/aduanas-puerto-autos.webp",
+    alt: "Camionetas y autos nuevos estacionados en un puerto, con barcos al fondo",
   },
   entrega: {
-    src: "/images/how/entrega-llave.webp",
-    alt: "Una mano extiende la llave de un auto hacia la cámara",
+    src: "/images/how/entrega-llave-auto.webp",
+    alt: "Una mano sostiene la llave de un Audi frente a un Audi plateado",
   },
-} as const satisfies Record<string, FotoProceso>;
+  escaneo: {
+    src: "/images/how/escaneo-diagnostico.webp",
+    alt: "Un técnico sentado en un auto trabaja con una laptop de diagnóstico conectada al vehículo",
+  },
+};

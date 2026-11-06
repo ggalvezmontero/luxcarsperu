@@ -69,7 +69,7 @@ export function ImportBand() {
             <div className="p-5">
               <h3 className="text-lg font-semibold text-ink">{p.title}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-3">{p.text}</p>
-              {"credito" in p.foto && p.foto.credito ? (
+              {p.foto.credito ? (
                 <CreditoFoto
                   credito={p.foto.credito.autor}
                   licencia={p.foto.credito.licencia}
