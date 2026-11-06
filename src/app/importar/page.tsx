@@ -22,6 +22,14 @@ const OG_TITLE = `Importar auto de Estados Unidos a Perú | ${brandName}`;
 const OG_DESCRIPTION =
   "Normativa clara, tributos explicados y una calculadora pública para saber el costo real.";
 
+/**
+ * Los ejemplos de "más pedidos" salen de la base y se editan en el portal. Al
+ * guardar, el portal pide regenerar esta página; esto es solo la red de
+ * seguridad por si ese aviso se pierde: una vez al día se vuelve a generar.
+ * Si la base falla en ese momento, se conserva la última página buena.
+ */
+export const revalidate = 86400;
+
 export const metadata: Metadata = {
   title: "Importar auto de Estados Unidos a Perú",
   description:

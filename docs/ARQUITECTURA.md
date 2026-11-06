@@ -535,3 +535,36 @@ Facebook muestra el auto y la cifra puesta en Lima.
   `src/data/vehicleCatalog.ts`: los enlaces ya compartidos de ese modelo se
   quedarían sin nombre (siguen abriendo, como "Vehículo 2026").
 
+---
+
+## Ejemplos de importación a pedido, editables desde el portal
+
+Los autos de referencia de la home (`#referencias`, los tres primeros) y de
+`/importar` (`#mas-buscados`, todos) se editan en **/portal/ejemplos**: precio,
+foto, orden, ocultar, agregar y quitar, sin desplegar.
+
+- **Dónde viven.** En `public.ejemplos_importacion` (migración 0012). Cada fila
+  guarda en `datos` el objeto exacto que usa la web (`TrendingVehicle`), así el
+  HTML es idéntico venga de la base o del archivo. Al mudarlos se comprobó que
+  las dos secciones y el sitemap salían iguales byte a byte.
+- **El archivo sigue siendo el respaldo.** `src/data/trendingVehicles.json` no se
+  borra: `src/lib/importExamples/servidor.ts` lo usa si la base no está
+  configurada, no conoce la tabla o tiene menos de tres ejemplos válidos. Nunca
+  se pinta una sección vacía y nunca se mezclan las dos fuentes.
+- **Un corte de la base no cambia la página.** Si la consulta falla al
+  regenerar, se lanza el error y Next conserva la última página buena.
+- **Las reglas del catálogo no se relajaron.** `src/lib/importExamples/validacion.ts`
+  las aplica al guardar y al leer: foto solo propia y con licencia, crédito
+  obligatorio cuando la licencia lo exige, y simulación solo para autos que se
+  consiguen en dealers de EE.UU.
+- **Qué NO se edita desde el portal, a propósito:** los títulos y textos de las
+  secciones, los enlaces y el marcado de la tarjeta. Son los que posicionan y
+  se quedan en el código. El identificador de un ejemplo tampoco se cambia: es
+  parte de su enlace (`/?simular=<id>`).
+- **Cómo se actualiza la web.** Al guardar, el portal llama a
+  `POST /api/portal/ejemplos/revalidar`, que marca la home, `/importar` y el
+  sitemap para regenerarse en la siguiente visita. `/importar` además se
+  regenera una vez al día, por si ese aviso se pierde.
+- **La calculadora** recibe los presets de simulación como prop desde la home,
+  en vez de cargar el catálogo entero en el navegador.
+

@@ -1,4 +1,4 @@
-import { TRENDING_VEHICLES } from "@/data/trendingVehicles";
+import { getImportExamplesForIsr } from "@/lib/importExamples/servidor";
 import { formatCurrency } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
@@ -28,8 +28,14 @@ type Props = {
  * Catálogo de referencia: modelos que más nos piden importar, con precio
  * referencial de EE.UU. Al tocar una tarjeta la calculadora se abre con
  * los datos cargados.
+ *
+ * Los autos salen de la base (se editan en /portal/ejemplos) con la lista del
+ * repositorio como respaldo: ver `lib/importExamples/servidor.ts`. Lo que NO
+ * sale de la base, a propósito, es todo lo demás: los títulos de la sección,
+ * los enlaces y el marcado de la tarjeta se quedan acá, iguales para cualquier
+ * fuente, porque este bloque posiciona en Google.
  */
-export function MostSoughtVehiclesSection({
+export async function MostSoughtVehiclesSection({
   limite,
   verTodosHref,
   eyebrow = "Los más pedidos",
@@ -38,7 +44,8 @@ export function MostSoughtVehiclesSection({
   id = "mas-buscados",
   tone = "bg",
 }: Props = {}) {
-  const vehiculos = limite ? TRENDING_VEHICLES.slice(0, limite) : TRENDING_VEHICLES;
+  const { vehiculos: todos } = await getImportExamplesForIsr();
+  const vehiculos = limite ? todos.slice(0, limite) : todos;
 
   return (
     <Section id={id} tone={tone}>
@@ -49,7 +56,7 @@ export function MostSoughtVehiclesSection({
         action={
           verTodosHref ? (
             <Button href={verTodosHref} variant="secondary">
-              Ver los {TRENDING_VEHICLES.length} modelos
+              Ver los {todos.length} modelos
               <Icon name="arrowRight" size={16} />
             </Button>
           ) : undefined

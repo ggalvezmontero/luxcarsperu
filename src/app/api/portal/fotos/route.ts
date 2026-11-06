@@ -52,9 +52,18 @@ const EXTENSION_POR_TIPO: Record<string, string> = {
 const RE_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Solo rutas con la convención del bucket: `{uuid}/{uuid}.{ext}`. */
+/**
+ * Carpeta de las fotos de los ejemplos de importación (/portal/ejemplos). No
+ * cuelgan de un vehículo del stock, así que no van bajo un `{vehicleId}/`.
+ */
+const CARPETA_EJEMPLOS = "ejemplos";
+
+/**
+ * Solo rutas con la convención del bucket: `{uuid}/{uuid}.{ext}` para el stock
+ * y `ejemplos/{uuid}.{ext}` para los ejemplos de importación.
+ */
 const RE_RUTA =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|avif|heic)$/i;
+  /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|ejemplos)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|avif|heic)$/i;
 
 function fallo(status: number, mensaje: string) {
   return NextResponse.json({ ok: false, mensaje }, { status });
@@ -91,11 +100,12 @@ export async function POST(request: Request) {
 
   const cuerpo = await leerCuerpo(request);
   const vehicleId = typeof cuerpo?.vehicleId === "string" ? cuerpo.vehicleId : "";
+  const paraEjemplos = cuerpo?.carpeta === CARPETA_EJEMPLOS;
   const contentType =
     typeof cuerpo?.contentType === "string" ? cuerpo.contentType.toLowerCase() : "";
   const bytes = typeof cuerpo?.bytes === "number" ? cuerpo.bytes : Number.NaN;
 
-  if (!RE_UUID.test(vehicleId)) {
+  if (!paraEjemplos && !RE_UUID.test(vehicleId)) {
     return fallo(400, "Falta el vehículo al que pertenece la foto.");
   }
   const extension = EXTENSION_POR_TIPO[contentType];
@@ -110,7 +120,8 @@ export async function POST(request: Request) {
   }
 
   // El UUID evita que dos fotos que el celular llamó igual (IMG_0001.jpg) se pisen.
-  const path = `${vehicleId.toLowerCase()}/${randomUUID()}.${extension}`;
+  const carpeta = paraEjemplos ? CARPETA_EJEMPLOS : vehicleId.toLowerCase();
+  const path = `${carpeta}/${randomUUID()}.${extension}`;
 
   try {
     const url = await firmarSubida(path);

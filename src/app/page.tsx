@@ -10,6 +10,8 @@ import { ConsignmentBand } from "@/components/home/ConsignmentBand";
 import { HeroShowroom } from "@/components/home/HeroShowroom";
 import { ImportBand } from "@/components/home/ImportBand";
 import { StockSection } from "@/components/home/StockSection";
+import { simulationPresets } from "@/data/trendingVehicles";
+import { getImportExamplesForIsr } from "@/lib/importExamples/servidor";
 
 /**
  * El bloque de stock sale de la base: se vuelve a generar cada cinco minutos
@@ -27,7 +29,11 @@ export const revalidate = 300;
  *   6. Consignación (foto).
  *   7. Marcas, FAQ corto y contacto.
  */
-export default function Home() {
+export default async function Home() {
+  // Los mismos ejemplos que pinta la sección de "más pedidos": la calculadora
+  // recibe sus presets para que `/?simular=<id>` abra con esos datos.
+  const { vehiculos } = await getImportExamplesForIsr();
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
@@ -46,7 +52,7 @@ export default function Home() {
           />
         </ScrollAnimation>
         <ScrollAnimation>
-          <CalculatorSection />
+          <CalculatorSection presets={simulationPresets(vehiculos)} />
         </ScrollAnimation>
         <ScrollAnimation>
           <ImportBand />

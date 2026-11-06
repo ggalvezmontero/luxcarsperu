@@ -76,9 +76,9 @@ crezcan.
 
 ## Paso 2 — Aplicar las migraciones
 
-Las 11 migraciones están en `db/migrations/`. **Estado al 2026-11-06: ya están
-aplicadas** en `luxcarsperu` (10 tablas, 1 vista, las políticas RLS y 22 tasas
-cargadas).
+Las 12 migraciones están en `db/migrations/`. **Estado al 2026-11-06: ya están
+aplicadas** en `luxcarsperu` (11 tablas, 1 vista, las políticas RLS, 22 tasas y
+los 9 ejemplos de importación cargados).
 
 Para aplicarlas en una base nueva hace falta `psql` y la cadena de conexión
 (Neon → **Connect**):

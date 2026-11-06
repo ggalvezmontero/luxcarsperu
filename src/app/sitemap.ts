@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { LUXCARS_CONFIG } from "@/lib/config";
-import { TRENDING_VEHICLES } from "@/data/trendingVehicles";
+import { getImportExamples } from "@/lib/importExamples/servidor";
 import { isDatabaseConfigured } from "@/lib/db/client";
 import { getPublishedVehicles } from "@/lib/db/vehicles";
 
@@ -64,7 +64,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Cada vehículo destacado entra con su simulación precargada: son las URLs
   // que capturan búsquedas de modelo concreto ("importar Tesla Cybertruck Perú").
-  const vehiculos: MetadataRoute.Sitemap = TRENDING_VEHICLES.map((v) => ({
+  // Salen de la misma lista que pinta la web (la base, o el respaldo del
+  // repositorio si la base no responde): nunca lanza.
+  const { vehiculos: ejemplos } = await getImportExamples();
+  const vehiculos: MetadataRoute.Sitemap = ejemplos.map((v) => ({
     url: `${BASE}/?simular=${v.id}`,
     lastModified: ahora,
     changeFrequency: "weekly" as const,

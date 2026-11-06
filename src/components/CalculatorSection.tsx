@@ -18,7 +18,7 @@ import {
   VEHICLE_CATEGORIES,
 } from "@/core/pricing/vehicleCategories";
 import type { OriginInference } from "@/core/pricing/originInference";
-import { getTrendingVehicleById } from "@/data/trendingVehicles";
+import type { SimulationPreset } from "@/data/trendingVehicles";
 import { LUXCARS_CONFIG, type VehicleTypeId } from "@/lib/config";
 import { evaluateQuote } from "@/lib/cotizacion";
 import {
@@ -281,7 +281,12 @@ function UrlPresetReader({ onPreset }: { onPreset: (preset: UrlPreset) => void }
 
 /* --- Componente ------------------------------------------------------------ */
 
-export function CalculatorSection() {
+export function CalculatorSection({
+  presets,
+}: {
+  /** Ejemplos que se pueden precargar con `/?simular=<id>`. Los pasa la página. */
+  presets: readonly SimulationPreset[];
+}) {
   const router = useRouter();
   const [urlPreset, setUrlPreset] = useState<UrlPreset>(SIN_PRESET);
 
@@ -362,7 +367,7 @@ export function CalculatorSection() {
   const simularPresetId = urlPreset.simular;
   useEffect(() => {
     if (!simularPresetId) return;
-    const preset = getTrendingVehicleById(simularPresetId);
+    const preset = presets.find((p) => p.id === simularPresetId);
     if (!preset) return;
     const c = preset.calculator;
     // El año es el que anuncia la tarjeta ("… Raptor 2026"), no uno fijo.
@@ -382,7 +387,7 @@ export function CalculatorSection() {
     requestAnimationFrame(() => {
       document.getElementById("calculator")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  }, [simularPresetId]);
+  }, [simularPresetId, presets]);
 
   /* Estimado compartido: /?c=<código>#calculator abre la calculadora con los
      mismos datos y el desglose a la vista, para ajustarlos. */

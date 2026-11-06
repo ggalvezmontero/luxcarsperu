@@ -65,6 +65,7 @@ escribir una migración y justificarlo. **Esa fricción es intencional.**
 | `profiles` | Una fila por cuenta de Neon Auth: rol (`cliente` / `admin`), activo, nombre, WhatsApp |
 | `solicitudes_compra` | Pedidos de búsqueda de un cliente con cuenta |
 | `solicitudes_venta` | Autos que un cliente ofrece en consignación; un admin aprueba o rechaza |
+| `ejemplos_importacion` | Autos de referencia de "importación a pedido" (home y `/importar`); se editan en `/portal/ejemplos` |
 
 ### Reglas de negocio que viven en el esquema
 
@@ -172,6 +173,12 @@ for f in db/migrations/*.sql; do
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"
 done
 ```
+
+**Después de cualquier cambio de esquema** (tabla, columna o función nueva) hay
+que refrescar la caché de esquema de la Data API, o las consultas del sitio y
+del portal responden "Could not find the table … in the schema cache" aunque la
+tabla exista: consola de Neon → **Data API** → **Refresh schema cache** (o
+`neon data-api refresh-schema`).
 
 El seed se aplica aparte y solo en desarrollo: `psql "$DATABASE_URL" -f db/seed.sql`.
 

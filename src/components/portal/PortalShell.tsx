@@ -83,6 +83,13 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/portal/ejemplos",
+    label: "Ejemplos de importación",
+    hint: "Autos de referencia de la home y /importar",
+    ready: true,
+    icon: <Icon path="M4 5h16v14H4V5Zm0 10 4-4 3 3 3-3 6 6M15 9h.01" />,
+  },
+  {
     href: "/portal/leads",
     label: "Leads",
     hint: "Consultas entrantes",

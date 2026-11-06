@@ -193,10 +193,29 @@ export type ImportableTrendingVehicle = TrendingVehicle & {
 };
 
 /**
+ * Lo mínimo que la calculadora necesita de un ejemplo para precargarse desde
+ * `/?simular=<id>`. La página se lo pasa como prop: así el navegador no carga
+ * el catálogo entero y los datos son los de la base, no los del archivo.
+ */
+export type SimulationPreset = {
+  id: string;
+  /** Nombre de la tarjeta; de él sale el año ("… Raptor 2026"). */
+  name: string;
+  calculator: TrendingVehicleCalculatorPreset;
+};
+
+/** Los presets de simulación de una lista de ejemplos. */
+export function simulationPresets(vehiculos: readonly TrendingVehicle[]): SimulationPreset[] {
+  return vehiculos.flatMap((v) =>
+    v.calculator ? [{ id: v.id, name: v.name, calculator: v.calculator }] : [],
+  );
+}
+
+/**
  * ¿Esta licencia obliga a publicar el crédito?
  *
- * CC0 y dominio público NO obligan (el crédito se guarda igual, por
- * trazabilidad). Toda la familia CC BY —con o sin SA— SÍ obliga: la cláusula
+ * CC0, dominio público y las fotos PROPIAS de LuxCars NO obligan (el crédito se
+ * guarda igual, por trazabilidad). Toda la familia CC BY —con o sin SA— SÍ obliga: la cláusula
  * 3(a)(1) exige nombrar al autor, enlazar la licencia y enlazar la obra. Si el
  * crédito no se publica, se está infringiendo la licencia.
  *
@@ -209,6 +228,8 @@ export function licenciaExigeAtribucion(licencia?: string | null): boolean {
   if (l.startsWith("CC0") || l.includes("PUBLIC DOMAIN") || l.includes("DOMINIO PÚBLICO")) {
     return false;
   }
+  // "Foto propia de LuxCars": la tomó el equipo, no hay a quién atribuir.
+  if (l.startsWith("FOTO PROPIA") || l.startsWith("PROPIA")) return false;
   return true;
 }
 
