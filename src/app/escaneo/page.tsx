@@ -191,16 +191,9 @@ export default function EscaneoPage() {
         { "@type": "Offer", name: "Resto de Lima", price: PRECIO.restoDeLima, priceCurrency: "PEN", url: URL_PAGINA },
       ],
     },
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "@id": `${URL_PAGINA}#preguntas`,
-      mainEntity: PREGUNTAS.map((item) => ({
-        "@type": "Question",
-        name: item.question,
-        acceptedAnswer: { "@type": "Answer", text: item.answer },
-      })),
-    },
+    // Sin FAQPage propio: el layout ya emite el del sitio en todas las páginas
+    // y dos FAQPage en una misma URL es un error en Search Console. Las
+    // preguntas del escaneo quedan como contenido visible, que es lo que posiciona.
     breadcrumbSchema([
       { nombre: "Inicio", ruta: "/" },
       { nombre: "Escaneo pre-compra", ruta: "/escaneo" },
