@@ -139,7 +139,7 @@ repite el error del catálogo viejo. Detalle de lo que se ve:
 | `ford-f250-super-duty.webp` | F-250 XLT FX4 blanca, insignia "F250" visible. Correcto. |
 | `ram-3500-limited.webp` | RAM 3500 dually blanca en un salón del automóvil. Es un 3500, **pero el acabado "Limited" no se puede confirmar desde la foto** (la parrilla cromada es de Laramie o Limited indistintamente) y se ve insignia **Cummins**, o sea diésel. |
 | `chevrolet-corvette-z06.webp` | Corvette C8 Z06 blanco, insignia Z06 en la aleta. Correcto. |
-| `chevrolet-corvette-stingray-azul.webp` | Corvette C8 Stingray azul, tres cuartos trasero, convertible con el techo cerrado. Correcto; matrícula difuminada. |
+| `chevrolet-corvette-stingray-coupe-blanco.webp` | Corvette C8 Stingray coupé blanco, de perfil y en marcha por una autopista. Correcto; no se ve la matrícula. |
 | `geely-coolray-2026.webp` | (Contraejemplo del catálogo: no se importa, ver reglas de `trendingVehicles.ts`.) |
 
 **Lo que falta antes de conectarlas.** Según el propio componente

@@ -223,11 +223,11 @@
     "availableInUsDealers": true,
     "importViability": "importable",
     "warnings": [],
-    "imageSrc": "/images/vehiculos/chevrolet-corvette-stingray-azul.webp",
-    "imageAlt": "Chevrolet Corvette Stingray (C8) azul en tres cuartos trasero derecho, estacionado frente a una cabaña de madera. Se distinguen la carrocería estrecha del Stingray, las cuatro salidas de escape en las esquinas, el alerón alto negro, los rines negros y el techo rígido cerrado de la versión convertible. Imagen referencial del modelo, no de la unidad en venta.",
-    "imageCredit": "Dragon White Munthe",
+    "imageSrc": "/images/vehiculos/chevrolet-corvette-stingray-coupe-blanco.webp",
+    "imageAlt": "Chevrolet Corvette Stingray (C8) coupé blanco visto de perfil, en marcha por una autopista con árboles al fondo. Se distinguen la carrocería estrecha del Stingray, la toma de aire lateral, el vidrio lateral trasero y la caída continua del techo propias del coupé, el alerón bajo y las pinzas de freno rojas. Imagen referencial del modelo, no de la unidad en venta.",
+    "imageCredit": "Bennett",
     "imageLicense": "Licencia Unsplash",
-    "imageSourceUrl": "https://unsplash.com/photos/blue-sports-car-parked-in-front-of-a-wooden-building-qkmdMVsVqx0"
+    "imageSourceUrl": "https://unsplash.com/photos/white-sports-car-on-highway-K9PgOhWUzaw"
   },
   {
     "id": "tesla-cybertruck",
