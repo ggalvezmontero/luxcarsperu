@@ -74,14 +74,14 @@ export default function ComoFuncionaPage() {
       <main id="contenido" className="w-full flex-1">
         <section className="relative isolate w-full overflow-hidden bg-void pt-[calc(var(--lux-nav-h)+3rem)] pb-12 sm:pt-[calc(var(--lux-nav-h)+4rem)] sm:pb-16">
           <Image
-            src="/images/vehiculos/ford-bronco-raptor.webp"
-            alt="Ford Bronco Raptor negro en el patio de un concesionario de Estados Unidos, imagen referencial"
+            src="/images/portadas/como-funciona-auto-carretera-costera.webp"
+            alt="Auto negro con los faros encendidos avanzando por una carretera costera al atardecer"
             fill
             priority
             sizes="100vw"
-            className="-z-20 object-cover object-center"
+            className="-z-20 object-cover object-[60%_55%]"
           />
-          <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-void/85 via-void/65 to-void" />
+          <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-void/75 via-void/40 to-void" />
           <div className="container-lux relative">
             <p className="eyebrow">Cómo funciona</p>
             <h1 className="mt-3 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">

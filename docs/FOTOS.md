@@ -288,15 +288,17 @@ al ancho del monitor: con menos de ~1 900 px se ve pixelada en pantallas grandes
 | `importar-terminal-contenedores.webp` | Portada de `/importar` | Vista aérea de un terminal de contenedores con grúas. Es la MISMA foto que tenía la portada desde 2025 (`how/shipping.jpg`), ahora a 2 400 px. El dueño rechazó el reemplazo por un camión con Corvette enfundados ("no es representativa"): quería esta, pero nítida. | CHUTTERSNAP | Licencia Unsplash | [unsplash.com/photos/eqwFWHfQipg](https://unsplash.com/photos/intermodal-containers-on-dock-eqwFWHfQipg) |
 | `vender-range-rover-casa.webp` | Portada de `/vender` y banda de consignación de la home | Range Rover Sport negra frente al garaje de una casa | Luke Miller | Licencia Unsplash | [unsplash.com/photos/2l4JGCzzP2Q](https://unsplash.com/photos/a-black-range-rover-parked-in-front-of-a-house-2l4JGCzzP2Q) |
 | `escaneo-laptop-diagnostico.webp` | Portada de `/escaneo` | La misma foto de antes, a 2 400 px | Mehmet Talha Onuk | Licencia Unsplash | (ver tabla de arriba) |
+| `como-funciona-auto-carretera-costera.webp` | Portada de `/como-funciona` | Audi TT negro con los faros encendidos avanzando por una carretera costera al atardecer. Recorte 16:9 (2 400 × 1 350) de la toma original 4:3 bajada a 3 200 px: se cortó el borde derecho para que el auto quede a la derecha del título y no debajo; sin placa visible | Filip Fischer | Licencia Unsplash | [unsplash.com/photos/83yrOkdDnN4](https://unsplash.com/photos/dark-car-driving-on-a-coastal-road-at-dusk-83yrOkdDnN4) |
 
 Se retiraron `how/shipping.jpg` (la copia de 800 × 600 de la portada de
 `/importar`) y
 `timeline/journey.jpg` (Mercedes-AMG GT amarillo, 1 200 × 1 500, sin relación
 con vender un auto). Las otras portadas no cambiaron: `hero/main.jpg` (home) y
 `lima/costa-verde-noche.webp` (`/comprar`) miden 1 920 px. La de
-`/como-funciona` reutiliza `vehiculos/ford-bronco-raptor.webp` (1 600 px) bajo
-un velo del 85 %: no se nota pixelada, pero la foto casi no se ve; es candidata
-a una toma propia panorámica.
+`/como-funciona` reutilizaba `vehiculos/ford-bronco-raptor.webp` (1 600 px) bajo
+un velo del 85 % que casi la tapaba: esa portada es una franja ancha y baja, y
+el Bronco, encuadrado para una tarjeta, quedaba cortado por la mitad. Se cambió
+por la toma panorámica de la tabla y el velo bajó al 75 %.
 
 **Son ilustrativas del paso, no operaciones de LuxCars.** En cuanto existan
 fotos propias (el Corvette en el patio del Callao, una entrega real con permiso
