@@ -257,7 +257,7 @@ export function describeAuthError(message: string): string {
     raw.includes("user not found") ||
     raw.includes("credential account not found")
   ) {
-    return "Correo o contraseña incorrectos. Si todavía no definiste tu contraseña, usa «Crear o recuperar contraseña».";
+    return "Correo o contraseña incorrectos. Si todavía no definiste tu contraseña o la olvidaste, usa el enlace de recuperar contraseña que está debajo del formulario.";
   }
   if (raw.includes("email not verified") || raw.includes("email not confirmed")) {
     return "La cuenta existe pero el correo no está verificado. Revisa tu bandeja o escríbenos por WhatsApp.";

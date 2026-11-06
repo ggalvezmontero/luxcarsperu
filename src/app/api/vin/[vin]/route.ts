@@ -17,11 +17,17 @@
  *   · traducir a español y al vocabulario del motor de precios en un solo
  *     lugar, y no repetirlo en cada formulario que lo necesite.
  *
+ * SOLO PARA EL EQUIPO. La única pantalla que la usa es el alta de vehículos
+ * del portal, así que exige sesión de administrador. Abierta a cualquiera, un
+ * script podía usar este servidor para martillar a vPIC —una API pública y
+ * gratuita— con un VIN distinto por petición, y llenar el caché de Vercel.
+ *
  * Nunca lanza: todo error sale como JSON con `ok: false` y un mensaje en
  * español. El formulario de alta debe seguir funcionando aunque vPIC esté caído
  * — se escriben los datos a mano y listo.
  */
 
+import { verificarSesionPortal } from "@/lib/portal/authServer";
 import { validateVin, type VinDecoded, type VinLookupResponse } from "@/lib/vin";
 import type { VehicleCategoryId } from "@/core/pricing/vehicleCategories";
 import { NextResponse } from "next/server";
@@ -243,8 +249,19 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ vin: string }> },
 ): Promise<NextResponse> {
+  // Next ya entrega el parámetro decodificado. Decodificarlo otra vez lanzaba
+  // un URIError (y un 500) con un `%` suelto, por ejemplo /api/vin/ABC%25.
   const { vin: rawVin } = await context.params;
-  const validation = validateVin(decodeURIComponent(rawVin ?? ""));
+
+  const sesion = await verificarSesionPortal();
+  if (!sesion.ok) {
+    return json(
+      { ok: false, vin: "", code: "sin-sesion", error: sesion.mensaje },
+      sesion.status,
+    );
+  }
+
+  const validation = validateVin(rawVin ?? "");
 
   if (!validation.valid) {
     return json(

@@ -13,6 +13,7 @@ import type {
   VehicleSource,
   VehicleStatus,
 } from "@/lib/db/types";
+import { formatearFechaCalendario } from "./fechas";
 
 export const ESTADO_LABEL: Record<VehicleStatus, string> = {
   disponible: "Disponible",
@@ -79,13 +80,11 @@ export function formatearKilometraje(km: number): string {
   return `${new Intl.NumberFormat("es-PE").format(km)} km`;
 }
 
+/**
+ * Fecha para mostrar. Una columna `date` ("2026-11-05") se muestra como ese
+ * mismo día: con `new Date()` + Intl sin zona salía un día antes en Lima. El
+ * detalle está en `./fechas.ts`.
+ */
 export function formatearFecha(iso: string | null): string {
-  if (!iso) return "—";
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return "—";
-  return new Intl.DateTimeFormat("es-PE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(fecha);
+  return formatearFechaCalendario(iso);
 }

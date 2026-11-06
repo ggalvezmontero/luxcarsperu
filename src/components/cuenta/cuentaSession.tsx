@@ -22,7 +22,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { fetchOwnProfile, type Profile } from "@/lib/auth/perfil";
+import { fetchOwnProfileResult, type Profile } from "@/lib/auth/perfil";
 import {
   alCambiarSesion,
   avisarCambioDeSesion,
@@ -65,7 +65,10 @@ export function CuentaSessionProvider({ children }: { children: React.ReactNode 
 
   const refreshProfile = useCallback(async () => {
     if (!client) return;
-    setProfile(await fetchOwnProfile(client));
+    const result = await fetchOwnProfileResult(client);
+    // Si la lectura falló se conserva el perfil que ya se tenía.
+    if (result.status === "ok") setProfile(result.profile);
+    else if (result.status === "sin-perfil") setProfile(null);
   }, [client]);
 
   useEffect(() => {
@@ -86,9 +89,14 @@ export function CuentaSessionProvider({ children }: { children: React.ReactNode 
       setEmail(session?.user?.email ?? null);
       setUserId(session?.user?.id ?? null);
       if (session?.user) {
-        const p = await fetchOwnProfile(client);
+        const result = await fetchOwnProfileResult(client);
         if (cancelled) return;
-        setProfile(p);
+        // Una lectura fallida conserva el perfil que ya se tenía, pero solo si
+        // es de este mismo usuario.
+        const uid = session.user.id ?? null;
+        if (result.status === "ok") setProfile(result.profile);
+        else if (result.status === "sin-perfil") setProfile(null);
+        else setProfile((previo) => (previo && previo.id === uid ? previo : null));
         setStatus("autenticado");
       } else {
         setProfile(null);
@@ -123,7 +131,13 @@ export function CuentaSessionProvider({ children }: { children: React.ReactNode 
   const signOut = useCallback(async () => {
     if (!client) return;
     try {
-      await client.auth.signOut();
+      // El SDK no siempre lanza: `signOut()` también puede devolver
+      // `{ error }` (ver el adaptador de @neon/auth). Se trata igual que una
+      // excepción.
+      const resultado = (await client.auth.signOut()) as
+        | { error?: unknown }
+        | undefined;
+      if (resultado?.error) throw resultado.error;
       await avisarCambioDeSesion();
     } catch {
       setStatus("anonimo");

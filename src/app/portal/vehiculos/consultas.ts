@@ -62,6 +62,8 @@ import type {
   VehicleSource,
   VehicleStatus,
 } from "@/lib/db/types";
+import { hoyEnLima } from "./fechas";
+import { MONTO_MAXIMO, slugificar } from "./nuevo/validacion";
 
 const TABLE = "vehicles";
 
@@ -360,6 +362,12 @@ export type ResultadoAlta =
       ok: false;
       motivo: "sin-permiso" | "duplicado" | "error";
       mensaje: string;
+      /**
+       * Solo con `motivo: "duplicado"`: qué UNIQUE chocó, para que el
+       * formulario muestre el error bajo el campo correcto y no siempre bajo
+       * el VIN.
+       */
+      campo?: "vin" | "slug";
     };
 
 /**
@@ -388,10 +396,11 @@ export async function insertarVehiculo(
       // 23505 = unique_violation. Los únicos UNIQUE que el usuario puede chocar
       // a mano son el VIN y el slug.
       if (error.code === "23505") {
-        const esSlug = error.message.includes("slug");
+        const esSlug = esChoqueDeSlug(error);
         return {
           ok: false,
           motivo: "duplicado",
+          campo: esSlug ? "slug" : "vin",
           mensaje: esSlug
             ? "Ya existe un vehículo con esa URL (slug). Cambia el titular o escribe un slug distinto."
             : "Ese VIN ya está cargado. Búscalo en el listado en lugar de crearlo de nuevo.",
@@ -423,4 +432,315 @@ export async function insertarVehiculo(
       }`,
     };
   }
+}
+
+/** El UNIQUE que chocó es el del slug (`vehicles_slug_key`) y no el del VIN. */
+function esChoqueDeSlug(error: { message: string; details?: string | null }): boolean {
+  return /slug/i.test(`${error.message} ${error.details ?? ""}`);
+}
+
+/* ========================================================================== */
+/* Cambios sobre un vehículo ya cargado                                       */
+/* ========================================================================== */
+/*
+ * Antes de esto el portal podía CREAR un vehículo pero nunca tocarlo: un
+ * borrador no se podía publicar, el precio no se podía corregir y un auto
+ * vendido seguía "disponible". Cada función de abajo es UNA mutación acotada
+ * —publicar, despublicar, cambiar estado, cambiar precio— y no un formulario de
+ * edición de todas las columnas.
+ *
+ * Reglas comunes:
+ *   · Escriben con la sesión del equipo, por RLS ("vehicles: el equipo
+ *     actualiza", que exige `public.es_admin()`).
+ *   · Devuelven la fila ACTUALIZADA (`.select()` después del UPDATE), así el
+ *     listado se corrige en el lugar sin recargar todo, y de paso se sabe si de
+ *     verdad se actualizó una fila: cero filas = no existe o no hay permiso.
+ *   · Los CHECK de la tabla se validan ANTES para dar un mensaje en español,
+ *     y si igual la base rechaza, el error se traduce (ver `traducirRechazo`).
+ *
+ * NINGUNA LANZA.
+ */
+
+export type ResultadoCambio =
+  | { ok: true; vehiculo: AdminVehicle; mensaje: string }
+  | {
+      ok: false;
+      motivo: "sin-permiso" | "duplicado" | "falta-dato" | "no-encontrado" | "error";
+      mensaje: string;
+      /** Qué dato hay que pedir o corregir en pantalla. */
+      campo?: "precio" | "slug" | "fecha";
+    };
+
+const RE_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Traduce lo que Postgres responde a un UPDATE de `vehicles`.
+ *
+ * Los nombres de constraint salen de db/migrations/20260915090200_vehicles.sql:
+ *   · vehicles_publicado_exige_precio  → check (not publicado or precio_venta is not null)
+ *   · vehicles_publicado_exige_slug    → check (not publicado or slug is not null)
+ *   · vehicles_vendido_exige_fecha     → check (estado <> 'vendido' or vendido_en is not null)
+ *   · vehicles_slug_key                → slug text unique
+ */
+function traducirRechazo(error: {
+  message: string;
+  code?: string;
+  details?: string | null;
+}): Extract<ResultadoCambio, { ok: false }> {
+  const texto = `${error.message} ${error.details ?? ""}`;
+
+  if (error.code === "23505") {
+    return esChoqueDeSlug(error)
+      ? {
+          ok: false,
+          motivo: "duplicado",
+          campo: "slug",
+          mensaje: "Ya hay otro vehículo con esa URL (slug). Escribe una distinta.",
+        }
+      : {
+          ok: false,
+          motivo: "duplicado",
+          mensaje: `La base de datos rechazó el cambio por un dato repetido: ${error.message}`,
+        };
+  }
+  if (texto.includes("vehicles_publicado_exige_precio")) {
+    return {
+      ok: false,
+      motivo: "falta-dato",
+      campo: "precio",
+      mensaje: "Para publicar el auto hace falta el precio de venta.",
+    };
+  }
+  if (texto.includes("vehicles_publicado_exige_slug")) {
+    return {
+      ok: false,
+      motivo: "falta-dato",
+      campo: "slug",
+      mensaje: "Para publicar el auto hace falta su URL (slug).",
+    };
+  }
+  if (texto.includes("vehicles_vendido_exige_fecha")) {
+    return {
+      ok: false,
+      motivo: "falta-dato",
+      campo: "fecha",
+      mensaje: "Un vehículo vendido necesita la fecha de venta.",
+    };
+  }
+  if (error.code === "42501" || /permission denied|row-level security|jwt/i.test(texto)) {
+    return {
+      ok: false,
+      motivo: "sin-permiso",
+      mensaje:
+        "La sesión no tiene permiso para modificar el stock o caducó. Vuelve a iniciar sesión.",
+    };
+  }
+  return {
+    ok: false,
+    motivo: "error",
+    mensaje: `La base de datos rechazó el cambio: ${error.message}`,
+  };
+}
+
+/** UPDATE de una fila por id, devolviendo la fila nueva. Nunca lanza. */
+async function actualizarVehiculo(
+  client: PortalClient,
+  id: string,
+  cambios: Record<string, unknown>,
+  mensajeOk: string,
+): Promise<ResultadoCambio> {
+  try {
+    const { data, error } = await client
+      .from(TABLE)
+      .update(cambios)
+      .eq("id", id)
+      .select(ADMIN_COLUMNS);
+
+    if (error) return traducirRechazo(error);
+
+    const filas = (data ?? []) as unknown as RawRow[];
+    if (filas.length === 0) {
+      return {
+        ok: false,
+        motivo: "no-encontrado",
+        mensaje:
+          "No se actualizó ningún vehículo: puede que lo hayan borrado o que tu sesión ya no tenga acceso. Recarga la página.",
+      };
+    }
+    return { ok: true, vehiculo: mapRow(filas[0]), mensaje: mensajeOk };
+  } catch (error) {
+    return {
+      ok: false,
+      motivo: "error",
+      mensaje: `Error inesperado al guardar el cambio: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
+  }
+}
+
+/** Valida un precio de venta escrito a mano. `null` = válido. */
+function errorDePrecio(precio: number): string | null {
+  if (!Number.isFinite(precio) || precio <= 0) {
+    return "El precio de venta tiene que ser un número mayor que cero.";
+  }
+  // numeric(12, 2): más que esto lo rechaza Postgres con "numeric field overflow".
+  if (precio > MONTO_MAXIMO) {
+    return "El precio es demasiado alto para guardarse. Revisa los ceros.";
+  }
+  return null;
+}
+
+/**
+ * Publica el auto en la web.
+ *
+ * La base exige precio y slug para un auto publicado
+ * (`vehicles_publicado_exige_precio` y `vehicles_publicado_exige_slug`). Si a
+ * la fila le falta alguno, la pantalla los pide y llegan acá en `datos`; se
+ * escriben en el MISMO UPDATE que `publicado = true`, para que nunca quede un
+ * auto publicado a medias. `publicado_en` lo sella el trigger
+ * `tg_sellar_publicacion`.
+ */
+export async function publicarVehiculo(
+  client: PortalClient,
+  vehiculo: Pick<AdminVehicle, "id" | "price" | "slug">,
+  datos: { precio?: number | null; moneda?: Currency; slug?: string | null } = {},
+): Promise<ResultadoCambio> {
+  const cambios: Record<string, unknown> = { publicado: true };
+
+  if (typeof datos.precio === "number") {
+    const problema = errorDePrecio(datos.precio);
+    if (problema) {
+      return { ok: false, motivo: "falta-dato", campo: "precio", mensaje: problema };
+    }
+    cambios.precio_venta = datos.precio;
+    if (datos.moneda) cambios.moneda_venta = datos.moneda;
+  } else if (vehiculo.price === null) {
+    return {
+      ok: false,
+      motivo: "falta-dato",
+      campo: "precio",
+      mensaje: "Para publicar el auto hace falta el precio de venta.",
+    };
+  }
+
+  if (typeof datos.slug === "string" && datos.slug.trim()) {
+    // Mismas reglas que el alta: minúsculas, sin tildes, guiones.
+    const slug = slugificar(datos.slug);
+    if (!slug) {
+      return {
+        ok: false,
+        motivo: "falta-dato",
+        campo: "slug",
+        mensaje: "La URL solo puede tener letras, números y guiones.",
+      };
+    }
+    cambios.slug = slug;
+  } else if (vehiculo.slug === null) {
+    return {
+      ok: false,
+      motivo: "falta-dato",
+      campo: "slug",
+      mensaje: "Para publicar el auto hace falta su URL (slug).",
+    };
+  }
+
+  return actualizarVehiculo(client, vehiculo.id, cambios, "Publicado: ya se ve en la web.");
+}
+
+/** Saca el auto de la web. La ficha, sus fotos y su slug se conservan. */
+export async function despublicarVehiculo(
+  client: PortalClient,
+  id: string,
+): Promise<ResultadoCambio> {
+  return actualizarVehiculo(
+    client,
+    id,
+    { publicado: false },
+    "Despublicado: ya no se ve en la web. Sigue en el stock como borrador.",
+  );
+}
+
+/**
+ * Cambia el estado (`public.estado_vehiculo`: disponible, reservado,
+ * en_transito, vendido).
+ *
+ * `vendido` exige `vendido_en` por `vehicles_vendido_exige_fecha`: si no llega
+ * una fecha, se usa HOY EN LIMA (no el día UTC). Al salir de `vendido` la fecha
+ * de venta se borra: un auto que vuelve a estar disponible no tiene venta, y
+ * dejarla ahí ensuciaría cualquier reporte de cierres.
+ *
+ * NO despublica: un vendido que el equipo deja publicado sirve de prueba
+ * social (está escrito en la política de lectura pública de la migración).
+ * Para ocultarlo está "Despublicar".
+ */
+export async function cambiarEstadoVehiculo(
+  client: PortalClient,
+  id: string,
+  estado: VehicleStatus,
+  opciones: { vendidoEn?: string | null } = {},
+): Promise<ResultadoCambio> {
+  if (!STATUSES.includes(estado)) {
+    return { ok: false, motivo: "error", mensaje: "Ese estado no existe." };
+  }
+
+  const cambios: Record<string, unknown> = { estado };
+  if (estado === "vendido") {
+    const fecha = opciones.vendidoEn?.trim() || hoyEnLima();
+    if (!RE_FECHA.test(fecha)) {
+      return {
+        ok: false,
+        motivo: "falta-dato",
+        campo: "fecha",
+        mensaje: "La fecha de venta no es válida.",
+      };
+    }
+    cambios.vendido_en = fecha;
+  } else {
+    cambios.vendido_en = null;
+  }
+
+  return actualizarVehiculo(client, id, cambios, "Estado actualizado.");
+}
+
+/** Cambia el precio de venta y, si se indica, su moneda (`moneda_venta`). */
+export async function cambiarPrecioVehiculo(
+  client: PortalClient,
+  id: string,
+  precio: number,
+  moneda?: Currency,
+): Promise<ResultadoCambio> {
+  const problema = errorDePrecio(precio);
+  if (problema) {
+    return { ok: false, motivo: "falta-dato", campo: "precio", mensaje: problema };
+  }
+  const cambios: Record<string, unknown> = { precio_venta: precio };
+  if (moneda && MONEDAS.includes(moneda)) cambios.moneda_venta = moneda;
+  return actualizarVehiculo(client, id, cambios, "Precio actualizado.");
+}
+
+/**
+ * Saca de la web el vehículo de una consignación que se cerró.
+ *
+ * Lo usa `src/app/portal/consignaciones/queries.ts`: una consignación cerrada
+ * (vendida, retirada, vencida) con la ficha todavía publicada y "disponible"
+ * deja a los clientes preguntando por un auto que ya no está. Con `vendidoEn`
+ * además la marca vendida con esa fecha (`vehicles_vendido_exige_fecha`).
+ *
+ * Devuelve `{ ok, message }` como las consultas de consignaciones. Nunca lanza.
+ */
+export async function retirarVehiculoDeConsignacion(
+  client: PortalClient,
+  vehicleId: string,
+  opciones: { vendidoEn?: string | null } = {},
+): Promise<{ ok: boolean; message: string }> {
+  const cambios: Record<string, unknown> = { publicado: false };
+  if (opciones.vendidoEn) {
+    cambios.estado = "vendido";
+    cambios.vendido_en = opciones.vendidoEn;
+  }
+  const resultado = await actualizarVehiculo(client, vehicleId, cambios, "");
+  return resultado.ok
+    ? { ok: true, message: "" }
+    : { ok: false, message: resultado.mensaje };
 }

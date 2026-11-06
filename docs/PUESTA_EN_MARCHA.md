@@ -76,7 +76,7 @@ crezcan.
 
 ## Paso 2 — Aplicar las migraciones
 
-Las 10 migraciones están en `db/migrations/`. **Estado al 2026-11-06: ya están
+Las 11 migraciones están en `db/migrations/`. **Estado al 2026-11-06: ya están
 aplicadas** en `luxcarsperu` (10 tablas, 1 vista, las políticas RLS y 22 tasas
 cargadas).
 
@@ -116,9 +116,15 @@ migración**: antes de ella, cualquier cuenta nueva leería los leads.
 **Estado al 2026-11-06: ya está activa.** Para comprobarlo o cambiarlo: consola
 de Neon → **Auth** → configuración de **Sign-in with Email**.
 
-Hoy **no se exige confirmar el correo**: quien se registra entra en el acto. Si
-más adelante lo activas, el formulario ya lo contempla: cuando no llega sesión
-al registrarse, le dice al cliente que revise su bandeja.
+**Se exige confirmar el correo** (Neon → Auth → *Require email verification*,
+activado el 2026-11-06). Quien se registra recibe un código de seis dígitos y
+lo escribe en la misma pantalla; al confirmarlo queda dentro. Lo mismo le pasa
+a quien entra por primera vez con una cuenta creada desde la consola. El
+código y el enlace de contraseña salen por Resend desde `acceso@luxcars.pe`
+(Neon → Auth → *Email provider*).
+
+Si alguna vez se cambia el método de verificación de código a enlace, hay que
+adaptar `src/components/auth/VerificarCorreo.tsx`: hoy pide el código.
 
 **Por qué esto ya no abre el negocio:** toda cuenta nueva nace con rol
 `cliente`. Todas las políticas del portal exigen `public.es_admin()`, así que
@@ -146,7 +152,7 @@ suyo: sus solicitudes. Las fotos, que viven fuera de Postgres, las cuida
   - La persona se registra en `/cuenta/login` (Crear cuenta).
   - Tú la agregas en la consola de Neon → **Auth → Users** (solo pide el
     correo y un nombre) y ella abre **`/portal/recuperar`**, escribe su correo
-    y recibe un enlace (vence en 15 minutos) para definir su contraseña. La
+    y recibe un enlace (vence en una hora) para definir su contraseña. La
     misma pantalla sirve el día que alguien la olvida.
 
   **Darle el rol admin** (una de tres):
@@ -158,14 +164,21 @@ suyo: sus solicitudes. Las fotos, que viven fuera de Postgres, las cuida
      ```
 
      Busca la cuenta por correo y pone su perfil en rol `admin`. Si la cuenta
-     no existe todavía, lo dice y no toca nada.
+     no existe todavía, lo dice y no toca nada. Si existe pero su correo no
+     está verificado, se niega: esa cuenta pudo crearla otra persona con esa
+     dirección. Confirma con la persona y repite con `--sin-verificar`.
   2. **Seed SQL.** Edita los dos valores del bloque `config` de
      `db/seed_admin.sql` y pégalo en el editor SQL de Neon, o córrelo con
      `psql "$DATABASE_URL" -f db/seed_admin.sql`.
   3. **A mano**, en el editor SQL de Neon:
 
      ```sql
-     update public.profiles set rol = 'admin' where email = 'tu@correo.pe';
+     update public.profiles p
+        set rol = 'admin'
+       from neon_auth."user" u
+      where u.id = p.id
+        and lower(u.email) = lower('tu@correo.pe')
+        and u."emailVerified";
      ```
 
   Desde el editor SQL o con `DATABASE_URL` no hay sesión, así que el trigger

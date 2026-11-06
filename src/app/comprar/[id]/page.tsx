@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/Button";
@@ -10,22 +11,63 @@ import { Badge } from "@/components/ui/Badge";
 import { Icon, WhatsAppIcon, type IconName } from "@/components/ui/Icon";
 import { findBrandLogo } from "@/lib/brandLogos";
 import { LUXCARS_CONFIG } from "@/lib/config";
-import { CATEGORY_LABEL, STATUS_LABEL, getStock, getStockUnit } from "@/lib/stock";
+import { OG_DEFAULTS, OG_IMAGE, twitterCard } from "@/lib/seo";
+import { CATEGORY_LABEL, STATUS_LABEL, getStock, getStockUnitForIsr, type StockVehicle } from "@/lib/stock";
 import { CONSIGNMENT_LABEL, isConsignment } from "@/lib/stockLabels";
+import { breadcrumbSchema, vehicleSchema } from "@/lib/structuredData";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 type Params = { params: Promise<{ id: string }> };
 
+/**
+ * Lectura de la unidad, compartida por `generateMetadata` y la página (una sola
+ * consulta por render). Usa la variante que LANZA ante un error de la base:
+ * así un corte pasajero de Neon da 5xx y no un 404 para un auto que existe, y
+ * no se cachea una ficha rota (ver lib/stock.ts). `null` = no existe.
+ */
+const leerUnidad = cache((id: string) => getStockUnitForIsr(id));
+
+/** Ruta canónica de la ficha: la misma que usa el sitemap. */
+function rutaFicha(v: StockVehicle) {
+  return `/comprar/${v.slug ?? v.id}`;
+}
+
+/** Fotos tal como las pinta la galería (la portada si no hay galería). */
+function fotosDeFicha(v: StockVehicle) {
+  return v.photos.length ? v.photos : v.coverPhoto?.url ? [{ id: "cover", url: v.coverPhoto.url, alt: v.coverPhoto.alt }] : [];
+}
+
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
-  const v = await getStockUnit(id);
+  const v = await leerUnidad(id);
   if (!v) return { title: "Vehículo no encontrado" };
+
+  const title = `${v.title} · Stock en Lima`;
+  const description =
+    v.description ??
+    `${v.brand} ${v.model} ${v.year}, ${formatNumber(v.mileageKm)} km. ${isConsignment(v) ? "En consignación, disponible en Lima." : "Disponible en San Isidro, Lima."}`;
+  // Open Graph y Twitter repiten el <title> completo (con la plantilla del
+  // layout) y la misma descripción. La imagen es la foto principal del auto;
+  // sin foto, la imagen genérica del sitio.
+  const ogTitle = `${title} | ${LUXCARS_CONFIG.brandName}`;
+  const portada = fotosDeFicha(v)[0];
+  const imagen = portada?.url
+    ? { url: portada.url, alt: portada.alt || v.title }
+    : OG_IMAGE;
+
   return {
-    title: `${v.title} · Stock en Lima`,
-    description:
-      v.description ??
-      `${v.brand} ${v.model} ${v.year}, ${formatNumber(v.mileageKm)} km. ${isConsignment(v) ? "En consignación, disponible en Lima." : "Disponible en San Isidro, Lima."}`,
-    alternates: { canonical: `/comprar/${v.slug ?? v.id}` },
+    title,
+    description,
+    alternates: { canonical: rutaFicha(v) },
+    openGraph: {
+      ...OG_DEFAULTS,
+      type: "website",
+      url: `${LUXCARS_CONFIG.contact.website}${rutaFicha(v)}`,
+      title: ogTitle,
+      description,
+      images: [imagen],
+    },
+    twitter: twitterCard(ogTitle, description, [imagen.url]),
   };
 }
 
@@ -33,11 +75,11 @@ const STATUS_TONE = { disponible: "ok", reservado: "warn", en_transito: "info", 
 
 export default async function VehiculoPage({ params }: Params) {
   const { id } = await params;
-  const v = await getStockUnit(id);
+  const v = await leerUnidad(id);
   if (!v) notFound();
 
   const related = (await getStock(4)).filter((r) => r.id !== v.id).slice(0, 3);
-  const photos = v.photos.length ? v.photos : v.coverPhoto?.url ? [{ id: "cover", url: v.coverPhoto.url, alt: v.coverPhoto.alt }] : [];
+  const photos = fotosDeFicha(v);
   const logo = findBrandLogo(v.brand);
   const sold = v.status === "vendido";
   const consigned = isConsignment(v);
@@ -63,8 +105,25 @@ export default async function VehiculoPage({ params }: Params) {
     { icon: "mapPin", label: "Ubicación", value: v.location ?? "Lima" },
   ];
 
+  // Datos estructurados: las migas replican las visibles (Stock › Marca
+  // Modelo). La ficha `Car` no se emite para unidades de demostración: son
+  // ficticias y no deben llegar a Google ni como dato.
+  const ruta = rutaFicha(v);
+  const jsonLd = [
+    ...(v.isDemo
+      ? []
+      : [vehicleSchema({ vehicle: v, path: ruta, images: photos.flatMap((p) => (p.url ? [p.url] : [])) })]),
+    breadcrumbSchema([
+      { nombre: "Stock", ruta: "/comprar" },
+      { nombre: `${v.brand} ${v.model}`, ruta },
+    ]),
+  ];
+
   return (
     <div className="flex min-h-screen flex-col">
+      {/* `<` escapado: la descripción viene del portal y un "</script>" en ella
+          cerraría la etiqueta. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <Navbar />
       <main id="contenido" className="w-full flex-1 pt-[var(--lux-nav-h)]">
         <div className="container-lux py-6 sm:py-8">

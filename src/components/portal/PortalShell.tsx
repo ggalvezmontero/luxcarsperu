@@ -286,6 +286,46 @@ function SinPermiso() {
   );
 }
 
+/**
+ * Hay sesión pero no se pudo leer el perfil (token vencido, base dormida, red).
+ * No se sabe si la cuenta es del equipo, así que ni se cierra la sesión ni se
+ * dice "no es del equipo": se ofrece reintentar. Ver `error-perfil` en
+ * `portalSession.tsx`.
+ */
+function ErrorPerfil() {
+  const { email, signOut, reintentar } = usePortalSession();
+  const router = useRouter();
+  return (
+    <main className="flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm rounded-lux-lg border border-line bg-surface px-6 py-7 text-center">
+        <p className="text-[0.62rem] uppercase tracking-[0.22em] text-ink-4">Portal interno</p>
+        <h1 className="mt-3 text-base font-medium text-ink">No se pudo verificar tu sesión</h1>
+        <p className="mt-2 text-xs leading-relaxed text-ink-3">
+          {email ? <>Entraste como <span className="text-ink-2">{email}</span>. </> : null}
+          No pudimos confirmar los datos de tu cuenta. Puede ser la conexión o que la sesión necesite renovarse. Vuelve a intentar.
+        </p>
+        <button
+          type="button"
+          onClick={() => void reintentar()}
+          className="mt-5 block w-full rounded-lux bg-ink px-4 py-3 text-sm font-medium text-void transition-colors hover:bg-silver-bright"
+        >
+          Reintentar
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            await signOut();
+            router.replace(LOGIN_PATH);
+          }}
+          className="mt-3 text-xs text-ink-3 underline underline-offset-4 hover:text-silver"
+        >
+          Cerrar sesión y entrar de nuevo
+        </button>
+      </div>
+    </main>
+  );
+}
+
 function PortalChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLogin = pathname === LOGIN_PATH;
@@ -306,6 +346,10 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
 
   if (status === "sin-permiso") {
     return <SinPermiso />;
+  }
+
+  if (status === "error-perfil") {
+    return <ErrorPerfil />;
   }
 
   // Mientras se lee la sesión guardada no se pinta el tablero: evita el

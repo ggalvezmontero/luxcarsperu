@@ -15,6 +15,18 @@
  *
  * Este módulo NUNCA lanza: sin base de datos devuelve `[]` / `null` y el sitio
  * sigue funcionando igual.
+ *
+ * EXCEPCIÓN EXPLÍCITA Y CON OTRO NOMBRE: `getPublishedVehiclesOrThrow()` y
+ * `getVehicleByIdOrThrow()`. Existen para las páginas con ISR (`revalidate`).
+ * Next solo conserva la última página buena si la regeneración LANZA; si la
+ * lectura devuelve `[]` ante un error pasajero de Neon, esa página vacía queda
+ * cacheada ("Todo el stock se vendió.") hasta la siguiente revalidación. Estas
+ * variantes:
+ *  · sin base de datos configurada devuelven `[]` / `null` igual que las otras
+ *    (no es un error, es el modo demo);
+ *  · con base configurada y una consulta que FALLA, lanzan `StockReadError`.
+ * No las uses fuera de una página ISR: el respaldo de `next build` (no tumbar
+ * el build por un error de red) vive en `lib/stock.ts`, que es quien las llama.
  */
 
 import {
@@ -22,6 +34,7 @@ import {
   getPublicClient,
   isDatabaseConfigured,
   warnOnce,
+  type DataApiClient,
 } from "./client";
 import type {
   Currency,
@@ -54,6 +67,24 @@ const PHOTO_COLUMNS =
 
 const DEFAULT_LIMIT = 24;
 const MAX_LIMIT = 100;
+
+/**
+ * Error de lectura del stock con base de datos configurada (red, SQL, permisos).
+ * `key` es la misma clave con la que las variantes que no lanzan avisan por
+ * consola, para no duplicar el aviso.
+ */
+export class StockReadError extends Error {
+  readonly key: string;
+  constructor(key: string, message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "StockReadError";
+    this.key = key;
+  }
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /* ========================================================================== */
 /* Mapeo fila -> dominio                                                      */
@@ -197,26 +228,13 @@ function applySort<T extends Orderable<T>>(
 }
 
 /**
- * Vehículos publicados que cumplen los filtros.
- *
- * Sin base de datos configurada devuelve `[]` y lo avisa UNA sola vez por
- * proceso (no en cada render). Ante un error de red o de SQL también devuelve
- * `[]`: la página nunca debe romperse por el inventario.
- *
- * Trae la foto de portada. La galería completa llega en `getVehicleById`.
+ * Consulta de vehículos publicados. LANZA `StockReadError` ante cualquier
+ * fallo; los envoltorios de abajo deciden si lo convierten en `[]`.
  */
-export async function getPublishedVehicles(
-  filters: VehicleFilters = {},
+async function queryPublishedVehicles(
+  client: DataApiClient,
+  filters: VehicleFilters,
 ): Promise<Vehicle[]> {
-  const client = getPublicClient();
-  if (!client) {
-    warnOnce(
-      "vehicles:no-db",
-      "Sin Neon configurado: getPublishedVehicles() devuelve []. Define NEXT_PUBLIC_NEON_URL (ver .env.example).",
-    );
-    return [];
-  }
-
   const limit = Math.min(Math.max(filters.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
   const offset = Math.max(filters.offset ?? 0, 0);
 
@@ -264,24 +282,108 @@ export async function getPublishedVehicles(
     );
 
     if (error) {
-      warnOnce(
+      throw new StockReadError(
         `vehicles:error:${error.code ?? "unknown"}`,
-        `getPublishedVehicles() falló (${error.message}). Se devuelve lista vacía.`,
+        `getPublishedVehicles() falló (${error.message}).`,
       );
-      return [];
     }
 
     return ((data ?? []) as unknown as PublicVehicleRow[]).map((row) =>
       mapVehicle(row),
     );
   } catch (error) {
-    warnOnce(
+    if (error instanceof StockReadError) throw error;
+    throw new StockReadError(
       "vehicles:exception",
-      `getPublishedVehicles() lanzó una excepción inesperada: ${
-        error instanceof Error ? error.message : String(error)
-      }. Se devuelve lista vacía.`,
+      `getPublishedVehicles() lanzó una excepción inesperada: ${describeError(error)}.`,
+      { cause: error },
+    );
+  }
+}
+
+/**
+ * Vehículos publicados que cumplen los filtros.
+ *
+ * Sin base de datos configurada devuelve `[]` y lo avisa UNA sola vez por
+ * proceso (no en cada render). Ante un error de red o de SQL también devuelve
+ * `[]`: la página nunca debe romperse por el inventario.
+ *
+ * Trae la foto de portada. La galería completa llega en `getVehicleById`.
+ */
+export async function getPublishedVehicles(
+  filters: VehicleFilters = {},
+): Promise<Vehicle[]> {
+  const client = getPublicClient();
+  if (!client) {
+    warnOnce(
+      "vehicles:no-db",
+      "Sin Neon configurado: getPublishedVehicles() devuelve []. Define NEXT_PUBLIC_NEON_URL (ver .env.example).",
     );
     return [];
+  }
+
+  try {
+    return await queryPublishedVehicles(client, filters);
+  } catch (error) {
+    const key = error instanceof StockReadError ? error.key : "vehicles:exception";
+    warnOnce(key, `${describeError(error)} Se devuelve lista vacía.`);
+    return [];
+  }
+}
+
+/**
+ * Como `getPublishedVehicles()`, pero LANZA `StockReadError` si la base está
+ * configurada y la consulta falla. Solo para páginas con ISR (ver cabecera).
+ * Sin base de datos devuelve `[]`, igual que la variante que no lanza.
+ */
+export async function getPublishedVehiclesOrThrow(
+  filters: VehicleFilters = {},
+): Promise<Vehicle[]> {
+  const client = getPublicClient();
+  if (!client) {
+    warnOnce(
+      "vehicles:no-db",
+      "Sin Neon configurado: getPublishedVehicles() devuelve []. Define NEXT_PUBLIC_NEON_URL (ver .env.example).",
+    );
+    return [];
+  }
+  return queryPublishedVehicles(client, filters);
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Consulta de la fila de un vehículo (sin galería). LANZA `StockReadError`
+ * ante cualquier fallo; devuelve `null` solo cuando la consulta salió bien y el
+ * auto no existe o no está publicado.
+ */
+async function queryVehicleRow(
+  client: DataApiClient,
+  key: string,
+): Promise<PublicVehicleRow | null> {
+  try {
+    const { data, error } = await client
+      .from(PUBLIC_VIEW)
+      .select("*")
+      .eq(UUID_RE.test(key) ? "id" : "slug", key)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new StockReadError(
+        `vehicles:detail-error:${error.code ?? "unknown"}`,
+        `getVehicleById() falló (${error.message}).`,
+      );
+    }
+    return data ? (data as unknown as PublicVehicleRow) : null;
+  } catch (error) {
+    if (error instanceof StockReadError) throw error;
+    throw new StockReadError(
+      "vehicles:detail-exception",
+      `getVehicleById() lanzó una excepción inesperada: ${describeError(error)}.`,
+      { cause: error },
+    );
   }
 }
 
@@ -290,6 +392,9 @@ export async function getPublishedVehicles(
  *
  * Devuelve `null` si no hay base de datos, si no existe o si no está publicado.
  * Nunca lanza: el consumidor debe tratar `null` como 404.
+ *
+ * Si falla solo la galería, la ficha sale sin fotos (como siempre); si falla la
+ * consulta del auto, `null`.
  */
 export async function getVehicleById(id: string): Promise<Vehicle | null> {
   const key = id?.trim();
@@ -304,50 +409,49 @@ export async function getVehicleById(id: string): Promise<Vehicle | null> {
     return null;
   }
 
-  const isUuid =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key);
-
+  let row: PublicVehicleRow | null;
   try {
-    const { data, error } = await client
-      .from(PUBLIC_VIEW)
-      .select("*")
-      .eq(isUuid ? "id" : "slug", key)
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      warnOnce(
-        `vehicles:detail-error:${error.code ?? "unknown"}`,
-        `getVehicleById() falló (${error.message}). Se devuelve null.`,
-      );
-      return null;
-    }
-    if (!data) return null;
-
-    const row = data as unknown as PublicVehicleRow;
-    return mapVehicle(row, await getVehiclePhotos(row.id));
+    row = await queryVehicleRow(client, key);
   } catch (error) {
-    warnOnce(
-      "vehicles:detail-exception",
-      `getVehicleById() lanzó una excepción inesperada: ${
-        error instanceof Error ? error.message : String(error)
-      }. Se devuelve null.`,
-    );
+    const warnKey =
+      error instanceof StockReadError ? error.key : "vehicles:detail-exception";
+    warnOnce(warnKey, `${describeError(error)} Se devuelve null.`);
     return null;
   }
+  if (!row) return null;
+  return mapVehicle(row, await getVehiclePhotos(row.id));
 }
 
 /**
- * Galería de un vehículo, ordenada con la portada primero.
- *
- * Va en consulta aparte porque PostgREST no infiere la relación entre la vista
- * `vehiculos_publicos` y `vehicle_photos`. El RLS de `vehicle_photos` ya impide
- * ver fotos de autos no publicados, así que esto no filtra nada de más.
+ * Como `getVehicleById()`, pero LANZA `StockReadError` si la base está
+ * configurada y la consulta (o la galería) falla, en vez de devolver `null`.
+ * Así la ficha responde 5xx y no un 404 falso para un auto que sí existe.
+ * Solo para páginas con ISR (ver cabecera). Sin base de datos devuelve `null`.
  */
-export async function getVehiclePhotos(vehicleId: string): Promise<VehiclePhoto[]> {
-  const client = getPublicClient();
-  if (!client || !vehicleId) return [];
+export async function getVehicleByIdOrThrow(id: string): Promise<Vehicle | null> {
+  const key = id?.trim();
+  if (!key) return null;
 
+  const client = getPublicClient();
+  if (!client) {
+    warnOnce(
+      "vehicles:no-db",
+      "Sin Neon configurado: getVehicleById() devuelve null. Define NEXT_PUBLIC_NEON_URL (ver .env.example).",
+    );
+    return null;
+  }
+  // Aquí la galería también lanza: cachear la ficha sin fotos por un error
+  // pasajero sería otra versión del mismo problema.
+  const row = await queryVehicleRow(client, key);
+  if (!row) return null;
+  return mapVehicle(row, await queryVehiclePhotos(client, row.id));
+}
+
+/** Consulta de la galería. LANZA `StockReadError` ante cualquier fallo. */
+async function queryVehiclePhotos(
+  client: DataApiClient,
+  vehicleId: string,
+): Promise<VehiclePhoto[]> {
   try {
     const { data, error } = await client
       .from(PHOTOS_TABLE)
@@ -357,21 +461,42 @@ export async function getVehiclePhotos(vehicleId: string): Promise<VehiclePhoto[
       .order("orden", { ascending: true });
 
     if (error) {
-      warnOnce(
+      throw new StockReadError(
         `vehicles:photos-error:${error.code ?? "unknown"}`,
-        `getVehiclePhotos() falló (${error.message}). La ficha se muestra sin galería.`,
+        `getVehiclePhotos() falló (${error.message}).`,
       );
-      return [];
     }
 
     return ((data ?? []) as unknown as VehiclePhotoRow[]).map(mapPhoto);
   } catch (error) {
-    warnOnce(
+    if (error instanceof StockReadError) throw error;
+    throw new StockReadError(
       "vehicles:photos-exception",
-      `getVehiclePhotos() lanzó una excepción inesperada: ${
-        error instanceof Error ? error.message : String(error)
-      }. La ficha se muestra sin galería.`,
+      `getVehiclePhotos() lanzó una excepción inesperada: ${describeError(error)}.`,
+      { cause: error },
     );
+  }
+}
+
+/**
+ * Galería de un vehículo, ordenada con la portada primero.
+ *
+ * Va en consulta aparte porque PostgREST no infiere la relación entre la vista
+ * `vehiculos_publicos` y `vehicle_photos`. El RLS de `vehicle_photos` ya impide
+ * ver fotos de autos no publicados, así que esto no filtra nada de más.
+ *
+ * Nunca lanza: ante un error la ficha se muestra sin galería.
+ */
+export async function getVehiclePhotos(vehicleId: string): Promise<VehiclePhoto[]> {
+  const client = getPublicClient();
+  if (!client || !vehicleId) return [];
+
+  try {
+    return await queryVehiclePhotos(client, vehicleId);
+  } catch (error) {
+    const key =
+      error instanceof StockReadError ? error.key : "vehicles:photos-exception";
+    warnOnce(key, `${describeError(error)} La ficha se muestra sin galería.`);
     return [];
   }
 }

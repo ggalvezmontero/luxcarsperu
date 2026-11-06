@@ -12,8 +12,11 @@
  * Siempre existe la salida "Otra marca" / "Otro modelo": el catálogo ayuda a
  * elegir, no limita lo que se puede pedir.
  *
- * Mantenimiento: agregar o quitar un modelo es una línea. Marcas en orden
- * alfabético; modelos en el orden en que el fabricante los lista.
+ * Mantenimiento: agregar un modelo es una línea. Marcas en orden alfabético;
+ * modelos en el orden en que el fabricante los lista. Antes de QUITAR o
+ * RENOMBRAR uno: los enlaces de estimados ya compartidos (`/c/<código>`)
+ * identifican el auto por su nombre en este catálogo; sin él siguen abriendo,
+ * pero muestran "Vehículo 2026" en vez del modelo.
  */
 
 export type CatalogBrand = {

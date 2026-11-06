@@ -189,7 +189,7 @@ export type VinLookupResponse =
   | {
       ok: false;
       vin: string;
-      code: "vin-invalido" | "sin-datos" | "upstream-error";
+      code: "vin-invalido" | "sin-datos" | "upstream-error" | "sin-sesion";
       /** Mensaje en español, listo para mostrar al usuario. */
       error: string;
     };

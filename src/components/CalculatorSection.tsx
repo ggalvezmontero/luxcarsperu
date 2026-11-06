@@ -1,11 +1,8 @@
 'use client';
 
 import {
-  calculateImportQuote,
   checkAdmissibility,
   inferCondition,
-  UnsupportedQuoteError,
-  type ImportCalculatorInput,
   type PremiumImportQuote,
 } from "@/core/pricing/priceCalculator";
 import {
@@ -20,14 +17,19 @@ import {
   USED_ISC_RATE,
   VEHICLE_CATEGORIES,
 } from "@/core/pricing/vehicleCategories";
-import {
-  resolveOrigin,
-  type OriginInference,
-} from "@/core/pricing/originInference";
+import type { OriginInference } from "@/core/pricing/originInference";
 import { getTrendingVehicleById } from "@/data/trendingVehicles";
 import { LUXCARS_CONFIG, type VehicleTypeId } from "@/lib/config";
-import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
+import { evaluateQuote } from "@/lib/cotizacion";
 import {
+  SHARED_QUOTE_PARAM,
+  decodeSharedQuote,
+  encodeSharedQuote,
+  sharedQuotePath,
+} from "@/lib/cotizacionCompartida";
+import { cn, formatCurrency, formatPercentage, formatRate } from "@/lib/utils";
+import {
+  buildBlockedCalculatorWhatsappLink,
   buildIncompleteCalculatorWhatsappLink,
   buildWhatsappLink,
 } from "@/lib/whatsapp";
@@ -40,9 +42,17 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type ClipboardEvent,
 } from "react";
 import { BrandModelPicker } from "./BrandModelPicker";
 import { Button } from "./Button";
+import {
+  QuoteBreakdown,
+  QuoteChips,
+  describeOrigin,
+  quoteTaxes,
+} from "./cotizacion/QuoteBreakdown";
+import { ShareQuoteButton } from "./cotizacion/ShareQuoteButton";
 import { Tooltip } from "./Tooltip";
 import { Icon } from "./ui/Icon";
 import { Section, SectionHeader } from "./ui/Section";
@@ -63,6 +73,13 @@ import { Section, SectionHeader } from "./ui/Section";
       vendedor emite certificado de origen.
    4. Los errores se muestran donde se corrigen (bajo el campo) y el panel de
       resultado dice qué falta, en vez de un alerta genérico al final.
+   5. El formulario SALE EN EL HTML del servidor. Lo único que depende de la
+      URL (`?simular=` y `?c=`) se lee en `UrlPresetReader`, un hijo aparte con
+      su propio Suspense. Si `useSearchParams` se llama acá arriba, Next deja
+      toda la calculadora fuera del prerender y lo que recibe un buscador es
+      "Cargando calculadora…".
+   6. Un estimado se comparte con un enlace corto (`/c/<código>`) que lleva
+      los datos adentro: ver `lib/cotizacionCompartida.ts`.
    ------------------------------------------------------------------------- */
 
 
@@ -83,15 +100,6 @@ const CONDITION_OPTIONS: { id: VehicleCondition; label: string; hint: string }[]
   { id: "nuevo", label: "Nuevo", hint: "Sin matricular en EE.UU." },
   { id: "usado", label: "Usado", hint: "Ya matriculado en EE.UU." },
 ];
-
-/** Etiquetas cortas para las fichas de motor. La larga queda en el tooltip. */
-const MOTOR_SHORT_LABEL: Record<VehicleTypeId, string> = {
-  gasolina: "Gasolina",
-  hev: "Híbrido",
-  diesel: "Diésel",
-  ev: "Eléctrico",
-  phev: "Híbrido enchufable",
-};
 
 /**
  * Opciones de motor que ve el cliente. Híbrido, híbrido enchufable y eléctrico
@@ -128,10 +136,23 @@ const MOTOR_OPTIONS: readonly {
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
+/**
+ * Años modelo que se pueden elegir, del más nuevo al más antiguo. Empieza en
+ * el año SIGUIENTE: en EE.UU. el año modelo se adelanta al calendario (desde
+ * mediados de año los concesionarios ya venden el modelo del año que viene) y
+ * sin esa opción un auto 2027 comprado en 2026 se cotizaba como 2026.
+ */
+const NEWEST_YEAR = CURRENT_YEAR + 1;
 const YEAR_OPTIONS = (() => {
   const oldest = oldestImportableModelYear(CURRENT_YEAR);
-  return Array.from({ length: CURRENT_YEAR - oldest + 1 }, (_, i) => CURRENT_YEAR - i);
+  return Array.from({ length: NEWEST_YEAR - oldest + 1 }, (_, i) => NEWEST_YEAR - i);
 })();
+
+/** Año con el que termina el nombre de un modelo destacado ("… Raptor 2026"). */
+function yearFromName(name: string): string | null {
+  const match = /\b(20\d{2})\s*$/.exec(name);
+  return match && YEAR_OPTIONS.includes(Number(match[1])) ? match[1] : null;
+}
 
 const INITIAL_FORM: FormState = {
   condition: "nuevo",
@@ -149,6 +170,15 @@ const FORM_STORAGE_KEY = "luxcars:form-state";
 const RESULT_ID = "calc-resultado";
 
 const onlyDigits = (value: string) => value.replace(/[^0-9]/g, "").slice(0, 8);
+
+/**
+ * Dígitos de un precio PEGADO. Descarta los centavos ("$65,000.50",
+ * "65000,50"): si no, esos dos dígitos se sumaban al precio y USD 65,000.50
+ * se cotizaba como USD 6,500,050. Solo vale para lo que se pega: mientras se
+ * escribe, "65,00" es un 65,000 a medio borrar, no un monto con centavos.
+ */
+const digitsFromPastedPrice = (text: string) =>
+  onlyDigits(text.trim().replace(/[.,]\d{1,2}\D*$/, ""));
 const toNumber = (digits: string) => (digits ? Number(digits) : NaN);
 const formatDigits = (digits: string) =>
   digits ? Number(digits).toLocaleString("en-US") : "";
@@ -203,48 +233,52 @@ function evaluate(form: FormState, priceSettled: boolean): Evaluation {
     };
   }
 
-  const admissibility = checkAdmissibility({
-    vehicleType: form.vehicleType as VehicleTypeId,
-    condition: form.condition,
-    year: form.year,
-    currentYear: CURRENT_YEAR,
-  });
-  if (!admissibility.allowed) return { kind: "blocked", reason: admissibility.reason };
-
-  const originInfo = resolveOrigin(form.brand.trim(), form.model.trim());
-
-  const input: ImportCalculatorInput = {
-    brand: form.brand.trim(),
-    model: form.model.trim(),
+  return evaluateQuote({
+    brand: form.brand,
+    model: form.model,
     year: form.year,
     priceMiami,
     vehicleType: form.vehicleType as VehicleTypeId,
     condition: form.condition,
-    origin: form.originOverride ?? originInfo.origin,
-  };
+    preferredPlan: form.preferredPlan,
+    originOverride: form.originOverride,
+    currentYear: CURRENT_YEAR,
+  });
+}
 
-  try {
-    return {
-      kind: "ready",
-      estimate: calculateImportQuote(input, form.preferredPlan),
-      originInfo,
-    };
-  } catch (err) {
-    return {
-      kind: "blocked",
-      reason:
-        err instanceof UnsupportedQuoteError
-          ? err.message
-          : "Hubo un problema al generar el estimado. Revisa los datos e intenta de nuevo.",
-    };
-  }
+/* --- Lo que llega por la URL ----------------------------------------------- */
+
+/** Lo que puede traer la URL para precargar la calculadora. */
+type UrlPreset = {
+  /** `?simular=<id>`: un modelo de "más buscados". */
+  simular: string | null;
+  /** `?c=<código>`: un estimado compartido. */
+  compartido: string | null;
+};
+
+const SIN_PRESET: UrlPreset = { simular: null, compartido: null };
+
+/**
+ * Lee los parámetros de la URL y se los pasa a la calculadora. No pinta nada.
+ *
+ * Vive aparte, dentro de su propio Suspense, porque `useSearchParams` saca del
+ * prerender a todo lo que tenga alrededor hasta el Suspense más cercano.
+ */
+function UrlPresetReader({ onPreset }: { onPreset: (preset: UrlPreset) => void }) {
+  const searchParams = useSearchParams();
+  const simular = searchParams.get("simular");
+  const compartido = searchParams.get(SHARED_QUOTE_PARAM);
+  useEffect(() => {
+    onPreset({ simular, compartido });
+  }, [simular, compartido, onPreset]);
+  return null;
 }
 
 /* --- Componente ------------------------------------------------------------ */
 
-function CalculatorSectionInner() {
+export function CalculatorSection() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [urlPreset, setUrlPreset] = useState<UrlPreset>(SIN_PRESET);
 
   // El primer render TIENE que coincidir con el del servidor: arranca en
   // INITIAL_FORM y lo guardado se aplica después de montar.
@@ -255,6 +289,12 @@ function CalculatorSectionInner() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [resultInView, setResultInView] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  // Sube cada vez que el formulario se reemplaza entero (lo guardado, un
+  // preset, un reinicio). El selector de marca y modelo decide al montarse si
+  // muestra una lista o el campo de texto de "Otra…"; con esto se vuelve a
+  // montar y decide con los datos nuevos. Sin esto, un modelo fuera de
+  // catálogo llegado por preset perdía su campo de texto al borrarlo.
+  const [pickerEpoch, setPickerEpoch] = useState(0);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const minPrice = LUXCARS_CONFIG.services.minimumVehiclePrice;
@@ -280,6 +320,7 @@ function CalculatorSectionInner() {
   /* Restaurar y persistir el formulario. */
   useEffect(() => {
     setForm(loadStoredForm());
+    setPickerEpoch((n) => n + 1);
     setHydrated(true);
   }, []);
 
@@ -292,26 +333,35 @@ function CalculatorSectionInner() {
     }
   }, [form, hydrated]);
 
-  /* Publicar el estimado para el formulario de contacto. */
+  /* Publicar el estimado para el formulario de contacto, y RETIRARLO cuando
+     deja de valer (datos incompletos, auto que no entra, reinicio). Si no se
+     retira, el contacto sigue adjuntando el estimado anterior: por ejemplo el
+     de un diésel nuevo después de cambiarlo a usado, que no se puede importar. */
   useEffect(() => {
-    if (!estimate) return;
+    if (!hydrated) return;
     try {
-      const payload = { estimate, timestamp: Date.now(), preferredPlan: estimate.planKey };
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      window.dispatchEvent(new CustomEvent(STORAGE_KEY, { detail: payload }));
+      if (estimate) {
+        const payload = { estimate, timestamp: Date.now(), preferredPlan: estimate.planKey };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        window.dispatchEvent(new CustomEvent(STORAGE_KEY, { detail: payload }));
+      } else {
+        window.localStorage.removeItem(STORAGE_KEY);
+        window.dispatchEvent(new CustomEvent(STORAGE_KEY, { detail: null }));
+      }
     } catch (err) {
       console.warn("No se pudo guardar el cálculo localmente", err);
     }
-  }, [estimate]);
+  }, [estimate, hydrated]);
 
   /* Preset desde "más buscados": /?simular=<id>#calculator */
-  const simularPresetId = searchParams.get("simular");
+  const simularPresetId = urlPreset.simular;
   useEffect(() => {
     if (!simularPresetId) return;
     const preset = getTrendingVehicleById(simularPresetId);
     if (!preset) return;
     const c = preset.calculator;
-    const year = String(CURRENT_YEAR - 1);
+    // El año es el que anuncia la tarjeta ("… Raptor 2026"), no uno fijo.
+    const year = yearFromName(preset.name) ?? String(CURRENT_YEAR);
     setForm({
       condition: inferCondition(year, CURRENT_YEAR),
       vehicleType: c.vehicleType,
@@ -322,11 +372,37 @@ function CalculatorSectionInner() {
       preferredPlan: c.preferredPlan ?? "fast",
       originOverride: null,
     });
+    setPickerEpoch((n) => n + 1);
     setPriceTouched(true);
     requestAnimationFrame(() => {
       document.getElementById("calculator")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [simularPresetId]);
+
+  /* Estimado compartido: /?c=<código>#calculator abre la calculadora con los
+     mismos datos y el desglose a la vista, para ajustarlos. */
+  const sharedPresetCode = urlPreset.compartido;
+  useEffect(() => {
+    if (!sharedPresetCode) return;
+    const shared = decodeSharedQuote(sharedPresetCode);
+    if (!shared) return;
+    setForm({
+      condition: shared.condition,
+      vehicleType: shared.vehicleType,
+      brand: shared.brand,
+      model: shared.model,
+      year: String(shared.year),
+      price: onlyDigits(String(shared.price)),
+      preferredPlan: shared.plan,
+      originOverride: shared.origin,
+    });
+    setPickerEpoch((n) => n + 1);
+    setPriceTouched(true);
+    setBreakdownOpen(true);
+    requestAnimationFrame(() => {
+      document.getElementById("calculator")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [sharedPresetCode]);
 
   /* La barra fija de móvil se esconde cuando el resultado ya está a la vista. */
   useEffect(() => {
@@ -349,8 +425,16 @@ function CalculatorSectionInner() {
     patch({ price: onlyDigits(event.target.value) });
   };
 
+  const handlePricePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const digits = digitsFromPastedPrice(event.clipboardData.getData("text"));
+    if (!digits) return;
+    event.preventDefault();
+    patch({ price: digits });
+  };
+
   const handleReset = () => {
     setForm(INITIAL_FORM);
+    setPickerEpoch((n) => n + 1);
     setPriceTouched(false);
     setBreakdownOpen(false);
     setPdfError(null);
@@ -360,7 +444,7 @@ function CalculatorSectionInner() {
     } catch (err) {
       console.warn("No se pudo limpiar el cálculo guardado", err);
     }
-    if (simularPresetId) router.replace("/#calculator", { scroll: false });
+    if (simularPresetId || sharedPresetCode) router.replace("/#calculator", { scroll: false });
     document.getElementById("calculator")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -386,9 +470,33 @@ function CalculatorSectionInner() {
     resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  /* Código del enlace corto. Sale de los mismos datos que produjeron el
+     estimado, así que abrirlo da exactamente este resultado. */
+  const shareCode = useMemo(() => {
+    if (!estimate) return null;
+    return encodeSharedQuote({
+      condition: estimate.condition,
+      vehicleType: estimate.input.vehicleType,
+      brand: estimate.input.brand,
+      model: estimate.input.model,
+      year: Number(estimate.input.year),
+      price: Math.round(estimate.input.priceMiami),
+      plan: estimate.planKey,
+      origin: form.originOverride,
+    });
+  }, [estimate, form.originOverride]);
+
+  // El mensaje de WhatsApp lleva el enlace del estimado: el asesor abre el
+  // mismo desglose que vio el cliente en vez de reconstruirlo del texto.
   const whatsappLink = useMemo(
-    () => (estimate ? buildWhatsappLink(estimate, { preferredPlan: estimate.planKey }) : null),
-    [estimate],
+    () =>
+      estimate
+        ? buildWhatsappLink(estimate, {
+            preferredPlan: estimate.planKey,
+            detailUrl: shareCode ? `${window.location.origin}${sharedQuotePath(shareCode)}` : undefined,
+          })
+        : null,
+    [estimate, shareCode],
   );
 
   const adviceLink = useMemo(() => {
@@ -404,6 +512,22 @@ function CalculatorSectionInner() {
     });
   }, [form.vehicleType, form.brand, form.model, form.preferredPlan]);
 
+  /* Auto que no se puede cotizar (precio bajo el mínimo, diésel usado, muy
+     antiguo): el mensaje lleva lo que el cliente SÍ escribió y el motivo. */
+  const blockedLink = useMemo(() => {
+    if (evaluation.kind !== "blocked") return null;
+    const category = VEHICLE_CATEGORIES.find((c) => c.id === form.vehicleType);
+    return buildBlockedCalculatorWhatsappLink({
+      vehicleTypeLabel: category?.label,
+      conditionLabel: form.condition === "usado" ? "Usado" : "Nuevo",
+      brand: form.brand,
+      model: form.model,
+      year: form.year,
+      priceUsd: priceValue > 0 ? priceValue : null,
+      reason: evaluation.reason,
+    });
+  }, [evaluation, form.vehicleType, form.condition, form.brand, form.model, form.year, priceValue]);
+
   const plans = [
     { key: "fast" as const, ...LUXCARS_CONFIG.deliveryWindows.fastTrack },
     { key: "standard" as const, ...LUXCARS_CONFIG.deliveryWindows.standard },
@@ -411,6 +535,9 @@ function CalculatorSectionInner() {
 
   return (
     <Section id="calculator" tone="surface">
+      <Suspense fallback={null}>
+        <UrlPresetReader onPreset={setUrlPreset} />
+      </Suspense>
       <SectionHeader
         eyebrow="Calculadora pública"
         title="¿Cuánto cuesta importar tu auto?"
@@ -476,6 +603,7 @@ function CalculatorSectionInner() {
           <Step n={3} title="El auto">
             <div className="grid gap-4 sm:grid-cols-2">
               <BrandModelPicker
+                key={pickerEpoch}
                 idPrefix="calc"
                 brand={form.brand}
                 model={form.model}
@@ -511,7 +639,7 @@ function CalculatorSectionInner() {
                 <p className="mt-1.5 text-xs text-ink-4">
                   {form.condition === "usado"
                     ? `Usados: máximo ${PRICING_CONFIG.usedMaxAgeYears} años contando ${CURRENT_YEAR}.`
-                    : "Nuevos: del año o del anterior."}
+                    : "Nuevos: del año en curso, el siguiente o el anterior."}
                 </p>
                 {yearBlocked ? <FieldError>{yearBlocked}</FieldError> : null}
               </div>
@@ -524,6 +652,7 @@ function CalculatorSectionInner() {
                     id="calc-price"
                     value={formatDigits(form.price)}
                     onChange={handlePrice}
+                    onPaste={handlePricePaste}
                     onBlur={() => setPriceTouched(true)}
                     placeholder="65,000"
                     inputMode="numeric"
@@ -589,7 +718,8 @@ function CalculatorSectionInner() {
             onToggleBreakdown={() => setBreakdownOpen((v) => !v)}
             onOriginOverride={(next) => patch({ originOverride: next })}
             whatsappLink={whatsappLink}
-            adviceLink={adviceLink}
+            adviceLink={blockedLink ?? adviceLink}
+            shareCode={shareCode}
             onDownloadPDF={handleDownloadPDF}
             isGeneratingPDF={isGeneratingPDF}
             pdfError={pdfError}
@@ -643,6 +773,8 @@ type ResultPanelProps = {
   onOriginOverride: (next: VehicleOrigin) => void;
   whatsappLink: string | null;
   adviceLink: string;
+  /** Código del enlace corto; `null` si el estimado no se puede compartir. */
+  shareCode: string | null;
   onDownloadPDF: () => void;
   isGeneratingPDF: boolean;
   pdfError: string | null;
@@ -658,6 +790,7 @@ function ResultPanel({
   onOriginOverride,
   whatsappLink,
   adviceLink,
+  shareCode,
   onDownloadPDF,
   isGeneratingPDF,
   pdfError,
@@ -709,10 +842,8 @@ function ResultPanel({
     );
   }
 
-  const tributos = estimate.adValorem + estimate.isc + estimate.igv + estimate.ipm;
-  const servicio = estimate.stateComplianceFee + estimate.brokerFee + estimate.documentHandlingFee;
-  const tributosShare = estimate.finalEstimate > 0 ? tributos / estimate.finalEstimate : 0;
-  const conditionLabel = estimate.condition === "usado" ? "Usado" : "Nuevo";
+  const tributosShare = estimate.finalEstimate > 0 ? quoteTaxes(estimate) / estimate.finalEstimate : 0;
+  const vehicleName = `${estimate.input.brand} ${estimate.input.model} ${estimate.input.year}`;
   // Un usado paga 6% haga lo que haga el certificado: no hay nada que corregir.
   const canToggleOrigin =
     estimate.condition === "nuevo" &&
@@ -733,13 +864,9 @@ function ResultPanel({
         </p>
       </div>
 
-      <p className="mt-4 text-base font-medium text-ink">
-        {estimate.input.brand} {estimate.input.model} {estimate.input.year}
-      </p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Chip>{conditionLabel}</Chip>
-        <Chip>{MOTOR_SHORT_LABEL[estimate.vehicleCategory.id]}</Chip>
-        <Chip>{estimate.planConfig.label} · {estimate.planConfig.timelineLabel}</Chip>
+      <p className="mt-4 text-base font-medium text-ink">{vehicleName}</p>
+      <div className="mt-2">
+        <QuoteChips estimate={estimate} />
       </div>
 
       {/* Efectivo */}
@@ -751,7 +878,7 @@ function ResultPanel({
           {formatCurrency(estimate.cashRequired)}
         </p>
         <p className="mt-1.5 text-xs leading-relaxed text-ink-4">
-          Suma la percepción del IGV ({formatPercentage(estimate.percepcionRate)}): un adelanto que SUNAT devuelve o que descuentas de tu IGV. No es costo.
+          Suma la percepción del IGV ({formatRate(estimate.percepcionRate)}): un adelanto que SUNAT devuelve o que descuentas de tu IGV. No es costo.
         </p>
       </div>
 
@@ -776,49 +903,7 @@ function ResultPanel({
         </button>
 
         {breakdownOpen ? (
-          <dl id="calc-desglose" className="mt-2 divide-y divide-line border-t border-line">
-            <Line label="Precio en EE.UU." amount={estimate.input.priceMiami} />
-            <Line
-              label="Flete y seguro"
-              amount={estimate.freight + estimate.insurance}
-              tooltip={`Flete marítimo Miami → Callao (${formatCurrency(estimate.freight)}) más seguro internacional (${formatCurrency(estimate.insurance)}).`}
-            />
-            <Group label="Tributos SUNAT" amount={tributos}>
-              <Line
-                sub
-                label={`Ad valorem ${formatPercentage(estimate.adValoremRate)}`}
-                amount={estimate.adValorem}
-                tooltip={
-                  estimate.adValoremRate === 0
-                    ? "0%: vehículo nuevo originario de EE.UU. con certificado de origen (acuerdo Perú–EE.UU.)."
-                    : "Sobre el valor CIF. Baja a 0% solo si el vehículo es nuevo, originario de EE.UU. y tiene certificado de origen."
-                }
-              />
-              <Line
-                sub
-                label={`ISC ${formatPercentage(estimate.iscRate)}`}
-                amount={estimate.isc}
-                tooltip={`Sobre CIF + ad valorem. ${estimate.iscTooltip}`}
-              />
-              <Line
-                sub
-                label="IGV + IPM 18%"
-                amount={estimate.igv + estimate.ipm}
-                tooltip="IGV 15.5% más IPM 2.5%, sobre CIF + ad valorem + ISC."
-              />
-            </Group>
-            <Line
-              label="Servicio LuxCars"
-              amount={servicio}
-              tooltip="Inspección, negociación, logística, gestión documentaria y Fast Track si aplica."
-            />
-            <Line
-              label={`Percepción IGV ${formatPercentage(estimate.percepcionRate)}`}
-              amount={estimate.percepcion}
-              muted
-              tooltip="Adelanto del IGV. Se recupera; no es un costo, pero sí efectivo el día del despacho."
-            />
-          </dl>
+          <QuoteBreakdown estimate={estimate} id="calc-desglose" className="mt-2" />
         ) : null}
       </div>
 
@@ -848,15 +933,27 @@ function ResultPanel({
           </Button>
         ) : null}
         <div className="grid grid-cols-2 gap-3">
-          <Button onClick={onDownloadPDF} variant="secondary" disabled={isGeneratingPDF} className="w-full">
+          {shareCode ? (
+            <ShareQuoteButton
+              code={shareCode}
+              title={`${vehicleName} puesto en Lima`}
+              text={`${vehicleName} importado, puesto en Lima con placas: ${formatCurrency(estimate.finalEstimate)}. Mira el desglose:`}
+            />
+          ) : null}
+          <Button
+            onClick={onDownloadPDF}
+            variant="secondary"
+            disabled={isGeneratingPDF}
+            className={cn("w-full", !shareCode && "col-span-2")}
+          >
             <Icon name="download" size={16} />
             {isGeneratingPDF ? "Generando…" : "Descargar PDF"}
           </Button>
-          <Button onClick={onReset} variant="ghost" className="w-full border border-line">
-            <Icon name="refresh" size={16} />
-            Reiniciar
-          </Button>
         </div>
+        <Button onClick={onReset} variant="ghost" size="sm" className="w-full border border-line">
+          <Icon name="refresh" size={14} />
+          Reiniciar
+        </Button>
         {pdfError ? (
           <p role="alert" className="text-xs text-danger">{pdfError}</p>
         ) : null}
@@ -963,112 +1060,7 @@ function FieldError({ children }: { children: ReactNode }) {
   );
 }
 
-function Chip({ children }: { children: ReactNode }) {
-  return (
-    <span className="rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">
-      {children}
-    </span>
-  );
-}
-
-function Line({
-  label,
-  amount,
-  tooltip,
-  muted,
-  sub,
-}: {
-  label: string;
-  amount: number;
-  tooltip?: string;
-  muted?: boolean;
-  sub?: boolean;
-}) {
-  return (
-    <div className={cn("flex items-center justify-between gap-4", sub ? "py-2 pl-4" : "py-3")}>
-      <dt className={cn("flex min-w-0 items-center gap-2 text-sm", muted || sub ? "text-ink-4" : "text-ink-2")}>
-        <span>{label}</span>
-        {tooltip ? <Tooltip content={tooltip} placement="top" /> : null}
-      </dt>
-      <dd className={cn("shrink-0 text-sm tabular-nums", muted || sub ? "text-ink-3" : "font-semibold text-ink")}>
-        {formatCurrency(amount)}
-      </dd>
-    </div>
-  );
-}
-
-function Group({
-  label,
-  amount,
-  children,
-}: {
-  label: string;
-  amount: number;
-  children: ReactNode;
-}) {
-  return (
-    <div className="py-1">
-      <div className="flex items-center justify-between gap-4 py-2">
-        <dt className="text-sm text-ink-2">{label}</dt>
-        <dd className="shrink-0 text-sm font-semibold tabular-nums text-ink">{formatCurrency(amount)}</dd>
-      </div>
-      <div className="border-l border-line">{children}</div>
-    </div>
-  );
-}
-
-/**
- * Explicación corta del ad valorem para el cliente. Las notas internas del
- * motor de origen (`reason`) hablan de plantas, VIN y AALA: son para el
- * asesor, no para la web pública. Aquí se resume con los campos estructurados.
- */
-function describeOrigin(info: OriginInference, estimate: PremiumImportQuote): string {
-  const vehicle = `${estimate.input.brand} ${estimate.input.model}`.trim();
-  const country = info.assemblyCountry.replace(/\s*\(verificar VIN\)/i, "");
-  const verify = "Antes de comprar lo confirmamos con el VIN de la unidad.";
-
-  if (estimate.adValoremRate === 0) {
-    const where = info.plant ? `en ${info.plant}` : "en Estados Unidos";
-    return `Ad valorem 0%: el ${vehicle} se ensambla ${where} y califica al acuerdo Perú–EE.UU. si el vendedor emite el certificado de origen. ${verify}`;
-  }
-  if (estimate.condition === "usado") {
-    return `Ad valorem 6%: el acuerdo Perú–EE.UU. solo exonera vehículos nuevos. Un usado paga 6% aunque se haya ensamblado en Estados Unidos y tenga certificado de origen.`;
-  }
-  if (!info.matched) {
-    return `No reconocimos este modelo, así que cotizamos 6% por seguridad. Si se ensambla en Estados Unidos puede bajar a 0% con certificado de origen. ${verify}`;
-  }
-  const multiCountry = /,| o /.test(country);
-  if (info.requiresVin && multiCountry) {
-    return `Cotizamos 6% por seguridad: el ${vehicle} se fabrica en más de un país (${country}) y solo las unidades ensambladas en Estados Unidos califican al 0%. ${verify}`;
-  }
-  if (info.mayQualifyWithCertificate) {
-    return `Cotizamos 6% por seguridad. El ${vehicle} se ensambla en Estados Unidos y puede bajar a 0% si el vendedor emite el certificado de origen del acuerdo Perú–EE.UU. ${verify}`;
-  }
-  if (info.requiresVin) {
-    return `Cotizamos 6% por seguridad: el origen del ${vehicle} depende de la unidad concreta. ${verify}`;
-  }
-  return `Ad valorem 6%: el ${vehicle} se ensambla en ${country} y no califica al acuerdo Perú–EE.UU.`;
-}
-
 function listInSpanish(items: string[]) {
   if (items.length <= 1) return items.join("");
   return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
-}
-
-function CalculatorSectionFallback() {
-  return (
-    <Section id="calculator" tone="surface">
-      <div className="mx-auto max-w-3xl py-16 text-center text-sm text-ink-3">
-        Cargando calculadora…
-      </div>
-    </Section>
-  );
-}
-
-export function CalculatorSection() {
-  return (
-    <Suspense fallback={<CalculatorSectionFallback />}>
-      <CalculatorSectionInner />
-    </Suspense>
-  );
 }

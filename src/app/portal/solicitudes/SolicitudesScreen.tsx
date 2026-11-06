@@ -39,6 +39,7 @@ import {
 } from "@/lib/db/types";
 import { CATEGORY_LABEL } from "@/lib/stockLabels";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
+import { normalizePhoneForWhatsapp } from "@/lib/whatsappPortal";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -78,11 +79,31 @@ function fecha(iso: string): string {
   return new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric" }).format(d);
 }
 
+/**
+ * Enlace de WhatsApp con el número NORMALIZADO, como en leads y
+ * consignaciones: un celular peruano guardado con 9 dígitos ("987 654 321")
+ * necesita el 51 delante o wa.me abre un chat con un número que no existe.
+ */
 function waLink(phone: string | null, text: string): string | null {
-  const digits = (phone ?? "").replace(/\D/g, "");
+  const digits = normalizePhoneForWhatsapp(phone);
   if (!digits) return null;
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 }
+
+/**
+ * Lee un número escrito a mano en el diálogo de aprobación. `null` si no es un
+ * número de verdad: vacío, "5.5.5" o "abc" no se convierten en 0 ni en NaN.
+ * Acepta coma decimal ("5,5") porque así se escribe en Perú.
+ */
+function leerNumero(raw: string): number | null {
+  const limpio = raw.trim().replace(",", ".");
+  if (!/^\d+(\.\d+)?$/.test(limpio)) return null;
+  const valor = Number(limpio);
+  return Number.isFinite(valor) ? valor : null;
+}
+
+/** Tope de `numeric(12, 2)`: el precio de `vehicles` y `consignments`. */
+const PRECIO_MAXIMO = 9_999_999_999.99;
 
 export function SolicitudesScreen() {
   const { status: sessionStatus, client } = usePortalSession();
@@ -277,6 +298,7 @@ function SaleRow({
   const [publish, setPublish] = useState(true);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const wa = waLink(
     s.contactPhone || s.requester.phone,
@@ -326,11 +348,29 @@ function SaleRow({
             className="flex w-56 flex-col gap-2"
             onSubmit={async (e) => {
               e.preventDefault();
+              // Se valida ANTES de llamar a la RPC. Antes, un precio "0"
+              // publicaba el auto a cero, una comisión vacía se volvía 0% sin
+              // avisar y "5.5.5" viajaba como NaN.
+              const precio = leerNumero(price);
+              if (precio === null || precio <= 0) {
+                setFormError("Escribe el precio de publicación: tiene que ser mayor que cero.");
+                return;
+              }
+              if (precio > PRECIO_MAXIMO) {
+                setFormError("El precio es demasiado alto para guardarse. Revisa los ceros.");
+                return;
+              }
+              const comision = leerNumero(commission);
+              if (comision === null || comision < 0 || comision > 100) {
+                setFormError("La comisión tiene que ser un número entre 0 y 100 (ej. 5 o 5.5).");
+                return;
+              }
+              setFormError(null);
               setBusy(true);
               await onApprove({
                 id: s.id,
-                price: price ? Number(price.replace(/[^0-9]/g, "")) : null,
-                commissionRate: Number(commission) / 100,
+                price: precio,
+                commissionRate: comision / 100,
                 publish,
               });
               setBusy(false);
@@ -339,19 +379,24 @@ function SaleRow({
           >
             <label className="text-[11px] uppercase tracking-[0.12em] text-ink-4">
               Precio de publicación ({s.currency})
-              <input value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" className="field-lux mt-1 min-h-10 py-1.5 text-sm tabular-nums" />
+              <input value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" required className="field-lux mt-1 min-h-10 py-1.5 text-sm tabular-nums" />
             </label>
             <label className="text-[11px] uppercase tracking-[0.12em] text-ink-4">
               Comisión %
-              <input value={commission} onChange={(e) => setCommission(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" className="field-lux mt-1 min-h-10 py-1.5 text-sm tabular-nums" />
+              <input value={commission} onChange={(e) => setCommission(e.target.value.replace(/[^0-9.,]/g, ""))} inputMode="decimal" required className="field-lux mt-1 min-h-10 py-1.5 text-sm tabular-nums" />
             </label>
+            {formError ? (
+              <p className="text-xs text-danger" role="alert">
+                {formError}
+              </p>
+            ) : null}
             <label className="flex items-center gap-2 text-xs text-ink-2">
               <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} className="h-4 w-4 accent-silver" />
               Publicar en la web ahora
             </label>
             <div className="flex gap-2">
               <Button size="sm" type="submit" disabled={busy}>{busy ? "…" : "Confirmar"}</Button>
-              <Button size="sm" variant="ghost" type="button" onClick={() => setMode("idle")}>Cancelar</Button>
+              <Button size="sm" variant="ghost" type="button" onClick={() => { setFormError(null); setMode("idle"); }}>Cancelar</Button>
             </div>
           </form>
         ) : (

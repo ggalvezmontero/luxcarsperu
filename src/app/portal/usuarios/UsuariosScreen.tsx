@@ -48,6 +48,10 @@ export function UsuariosScreen() {
 
   const canQuery = sessionStatus === "autenticado" && Boolean(client);
 
+  // Se trae TODA la lista (hasta 500 cuentas) y el filtro se aplica en
+  // pantalla. Si el filtro viajara en la consulta, las tarjetas de arriba
+  // —administradores activos, clientes, desactivadas— se calcularían sobre lo
+  // filtrado y con "Clientes" elegido dirían "0 administradores", que es falso.
   const load = useCallback(async () => {
     if (!client || !canQuery) {
       setUsers([]);
@@ -55,11 +59,11 @@ export function UsuariosScreen() {
       return;
     }
     setLoading(true);
-    const r = await fetchUsers(client, { role: applied.role || null, search: applied.search || null });
+    const r = await fetchUsers(client);
     setUsers(r.users);
     setError(r.error);
     setLoading(false);
-  }, [client, canQuery, applied]);
+  }, [client, canQuery]);
 
   useEffect(() => {
     if (sessionStatus === "verificando") return;
@@ -72,8 +76,21 @@ export function UsuariosScreen() {
     };
   }, [load, sessionStatus]);
 
+  // Las tarjetas cuentan sobre la lista COMPLETA; la tabla muestra lo filtrado.
   const admins = useMemo(() => users.filter((u) => u.role === "admin" && u.active).length, [users]);
   const clientes = useMemo(() => users.filter((u) => u.role === "cliente").length, [users]);
+  const desactivadas = useMemo(() => users.filter((u) => !u.active).length, [users]);
+
+  const visibles = useMemo(() => {
+    const needle = applied.search.trim().toLowerCase();
+    return users.filter((u) => {
+      if (applied.role && u.role !== applied.role) return false;
+      if (!needle) return true;
+      return [u.name, u.email, u.phone].some((value) =>
+        (value ?? "").toLowerCase().includes(needle),
+      );
+    });
+  }, [users, applied]);
 
   const act = async (fn: () => Promise<{ ok: boolean; message: string }>) => {
     const r = await fn();
@@ -93,7 +110,7 @@ export function UsuariosScreen() {
         <StatCard label="Administradores activos" value={admins} tone="accent" />
         <StatCard label="Clientes" value={clientes} />
         <StatCard label="Cuentas" value={users.length} />
-        <StatCard label="Desactivadas" value={users.filter((u) => !u.active).length} />
+        <StatCard label="Desactivadas" value={desactivadas} />
       </StatGrid>
 
       <Notice tone="info" label="Cómo dar de alta a alguien del equipo">
@@ -133,7 +150,7 @@ export function UsuariosScreen() {
       >
         {loading ? (
           <p className="px-5 py-10 text-sm text-ink-3">Cargando…</p>
-        ) : users.length === 0 ? (
+        ) : visibles.length === 0 ? (
           <EmptyState
             title="Sin cuentas que mostrar"
             description={canQuery ? "Ninguna cuenta coincide con el filtro." : "Sin sesión o sin base de datos no hay nada que listar."}
@@ -152,7 +169,7 @@ export function UsuariosScreen() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {users.map((u) => {
+                {visibles.map((u) => {
                   const isMe = me?.id === u.id;
                   return (
                     <tr key={u.id} className={cn(!u.active && "opacity-60")}>

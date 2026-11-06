@@ -9,11 +9,18 @@ import { IMPORT_STEPS, StepsRow } from "@/components/home/StepsSection";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
+import { ORGANIZATION_ID } from "@/lib/structuredData";
 
-const { contact, legalName, brandName } = LUXCARS_CONFIG;
+const { contact, brandName } = LUXCARS_CONFIG;
 const antiguedad = LUXCARS_CONFIG.hardFacts.find(
   (fact) => fact.id === "antiguedad",
 );
+
+// Mismo texto para Open Graph y Twitter Card: una sola fuente, sin copy nuevo.
+const OG_TITLE = `Importar auto de Estados Unidos a Perú | ${brandName}`;
+const OG_DESCRIPTION =
+  "Normativa clara, tributos explicados y una calculadora pública para saber el costo real.";
 
 export const metadata: Metadata = {
   title: "Importar auto de Estados Unidos a Perú",
@@ -21,11 +28,13 @@ export const metadata: Metadata = {
     "Importa tu auto desde EE.UU. a Perú con LuxCars: qué permite la ley, qué tributos se pagan y cuánto cuesta puesto en Lima. Calculadora pública.",
   alternates: { canonical: "/importar" },
   openGraph: {
+    ...OG_DEFAULTS,
     type: "article",
     url: `${contact.website}/importar`,
-    title: `Importar auto de Estados Unidos a Perú | ${brandName}`,
-    description: "Normativa clara, tributos explicados y una calculadora pública para saber el costo real.",
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
   },
+  twitter: twitterCard(OG_TITLE, OG_DESCRIPTION),
 };
 
 const REGLAS: { icon: IconName; title: string; text: string }[] = [
@@ -60,13 +69,10 @@ export default function ImportarPage() {
     name: "Importación de autos a pedido",
     url: `${contact.website}/importar`,
     areaServed: { "@type": "Country", name: "Perú" },
-    provider: {
-      "@type": "AutoDealer",
-      name: legalName,
-      telephone: contact.phone,
-      email: contact.email,
-      address: { "@type": "PostalAddress", streetAddress: contact.address, addressLocality: contact.city, addressCountry: contact.country },
-    },
+    // La organización ya está descrita completa en el JSON-LD del layout
+    // (autoDealerSchema). Se la referencia por su @id en vez de repetirla:
+    // dos AutoDealer con datos distintos confunden a Google sobre cuál vale.
+    provider: { "@id": ORGANIZATION_ID },
   };
 
   return (

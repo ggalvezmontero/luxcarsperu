@@ -7,17 +7,21 @@
  * perfil. Neon Auth no guarda teléfono: se escribe en el perfil apenas hay
  * sesión, con la política "cada quien edita el suyo".
  *
- * Si el proyecto exige confirmar el correo, `signUp` vuelve sin sesión: se le
- * dice al cliente que revise su bandeja en vez de fingir un error.
+ * Neon Auth exige el correo verificado. Por eso el registro no termina con
+ * sesión: se le envía al cliente un código de seis dígitos y se le pide acá
+ * mismo (`VerificarCorreo`). Lo mismo pasa si alguien entra con una cuenta que
+ * nunca verificó. Al confirmar el código la sesión queda abierta.
  */
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { VerificarCorreo } from "@/components/auth/VerificarCorreo";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useCuentaSession } from "@/components/cuenta/cuentaSession";
 import { updateOwnProfile } from "@/lib/auth/perfil";
+import { enviarCodigoDeVerificacion, esCorreoSinVerificar } from "@/lib/auth/verificacion";
 import {
   avisarCambioDeSesion,
   describeAuthError,
@@ -27,6 +31,14 @@ import { LUXCARS_CONFIG } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 type Mode = "ingresar" | "registro";
+
+/** Cuenta que está esperando el código de verificación del correo. */
+type PorVerificar = {
+  email: string;
+  envioOk: boolean;
+  /** Datos del registro que se guardan en el perfil apenas haya sesión. */
+  perfil: { name: string; phone: string } | null;
+};
 
 const SAFE_NEXT = /^\/cuenta(\/[a-z-]*)?$/;
 
@@ -45,8 +57,8 @@ export function CuentaAuthForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [porVerificar, setPorVerificar] = useState<PorVerificar | null>(null);
 
   // Ya con sesión, no tiene sentido ver el formulario.
   useEffect(() => {
@@ -56,7 +68,6 @@ export function CuentaAuthForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setNotice(null);
 
     const correo = email.trim();
     if (!correo || !password) {
@@ -94,6 +105,13 @@ export function CuentaAuthForm() {
           password,
         });
         if (authError) {
+          // Cuenta sin verificar: se le manda el código y se le pide acá.
+          if (esCorreoSinVerificar(authError)) {
+            setPassword("");
+            const envio = await enviarCodigoDeVerificacion(correo);
+            setPorVerificar({ email: correo, envioOk: envio.ok, perfil: null });
+            return;
+          }
           setError(describeAuthError(authError.message));
           return;
         }
@@ -109,8 +127,8 @@ export function CuentaAuthForm() {
         password,
         options: { data: { displayName: nombreLimpio } },
       });
-      // Con confirmación de correo obligatoria la cuenta se crea pero no hay
-      // sesión todavía: el SDK lo reporta como "session not found".
+      // La cuenta se crea pero no hay sesión hasta verificar el correo: el SDK
+      // lo reporta como "session not found".
       const sinSesion =
         (!signUpError && !data.session) ||
         (signUpError ? /session/i.test(signUpError.message) : false);
@@ -120,10 +138,13 @@ export function CuentaAuthForm() {
       }
       setPassword("");
       if (sinSesion) {
-        setNotice(
-          "Te enviamos un correo para confirmar la cuenta. Ábrelo y vuelve a ingresar.",
-        );
-        setMode("ingresar");
+        // Neon Auth ya envió el código al crear la cuenta. Pedir otro acá
+        // anularía ese y al cliente le llegarían dos correos.
+        setPorVerificar({
+          email: correo,
+          envioOk: true,
+          perfil: { name: nombreLimpio, phone: telefono },
+        });
         return;
       }
       // El perfil ya existe (lo creó el trigger): se le agrega el WhatsApp.
@@ -138,7 +159,42 @@ export function CuentaAuthForm() {
     }
   }
 
+  /** El código fue correcto: Neon Auth ya abrió la sesión. */
+  async function alVerificar() {
+    if (!client || !porVerificar) return;
+    // El código se confirmó sin pasar por el SDK: se le hace releer la sesión.
+    await client.auth.getSession({ forceFetch: true }).catch(() => null);
+    // El perfil ya existe (lo creó el trigger): se le agrega el WhatsApp.
+    // Si falla no se bloquea el ingreso; el cliente lo completa en su cuenta.
+    if (porVerificar.perfil) await updateOwnProfile(client, porVerificar.perfil);
+    await avisarCambioDeSesion();
+    router.replace(next);
+  }
+
   const wa = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}`;
+
+  if (porVerificar) {
+    return (
+      <div className="mx-auto w-full max-w-md">
+        <div className="rounded-[22px] border border-line bg-surface p-6 sm:p-8">
+          <VerificarCorreo
+            email={porVerificar.email}
+            variante="cuenta"
+            envioInicialOk={porVerificar.envioOk}
+            onVerificado={alVerificar}
+            onCancelar={() => setPorVerificar(null)}
+          />
+        </div>
+        <p className="mt-6 text-center text-sm text-ink-3">
+          ¿No te llega el correo?{" "}
+          <a href={wa} target="_blank" rel="noopener noreferrer" className="font-semibold text-ink underline underline-offset-4">
+            Escríbenos por WhatsApp
+          </a>
+          .
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-md">
@@ -240,21 +296,26 @@ export function CuentaAuthForm() {
             <span>{error}</span>
           </p>
         ) : null}
-        {notice ? (
-          <p role="status" className="mt-4 flex items-start gap-2 rounded-2xl border border-ok/30 bg-ok/10 px-4 py-3 text-sm text-ink">
-            <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" />
-            <span>{notice}</span>
-          </p>
-        ) : null}
 
         <Button type="submit" variant="accent" size="lg" disabled={submitting} className="mt-6 w-full">
           {submitting ? "Un momento…" : mode === "ingresar" ? "Entrar" : "Crear cuenta"}
         </Button>
 
+        {mode === "ingresar" ? (
+          <p className="mt-4 text-center text-sm">
+            <Link
+              href="/cuenta/recuperar"
+              className="text-ink-2 underline underline-offset-4 transition-colors hover:text-ink"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </p>
+        ) : null}
+
         <p className="mt-5 text-xs leading-relaxed text-ink-4">
           {mode === "registro"
             ? "Usamos tu nombre y WhatsApp solo para responderte sobre tus solicitudes. "
-            : "¿Olvidaste la contraseña? Escríbenos por WhatsApp y te ayudamos. "}
+            : null}
           <Link href="/privacidad" className="underline underline-offset-4 hover:text-ink">
             Política de privacidad
           </Link>
@@ -291,7 +352,7 @@ function describeSignUpError(message: string): string {
     raw.includes("already exists") ||
     raw.includes("user_already_exists")
   ) {
-    return "Ese correo ya tiene cuenta. Prueba ingresar.";
+    return "Ese correo ya tiene cuenta. Prueba ingresar o, si no recuerdas la contraseña, usa «¿Olvidaste tu contraseña?».";
   }
   if (raw.includes("password")) {
     return "La contraseña no cumple los requisitos. Usa al menos 8 caracteres.";

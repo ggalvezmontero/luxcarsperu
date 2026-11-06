@@ -20,9 +20,11 @@
  * así que un filtro se puede compartir, recargar y deshacer con el botón atrás.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePortalSession } from "@/components/portal/portalSession";
+import type { PortalClient } from "@/lib/portal/portalClient";
+import { AccionesVehiculo } from "./AccionesVehiculo";
 import { VehiculosFiltros } from "./VehiculosFiltros";
 import {
   CONTEO_VACIO,
@@ -94,6 +96,30 @@ export function VehiculosPanel({ busqueda, estado, publicado }: Props) {
     };
   }, [client, puedeConsultar, busqueda, estado, publicado]);
 
+  /**
+   * Una acción de fila (publicar, estado, precio) devolvió la fila nueva: se
+   * reemplaza en el lugar y se corrige el conteo por estado, sin recargar el
+   * listado. Recargar desmontaría la fila y con ella su confirmación; además,
+   * una fila que deja de coincidir con el filtro (p. ej. se publica con
+   * "Borradores" elegido) sigue a la vista hasta la próxima carga, para que el
+   * equipo vea qué pasó con ella.
+   */
+  const alActualizar = useCallback((nuevo: AdminVehicle) => {
+    setDatos((previo) => {
+      const anterior = previo.vehiculos.find((v) => v.id === nuevo.id);
+      const conteo = { ...previo.conteo };
+      if (anterior && anterior.status !== nuevo.status) {
+        conteo[anterior.status] = Math.max(0, conteo[anterior.status] - 1);
+        conteo[nuevo.status] += 1;
+      }
+      return {
+        ...previo,
+        conteo,
+        vehiculos: previo.vehiculos.map((v) => (v.id === nuevo.id ? nuevo : v)),
+      };
+    });
+  }, []);
+
   const hayFiltro =
     busqueda.trim() !== "" || estado !== "todos" || publicado !== "todos";
   const cargando = puedeConsultar && !datos.cargado;
@@ -162,7 +188,12 @@ export function VehiculosPanel({ busqueda, estado, publicado }: Props) {
             <ul className="mt-2 flex flex-col gap-2">
               {datos.vehiculos.map((vehiculo) => (
                 <li key={vehiculo.id}>
-                  <FilaVehiculo vehiculo={vehiculo} />
+                  <FilaVehiculo
+                    vehiculo={vehiculo}
+                    client={client}
+                    puedeEscribir={puedeConsultar}
+                    onActualizado={alActualizar}
+                  />
                 </li>
               ))}
             </ul>
@@ -195,7 +226,17 @@ function CabeceraTabla() {
   );
 }
 
-function FilaVehiculo({ vehiculo }: { vehiculo: AdminVehicle }) {
+function FilaVehiculo({
+  vehiculo,
+  client,
+  puedeEscribir,
+  onActualizado,
+}: {
+  vehiculo: AdminVehicle;
+  client: PortalClient | null;
+  puedeEscribir: boolean;
+  onActualizado: (vehiculo: AdminVehicle) => void;
+}) {
   return (
     <article
       className={`${GRID} rounded-lux border border-line bg-surface p-4 transition-colors hover:border-line-strong`}
@@ -272,6 +313,13 @@ function FilaVehiculo({ vehiculo }: { vehiculo: AdminVehicle }) {
           <span className="text-sm text-ink-4">Borrador</span>
         )}
       </Dato>
+
+      <AccionesVehiculo
+        vehiculo={vehiculo}
+        client={client}
+        puedeEscribir={puedeEscribir}
+        onActualizado={onActualizado}
+      />
     </article>
   );
 }

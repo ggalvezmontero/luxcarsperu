@@ -9,12 +9,28 @@ import { Navbar } from "@/components/Navbar";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
+
+// El <title> sale de la plantilla del layout ("%s | marca"); Open Graph y
+// Twitter repiten exactamente ese texto y la misma descripción. Sin `openGraph`
+// propio la página heredaba og:url y og:title de la home.
+const TITLE = "Cómo funciona la importación paso a paso";
+const DESCRIPTION =
+  "De la búsqueda en EE.UU. a la entrega en Lima: inspección, embarque, nacionalización SUNAT, homologación y placas. El proceso completo.";
+const OG_TITLE = `${TITLE} | ${LUXCARS_CONFIG.brandName}`;
 
 export const metadata: Metadata = {
-  title: "Cómo funciona la importación paso a paso",
-  description:
-    "De la búsqueda en EE.UU. a la entrega en Lima: inspección, embarque, nacionalización SUNAT, homologación y placas. El proceso completo.",
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: "/como-funciona" },
+  openGraph: {
+    ...OG_DEFAULTS,
+    type: "website",
+    url: `${LUXCARS_CONFIG.contact.website}/como-funciona`,
+    title: OG_TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: twitterCard(OG_TITLE, DESCRIPTION),
 };
 
 type Paso = {

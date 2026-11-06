@@ -27,6 +27,7 @@ import {
   CONSIGNMENT_STATUSES,
   CONSIGNMENT_STATUS_LABEL,
   summarizeConsignments,
+  type AmountsByCurrency,
   type ConsignmentStatus,
   type PortalConsignment,
 } from "./model";
@@ -45,6 +46,17 @@ const SETUP_STEPS = [
 
 const NO_SESSION_MESSAGE =
   "Sin sesión activa: el cambio no se guardó. Vuelve a iniciar sesión en el portal.";
+
+/**
+ * Un total por moneda, nunca la suma de soles con dólares: "US$ 120,000 ·
+ * S/ 80,000". Las monedas en cero no se muestran; si todo es cero, un guion.
+ */
+function formatAmounts(amounts: AmountsByCurrency): string {
+  const parts = (["USD", "PEN"] as const)
+    .filter((currency) => amounts[currency] > 0)
+    .map((currency) => formatCurrency(amounts[currency], "es-PE", currency));
+  return parts.length ? parts.join(" · ") : "—";
+}
 
 export function ConsignmentsScreen() {
   const { status: sessionStatus, client } = usePortalSession();
@@ -166,22 +178,14 @@ export function ConsignmentsScreen() {
         />
         <StatCard
           label="Valor publicado"
-          value={
-            summary.activePortfolioValue
-              ? formatCurrency(summary.activePortfolioValue)
-              : "—"
-          }
-          hint="Suma de precios pedidos abiertos"
+          value={formatAmounts(summary.activePortfolioValue)}
+          hint="Precios pedidos abiertos, por moneda"
         />
         {/* Oro: el único dato destacado de la pantalla. */}
         <StatCard
           label="Comisión proyectada"
-          value={
-            summary.pipelineCommission
-              ? formatCurrency(summary.pipelineCommission)
-              : "—"
-          }
-          hint="Si se cierran a precio pedido"
+          value={formatAmounts(summary.pipelineCommission)}
+          hint="Si se cierran a precio pedido, por moneda"
           tone="accent"
         />
         <StatCard
@@ -275,17 +279,26 @@ export function ConsignmentsScreen() {
           </form>
         }
       >
-        {loading ? (
+        {/* El "Cargando…" solo reemplaza la tabla cuando todavía no hay nada que
+            mostrar. Una recarga después de un cambio deja la tabla MONTADA: si
+            se desmontara, se perdería la confirmación local ("Estado
+            actualizado.") antes de que el equipo alcance a leerla. */}
+        {loading && consignments.length === 0 ? (
           <p className="px-5 py-16 text-center text-sm text-ink-3" role="status">
             Cargando consignaciones…
           </p>
         ) : consignments.length ? (
-          <ConsignmentsTable
-            consignments={consignments}
-            canWrite={canQuery}
-            onMarkSoldByOwner={handleMarkSoldByOwner}
-            onChangeStatus={handleChangeStatus}
-          />
+          <div
+            aria-busy={loading}
+            className={loading ? "opacity-70 transition-opacity" : "transition-opacity"}
+          >
+            <ConsignmentsTable
+              consignments={consignments}
+              canWrite={canQuery}
+              onMarkSoldByOwner={handleMarkSoldByOwner}
+              onChangeStatus={handleChangeStatus}
+            />
+          </div>
         ) : (
           <EmptyState
             title={

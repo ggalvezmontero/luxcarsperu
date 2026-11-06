@@ -299,17 +299,26 @@ export function LeadsScreen() {
           </form>
         }
       >
-        {loading ? (
+        {/* El "Cargando…" solo reemplaza la tabla cuando todavía no hay nada que
+            mostrar. La recarga que sigue a un cambio de etapa deja la tabla
+            MONTADA: si se desmontara, la confirmación local de la fila
+            desaparecería antes de que el equipo alcance a leerla. */}
+        {loading && leads.length === 0 ? (
           <p className="px-5 py-16 text-center text-sm text-ink-3" role="status">
             Cargando leads…
           </p>
         ) : leads.length ? (
-          <LeadsTable
-            leads={leads}
-            canWrite={canQuery}
-            onUpdateStatus={handleUpdateStatus}
-            onWhatsappOpen={handleWhatsappOpen}
-          />
+          <div
+            aria-busy={loading}
+            className={loading ? "opacity-70 transition-opacity" : "transition-opacity"}
+          >
+            <LeadsTable
+              leads={leads}
+              canWrite={canQuery}
+              onUpdateStatus={handleUpdateStatus}
+              onWhatsappOpen={handleWhatsappOpen}
+            />
+          </div>
         ) : (
           <EmptyState
             title={

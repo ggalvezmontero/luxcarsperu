@@ -5,9 +5,9 @@
  * Lee desde el navegador con su sesión; RLS devuelve solo sus filas.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
@@ -20,6 +20,7 @@ import {
   PURCHASE_STATUS_LABEL,
   SALE_STATUS_LABEL,
   closePurchaseRequest,
+  fetchMyPublishedVehicleIds,
   fetchMyPurchaseRequests,
   fetchMySaleRequests,
   withdrawSaleRequest,
@@ -51,11 +52,91 @@ function fecha(iso: string) {
   return new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric" }).format(d);
 }
 
+/** Enlace de WhatsApp de LuxCars con un texto ya escrito. */
+function enlaceWhatsApp(texto: string) {
+  return `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(texto)}`;
+}
+
+/**
+ * Aviso de cuenta suspendida (`profiles.activo = false`). Un cliente suspendido
+ * ya no puede crear ni cambiar solicitudes (la base lo rechaza); esto evita que
+ * lo descubra con un error al enviar. También lo usan los formularios.
+ */
+export function AvisoCuentaSuspendida() {
+  return (
+    <div role="status" className="rounded-[22px] border border-warn/30 bg-warn/10 p-5">
+      <p className="text-sm font-semibold text-ink">Tu cuenta está suspendida</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-2">
+        Por ahora no puedes crear ni cambiar solicitudes. Para reactivarla,{" "}
+        <a
+          href={enlaceWhatsApp("Hola LuxCars, mi cuenta aparece suspendida y quisiera saber cómo reactivarla.")}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-ink underline underline-offset-4"
+        >
+          escríbenos por WhatsApp
+        </a>
+        .
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Confirmación de una vez tras enviar un formulario: los formularios redirigen
+ * a `/cuenta?enviada=compra|venta`. Se muestra el mensaje y se quita el
+ * parámetro de la URL para que no reaparezca al recargar. Lleva su propio
+ * `Suspense` (lo exige `useSearchParams` en el prerender) porque la página
+ * `/cuenta` no lo trae.
+ */
+function ConfirmacionEnvio() {
+  return (
+    <Suspense fallback={null}>
+      <ConfirmacionEnvioInterna />
+    </Suspense>
+  );
+}
+
+const MENSAJE_ENVIADA = {
+  compra:
+    "Recibimos tu pedido. Lo buscamos y te escribimos por WhatsApp en cuanto tengamos opciones.",
+  venta:
+    "Recibimos tu auto, lo revisamos y te avisamos por WhatsApp. Las fotos te las pedimos por ahí.",
+} as const;
+
+function ConfirmacionEnvioInterna() {
+  const router = useRouter();
+  const enviada = useSearchParams()?.get("enviada") ?? null;
+  const [visto, setVisto] = useState<keyof typeof MENSAJE_ENVIADA | null>(null);
+
+  // Se guarda el valor la primera vez que aparece: al quitarlo de la URL el
+  // parámetro desaparece, pero el mensaje se queda hasta salir de la pantalla.
+  if (enviada === "compra" || enviada === "venta") {
+    if (visto !== enviada) setVisto(enviada);
+  }
+
+  useEffect(() => {
+    if (enviada) router.replace("/cuenta", { scroll: false });
+  }, [enviada, router]);
+
+  if (!visto) return null;
+  return (
+    <p role="status" className="mt-6 rounded-2xl border border-ok/30 bg-ok/10 px-4 py-3 text-sm text-ink-2">
+      {MENSAJE_ENVIADA[visto]}
+    </p>
+  );
+}
+
 export function CuentaScreen() {
   const router = useRouter();
   const { status, profile, email, client, signOut } = useCuentaSession();
   const [purchases, setPurchases] = useState<PurchaseRequest[]>([]);
   const [sales, setSales] = useState<SaleRequest[]>([]);
+  // Ids de autos del cliente que están realmente publicados en el sitio.
+  const [publicados, setPublicados] = useState<ReadonlySet<string>>(new Set());
+  // `true` = la lectura falló (no es lo mismo que "no hay solicitudes").
+  const [purchasesError, setPurchasesError] = useState(false);
+  const [salesError, setSalesError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
 
@@ -69,9 +150,16 @@ export function CuentaScreen() {
       return;
     }
     setLoading(true);
-    const [p, s] = await Promise.all([fetchMyPurchaseRequests(client), fetchMySaleRequests(client)]);
-    setPurchases(p);
-    setSales(s);
+    const [p, s, ids] = await Promise.all([
+      fetchMyPurchaseRequests(client),
+      fetchMySaleRequests(client),
+      fetchMyPublishedVehicleIds(client),
+    ]);
+    setPurchases(p.data);
+    setSales(s.data);
+    setPublicados(ids);
+    setPurchasesError(p.error);
+    setSalesError(s.error);
     setLoading(false);
   }, [client, status]);
 
@@ -111,9 +199,10 @@ export function CuentaScreen() {
   }
 
   const nombre = profile?.name?.trim() || email || "Hola";
-  const wa = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(
-    `Hola LuxCars, soy ${nombre} y tengo una consulta sobre mis solicitudes.`,
-  )}`;
+  const wa = enlaceWhatsApp(`Hola LuxCars, soy ${nombre} y tengo una consulta sobre mis solicitudes.`);
+  // Solo con el perfil leído: si la lectura falló (`profile` nulo) no se asume
+  // nada y la base sigue siendo quien decide.
+  const suspendida = profile ? !profile.active : false;
 
   return (
     <Section tone="bg" padding="tight">
@@ -143,22 +232,30 @@ export function CuentaScreen() {
         }
       />
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <ActionCard
-          href="/cuenta/comprar"
-          icon="search"
-          title="Quiero un auto que no tienen"
-          text="Dinos marca, modelo, año y presupuesto. Lo buscamos en EE.UU. o en Lima y te proponemos opciones."
-          cta="Pedir búsqueda"
-        />
-        <ActionCard
-          href="/cuenta/vender"
-          icon="handshake"
-          title="Quiero vender mi auto"
-          text="Regístralo y lo revisamos. Cuando lo aprobamos, sale publicado en la web como consignación, sin exclusividad."
-          cta="Publicar mi auto"
-        />
-      </div>
+      {suspendida ? (
+        <div className="mt-8">
+          <AvisoCuentaSuspendida />
+        </div>
+      ) : (
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <ActionCard
+            href="/cuenta/comprar"
+            icon="search"
+            title="Quiero un auto que no tienen"
+            text="Dinos marca, modelo, año y presupuesto. Lo buscamos en EE.UU. o en Lima y te proponemos opciones."
+            cta="Pedir búsqueda"
+          />
+          <ActionCard
+            href="/cuenta/vender"
+            icon="handshake"
+            title="Quiero vender mi auto"
+            text="Regístralo y lo revisamos. Cuando lo aprobamos, sale publicado en la web como consignación, sin exclusividad."
+            cta="Publicar mi auto"
+          />
+        </div>
+      )}
+
+      <ConfirmacionEnvio />
 
       {flash ? (
         <p role="status" className="mt-6 rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink-2">
@@ -171,8 +268,13 @@ export function CuentaScreen() {
           <h2 className="text-lg font-semibold text-ink">Autos que me están buscando</h2>
           {loading ? (
             <p className="mt-4 text-sm text-ink-4">Cargando…</p>
+          ) : purchasesError ? (
+            <LoadError onRetry={() => void load()} />
           ) : purchases.length === 0 ? (
-            <Empty text="Todavía no pediste ninguna búsqueda." href="/cuenta/comprar" cta="Pedir un auto" />
+            <Empty
+              text="Todavía no pediste ninguna búsqueda."
+              action={suspendida ? undefined : { href: "/cuenta/comprar", cta: "Pedir un auto" }}
+            />
           ) : (
             <ul className="mt-4 grid gap-3">
               {purchases.map((p) => (
@@ -202,7 +304,8 @@ export function CuentaScreen() {
                       {p.reply}
                     </p>
                   ) : null}
-                  {p.status === "nueva" || p.status === "en_busqueda" || p.status === "propuesta_enviada" ? (
+                  {!suspendida &&
+                  (p.status === "nueva" || p.status === "en_busqueda" || p.status === "propuesta_enviada") ? (
                     <button
                       type="button"
                       onClick={() => handleClose(p.id)}
@@ -221,11 +324,20 @@ export function CuentaScreen() {
           <h2 className="text-lg font-semibold text-ink">Autos que ofrecí</h2>
           {loading ? (
             <p className="mt-4 text-sm text-ink-4">Cargando…</p>
+          ) : salesError ? (
+            <LoadError onRetry={() => void load()} />
           ) : sales.length === 0 ? (
-            <Empty text="Todavía no registraste ningún auto para vender." href="/cuenta/vender" cta="Publicar mi auto" />
+            <Empty
+              text="Todavía no registraste ningún auto para vender."
+              action={suspendida ? undefined : { href: "/cuenta/vender", cta: "Publicar mi auto" }}
+            />
           ) : (
             <ul className="mt-4 grid gap-3">
-              {sales.map((s) => (
+              {sales.map((s) => {
+                // Aprobar no es publicar: solo está publicada si la base lo dice.
+                const publicada = s.status === "aprobada" && !!s.vehicleId && publicados.has(s.vehicleId);
+                const aprobadaSinPublicar = s.status === "aprobada" && !publicada;
+                return (
                 <li key={s.id} className="rounded-[22px] border border-line bg-surface p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -237,8 +349,8 @@ export function CuentaScreen() {
                         {formatCurrency(s.askingPrice, "en-US", s.currency)} · {fecha(s.createdAt)}
                       </p>
                     </div>
-                    <Badge tone={SALE_TONE[s.status]} dot>
-                      {SALE_STATUS_LABEL[s.status]}
+                    <Badge tone={aprobadaSinPublicar ? "info" : SALE_TONE[s.status]} dot>
+                      {aprobadaSinPublicar ? "Aprobada" : SALE_STATUS_LABEL[s.status]}
                     </Badge>
                   </div>
                   {s.status === "pendiente" ? (
@@ -246,7 +358,12 @@ export function CuentaScreen() {
                       Lo está revisando el equipo. Te avisamos por WhatsApp; las fotos te las pedimos por ahí.
                     </p>
                   ) : null}
-                  {s.status === "aprobada" && s.vehicleId ? (
+                  {aprobadaSinPublicar ? (
+                    <p className="mt-3 text-sm text-ink-3">
+                      Tu auto fue aprobado. Lo publicamos en cuanto las fotos estén listas.
+                    </p>
+                  ) : null}
+                  {publicada ? (
                     <Link
                       href={`/comprar/${s.vehicleId}`}
                       className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-ink underline underline-offset-4"
@@ -261,7 +378,7 @@ export function CuentaScreen() {
                       {s.rejectionReason}
                     </p>
                   ) : null}
-                  {s.status === "pendiente" ? (
+                  {!suspendida && s.status === "pendiente" ? (
                     <button
                       type="button"
                       onClick={() => handleWithdraw(s.id)}
@@ -271,7 +388,8 @@ export function CuentaScreen() {
                     </button>
                   ) : null}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </div>
@@ -319,12 +437,26 @@ function ActionCard({
   );
 }
 
-function Empty({ text, href, cta }: { text: string; href: string; cta: string }) {
+function Empty({ text, action }: { text: string; action?: { href: string; cta: string } }) {
   return (
     <div className="mt-4 rounded-[22px] border border-dashed border-line-strong p-6 text-center">
       <p className="text-sm text-ink-3">{text}</p>
-      <Button href={href} variant="secondary" size="sm" className="mt-4">
-        {cta}
+      {action ? (
+        <Button href={action.href} variant="secondary" size="sm" className="mt-4">
+          {action.cta}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/** La lectura falló: no se muestra el estado vacío (parecería que no hay solicitudes). */
+function LoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role="alert" className="mt-4 rounded-[22px] border border-danger/30 bg-danger/10 p-6 text-center">
+      <p className="text-sm text-ink-2">No se pudieron cargar tus solicitudes.</p>
+      <Button variant="secondary" size="sm" className="mt-4" onClick={onRetry}>
+        Reintentar
       </Button>
     </div>
   );

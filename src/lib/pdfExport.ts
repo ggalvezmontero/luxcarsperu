@@ -4,7 +4,7 @@ import type jsPDF from "jspdf";
 import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
 import { findBrandLogo } from "./brandLogos";
 import { LUXCARS_CONFIG } from "./config";
-import { formatCurrency, formatPercentage } from "./utils";
+import { formatCurrency, formatPercentage, formatRate } from "./utils";
 
 type DocWithAutoTable = jsPDF & { lastAutoTable: { finalY: number } };
 type RGB = [number, number, number];
@@ -174,7 +174,7 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
   doc.text(formatCurrency(estimate.cashRequired), x2 + 6, y + 17.5);
   doc.setTextColor(...INK_3).setFont("helvetica", "normal").setFontSize(7.5);
   doc.text(
-    `Incluye percepción del IGV (${formatPercentage(estimate.percepcionRate)}), recuperable como crédito fiscal.`,
+    `Incluye percepción del IGV (${formatRate(estimate.percepcionRate)}), recuperable como crédito fiscal.`,
     x2 + 6,
     y + 23.5,
   );
@@ -238,7 +238,7 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
   doc.setDrawColor(...SILVER).setLineWidth(0.6);
   doc.line(M, y, M, y + 12);
   doc.setTextColor(...INK).setFont("helvetica", "bold").setFontSize(9);
-  doc.text(`Percepción del IGV ${formatPercentage(estimate.percepcionRate)}: ${formatCurrency(estimate.percepcion)}`, M + 4, y + 4.5);
+  doc.text(`Percepción del IGV ${formatRate(estimate.percepcionRate)}: ${formatCurrency(estimate.percepcion)}`, M + 4, y + 4.5);
   doc.setTextColor(...INK_3).setFont("helvetica", "normal").setFontSize(8);
   doc.text(
     doc.splitTextToSize("No es un costo: es un adelanto del IGV que se recupera como crédito fiscal. Sí es efectivo que debes tener el día del despacho.", CW - 6),

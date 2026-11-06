@@ -27,11 +27,30 @@ const INITIAL_FORM: FormState = {
 
 type StoredPayload = {
   estimate: PremiumImportQuote;
+  /** Cuándo se calculó, en milisegundos. */
+  timestamp: number;
   preferredPlan: "fast" | "standard";
 };
 
 const STORAGE_KEY = "luxcars:last-estimate";
 const { contact } = LUXCARS_CONFIG;
+
+/** Un estimado guardado se adjunta al contacto solo durante este tiempo. */
+const ESTIMATE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * ¿El estimado guardado sirve para adjuntarlo? Tiene que ser reciente y traer
+ * los campos que el mensaje de WhatsApp imprime: uno guardado por una versión
+ * anterior del sitio, sin ellos, saldría como "USD NaN".
+ */
+function isUsableEstimate(payload: StoredPayload | null): payload is StoredPayload {
+  const estimate = payload?.estimate;
+  if (!payload || !estimate) return false;
+  if (!(Date.now() - payload.timestamp < ESTIMATE_MAX_AGE_MS)) return false;
+  return [estimate.finalEstimate, estimate.cashRequired, estimate.percepcionRate, estimate.ipm].every(
+    (value) => typeof value === "number" && Number.isFinite(value),
+  );
+}
 
 /** Enlace genérico cuando no hay un cálculo previo que adjuntar. */
 function buildPlainWhatsapp(form: FormState) {
@@ -58,9 +77,12 @@ export function ContactSection() {
         const stored = window.localStorage.getItem(STORAGE_KEY);
         if (!stored) return;
         const parsed: StoredPayload = JSON.parse(stored);
-        if (parsed?.estimate) {
+        if (isUsableEstimate(parsed)) {
           setLatestEstimate(parsed.estimate);
           setForm((prev) => ({ ...prev, preferredPlan: parsed.preferredPlan ?? "fast" }));
+        } else {
+          // Viejo o de un formato anterior: no se adjunta ni se conserva.
+          window.localStorage.removeItem(STORAGE_KEY);
         }
       } catch {
         /* sin cálculo previo */
@@ -68,14 +90,18 @@ export function ContactSection() {
     };
     load();
     const onEvent = (event: Event) => {
-      const custom = event as CustomEvent<StoredPayload>;
-      if (custom?.detail?.estimate) {
-        setLatestEstimate(custom.detail.estimate);
-        setForm((prev) => ({
-          ...prev,
-          preferredPlan: custom.detail.preferredPlan ?? prev.preferredPlan,
-        }));
+      const detail = (event as CustomEvent<StoredPayload | null>).detail;
+      // La calculadora avisa con `null` cuando el estimado dejó de valer
+      // (datos incompletos, auto que no entra, reinicio): se deja de adjuntar.
+      if (!detail?.estimate) {
+        setLatestEstimate(null);
+        return;
       }
+      setLatestEstimate(detail.estimate);
+      setForm((prev) => ({
+        ...prev,
+        preferredPlan: detail.preferredPlan ?? prev.preferredPlan,
+      }));
     };
     window.addEventListener(STORAGE_KEY, onEvent);
     return () => window.removeEventListener(STORAGE_KEY, onEvent);

@@ -38,6 +38,21 @@ export function mapProfile(row: ProfileRow): Profile {
   };
 }
 
+/**
+ * Resultado de leer el perfil propio, distinguiendo lo que `null` mezclaba:
+ *
+ * - `ok`: la lectura funcionó y hay perfil.
+ * - `sin-perfil`: la lectura funcionó y NO hay perfil (ni siquiera después de
+ *   `asegurar_perfil()`).
+ * - `error`: la lectura falló (token vencido, base dormida, red, sin sesión
+ *   legible). No dice nada sobre el rol: quien llama NO debe tratarlo como
+ *   "no es administrador" ni cerrar la sesión por esto.
+ */
+export type ProfileResult =
+  | { status: "ok"; profile: Profile }
+  | { status: "sin-perfil" }
+  | { status: "error" };
+
 /** Id del usuario con sesión, o `null`. El SDK deja `client.auth` sin tipo. */
 async function ownUserId(client: PortalClient): Promise<string | null> {
   const { data } = (await client.auth.getSession()) as {
@@ -46,44 +61,64 @@ async function ownUserId(client: PortalClient): Promise<string | null> {
   return data.session?.user?.id ?? null;
 }
 
+/** `profile: null` con `failed: false` = la consulta funcionó y no hay fila. */
 async function selectProfile(
   client: PortalClient,
   userId: string,
-): Promise<Profile | null> {
+): Promise<{ profile: Profile | null; failed: boolean }> {
   const { data, error } = await client
     .from("profiles")
     .select(PROFILE_COLUMNS)
     .eq("id", userId)
     .maybeSingle();
 
-  if (error || !data) return null;
-  return mapProfile(data as unknown as ProfileRow);
+  if (error) return { profile: null, failed: true };
+  if (!data) return { profile: null, failed: false };
+  return { profile: mapProfile(data as unknown as ProfileRow), failed: false };
 }
 
 /**
- * Perfil del usuario de la sesión. `null` si no hay sesión o si la consulta
- * falla.
+ * Lee el perfil del usuario de la sesión y dice si la lectura falló. NUNCA lanza.
  *
  * El perfil lo crea un trigger al registrarse. Si no aparece (cuenta anterior
  * al trigger, o el trigger falló), se le pide a la base que lo cree con
  * `asegurar_perfil()` —siempre con rol `cliente`— y se vuelve a leer.
  */
+export async function fetchOwnProfileResult(
+  client: PortalClient,
+): Promise<ProfileResult> {
+  try {
+    const userId = await ownUserId(client);
+    if (!userId) return { status: "error" };
+
+    const first = await selectProfile(client, userId);
+    if (first.failed) return { status: "error" };
+    if (first.profile) return { status: "ok", profile: first.profile };
+
+    const { error } = await client.rpc("asegurar_perfil");
+    if (error) return { status: "error" };
+
+    const second = await selectProfile(client, userId);
+    if (second.failed) return { status: "error" };
+    return second.profile
+      ? { status: "ok", profile: second.profile }
+      : { status: "sin-perfil" };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+/**
+ * Perfil del usuario de la sesión. `null` si no hay sesión, no hay perfil o la
+ * consulta falla: no distingue los tres casos. Quien necesite saber si falló
+ * (el portal, para no confundir un fallo con "no eres admin") usa
+ * `fetchOwnProfileResult`.
+ */
 export async function fetchOwnProfile(
   client: PortalClient,
 ): Promise<Profile | null> {
-  try {
-    const userId = await ownUserId(client);
-    if (!userId) return null;
-
-    const profile = await selectProfile(client, userId);
-    if (profile) return profile;
-
-    const { error } = await client.rpc("asegurar_perfil");
-    if (error) return null;
-    return await selectProfile(client, userId);
-  } catch {
-    return null;
-  }
+  const result = await fetchOwnProfileResult(client);
+  return result.status === "ok" ? result.profile : null;
 }
 
 /** Actualiza nombre y teléfono del propio perfil. El rol no se toca desde acá. */

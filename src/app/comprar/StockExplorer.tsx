@@ -39,8 +39,16 @@ const SORTS: { id: Sort; label: string }[] = [
   { id: "km-asc", label: "Menos kilómetros" },
 ];
 
-function inBucket(price: number | null, bucket: PriceBucket) {
+/**
+ * Los tramos están en dólares y el portal también admite precios en soles. No
+ * hay un tipo de cambio de referencia en el proyecto, así que no se convierte:
+ * un auto en otra moneda NO entra en ningún tramo en USD (sí aparece en
+ * "Cualquier precio"). Antes un S/ 150,000 caía en "Desde USD 90k".
+ */
+function inBucket(v: StockVehicle, bucket: PriceBucket) {
   if (bucket === "todos") return true;
+  if (v.currency !== "USD") return false;
+  const price = v.price;
   if (price === null) return false;
   if (bucket === "hasta-50") return price < 50_000;
   if (bucket === "50-90") return price >= 50_000 && price < 90_000;
@@ -78,13 +86,18 @@ export function StockExplorer({ stock }: { stock: StockVehicle[] }) {
         (brand === "todas" || v.brand === brand) &&
         (category === "todas" || v.category === category) &&
         (origin === "todos" || (origin === "consignacion") === isConsignment(v)) &&
-        inBucket(v.price, bucket) &&
+        inBucket(v, bucket) &&
         (!q || `${v.brand} ${v.model} ${v.trim ?? ""} ${v.year}`.toLowerCase().includes(q)),
     );
-    const price = (v: StockVehicle) => v.price ?? Number.POSITIVE_INFINITY;
+    // Orden por precio: primero los autos con precio en USD (comparables entre
+    // sí), después los de otra moneda y al final los "A consultar". Sin tipo de
+    // cambio no se mezclan soles con dólares (ver inBucket).
+    const rank = (v: StockVehicle) => (v.price === null ? 2 : v.currency === "USD" ? 0 : 1);
+    const byPrice = (dir: 1 | -1) => (a: StockVehicle, b: StockVehicle) =>
+      rank(a) - rank(b) || (a.price !== null && b.price !== null ? dir * (a.price - b.price) : 0);
     switch (sort) {
-      case "precio-asc": return [...list].sort((a, b) => price(a) - price(b));
-      case "precio-desc": return [...list].sort((a, b) => (b.price ?? -1) - (a.price ?? -1));
+      case "precio-asc": return [...list].sort(byPrice(1));
+      case "precio-desc": return [...list].sort(byPrice(-1));
       case "km-asc": return [...list].sort((a, b) => a.mileageKm - b.mileageKm);
       default: return list;
     }

@@ -1,6 +1,11 @@
 import "server-only";
 
-import { getPublishedVehicles, getVehicleById } from "@/lib/db/vehicles";
+import {
+  getPublishedVehicles,
+  getPublishedVehiclesOrThrow,
+  getVehicleById,
+  getVehicleByIdOrThrow,
+} from "@/lib/db/vehicles";
 import { isDatabaseConfigured } from "@/lib/db/client";
 import type { Vehicle } from "@/lib/db/types";
 import type { StockVehicle } from "@/lib/stockLabels";
@@ -15,6 +20,22 @@ export { STATUS_LABEL, CATEGORY_LABEL } from "@/lib/stockLabels";
  * Sin base de datos, devuelve unidades de DEMOSTRACIÓN claramente marcadas,
  * para que el diseño de la ficha se pueda ver y probar. Ninguna unidad demo
  * lleva foto: no existe una foto honesta de ellas y no se usa stock ajeno.
+ * Las demo SOLO existen sin base de datos: con Neon configurado, un id
+ * `demo-*` se busca en la base como cualquier otro (y no existe → 404). Antes
+ * /comprar/demo-01 mostraba en producción un Porsche "Disponible" ficticio con
+ * botón de WhatsApp funcionando.
+ *
+ * DOS VARIANTES DE LECTURA:
+ *  · `getStock()` / `getStockUnit()` NUNCA lanzan. Ante un error de la base
+ *    devuelven `[]` / `null`. Para cualquier consumidor que no sea ISR.
+ *  · `getStockForIsr()` / `getStockUnitForIsr()` son para las páginas con
+ *    `revalidate` (home, /comprar, /comprar/[id]). Con la base configurada y
+ *    una consulta que falla en tiempo de petición o de revalidación, LANZAN:
+ *    así Next conserva la última página buena en vez de cachear "Todo el stock
+ *    se vendió." cinco minutos, y la ficha responde 5xx en vez de un 404 falso.
+ *    Durante `next build` NO lanzan (un error de red no debe tumbar el
+ *    despliegue): ahí caen al resultado vacío, como las otras.
+ *    Sin base de datos se comportan exactamente igual que las que no lanzan.
  */
 
 const DEMO_ID_PREFIX = "demo-";
@@ -133,18 +154,72 @@ export function isDemoId(id: string) {
   return id.startsWith(DEMO_ID_PREFIX);
 }
 
-/** Stock público. Real si hay base de datos; demo si no. */
-export async function getStock(limit = 24): Promise<StockVehicle[]> {
-  if (!isDatabaseConfigured()) return DEMO_STOCK.slice(0, limit);
-  const real = await getPublishedVehicles({ limit, sort: "recientes" });
-  return real;
+/** `true` mientras corre `next build` (prerender de páginas estáticas/ISR). */
+function isProductionBuild() {
+  return process.env.NEXT_PHASE === "phase-production-build";
 }
 
-/** Una unidad por id o slug. Cubre también las unidades demo. */
+/** Stock público. Real si hay base de datos; demo si no. Nunca lanza. */
+export async function getStock(limit = 24): Promise<StockVehicle[]> {
+  if (!isDatabaseConfigured()) return DEMO_STOCK.slice(0, limit);
+  return getPublishedVehicles({ limit, sort: "recientes" });
+}
+
+/**
+ * Una unidad por id o slug. Nunca lanza. Las demo solo se resuelven cuando no
+ * hay base de datos (ver cabecera).
+ */
 export async function getStockUnit(idOrSlug: string): Promise<StockVehicle | null> {
-  if (isDemoId(idOrSlug)) {
-    return DEMO_STOCK.find((v) => v.id === idOrSlug || v.slug === idOrSlug) ?? null;
-  }
-  if (!isDatabaseConfigured()) return null;
+  if (!isDatabaseConfigured()) return findDemoUnit(idOrSlug);
   return getVehicleById(idOrSlug);
+}
+
+/**
+ * Como `getStock()`, pero para páginas con ISR: LANZA si la base está
+ * configurada y la lectura falla fuera de `next build`. Ver cabecera.
+ */
+export async function getStockForIsr(limit = 24): Promise<StockVehicle[]> {
+  if (!isDatabaseConfigured()) return DEMO_STOCK.slice(0, limit);
+  try {
+    return await getPublishedVehiclesOrThrow({ limit, sort: "recientes" });
+  } catch (error) {
+    if (isProductionBuild()) {
+      console.warn(
+        `[stock] Error leyendo el stock durante next build; se prerenderiza vacío y se corrige en la siguiente revalidación: ${describeError(error)}`,
+      );
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
+ * Como `getStockUnit()`, pero para la ficha: LANZA si la base está configurada
+ * y la lectura falla fuera de `next build`, para responder 5xx y no un 404 falso.
+ * `null` sigue significando "no existe o no está publicado". Ver cabecera.
+ */
+export async function getStockUnitForIsr(
+  idOrSlug: string,
+): Promise<StockVehicle | null> {
+  if (!isDatabaseConfigured()) return findDemoUnit(idOrSlug);
+  try {
+    return await getVehicleByIdOrThrow(idOrSlug);
+  } catch (error) {
+    if (isProductionBuild()) {
+      console.warn(
+        `[stock] Error leyendo la unidad "${idOrSlug}" durante next build: ${describeError(error)}`,
+      );
+      return null;
+    }
+    throw error;
+  }
+}
+
+function findDemoUnit(idOrSlug: string): StockVehicle | null {
+  if (!isDemoId(idOrSlug)) return null;
+  return DEMO_STOCK.find((v) => v.id === idOrSlug || v.slug === idOrSlug) ?? null;
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

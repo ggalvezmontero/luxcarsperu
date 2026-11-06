@@ -1,10 +1,50 @@
 import type { MetadataRoute } from "next";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { TRENDING_VEHICLES } from "@/data/trendingVehicles";
+import { isDatabaseConfigured } from "@/lib/db/client";
+import { getPublishedVehicles } from "@/lib/db/vehicles";
 
 const BASE = LUXCARS_CONFIG.contact.website;
 
-export default function sitemap(): MetadataRoute.Sitemap {
+/**
+ * Sin esto el sitemap se genera una sola vez en el build y un auto publicado
+ * desde el portal no entra hasta el siguiente despliegue. Una vez al día
+ * basta: Google llega antes a un auto nuevo por el enlace desde /comprar, y
+ * así las fechas `lastModified` de las páginas fijas no cambian cada hora.
+ */
+export const revalidate = 86400;
+
+/**
+ * Fichas del stock publicado, con la MISMA URL que la ficha declara como
+ * canónica (`/comprar/<slug o id>`). Nunca lanza y nunca inventa: sin base de
+ * datos (modo demo) o ante cualquier error devuelve `[]` y el sitemap queda
+ * exactamente como antes. Los vendidos no entran: la ficha sigue viva, pero no
+ * es una página que queramos empujar a Google.
+ */
+async function fichasDelStock(): Promise<MetadataRoute.Sitemap> {
+  if (!isDatabaseConfigured()) return [];
+  try {
+    // 100 es el máximo que admite la consulta; hoy sobra.
+    const autos = await getPublishedVehicles({ limit: 100, sort: "recientes" });
+    return autos
+      .filter((v) => v.status !== "vendido")
+      .map((v) => {
+        const publicado = v.publishedAt ? new Date(v.publishedAt) : null;
+        return {
+          url: `${BASE}/comprar/${v.slug ?? v.id}`,
+          ...(publicado && !Number.isNaN(publicado.getTime())
+            ? { lastModified: publicado }
+            : {}),
+          changeFrequency: "weekly" as const,
+          priority: 0.7,
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const ahora = new Date();
 
   const fijas: MetadataRoute.Sitemap = [
@@ -31,5 +71,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
-  return [...fijas, ...vehiculos];
+  // El stock va AL FINAL: lo de arriba no cambia de orden ni de contenido.
+  const stock = await fichasDelStock();
+
+  return [...fijas, ...vehiculos, ...stock];
 }

@@ -1,5 +1,5 @@
 import { LUXCARS_CONFIG } from "./config";
-import { formatCurrency, formatPercentage } from "./utils";
+import { formatCurrency, formatPercentage, formatRate } from "./utils";
 import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
 
 export type WhatsappPayload = {
@@ -8,6 +8,8 @@ export type WhatsappPayload = {
   phone?: string;
   notes?: string;
   preferredPlan?: "fast" | "standard";
+  /** Enlace al estimado (`/c/<código>`), para que el asesor abra el mismo desglose. */
+  detailUrl?: string;
 };
 
 export function buildWhatsappLink(
@@ -49,11 +51,12 @@ export function buildWhatsappLink(
       ? `Extra FastTrack: ${formatCurrency(estimate.documentHandlingFee)}`
       : undefined,
     `Precio final estimado Lima: ${formatCurrency(estimate.finalEstimate)}`,
-    `Percepción IGV ${formatPercentage(estimate.percepcionRate)} (adelanto recuperable, no es costo): ${formatCurrency(estimate.percepcion)}`,
+    `Percepción IGV ${formatRate(estimate.percepcionRate)} (adelanto recuperable, no es costo): ${formatCurrency(estimate.percepcion)}`,
     `Efectivo a desembolsar: ${formatCurrency(estimate.cashRequired)}`,
     `Condición: ${estimate.condition} · Origen: ${estimate.origin === "originario-usa" ? "originario de EE.UU. (ad valorem 0% por APC)" : "importado a EE.UU. (ad valorem 6%)"}`,
     `ISC de referencia: ${formatPercentage(estimate.iscRate)} · ${estimate.iscTooltip}`,
     "Estimado sujeto a verificación de partida arancelaria y determinación SUNAT.",
+    contact.detailUrl ? `Detalle del estimado: ${contact.detailUrl}` : undefined,
     contact.notes ? `Notas: ${contact.notes}` : undefined,
   ].filter(Boolean);
 
@@ -87,6 +90,43 @@ export function buildIncompleteCalculatorWhatsappLink(
     params.model.trim() ? `Modelo: ${params.model.trim()}` : undefined,
     `Plan de entrega de interés: ${params.preferredPlanLabel}`,
     "¿Podrían asesorarme para ofrecerme las mejores opciones?",
+  ].filter(Boolean);
+
+  const message = encodeURIComponent(lines.join("\n"));
+  return `https://wa.me/${contactConfig.whatsappNumber}?text=${message}`;
+}
+
+export type BlockedCalculatorWhatsappParams = {
+  vehicleTypeLabel?: string;
+  conditionLabel: string;
+  brand: string;
+  model: string;
+  year: string;
+  priceUsd: number | null;
+  /** El motivo que la calculadora le mostró al cliente. */
+  reason: string;
+};
+
+/**
+ * Mensaje para cuando la calculadora NO puede cotizar el auto (precio bajo el
+ * mínimo, diésel usado, demasiado antiguo). Lleva lo que el cliente escribió y
+ * el motivo: antes salía el mensaje de "no tengo el año ni el precio", que era
+ * falso justo en el caso en que el cliente sí los había puesto.
+ */
+export function buildBlockedCalculatorWhatsappLink(
+  params: BlockedCalculatorWhatsappParams,
+) {
+  const { contact: contactConfig } = LUXCARS_CONFIG;
+  const lines = [
+    "Hola LuxCars, quise cotizar este auto en la calculadora y no me dio un estimado:",
+    params.brand.trim() ? `Marca: ${params.brand.trim()}` : undefined,
+    params.model.trim() ? `Modelo: ${params.model.trim()}` : undefined,
+    params.year ? `Año: ${params.year}` : undefined,
+    `Condición: ${params.conditionLabel}`,
+    params.vehicleTypeLabel ? `Motor: ${params.vehicleTypeLabel}` : undefined,
+    params.priceUsd ? `Precio en EE.UU.: ${formatCurrency(params.priceUsd)}` : undefined,
+    `Lo que me indicó la calculadora: ${params.reason}`,
+    "¿Hay alguna alternativa?",
   ].filter(Boolean);
 
   const message = encodeURIComponent(lines.join("\n"));

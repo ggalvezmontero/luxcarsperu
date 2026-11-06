@@ -1,14 +1,30 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 
 import type { Metadata } from "next";
 
+// El <title> sale de la plantilla del layout ("%s | marca"); Open Graph y
+// Twitter repiten exactamente ese texto y la misma descripción. Sin `openGraph`
+// propio la página heredaba og:url y og:title de la home.
+const TITLE = "Política de cookies";
+const DESCRIPTION =
+  "Qué cookies utiliza luxcars.pe, para qué sirven y cómo gestionarlas.";
+const OG_TITLE = `${TITLE} | ${LUXCARS_CONFIG.brandName}`;
+
 export const metadata: Metadata = {
-  title: "Política de cookies",
-  description:
-    "Qué cookies utiliza luxcars.pe, para qué sirven y cómo gestionarlas.",
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: "/cookies" },
+  openGraph: {
+    ...OG_DEFAULTS,
+    type: "website",
+    url: `${LUXCARS_CONFIG.contact.website}/cookies`,
+    title: OG_TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: twitterCard(OG_TITLE, DESCRIPTION),
 };
 
 export default function CookiesPage() {

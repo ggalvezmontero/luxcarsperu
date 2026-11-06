@@ -21,7 +21,7 @@
 --  Por conexión directa no hay sesión (`auth.uid()` es NULL), así que el
 --  trigger `profiles_proteger` no interfiere (ver migración 0010).
 --
---  CAMBIA LOS DOS VALORES DEL BLOQUE `config` ANTES DE CORRERLO.
+--  CAMBIA LOS VALORES DEL BLOQUE `config` ANTES DE CORRERLO.
 -- =============================================================================
 
 do $$
@@ -31,15 +31,30 @@ declare
   -- ---------------------------------------------------------------------------
   v_email  text := 'admin@luxcars.pe';
   v_nombre text := 'Administrador LuxCars';
+  -- El registro del sitio no confirma el correo: una cuenta con esta dirección
+  -- pudo crearla otra persona. Ponlo en `true` solo después de confirmar con
+  -- el dueño del correo que la cuenta es suya.
+  v_permitir_sin_verificar boolean := false;
   -- ---------------------------------------------------------------------------
   v_id uuid;
+  v_verificado boolean;
+  v_creada timestamptz;
 begin
-  select id into v_id from neon_auth."user" where lower(email) = lower(v_email);
+  select id, "emailVerified", "createdAt"
+    into v_id, v_verificado, v_creada
+    from neon_auth."user"
+   where lower(email) = lower(v_email);
 
   if v_id is null then
     raise exception
       'No hay ninguna cuenta con el correo %. Créala primero (luxcars.pe/cuenta/login o consola de Neon → Auth → Users) y vuelve a correr este archivo.',
       v_email;
+  end if;
+
+  if not coalesce(v_verificado, false) and not v_permitir_sin_verificar then
+    raise exception
+      'La cuenta % (creada el %) no tiene el correo verificado: pudo crearla otra persona con esa dirección. Confirma que es de quien dice ser y pon v_permitir_sin_verificar en true.',
+      v_email, v_creada;
   end if;
 
   -- El trigger de alta ya creó el perfil; por si la cuenta es anterior a la

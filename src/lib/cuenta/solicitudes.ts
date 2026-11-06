@@ -134,34 +134,153 @@ const GENERIC_ERROR = "No se pudo completar la operación. Revisa tu conexión e
 /* Lecturas                                                                   */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * Lectura de una lista: `error: true` significa que la lectura FALLÓ (sesión
+ * vencida, red, base dormida), no que no haya filas. Sin esta distinción una
+ * sesión vencida se pintaba como "todavía no pediste nada" y el cliente
+ * mandaba la misma solicitud otra vez.
+ */
+export type ListResult<T> = { data: T[]; error: boolean };
+
 export async function fetchMyPurchaseRequests(
   client: PortalClient,
-): Promise<PurchaseRequest[]> {
+): Promise<ListResult<PurchaseRequest>> {
   try {
     const { data, error } = await client
       .from("solicitudes_compra")
       .select(PURCHASE_COLUMNS)
       .order("created_at", { ascending: false })
       .limit(50);
-    if (error || !data) return [];
-    return (data as unknown as PurchaseRequestRow[]).map(mapPurchaseRequest);
+    if (error || !data) return { data: [], error: true };
+    return {
+      data: (data as unknown as PurchaseRequestRow[]).map(mapPurchaseRequest),
+      error: false,
+    };
   } catch {
-    return [];
+    return { data: [], error: true };
   }
 }
 
-export async function fetchMySaleRequests(client: PortalClient): Promise<SaleRequest[]> {
+export async function fetchMySaleRequests(
+  client: PortalClient,
+): Promise<ListResult<SaleRequest>> {
   try {
     const { data, error } = await client
       .from("solicitudes_venta")
       .select(SALE_COLUMNS)
       .order("created_at", { ascending: false })
       .limit(50);
-    if (error || !data) return [];
-    return (data as unknown as SaleRequestRow[]).map(mapSaleRequest);
+    if (error || !data) return { data: [], error: true };
+    return {
+      data: (data as unknown as SaleRequestRow[]).map(mapSaleRequest),
+      error: false,
+    };
   } catch {
-    return [];
+    return { data: [], error: true };
   }
+}
+
+/**
+ * Ids de los autos del cliente que están PUBLICADOS en el sitio.
+ *
+ * El cliente no puede leer `vehicles`, así que lo pregunta a la función
+ * `mis_autos_publicados()` (una fila `vehicle_id` por auto publicado suyo).
+ * Una solicitud aprobada solo está "publicada" si su `vehicleId` está acá:
+ * aprobar no es publicar, y `/comprar/{id}` de un auto sin publicar es un 404.
+ * Si la llamada falla, `ids` queda vacío: ningún auto se da por publicado y no
+ * se muestra un enlace que podría estar muerto.
+ */
+export async function fetchMyPublishedVehicleIds(
+  client: PortalClient,
+): Promise<Set<string>> {
+  try {
+    const { data, error } = await client.rpc("mis_autos_publicados");
+    if (error || !Array.isArray(data)) return new Set();
+    const ids = new Set<string>();
+    for (const row of data as Array<{ vehicle_id?: unknown }>) {
+      if (typeof row?.vehicle_id === "string") ids.add(row.vehicle_id);
+    }
+    return ids;
+  } catch {
+    return new Set();
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Errores de la base, en español                                             */
+/* ------------------------------------------------------------------------- */
+
+type DbError = { code?: string | null; message?: string | null } | null;
+type DbResult = { error: DbError; status?: number };
+
+const MSG_SESION =
+  "Tu sesión venció o tu cuenta no puede enviar solicitudes. Vuelve a iniciar sesión e intenta de nuevo; si sigue igual, escríbenos por WhatsApp.";
+const MSG_CUENTA_NO_LISTA =
+  "Tu cuenta todavía no está lista. Intenta de nuevo en un momento o escríbenos por WhatsApp.";
+const MSG_FUERA_DE_RANGO =
+  "Algún dato del formulario está fuera de rango. Revísalo e intenta de nuevo.";
+const MSG_NO_ENVIADA =
+  "No se pudo enviar la solicitud. Revisa tu conexión e intenta de nuevo.";
+
+function esErrorDeSesion(error: NonNullable<DbError>, status?: number): boolean {
+  const mensaje = (error.message ?? "").toLowerCase();
+  return (
+    error.code === "42501" ||
+    (error.code ?? "").startsWith("PGRST3") ||
+    status === 401 ||
+    mensaje.includes("jwt")
+  );
+}
+
+/**
+ * Traduce un error de la base a un mensaje para el cliente. NUNCA devuelve el
+ * texto crudo de Postgres/PostgREST (viene en inglés y habla de tablas y
+ * restricciones), con una sola excepción: `P0001`, el `raise exception` de un
+ * trigger, cuyo mensaje está escrito en español para el cliente (p. ej. el
+ * límite diario de solicitudes).
+ */
+function describirErrorDeEnvio(error: NonNullable<DbError>, status?: number): string {
+  if (esErrorDeSesion(error, status)) return MSG_SESION;
+  switch (error.code) {
+    case "23503":
+      return MSG_CUENTA_NO_LISTA;
+    case "23514":
+      return MSG_FUERA_DE_RANGO;
+    case "P0001": {
+      const mensaje = (error.message ?? "").trim();
+      return mensaje || MSG_NO_ENVIADA;
+    }
+    default:
+      return MSG_NO_ENVIADA;
+  }
+}
+
+/**
+ * Inserta una solicitud. Si falla por clave foránea (`23503`: el cliente
+ * todavía no tiene fila en `profiles`), pide `asegurar_perfil()` y reintenta
+ * UNA vez; si sigue fallando, dice que la cuenta no está lista.
+ */
+async function enviarSolicitud(
+  client: PortalClient,
+  insertar: () => PromiseLike<DbResult>,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  let resultado = await insertar();
+
+  if (resultado.error?.code === "23503") {
+    const { error: errorPerfil, status } = await client.rpc("asegurar_perfil");
+    if (errorPerfil) {
+      return {
+        ok: false,
+        message: esErrorDeSesion(errorPerfil, status) ? MSG_SESION : MSG_CUENTA_NO_LISTA,
+      };
+    }
+    resultado = await insertar();
+  }
+
+  if (resultado.error) {
+    return { ok: false, message: describirErrorDeEnvio(resultado.error, resultado.status) };
+  }
+  return { ok: true };
 }
 
 /* ------------------------------------------------------------------------- */
@@ -184,7 +303,7 @@ export async function createPurchaseRequest(
   input: NewPurchaseRequest,
 ): Promise<MutationResult> {
   try {
-    const { error } = await client.from("solicitudes_compra").insert({
+    const fila = {
       user_id: userId,
       marca: input.brand.trim().slice(0, 80),
       modelo: input.model.trim().slice(0, 120),
@@ -194,8 +313,11 @@ export async function createPurchaseRequest(
       presupuesto_max_usd: input.budgetMaxUsd,
       notas: input.notes.trim().slice(0, 2000) || null,
       estado: "nueva",
-    });
-    if (error) return { ok: false, message: "No se pudo enviar la solicitud. " + error.message };
+    };
+    const envio = await enviarSolicitud(client, () =>
+      client.from("solicitudes_compra").insert(fila),
+    );
+    if (!envio.ok) return { ok: false, message: envio.message };
     return { ok: true, message: "Solicitud enviada. Te escribimos por WhatsApp en cuanto tengamos opciones." };
   } catch {
     return { ok: false, message: GENERIC_ERROR };
@@ -224,7 +346,7 @@ export async function createSaleRequest(
   input: NewSaleRequest,
 ): Promise<MutationResult> {
   try {
-    const { error } = await client.from("solicitudes_venta").insert({
+    const fila = {
       user_id: userId,
       marca: input.brand.trim().slice(0, 80),
       modelo: input.model.trim().slice(0, 120),
@@ -240,8 +362,11 @@ export async function createSaleRequest(
       moneda: input.currency,
       telefono_contacto: input.contactPhone.trim().slice(0, 40),
       estado: "pendiente",
-    });
-    if (error) return { ok: false, message: "No se pudo enviar la solicitud. " + error.message };
+    };
+    const envio = await enviarSolicitud(client, () =>
+      client.from("solicitudes_venta").insert(fila),
+    );
+    if (!envio.ok) return { ok: false, message: envio.message };
     return {
       ok: true,
       message: "Recibimos tu auto. Lo revisamos y te avisamos cuando esté publicado.",

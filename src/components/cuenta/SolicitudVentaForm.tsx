@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
+import { AvisoCuentaSuspendida } from "@/components/cuenta/CuentaScreen";
 import { useCuentaSession } from "@/components/cuenta/cuentaSession";
 import { SinCuentas } from "@/components/cuenta/SinCuentas";
 import { DECLARED_CONDITIONS, createSaleRequest } from "@/lib/cuenta/solicitudes";
@@ -85,6 +86,16 @@ export function SolicitudVentaForm() {
   };
 
   if (status === "sin-configurar") return <SinCuentas />;
+
+  if (profile && !profile.active) {
+    return (
+      <Section tone="bg" padding="tight">
+        <div className="mx-auto max-w-2xl">
+          <AvisoCuentaSuspendida />
+        </div>
+      </Section>
+    );
+  }
 
   return (
     <Section tone="bg" padding="tight">

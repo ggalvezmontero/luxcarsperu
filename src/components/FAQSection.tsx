@@ -8,9 +8,20 @@ type Props = {
   limite?: number;
   tone?: "bg" | "void" | "surface";
   titulo?: string;
+  /**
+   * Etiqueta del título. `h2` por defecto (en la home y en /como-funciona es una
+   * sección más). Solo /faq pasa `h1`: ahí este título ES el de la página y sin
+   * él la página no tenía ningún h1.
+   */
+  tituloComo?: "h1" | "h2";
 };
 
-export function FAQSection({ limite, tone = "bg", titulo = "Preguntas frecuentes" }: Props = {}) {
+export function FAQSection({
+  limite,
+  tone = "bg",
+  titulo = "Preguntas frecuentes",
+  tituloComo = "h2",
+}: Props = {}) {
   const items = limite ? LUXCARS_CONFIG.faq.slice(0, limite) : LUXCARS_CONFIG.faq;
   const esResumen = Boolean(limite);
 
@@ -21,7 +32,17 @@ export function FAQSection({ limite, tone = "bg", titulo = "Preguntas frecuentes
           <SectionHeader
             eyebrow="Dudas comunes"
             title={titulo}
+            as={tituloComo}
             description="Respuestas directas sobre plazos, impuestos y condiciones."
+            // SectionHeader agranda los h1 (tamaño de portada). Aquí el título
+            // vive en una columna angosta y debe verse IGUAL que siempre: solo
+            // cambia la etiqueta para el SEO, no el diseño. Se fija el tamaño
+            // del h2 desde el contenedor (el selector descendiente gana).
+            className={
+              tituloComo === "h1"
+                ? "[&_h1]:text-3xl [&_h1]:leading-[1.1] sm:[&_h1]:text-4xl lg:[&_h1]:text-4xl"
+                : undefined
+            }
           />
           {esResumen ? (
             <Button href="/faq" variant="secondary" className="mt-6">

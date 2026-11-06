@@ -7,8 +7,14 @@ import { CtaBand } from "@/components/CtaBand";
 import { Section } from "@/components/ui/Section";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { LUXCARS_CONFIG } from "@/lib/config";
-import { getStock } from "@/lib/stock";
+import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
+import { getStockForIsr } from "@/lib/stock";
 import { StockExplorer } from "./StockExplorer";
+
+// Mismo texto para Open Graph y Twitter Card: una sola fuente, sin copy nuevo.
+const OG_TITLE = "Comprar auto de lujo en Lima | Stock disponible";
+const OG_DESCRIPTION =
+  "Unidades premium verificadas, en Lima y listas para entregar.";
 
 export const metadata: Metadata = {
   title: "Comprar auto de lujo en Lima · Stock disponible",
@@ -16,12 +22,13 @@ export const metadata: Metadata = {
     "Autos premium en Lima, verificados y listos para entregar. Stock propio de LuxCars y autos de clientes en consignación, siempre identificados: documentos en orden y entrega en días.",
   alternates: { canonical: "/comprar" },
   openGraph: {
+    ...OG_DEFAULTS,
     type: "website",
     url: `${LUXCARS_CONFIG.contact.website}/comprar`,
-    title: "Comprar auto de lujo en Lima | Stock disponible",
-    description:
-      "Unidades premium verificadas, en Lima y listas para entregar.",
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
   },
+  twitter: twitterCard(OG_TITLE, OG_DESCRIPTION),
 };
 
 /**
@@ -29,6 +36,10 @@ export const metadata: Metadata = {
  * momento del build y un auto recién publicado no aparece hasta el siguiente
  * despliegue. Cinco minutos: lo publicado se ve casi enseguida y la base no
  * recibe una consulta por visita.
+ *
+ * Por eso el stock se lee con `getStockForIsr()`: si la base falla durante una
+ * revalidación, la página LANZA y Next sigue sirviendo la última versión buena
+ * en vez de cachear un listado vacío (ver lib/stock.ts).
  */
 export const revalidate = 300;
 
@@ -39,7 +50,7 @@ const PROMESAS: { icon: IconName; title: string; text: string }[] = [
 ];
 
 export default async function ComprarPage() {
-  const stock = await getStock(48);
+  const stock = await getStockForIsr(48);
 
   return (
     <div className="flex min-h-screen flex-col">

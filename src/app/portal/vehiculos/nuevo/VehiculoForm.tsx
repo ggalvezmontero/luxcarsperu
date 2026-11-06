@@ -230,10 +230,12 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
 
     if (!resultado.ok) {
       if (resultado.motivo === "duplicado") {
+        // El error va bajo el campo que chocó: un slug repetido no es culpa
+        // del VIN, y mostrarlo ahí mandaba a corregir el campo equivocado.
         setEnvio({
           fase: "invalido",
           mensaje: resultado.mensaje,
-          errores: { vin: resultado.mensaje },
+          errores: { [resultado.campo ?? "vin"]: resultado.mensaje },
         });
         return;
       }

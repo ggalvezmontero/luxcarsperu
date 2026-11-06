@@ -15,10 +15,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
-import { fetchOwnProfile, type Profile } from "@/lib/auth/perfil";
+import { fetchOwnProfileResult, type Profile } from "@/lib/auth/perfil";
 import {
   alCambiarSesion,
   avisarCambioDeSesion,
@@ -35,6 +36,9 @@ import {
  * - `sin-permiso`: hay sesión pero el perfil NO es administrador (un cliente
  *   del sitio). El portal no se muestra; RLS ya le devolvería cero filas,
  *   esto solo evita una pantalla vacía y confusa.
+ * - `error-perfil`: hay sesión pero NO se pudo leer el perfil (token vencido,
+ *   base dormida, red). No se sabe si es admin: no se cierra la sesión ni se
+ *   dice "no es del equipo"; se ofrece reintentar con `reintentar()`.
  * - `sin-configurar`: no hay variables de Neon. No tiene sentido pedir
  *   login porque no hay a quién preguntarle: se muestra el portal en modo
  *   demostración, con todo en cero y el aviso de qué falta.
@@ -47,6 +51,7 @@ export type PortalSessionStatus =
   | "autenticado"
   | "anonimo"
   | "sin-permiso"
+  | "error-perfil"
   | "sin-configurar";
 
 export type PortalSessionValue = {
@@ -59,6 +64,8 @@ export type PortalSessionValue = {
   client: PortalClient | null;
   /** Cierra la sesión en Neon Auth y devuelve al login. */
   signOut: () => Promise<void>;
+  /** Vuelve a leer sesión y perfil (para salir de `error-perfil`). */
+  reintentar: () => Promise<void>;
 };
 
 const PortalSessionContext = createContext<PortalSessionValue | null>(null);
@@ -83,6 +90,9 @@ export function PortalSessionProvider({
   );
   const [email, setEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  // La relectura vive dentro del efecto (cierra sobre `cancelled` y `client`);
+  // el botón de reintentar la alcanza por acá.
+  const releerRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     if (!configured) return;
@@ -111,8 +121,16 @@ export function PortalSessionProvider({
         setStatus("anonimo");
         return;
       }
-      const own = await fetchOwnProfile(client);
+      const result = await fetchOwnProfileResult(client);
       if (cancelled) return;
+      if (result.status === "error") {
+        // La lectura falló: no se sabe si es admin. Nunca se trata como
+        // "sin permiso" (eso le dice a un admin que no es del equipo).
+        setProfile(null);
+        setStatus("error-perfil");
+        return;
+      }
+      const own = result.status === "ok" ? result.profile : null;
       setProfile(own);
       setStatus(own?.role === "admin" && own.active ? "autenticado" : "sin-permiso");
     };
@@ -129,6 +147,7 @@ export function PortalSessionProvider({
           if (!cancelled) setStatus("anonimo");
         });
 
+    releerRef.current = releer;
     void releer();
     const dejarDeOir = alCambiarSesion(releer);
 
@@ -140,15 +159,29 @@ export function PortalSessionProvider({
 
     return () => {
       cancelled = true;
+      releerRef.current = null;
       dejarDeOir();
       listener.subscription.unsubscribe();
     };
   }, [configured, client]);
 
+  const reintentar = useCallback(async () => {
+    const releer = releerRef.current;
+    if (!releer) return;
+    setStatus("verificando");
+    await releer();
+  }, []);
+
   const signOut = useCallback(async () => {
     if (!client) return;
     try {
-      await client.auth.signOut();
+      // El SDK no siempre lanza: `signOut()` también puede devolver
+      // `{ error }` (ver el adaptador de @neon/auth). Se trata igual que una
+      // excepción.
+      const resultado = (await client.auth.signOut()) as
+        | { error?: unknown }
+        | undefined;
+      if (resultado?.error) throw resultado.error;
       await avisarCambioDeSesion();
     } catch {
       // Si la red falla no hay nada que releer: se fuerza el estado.
@@ -159,8 +192,8 @@ export function PortalSessionProvider({
   }, [client]);
 
   const value = useMemo<PortalSessionValue>(
-    () => ({ status, email, profile, client, signOut }),
-    [status, email, profile, client, signOut],
+    () => ({ status, email, profile, client, signOut, reintentar }),
+    [status, email, profile, client, signOut, reintentar],
   );
 
   return (

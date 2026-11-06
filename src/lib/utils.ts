@@ -33,3 +33,13 @@ export function formatPercentage(
     maximumFractionDigits: digits,
   }).format(value);
 }
+
+/**
+ * Una tasa como porcentaje, con un decimal solo si lo necesita: 10% → "10 %",
+ * 3.5% → "3.5 %". `formatPercentage` redondea a entero por defecto y mostraba
+ * la percepción del 3.5% como "4%" al lado de un monto calculado con 3.5%.
+ */
+export function formatRate(value: number, locale: string = "es-PE") {
+  const entero = Math.abs(value * 100 - Math.round(value * 100)) < 1e-9;
+  return formatPercentage(value, locale, entero ? 0 : 1);
+}

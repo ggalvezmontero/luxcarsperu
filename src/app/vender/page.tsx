@@ -6,7 +6,13 @@ import { Navbar } from "@/components/Navbar";
 import { Icon, WhatsAppIcon, type IconName } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { FormularioTasacion } from "./FormularioTasacion";
+
+// Mismo texto para Open Graph y Twitter Card: una sola fuente, sin copy nuevo.
+const OG_TITLE = "Vender mi auto en Lima · Consignación sin exclusividad";
+const OG_DESCRIPTION =
+  "Dejas tu auto en venta con LuxCars y lo sigues manejando. Sin exclusividad.";
 
 export const metadata: Metadata = {
   title: "Vender mi auto en Lima · Consignación sin exclusividad",
@@ -14,11 +20,13 @@ export const metadata: Metadata = {
     "Tasamos y vendemos tu auto en Lima sin contrato de exclusividad: lo sigues manejando mientras se vende y si lo vendes tú no pagas comisión.",
   alternates: { canonical: "/vender" },
   openGraph: {
+    ...OG_DEFAULTS,
     type: "website",
     url: `${LUXCARS_CONFIG.contact.website}/vender`,
-    title: "Vender mi auto en Lima · Consignación sin exclusividad",
-    description: "Dejas tu auto en venta con LuxCars y lo sigues manejando. Sin exclusividad.",
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
   },
+  twitter: twitterCard(OG_TITLE, OG_DESCRIPTION),
 };
 
 const WA = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(

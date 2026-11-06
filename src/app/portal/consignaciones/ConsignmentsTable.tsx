@@ -39,6 +39,7 @@ import {
   type PortalConsignment,
 } from "./model";
 import type { ConsignmentMutationResult } from "./queries";
+import { formatearFechaCalendario } from "../vehiculos/fechas";
 
 const STATUS_TONE: Record<ConsignmentStatus, BadgeTone> = {
   activa: "ok",
@@ -49,15 +50,13 @@ const STATUS_TONE: Record<ConsignmentStatus, BadgeTone> = {
   vencida: "danger",
 };
 
+/**
+ * Las tres fechas de esta tabla (inicio, fin, venta del dueño) son columnas
+ * `date`: se muestran como ese día de calendario. Con `new Date()` + Intl sin
+ * zona salían un día antes en Lima (ver `../vehiculos/fechas.ts`).
+ */
 function formatDate(value: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("es-PE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(date);
+  return formatearFechaCalendario(value);
 }
 
 function commissionLabel(item: PortalConsignment): string {

@@ -352,7 +352,9 @@ negocio la exigen. Consecuencias:
   entonces solo el equipo la tenía). Los siguientes se promueven desde
   `/portal/usuarios`. Sin sesión (psql o el editor SQL de Neon) los triggers de
   protección no aplican, así que el dueño siempre puede promover a alguien con
-  `update public.profiles set rol = 'admin' where email = '…'`.
+  `update public.profiles set rol = 'admin' where id = '…'` (por id, o
+  cruzando con el correo de `neon_auth."user"`: `profiles.email` es una copia
+  para listar, no una llave).
 - **Un admin no puede quitarse su propio rol ni desactivarse** (trigger
   `profiles_proteger`): evita quedarse fuera por error.
 - **Aprobar una solicitud de venta** es una función SQL
@@ -362,6 +364,18 @@ negocio la exigen. Consecuencias:
 - **Las fotos no las cuida RLS** (el bucket vive fuera de Postgres): las cuida
   `/api/portal/fotos`, que antes de firmar una subida comprueba sesión y rol
   admin con `verificarSesionPortal()`.
+
+- **Lo que un cliente puede hacer con su cuenta lo acota la migración 0011**
+  (`20261106090000_endurecer_cuentas.sql`): edita solo su nombre y teléfono,
+  no puede cambiar una solicitud de venta ya enviada (solo retirarla), una
+  cuenta desactivada no crea ni cambia nada, hay tope de tamaño y de diez
+  solicitudes por día, y `mis_autos_publicados()` le dice cuáles de sus autos
+  ya están en la web.
+- **Correo verificado y contraseña propia.** Neon Auth exige verificar el
+  correo con un código (`src/components/auth/VerificarCorreo.tsx`) y cada
+  quien recupera su contraseña con un enlace: `/cuenta/recuperar` para
+  clientes y `/portal/recuperar` para el equipo, con la misma lógica
+  (`src/lib/auth/recuperacion.ts`).
 
 Sigue sin haber diferencia entre un vendedor y el dueño dentro del equipo:
 todo admin ve todo. Si hiciera falta un rol intermedio, se agrega al enum y a
@@ -491,3 +505,33 @@ node scripts/verificar-paleta.mjs   9 colores sincronizados
 
 `next build` local necesita `NEXT_DIST_DIR=.next-verify` porque `.next/` quedó
 con dueño `root` en esta máquina. En Vercel no aplica.
+
+---
+
+## Enlace corto de un estimado (`/c/<código>`)
+
+La calculadora tiene un botón **Compartir** que arma un enlace de unos 15
+caracteres, por ejemplo `luxcars.pe/c/37pBC3XAmXKczaI`. Quien lo abre ve el
+desglose completo de ese auto, ya abierto, y la vista previa en WhatsApp o
+Facebook muestra el auto y la cifra puesta en Lima.
+
+- **El código es la cotización.** Los datos del formulario van empaquetados en
+  el propio enlace (`src/lib/cotizacionCompartida.ts`); no hay tabla ni ruta
+  que escriba en la base. Un enlace publicado sigue abriendo aunque la base
+  esté caída, y no hay nada que un robot pueda llenar de basura.
+- **El número no queda congelado.** Al abrirlo se recalcula con el motor y las
+  tasas de ese día (`src/app/c/[code]/estimado.ts`), y la página lo dice con
+  su fecha. La calculadora y esa página pasan por la misma función
+  (`src/lib/cotizacion.ts`) y muestran el desglose con las mismas piezas
+  (`src/components/cotizacion/QuoteBreakdown.tsx`).
+- **SEO.** `/c/*` es `noindex, follow`, no entra al sitemap y no se enlaza
+  desde las páginas públicas: hay un enlace distinto por cada auto, año y
+  precio, y no deben competir con la home ni con `/importar`. No se bloquea en
+  robots.txt, para que Google lea el `noindex` y las redes lean la vista previa.
+- **Ajustar el cálculo** lleva a `/?c=<código>#calculator`, que abre la
+  calculadora con los mismos datos.
+- **No reordenar** las listas `CATEGORIAS` y `ORIGENES` de
+  `cotizacionCompartida.ts`, ni quitar o renombrar a la ligera un modelo de
+  `src/data/vehicleCatalog.ts`: los enlaces ya compartidos de ese modelo se
+  quedarían sin nombre (siguen abriendo, como "Vehículo 2026").
+

@@ -12,6 +12,7 @@ import { BrandModelPicker } from "@/components/BrandModelPicker";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
+import { AvisoCuentaSuspendida } from "@/components/cuenta/CuentaScreen";
 import { useCuentaSession } from "@/components/cuenta/cuentaSession";
 import { SinCuentas } from "@/components/cuenta/SinCuentas";
 import {
@@ -22,11 +23,21 @@ import { PURCHASE_REQUEST_CONDITIONS, type PurchaseRequestCondition } from "@/li
 import { cn } from "@/lib/utils";
 
 const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_MIN = 1980;
+const YEAR_MAX = 2100;
 const digits = (v: string) => v.replace(/[^0-9]/g, "");
+
+/**
+ * Deja solo los dígitos de un monto, pero antes quita una parte decimal final
+ * (`.` o `,` seguido de 1 o 2 dígitos al final): sin eso, pegar "65,000.50"
+ * dejaba 6500050. Con 3 dígitos después del separador ("65,000", "65.000") es
+ * un separador de miles y se conserva.
+ */
+const amountDigits = (v: string) => digits(v.trim().replace(/[.,]\d{1,2}$/, ""));
 
 export function SolicitudCompraForm() {
   const router = useRouter();
-  const { status, userId, client } = useCuentaSession();
+  const { status, userId, client, profile } = useCuentaSession();
 
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
@@ -49,13 +60,17 @@ export function SolicitudCompraForm() {
       setError("Dinos al menos la marca y el modelo.");
       return;
     }
-    const yMin = yearMin ? Number(yearMin) : null;
-    const yMax = yearMax ? Number(yearMax) : null;
-    if ((yMin && (yMin < 1980 || yMin > CURRENT_YEAR + 1)) || (yMax && (yMax < 1980 || yMax > CURRENT_YEAR + 1))) {
-      setError("Revisa los años.");
+    // Vacío = sin filtro. Ojo: "0" es un texto no vacío y `Number("0")` es 0,
+    // que es falso: por eso se compara contra "" y no por veracidad.
+    const yMin = yearMin === "" ? null : Number(yearMin);
+    const yMax = yearMax === "" ? null : Number(yearMax);
+    const yearOk = (y: number | null) =>
+      y === null || (Number.isInteger(y) && y >= YEAR_MIN && y <= YEAR_MAX);
+    if (!yearOk(yMin) || !yearOk(yMax)) {
+      setError(`Revisa los años: deben estar entre ${YEAR_MIN} y ${YEAR_MAX}.`);
       return;
     }
-    if (yMin && yMax && yMin > yMax) {
+    if (yMin !== null && yMax !== null && yMin > yMax) {
       setError("El año 'desde' no puede ser mayor que el 'hasta'.");
       return;
     }
@@ -70,7 +85,7 @@ export function SolicitudCompraForm() {
       yearMin: yMin,
       yearMax: yMax,
       condition,
-      budgetMaxUsd: budget ? Number(digits(budget)) : null,
+      budgetMaxUsd: budget ? Number(amountDigits(budget)) : null,
       notes,
     });
     setSubmitting(false);
@@ -82,6 +97,16 @@ export function SolicitudCompraForm() {
   };
 
   if (status === "sin-configurar") return <SinCuentas />;
+
+  if (profile && !profile.active) {
+    return (
+      <Section tone="bg" padding="tight">
+        <div className="mx-auto max-w-2xl">
+          <AvisoCuentaSuspendida />
+        </div>
+      </Section>
+    );
+  }
 
   return (
     <Section tone="bg" padding="tight">
@@ -136,7 +161,15 @@ export function SolicitudCompraForm() {
                   id="sc-presupuesto"
                   inputMode="numeric"
                   value={budget ? Number(digits(budget)).toLocaleString("en-US") : ""}
-                  onChange={(e) => setBudget(digits(e.target.value).slice(0, 8))}
+                  // El campo muestra comas de miles, así que en `onChange` un
+                  // ",50" puede ser un dígito borrado ("1,234" → "1,23"): solo
+                  // se descarta el decimal con punto. La regla completa (coma
+                  // o punto) corre al PEGAR, donde el texto viene de afuera.
+                  onChange={(e) => setBudget(digits(e.target.value.replace(/\.\d{1,2}$/, "")).slice(0, 8))}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    setBudget(amountDigits(e.clipboardData.getData("text")).slice(0, 8));
+                  }}
                   placeholder="120,000"
                   className="field-lux pl-14 tabular-nums"
                 />

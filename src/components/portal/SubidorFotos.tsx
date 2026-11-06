@@ -331,18 +331,62 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
     [client, ficha, modoLocal],
   );
 
+  /**
+   * Los LOTES también van en fila, no solo las fotos de un lote.
+   *
+   * Si el equipo elige fotos y, mientras suben, toma otra con la cámara, había
+   * dos `procesarArchivos` corriendo a la vez. En un auto sin fotos, las dos
+   * primeras subidas llegaban juntas a la base, el trigger `tg_acomodar_foto`
+   * veía "no hay fotos" en ambas y las dos intentaban ser portada: la segunda
+   * chocaba contra el índice único `vehicle_photos_una_principal_idx` y fallaba.
+   * Encadenando cada lote al anterior, eso no puede pasar.
+   */
+  const colaLotes = useRef<Promise<void>>(Promise.resolve());
+  const lotesEnCurso = useRef(0);
+
+  const encolarArchivos = useCallback(
+    (archivos: File[]) => {
+      if (lotesEnCurso.current > 0) {
+        setAviso(
+          `${archivos.length} foto(s) en espera: se suben cuando termine el lote en curso.`,
+        );
+      }
+      lotesEnCurso.current += 1;
+      colaLotes.current = colaLotes.current
+        .then(() => procesarArchivos(archivos))
+        .catch(() => {
+          // `procesarArchivos` informa cada fallo en la cola; un error suelto
+          // no puede trabar los lotes siguientes.
+        })
+        .finally(() => {
+          lotesEnCurso.current -= 1;
+        });
+    },
+    [procesarArchivos],
+  );
+
   const alSoltar = (evento: React.DragEvent<HTMLDivElement>) => {
     evento.preventDefault();
     setArrastrando(false);
     const archivos = Array.from(evento.dataTransfer?.files ?? []);
-    if (archivos.length > 0) void procesarArchivos(archivos);
+    if (archivos.length > 0) encolarArchivos(archivos);
   };
 
   /* ---------------------------------------------------------------------- */
   /* Acciones sobre la galería                                              */
   /* ---------------------------------------------------------------------- */
 
-  /** Reordena en pantalla primero y confirma contra la base después. */
+  /**
+   * Reordena en pantalla primero y confirma contra la base después.
+   *
+   * LA PRIMERA FOTO ES LA PORTADA, en pantalla y en la base: llevar una foto
+   * al primer lugar la vuelve portada, y sacar la portada del primer lugar
+   * vuelve portada a la que queda primera. `guardarOrden` escribe las dos
+   * cosas. Antes solo se guardaba el orden, la portada real no cambiaba y al
+   * recargar la galería todo volvía atrás.
+   */
+  const colaOrden = useRef<Promise<void>>(Promise.resolve());
+
   const mover = useCallback(
     (desde: number, hasta: number) => {
       if (hasta < 0 || hasta >= fotos.length || desde === hasta) return;
@@ -350,7 +394,9 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
       const reordenadas = [...fotos];
       const [sacada] = reordenadas.splice(desde, 1);
       reordenadas.splice(hasta, 0, sacada);
-      setFotos(reordenadas);
+      setFotos(
+        reordenadas.map((foto, indice) => ({ ...foto, esPortada: indice === 0 })),
+      );
 
       focoPendiente.current = {
         fotoId: sacada.id,
@@ -358,7 +404,11 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
       };
       setAnuncio(
         `Foto movida a la posición ${hasta + 1} de ${reordenadas.length}.` +
-          (hasta === 0 ? " Ahora es la portada." : ""),
+          (hasta === 0
+            ? " Ahora es la portada."
+            : desde === 0
+              ? " La foto que quedó primera es la nueva portada."
+              : ""),
       );
 
       if (modoLocal || !ficha) return;
@@ -366,25 +416,40 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
       const guardables = reordenadas.filter((foto) => !foto.local);
       if (guardables.length === 0) return;
 
-      void (async () => {
-        const resultado = await guardarOrden(
-          client,
-          ficha.id,
-          guardables.map((foto) => foto.id),
-        );
+      // En fila: tres flechas seguidas lanzaban tres guardados a la vez, y dos
+      // cambios de portada intercalados chocan contra el índice único de
+      // portada. Cada guardado espera al anterior.
+      const ids = guardables.map((foto) => foto.id);
+      colaOrden.current = colaOrden.current.then(async () => {
+        const resultado = await guardarOrden(client, ficha.id, ids);
         if (!resultado.ok) {
           setError(resultado.mensaje);
           // El orden que vale es el de la base: si no se guardó, se vuelve a
           // leer en vez de dejar en pantalla un orden que no existe.
-          void refrescarGaleria();
+          await refrescarGaleria();
         }
-      })();
+      });
     },
     [client, ficha, fotos, modoLocal, refrescarGaleria],
   );
 
+  /**
+   * "Hacer portada" = llevarla al primer lugar. Es la misma regla que al
+   * reordenar (la primera es la portada), así el orden guardado y la portada
+   * nunca se contradicen.
+   */
   const hacerPortada = useCallback(
     (foto: FotoUI) => {
+      const indice = fotos.findIndex((item) => item.id === foto.id);
+      if (indice > 0) {
+        mover(indice, 0);
+        return;
+      }
+      if (indice < 0) return;
+
+      // Ya es la primera pero no figura como portada: solo pasa si la base
+      // quedó sin portada (p. ej. un `marcarPortada` cortado a la mitad). Se
+      // marca sin mover nada.
       setFotos((previas) =>
         previas.map((item) => ({ ...item, esPortada: item.id === foto.id })),
       );
@@ -399,7 +464,7 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
         }
       })();
     },
-    [client, ficha, modoLocal, refrescarGaleria],
+    [client, ficha, fotos, modoLocal, mover, refrescarGaleria],
   );
 
   const escribirAlt = useCallback(
@@ -413,7 +478,18 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
 
       void (async () => {
         const resultado = await guardarAlt(client, ficha.id, foto.id, alt);
-        if (!resultado.ok) setError(resultado.mensaje);
+        if (!resultado.ok) {
+          // Se vuelve al texto que SÍ está guardado. Antes el estado quedaba
+          // con el texto nuevo y el campo (no controlado) seguía mostrándolo,
+          // como si se hubiera guardado. El campo se vuelve a montar con el
+          // valor anterior porque su `key` incluye el alt (ver el render).
+          setFotos((previas) =>
+            previas.map((item) =>
+              item.id === foto.id ? { ...item, alt: foto.alt } : item,
+            ),
+          );
+          setError(`${resultado.mensaje} La descripción no se guardó.`);
+        }
       })();
     },
     [client, ficha, modoLocal],
@@ -650,7 +726,7 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
             // Se limpia el input o elegir el MISMO archivo dos veces seguidas
             // no dispara `change` y la foto no se sube.
             evento.target.value = "";
-            if (archivos.length > 0) void procesarArchivos(archivos);
+            if (archivos.length > 0) encolarArchivos(archivos);
           }}
         />
         {/* `capture="environment"` abre la cámara trasera directo, sin pasar por
@@ -664,7 +740,7 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
           onChange={(evento) => {
             const archivos = Array.from(evento.target.files ?? []);
             evento.target.value = "";
-            if (archivos.length > 0) void procesarArchivos(archivos);
+            if (archivos.length > 0) encolarArchivos(archivos);
           }}
         />
       </div>
@@ -782,7 +858,11 @@ export function SubidorFotos({ vehiculoId }: { vehiculoId: string }) {
                     <span className="sr-only">
                       Descripción de la foto {indice + 1}
                     </span>
+                    {/* `key` con el alt: el campo no es controlado, así que
+                        si el guardado falla y el estado vuelve al texto
+                        anterior, solo un remontaje lo muestra. */}
                     <input
+                      key={`${foto.id}:${foto.alt}`}
                       type="text"
                       defaultValue={foto.alt}
                       onBlur={(evento) =>

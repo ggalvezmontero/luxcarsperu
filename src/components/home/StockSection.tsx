@@ -1,4 +1,4 @@
-import { getStock } from "@/lib/stock";
+import { getStockForIsr } from "@/lib/stock";
 import { Button } from "../Button";
 import { VehicleCard } from "../VehicleCard";
 import { Icon } from "../ui/Icon";
@@ -6,7 +6,10 @@ import { Section, SectionHeader } from "../ui/Section";
 import { Badge } from "../ui/Badge";
 
 export async function StockSection() {
-  const stock = await getStock(6);
+  // La home tiene `revalidate`. Con la variante que lanza, un error pasajero de
+  // la base hace que Next siga sirviendo la última home buena en vez de
+  // cachear "Todo el stock se vendió." (ver lib/stock.ts).
+  const stock = await getStockForIsr(6);
   const demo = stock.some((v) => v.isDemo);
 
   return (

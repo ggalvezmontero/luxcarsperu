@@ -18,8 +18,11 @@
  */
 
 import type { PortalClient } from "@/lib/portal/portalClient";
+import { retirarVehiculoDeConsignacion } from "../vehiculos/consultas";
+import { hoyEnLima } from "../vehiculos/fechas";
 import {
   MANAGEABLE_CONSIGNMENT_STATUSES,
+  isClosedConsignment,
   mapConsignment,
   type ConsignmentRow,
   type ConsignmentStatus,
@@ -96,9 +99,52 @@ export async function fetchConsignments(
   }
 }
 
-/** `YYYY-MM-DD` de hoy: es el formato de las columnas `date`. */
+/**
+ * `YYYY-MM-DD` de hoy EN LIMA: es el formato de las columnas `date`.
+ *
+ * Antes era `new Date().toISOString().slice(0, 10)`, que es el día en UTC:
+ * desde las 19:00 de Lima ya es "mañana", y una venta registrada de noche
+ * quedaba sellada con la fecha del día siguiente.
+ */
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return hoyEnLima();
+}
+
+/**
+ * Cierra la ficha pública del auto de una consignación que se acaba de cerrar.
+ *
+ * Una consignación cerrada (vendida, retirada, vencida) con su `vehicle_id`
+ * todavía `publicado = true, estado = 'disponible'` deja a los clientes
+ * preguntando por un auto que ya no está. Por eso, al cerrar: se despublica la
+ * ficha y, si el desenlace fue una venta, se marca vendida con la fecha.
+ *
+ * Devuelve el texto que hay que AGREGAR al mensaje de la consignación: vacío si
+ * todo salió bien o no había ficha; un aviso claro si la consignación quedó
+ * cerrada pero la ficha no se pudo tocar (son dos UPDATE desde el navegador,
+ * no una transacción, así que ese caso existe y hay que decirlo).
+ */
+async function closeLinkedVehicle(
+  client: PortalClient,
+  vehicleId: string | null,
+  soldOn: string | null,
+): Promise<string> {
+  if (!vehicleId) return "";
+  const result = await retirarVehiculoDeConsignacion(client, vehicleId, {
+    vendidoEn: soldOn,
+  });
+  if (result.ok) {
+    return soldOn
+      ? " La ficha del auto se despublicó y quedó como vendida."
+      : " La ficha del auto se despublicó de la web.";
+  }
+  return ` OJO: la ficha del auto sigue como estaba (puede seguir publicada); despublícala desde Vehículos. Motivo: ${result.message}`;
+}
+
+/** Lee `vehicle_id` de las filas que devolvió un UPDATE con `.select()`. */
+function updatedRows(data: unknown): { id: string; vehicle_id: string | null }[] {
+  return Array.isArray(data)
+    ? (data as { id: string; vehicle_id: string | null }[])
+    : [];
 }
 
 /**
@@ -126,7 +172,7 @@ export async function markSoldByOwner(
   const notes = (input.notes ?? "").trim().slice(0, 1000) || null;
 
   try {
-    const { error } = await client
+    const { data, error } = await client
       .from(TABLE)
       .update({
         vendido_por_dueno: true,
@@ -136,15 +182,31 @@ export async function markSoldByOwner(
         // Cero, y es lo correcto: sin exclusividad no hay comisión que cobrar.
         comision_cobrada: 0,
       })
-      .eq("id", input.id);
+      .eq("id", input.id)
+      // Se pide la fila de vuelta para saber si de verdad se actualizó una y
+      // para conocer su ficha pública (`vehicle_id`).
+      .select("id, vehicle_id");
 
     if (error) {
       return { ok: false, message: "No se pudo registrar la venta del dueño." };
     }
 
+    const rows = updatedRows(data);
+    if (rows.length === 0) {
+      return {
+        ok: false,
+        message:
+          "No se encontró la consignación: puede que la hayan borrado o que tu sesión ya no tenga acceso. Recarga la página.",
+      };
+    }
+
+    // El dueño lo vendió: la ficha se despublica y queda vendida con la
+    // misma fecha.
+    const vehicleNote = await closeLinkedVehicle(client, rows[0].vehicle_id, soldOn);
+
     return {
       ok: true,
-      message: "Cerrada como vendida por el dueño, sin comisión.",
+      message: `Cerrada como vendida por el dueño, sin comisión.${vehicleNote}`,
     };
   } catch {
     return { ok: false, message: "No se pudo registrar la venta del dueño." };
@@ -152,7 +214,8 @@ export async function markSoldByOwner(
 }
 
 /**
- * Cambia el estado de gestión de una consignación.
+ * Cambia el estado de gestión de una consignación. Si el estado nuevo la
+ * cierra (retirada, vencida), además saca de la web su ficha vinculada.
  *
  * Solo admite los estados que no exigen datos extra
  * (`MANAGEABLE_CONSIGNMENT_STATUSES`). Los dos cierres por venta quedan fuera:
@@ -160,6 +223,9 @@ export async function markSoldByOwner(
  * `precio_venta_final` por la constraint `consignments_venta_luxcars_exige_precio`.
  *
  * TODO(cierre): formulario de venta por LuxCars con precio final y comisión.
+ * Cuando exista, tiene que llamar a `closeLinkedVehicle(client, vehicle_id,
+ * vendido_en)` igual que `markSoldByOwner`, para que la ficha deje la web y
+ * quede vendida.
  */
 export async function updateConsignmentStatus(
   client: PortalClient,
@@ -176,18 +242,38 @@ export async function updateConsignmentStatus(
   }
 
   try {
-    const { error } = await client
+    const { data, error } = await client
       .from(TABLE)
       .update({ estado: input.status })
       .eq("id", input.id)
       // Una consignación que el dueño ya cerró no se reabre por descuido.
-      .eq("vendido_por_dueno", false);
+      .eq("vendido_por_dueno", false)
+      // Sin `.select()`, un UPDATE que no coincide con ninguna fila (porque el
+      // dueño ya la había cerrado, o porque la borraron) vuelve sin error y la
+      // pantalla decía "Estado actualizado." sin haber cambiado nada.
+      .select("id, vehicle_id");
 
     if (error) {
       return { ok: false, message: "No se pudo actualizar el estado." };
     }
 
-    return { ok: true, message: "Estado actualizado." };
+    const rows = updatedRows(data);
+    if (rows.length === 0) {
+      return {
+        ok: false,
+        message:
+          "No se cambió nada: la consignación ya está cerrada como vendida por el dueño o ya no existe. Recarga la página.",
+      };
+    }
+
+    // Retirada o vencida: el auto ya no está a la venta con LuxCars, así que
+    // su ficha sale de la web. No es una venta: el estado del vehículo no se
+    // toca. (`vendida_por_luxcars` no llega acá: exige precio final.)
+    const vehicleNote = isClosedConsignment(input.status)
+      ? await closeLinkedVehicle(client, rows[0].vehicle_id, null)
+      : "";
+
+    return { ok: true, message: `Estado actualizado.${vehicleNote}` };
   } catch {
     return { ok: false, message: "No se pudo actualizar el estado." };
   }

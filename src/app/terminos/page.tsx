@@ -1,14 +1,30 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 
 import type { Metadata } from "next";
 
+// El <title> sale de la plantilla del layout ("%s | marca"); Open Graph y
+// Twitter repiten exactamente ese texto y la misma descripción. Sin `openGraph`
+// propio la página heredaba og:url y og:title de la home.
+const TITLE = "Términos y condiciones";
+const DESCRIPTION =
+  "Términos y condiciones del servicio de importación, compra venta y consignación de vehículos de LUX CARS IMPORT S.A.C.";
+const OG_TITLE = `${TITLE} | ${LUXCARS_CONFIG.brandName}`;
+
 export const metadata: Metadata = {
-  title: "Términos y condiciones",
-  description:
-    "Términos y condiciones del servicio de importación, compra venta y consignación de vehículos de LUX CARS IMPORT S.A.C.",
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: "/terminos" },
+  openGraph: {
+    ...OG_DEFAULTS,
+    type: "website",
+    url: `${LUXCARS_CONFIG.contact.website}/terminos`,
+    title: OG_TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: twitterCard(OG_TITLE, DESCRIPTION),
 };
 
 export default function TerminosPage() {

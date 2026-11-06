@@ -1,14 +1,30 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 
 import type { Metadata } from "next";
 
+// El <title> sale de la plantilla del layout ("%s | marca"); Open Graph y
+// Twitter repiten exactamente ese texto y la misma descripción. Sin `openGraph`
+// propio la página heredaba og:url y og:title de la home.
+const TITLE = "Política de privacidad";
+const DESCRIPTION =
+  "Cómo LuxCars Perú trata tus datos personales conforme a la Ley de Protección de Datos Personales del Perú.";
+const OG_TITLE = `${TITLE} | ${LUXCARS_CONFIG.brandName}`;
+
 export const metadata: Metadata = {
-  title: "Política de privacidad",
-  description:
-    "Cómo LuxCars Perú trata tus datos personales conforme a la Ley de Protección de Datos Personales del Perú.",
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: "/privacidad" },
+  openGraph: {
+    ...OG_DEFAULTS,
+    type: "website",
+    url: `${LUXCARS_CONFIG.contact.website}/privacidad`,
+    title: OG_TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: twitterCard(OG_TITLE, DESCRIPTION),
 };
 
 export default function PrivacidadPage() {

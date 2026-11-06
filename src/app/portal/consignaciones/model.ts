@@ -28,6 +28,7 @@ import {
   type ConsignmentStatus,
   type Currency,
 } from "@/lib/db/types";
+import { hoyEnLima, msDeFecha } from "../vehiculos/fechas";
 
 /**
  * FUENTE DE VERDAD DE LOS TIPOS DE ESQUEMA: `src/lib/db/types.ts`.
@@ -147,10 +148,16 @@ export type PortalConsignmentFilters = {
 
 const MS_PER_DAY = 86_400_000;
 
-/** Días completos entre dos fechas (ISO o `YYYY-MM-DD`). Nunca negativo. */
+/**
+ * Días completos entre dos fechas (ISO o `YYYY-MM-DD`). Nunca negativo.
+ *
+ * Sin fecha de cierre se cuenta hasta HOY EN LIMA como día de calendario, no
+ * hasta `Date.now()`: comparar una medianoche UTC con la hora actual sumaba un
+ * día desde las 19:00 de Lima.
+ */
 export function daysBetween(fromIso: string, toIso?: string | null): number {
-  const from = new Date(fromIso).getTime();
-  const to = toIso ? new Date(toIso).getTime() : Date.now();
+  const from = msDeFecha(fromIso);
+  const to = msDeFecha(toIso ?? hoyEnLima());
   if (!Number.isFinite(from) || !Number.isFinite(to)) return 0;
   const diff = to - from;
   return diff <= 0 ? 0 : Math.floor(diff / MS_PER_DAY);
@@ -276,15 +283,27 @@ export function mapConsignment(row: ConsignmentRow): PortalConsignment {
   };
 }
 
+/**
+ * Montos separados por moneda. Una consignación puede pactarse en soles
+ * (`moneda = 'PEN'`): sumar S/ 80,000 a US$ 50,000 e imprimirlo como dólares
+ * daba una cifra que no existe. Cada moneda se suma por su lado y se muestra
+ * por su lado; acá no se convierte nada.
+ */
+export type AmountsByCurrency = Record<Currency, number>;
+
+export function emptyAmounts(): AmountsByCurrency {
+  return { USD: 0, PEN: 0 };
+}
+
 /** Indicadores de cabecera, calculados sobre lo que se trajo. */
 export type ConsignmentSummary = {
   countsByStatus: Record<ConsignmentStatus, number>;
   /** Consignaciones que siguen abiertas (ni vendidas ni retiradas). */
   open: PortalConsignment[];
-  /** Suma de precios pedidos de lo abierto. */
-  activePortfolioValue: number;
-  /** Comisión estimada de lo abierto, si todo cerrara a precio pedido. */
-  pipelineCommission: number;
+  /** Suma de precios pedidos de lo abierto, por moneda. */
+  activePortfolioValue: AmountsByCurrency;
+  /** Comisión estimada de lo abierto, si todo cerrara a precio pedido, por moneda. */
+  pipelineCommission: AmountsByCurrency;
   /** Promedio de días publicados entre las abiertas. */
   averageDaysOpen: number;
 };
@@ -294,15 +313,15 @@ export function summarizeConsignments(
 ): ConsignmentSummary {
   const countsByStatus = emptyConsignmentCounts();
   const open: PortalConsignment[] = [];
-  let activePortfolioValue = 0;
-  let pipelineCommission = 0;
+  const activePortfolioValue = emptyAmounts();
+  const pipelineCommission = emptyAmounts();
 
   for (const item of consignments) {
     countsByStatus[item.status] += 1;
     if (!isClosedConsignment(item.status)) {
       open.push(item);
-      activePortfolioValue += item.askingPrice;
-      pipelineCommission += item.estimatedCommission;
+      activePortfolioValue[item.currency] += item.askingPrice;
+      pipelineCommission[item.currency] += item.estimatedCommission;
     }
   }
 

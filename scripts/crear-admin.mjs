@@ -4,6 +4,7 @@
  *
  *   node scripts/crear-admin.mjs correo@luxcars.pe "Nombre Apellido"
  *   npm run admin:crear -- correo@luxcars.pe "Nombre Apellido"
+ *   npm run admin:crear -- correo@luxcars.pe "Nombre Apellido" --sin-verificar
  *
  * Lee DATABASE_URL de `.env.local` o del entorno. Esa conexión entra como
  * dueño de la base y salta RLS: este script se corre en tu máquina, nunca en
@@ -21,6 +22,14 @@
  *      y termina sin tocar nada.
  *   2. Pone `public.profiles.rol = 'admin'` y `activo = true` (crea el perfil
  *      si la cuenta es anterior a la migración 0010).
+ *
+ * CUIDADO CON QUIÉN ES LA CUENTA. El registro del sitio es abierto y no
+ * confirma el correo: cualquiera puede crear una cuenta con la dirección de
+ * otra persona (la de alguien que vas a sumar al equipo, por ejemplo) y ponerle
+ * su propia contraseña. Si después se asciende "ese correo", el que entra como
+ * administrador es el extraño. Por eso el script muestra cuándo se creó la
+ * cuenta y NO asciende una con el correo sin verificar, salvo que le pases
+ * `--sin-verificar` después de confirmar con la persona que la cuenta es suya.
  *
  * Idempotente: correrlo dos veces deja lo mismo.
  */
@@ -50,7 +59,9 @@ function loadDotEnv(file) {
 
 loadDotEnv(resolve(process.cwd(), ".env.local"));
 
-const [email, nombre = ""] = process.argv.slice(2);
+const argumentos = process.argv.slice(2);
+const aceptaSinVerificar = argumentos.includes("--sin-verificar");
+const [email, nombre = ""] = argumentos.filter((arg) => !arg.startsWith("--"));
 const databaseUrl = (process.env.DATABASE_URL ?? "").trim();
 
 function fail(message) {
@@ -71,7 +82,7 @@ const sql = neon(databaseUrl);
 let cuenta;
 try {
   [cuenta] = await sql`
-    select id, email, name
+    select id, email, name, "emailVerified" as verificado, "createdAt" as creada
     from neon_auth."user"
     where lower(email) = lower(${email})
     limit 1
@@ -87,6 +98,23 @@ if (!cuenta) {
       "  Créala primero, de una de estas dos formas, y vuelve a correr este comando:",
       "    · Regístrate en luxcars.pe/cuenta/login (Crear cuenta).",
       "    · Consola de Neon → Auth → Users → agrega el correo, y define la contraseña en luxcars.pe/portal/recuperar.",
+    ].join("\n"),
+  );
+}
+
+const creada = new Intl.DateTimeFormat("es-PE", {
+  dateStyle: "long",
+  timeStyle: "short",
+  timeZone: "America/Lima",
+}).format(new Date(cuenta.creada));
+
+if (!cuenta.verificado && !aceptaSinVerificar) {
+  fail(
+    [
+      `La cuenta ${cuenta.email} existe (creada el ${creada}) pero su correo NO está verificado.`,
+      "  El registro del sitio no confirma el correo: esa cuenta pudo crearla otra persona usando esta dirección.",
+      "  Antes de darle rol de administrador, confirma con la persona que la creó ella y que entra con su contraseña.",
+      "  Si es así, vuelve a correr el comando agregando --sin-verificar.",
     ].join("\n"),
   );
 }
@@ -110,5 +138,5 @@ try {
   );
 }
 
-console.log(`\n✔ ${cuenta.email} es administrador del portal y está activo.`);
+console.log(`\n✔ ${cuenta.email} es administrador del portal y está activo. (Cuenta creada el ${creada}.)`);
 console.log("  Entra por luxcars.pe/portal/login. Si todavía no tiene contraseña: luxcars.pe/portal/recuperar.\n");

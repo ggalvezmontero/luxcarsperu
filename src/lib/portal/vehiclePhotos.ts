@@ -328,6 +328,32 @@ export type EntradaSubida = {
 };
 
 /**
+ * Borra del bucket un archivo que quedó sin fila tras una excepción.
+ *
+ * Con una excepción no se sabe en qué punto se cortó: puede que el INSERT sí
+ * haya llegado a la base y lo que se perdió fue la respuesta. Borrar el archivo
+ * en ese caso dejaría una fila apuntando a la nada —una imagen rota en la ficha
+ * pública—, que es peor que un archivo huérfano. Por eso se pregunta primero:
+ * solo si la base confirma que NO hay fila con esa ruta se borra el archivo.
+ * Si ni siquiera se puede preguntar (sin red), se deja: centavos de cuota
+ * contra una ficha rota. Nunca lanza.
+ */
+async function limpiarSiHuerfano(client: PortalClient, storagePath: string): Promise<void> {
+  try {
+    const { data, error } = await client
+      .from(TABLA_FOTOS)
+      .select("id")
+      .eq("storage_path", storagePath)
+      .limit(1);
+    if (error) return;
+    if (Array.isArray(data) && data.length > 0) return;
+    await quitarArchivos([storagePath]);
+  } catch {
+    // Sin red no hay cómo comprobarlo; ver arriba.
+  }
+}
+
+/**
  * Sube el archivo al bucket y registra la fila.
  *
  * ORDEN DELIBERADO — primero el archivo, después la fila. Si el INSERT falla se
@@ -357,11 +383,14 @@ export async function subirFoto(
     return { ok: false, mensaje: "Solo se aceptan fotos JPEG, PNG, WebP, AVIF o HEIC." };
   }
 
+  // Fuera del `try` para que el `catch` sepa si ya hay un archivo que limpiar.
+  let storagePath: string | null = null;
+
   try {
     // La ruta ({vehicle_id}/{uuid}.{ext}) la decide el servidor al firmar.
     const permiso = await pedirPermisoSubida(entrada.vehicleId, tipo, entrada.blob.size);
     if (!permiso.ok) return permiso;
-    const storagePath = permiso.data.path;
+    storagePath = permiso.data.path;
 
     const subida = await fetch(permiso.data.url, {
       method: "PUT",
@@ -405,6 +434,10 @@ export async function subirFoto(
 
     return { ok: true, data: mapearFoto(data as unknown as FilaFoto, 0) };
   } catch (error) {
+    // Una excepción (corte de red durante el PUT o durante el INSERT) también
+    // puede dejar el archivo subido sin fila que lo use. Antes solo se limpiaba
+    // en la rama `error` de arriba.
+    if (storagePath) await limpiarSiHuerfano(client, storagePath);
     return {
       ok: false,
       mensaje: `Error inesperado al subir: ${
@@ -418,7 +451,20 @@ export async function subirFoto(
 /* Orden, portada, alt y borrado                                              */
 /* ========================================================================== */
 
-/** Guarda el orden nuevo. `ids` va en el orden final que se ve en pantalla. */
+/**
+ * Guarda el orden nuevo. `ids` va en el orden final que se ve en pantalla.
+ *
+ * REGLA DE LA GALERÍA: LA PRIMERA FOTO ES LA PORTADA. Antes esta función solo
+ * escribía `orden`; `es_principal` no cambiaba y `listarFotos` ordena
+ * `es_principal desc, orden asc`, así que mover una foto al primer lugar
+ * anunciaba "Ahora es la portada" pero la portada real —la que muestra el sitio
+ * público— seguía siendo la otra, y al recargar la galería volvía atrás.
+ *
+ * Ahora, después de escribir el orden, si la portada no es `ids[0]` se mueve
+ * con `marcarPortada` (que respeta el índice único parcial
+ * `vehicle_photos_una_principal_idx`: apaga la anterior antes de encender la
+ * nueva). Así el orden guardado y la portada siempre dicen lo mismo.
+ */
 export async function guardarOrden(
   client: PortalClient | null,
   vehicleId: string,
@@ -440,6 +486,25 @@ export async function guardarOrden(
 
       if (error) return { ok: false, mensaje: describirError(error) };
     }
+
+    const primera = ids[0];
+    if (primera) {
+      const { data: actual, error: errorPortada } = await client
+        .from(TABLA_FOTOS)
+        .select("id")
+        .eq("vehicle_id", vehicleId)
+        .eq("es_principal", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (errorPortada) return { ok: false, mensaje: describirError(errorPortada) };
+
+      if ((actual as { id: string } | null)?.id !== primera) {
+        const portada = await marcarPortada(client, vehicleId, primera);
+        if (!portada.ok) return portada;
+      }
+    }
+
     return { ok: true, data: null };
   } catch (error) {
     return {

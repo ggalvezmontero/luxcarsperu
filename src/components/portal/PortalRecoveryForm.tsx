@@ -7,72 +7,32 @@
  * persona solo con su correo (consola de Neon → Auth → Users) y nadie le dicta
  * una clave a nadie. La misma pantalla sirve el día que alguien la olvida.
  *
- * Dos pasos, los dos resueltos por Neon Auth a través del puente `/api/auth`:
- *   1. Sin `token`: se pide el correo y Neon envía un enlace que vence en 15
- *      minutos. La respuesta es la misma exista o no la cuenta, a propósito:
- *      no se confirma a un extraño qué correos son del equipo.
+ * Dos pasos, los dos resueltos por Neon Auth (ver `lib/auth/recuperacion.ts`):
+ *   1. Sin `token`: se pide el correo y Neon envía un enlace.
  *   2. Con `token` (se llega desde el enlace): se define la contraseña nueva.
  *
- * Acá no se guarda ni se compara ninguna contraseña.
+ * El cliente del sitio tiene su propia pantalla, `/cuenta/recuperar`, con la
+ * misma lógica.
  */
 
 import { useState } from "react";
 import Link from "next/link";
 
-import { PORTAL_AUTH_PATH } from "@/lib/portal/portalClient";
+import {
+  LARGO_MINIMO_CONTRASENA as LARGO_MINIMO,
+  VIGENCIA_DEL_ENLACE,
+  describirErrorDeRecuperacion as describir,
+  guardarContrasenaNueva,
+  pedirEnlaceDeRecuperacion,
+} from "@/lib/auth/recuperacion";
 
-/** Mínimo que acepta Neon Auth. */
-const LARGO_MINIMO = 8;
+/** Pantalla a la que vuelve el enlace del correo. */
+const RUTA_DE_RETORNO = "/portal/recuperar";
 
 const CLASE_CAMPO =
   "mt-2 w-full rounded-lux border border-line bg-surface-2 px-3 py-2.5 text-sm text-ink placeholder:text-ink-4 focus:border-line-strong";
 const CLASE_ETIQUETA =
   "block text-[0.62rem] uppercase tracking-[0.18em] text-ink-3";
-
-type Respuesta = { ok: boolean; codigo: string };
-
-async function llamar(ruta: string, cuerpo: Record<string, string>): Promise<Respuesta> {
-  try {
-    const respuesta = await fetch(`${PORTAL_AUTH_PATH}${ruta}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpo),
-    });
-    if (respuesta.ok) return { ok: true, codigo: "" };
-    const datos = (await respuesta.json().catch(() => null)) as {
-      code?: unknown;
-    } | null;
-    return {
-      ok: false,
-      codigo: typeof datos?.code === "string" ? datos.code : String(respuesta.status),
-    };
-  } catch {
-    return { ok: false, codigo: "red" };
-  }
-}
-
-function describir(codigo: string): string {
-  const raw = codigo.toLowerCase();
-  if (raw.includes("invalid_token")) {
-    return "El enlace venció o ya se usó. Pide uno nuevo: duran 15 minutos.";
-  }
-  if (raw.includes("password_too_short")) {
-    return `La contraseña debe tener al menos ${LARGO_MINIMO} caracteres.`;
-  }
-  if (raw.includes("password_too_long")) {
-    return "La contraseña es demasiado larga.";
-  }
-  if (raw.includes("portal_sin_configurar") || raw === "503") {
-    return "El acceso no está configurado en este despliegue. Avísale al administrador.";
-  }
-  if (raw === "429" || raw.includes("too_many")) {
-    return "Demasiados intentos seguidos. Espera un minuto y vuelve a intentar.";
-  }
-  if (raw === "red") {
-    return "No se pudo contactar al servicio de acceso. Revisa la conexión y vuelve a intentar.";
-  }
-  return "No se pudo completar la operación. Intenta de nuevo.";
-}
 
 export function PortalRecoveryForm({
   token,
@@ -103,10 +63,7 @@ export function PortalRecoveryForm({
     }
 
     setEnviando(true);
-    const resultado = await llamar("/request-password-reset", {
-      email: correo,
-      redirectTo: `${window.location.origin}/portal/recuperar`,
-    });
+    const resultado = await pedirEnlaceDeRecuperacion(correo, RUTA_DE_RETORNO);
     setEnviando(false);
 
     if (!resultado.ok) {
@@ -130,10 +87,7 @@ export function PortalRecoveryForm({
     }
 
     setEnviando(true);
-    const resultado = await llamar("/reset-password", {
-      newPassword: password,
-      token: token ?? "",
-    });
+    const resultado = await guardarContrasenaNueva(token ?? "", password);
     setEnviando(false);
 
     if (!resultado.ok) {
@@ -172,8 +126,8 @@ export function PortalRecoveryForm({
         {listo === "enlace" ? (
           <p role="status" className="mt-3 text-sm leading-relaxed text-ink-2">
             Si ese correo es de alguien del equipo, en un momento llega un
-            enlace para definir la contraseña. Vence en 15 minutos; revisa
-            también la carpeta de spam.
+            enlace para definir la contraseña. Vence en {VIGENCIA_DEL_ENLACE};
+            revisa también la carpeta de spam.
           </p>
         ) : listo === "contrasena" ? (
           <>

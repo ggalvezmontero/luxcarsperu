@@ -97,11 +97,24 @@ type NumeroLeido =
   | { ok: true; value: number | null }
   | { ok: false; error: string };
 
-/** Lee un número opcional. Rechaza texto y los rangos que la BD no acepta. */
+/**
+ * Tope de una columna `numeric(12, 2)` (precio_compra, precio_venta,
+ * precio_final): diez dígitos enteros y dos decimales. Un monto mayor lo
+ * rechaza Postgres con "numeric field overflow".
+ */
+export const MONTO_MAXIMO = 9_999_999_999.99;
+
+/**
+ * Lee un número opcional. Rechaza texto y los rangos que la BD no acepta.
+ *
+ * `entero: true` para las columnas `integer` (anio, cilindrada_cc, puertas,
+ * asientos, kilometraje_km): "1998.5" no es un año, y la base respondería
+ * `invalid input syntax for type integer` en inglés.
+ */
 function numero(
   formData: FormData,
   name: string,
-  opciones: { min?: number; max?: number; etiqueta: string },
+  opciones: { min?: number; max?: number; entero?: boolean; etiqueta: string },
 ): NumeroLeido {
   const raw = texto(formData, name);
   if (raw === null) return { ok: true, value: null };
@@ -110,6 +123,12 @@ function numero(
   const parsed = Number(raw.replace(/[\s,]/g, ""));
   if (!Number.isFinite(parsed)) {
     return { ok: false, error: `${opciones.etiqueta} debe ser un número.` };
+  }
+  if (opciones.entero && !Number.isInteger(parsed)) {
+    return {
+      ok: false,
+      error: `${opciones.etiqueta} debe ser un número entero, sin decimales.`,
+    };
   }
   if (opciones.min !== undefined && parsed < opciones.min) {
     return {
@@ -137,6 +156,49 @@ export function slugificar(valor: string): string {
     .slice(0, 80);
 }
 
+/**
+ * Sufijo corto al azar ("a3f91c"), el mismo formato que usa la función
+ * `aprobar_solicitud_venta` de la base para sus slugs. `crypto.getRandomValues`
+ * existe en todo navegador moderno; `Math.random` es solo la red de seguridad.
+ */
+function sufijoAleatorio(): string {
+  const bytes = new Uint8Array(3);
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Slug automático para publicar: "2026-toyota-gr-supra-final-edition-4f2a1b".
+ *
+ * La cola evita que dos unidades del mismo modelo y año choquen contra el
+ * UNIQUE de `vehicles.slug`: con VIN, sus últimos seis caracteres (estables y
+ * propios de la unidad); sin VIN, seis caracteres al azar. Antes, sin VIN el
+ * slug era solo `{año-marca-modelo}` y el segundo auto idéntico publicado
+ * chocaba.
+ *
+ * Lo usan el alta (`validarVehiculo`) y la publicación desde el listado. Por el
+ * sufijo al azar esta función ya no es determinista sin VIN; es el precio de
+ * no tener que preguntarle a la base qué slugs existen.
+ *
+ * `null` si no hay con qué armar la base (sin marca, modelo ni año).
+ */
+export function slugAutomatico(
+  nombreBase: string,
+  vin: string | null,
+): string | null {
+  // Se recorta la base para que, con la cola, el total no pase de 80.
+  const base = slugificar(nombreBase).slice(0, 72).replace(/-+$/g, "");
+  if (!base) return null;
+  const cola = vin ? vin.slice(-6).toLowerCase() : sufijoAleatorio();
+  return `${base}-${cola}`;
+}
+
 export function validarVehiculo(formData: FormData): ResultadoValidacion {
   const errores: ErroresCampo = {};
 
@@ -158,6 +220,7 @@ export function validarVehiculo(formData: FormData): ResultadoValidacion {
   const anio = numero(formData, "anio", {
     min: 1980,
     max: 2100,
+    entero: true,
     etiqueta: "El año",
   });
   if (!anio.ok) errores.anio = anio.error;
@@ -168,6 +231,7 @@ export function validarVehiculo(formData: FormData): ResultadoValidacion {
   const cilindrada = numero(formData, "cilindrada_cc", {
     min: 0,
     max: 20000,
+    entero: true,
     etiqueta: "La cilindrada",
   });
   if (!cilindrada.ok) errores.cilindrada_cc = cilindrada.error;
@@ -175,6 +239,7 @@ export function validarVehiculo(formData: FormData): ResultadoValidacion {
   const puertas = numero(formData, "puertas", {
     min: 1,
     max: 8,
+    entero: true,
     etiqueta: "Las puertas",
   });
   if (!puertas.ok) errores.puertas = puertas.error;
@@ -182,6 +247,7 @@ export function validarVehiculo(formData: FormData): ResultadoValidacion {
   const asientos = numero(formData, "asientos", {
     min: 1,
     max: 30,
+    entero: true,
     etiqueta: "Los asientos",
   });
   if (!asientos.ok) errores.asientos = asientos.error;
@@ -189,6 +255,7 @@ export function validarVehiculo(formData: FormData): ResultadoValidacion {
   const kilometraje = numero(formData, "kilometraje_km", {
     min: 0,
     max: 2_000_000,
+    entero: true,
     etiqueta: "El kilometraje",
   });
   if (!kilometraje.ok) errores.kilometraje_km = kilometraje.error;
@@ -197,12 +264,14 @@ export function validarVehiculo(formData: FormData): ResultadoValidacion {
 
   const precioCompra = numero(formData, "precio_compra", {
     min: 0,
+    max: MONTO_MAXIMO,
     etiqueta: "El precio de compra",
   });
   if (!precioCompra.ok) errores.precio_compra = precioCompra.error;
 
   const precioVenta = numero(formData, "precio_venta", {
     min: 0,
+    max: MONTO_MAXIMO,
     etiqueta: "El precio de venta",
   });
   if (!precioVenta.ok) errores.precio_venta = precioVenta.error;
@@ -241,14 +310,12 @@ export function validarVehiculo(formData: FormData): ResultadoValidacion {
       .join(" ");
 
   // Espejo de `vehicles_publicado_exige_slug`. Si no se escribió slug y se pidió
-  // publicar, se arma uno: la cola del VIN evita que dos unidades del mismo
-  // modelo y año choquen.
+  // publicar, se arma uno con cola (VIN o azar, ver `slugAutomatico`) para que
+  // dos unidades del mismo modelo y año no choquen.
   const slugManual = texto(formData, "slug");
-  let slug = slugManual ? slugificar(slugManual) : null;
+  let slug = slugManual ? slugificar(slugManual) || null : null;
   if (publicado && !slug) {
-    const cola = vin ? `-${vin.slice(-6).toLowerCase()}` : "";
-    const base = slugificar(nombreBase);
-    slug = base ? `${base}${cola}` : null;
+    slug = slugAutomatico(nombreBase, vin);
     if (!slug) {
       errores.slug =
         "No se pudo generar la URL automáticamente. Escribe un slug o completa marca, modelo y año.";
