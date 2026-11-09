@@ -322,8 +322,9 @@ export default function EscaneoPage() {
                   ))}
                 </ol>
                 <p className="mt-7 border-t border-line pt-5 text-sm leading-relaxed text-ink-3">
-                  Además, una vez al mes hacemos el <span className="font-semibold text-ink-2">Sábado de Escaneo</span>: diez
-                  cupos sin costo. Pregunta por la próxima fecha por WhatsApp.
+                  Además, todos los sábados hacemos el <span className="font-semibold text-ink-2">Sábado de Escaneo</span>: diez
+                  cupos sin costo en formato express de 20 minutos. Reserva el tuyo por WhatsApp con el modelo de tu auto y te
+                  confirmamos la hora el viernes.
                 </p>
               </div>
             </div>
