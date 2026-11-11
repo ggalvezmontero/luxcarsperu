@@ -188,6 +188,24 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/**
+ * Salida del portal hacia la web pública. No cierra la sesión: el equipo entra
+ * y sale del sitio varias veces al día para ver cómo quedó lo que acaba de
+ * cargar, y volver a /portal no debe pedir la contraseña otra vez.
+ */
+function BackToSite({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <Link
+      href="/"
+      onClick={onNavigate}
+      className="flex items-center gap-3 rounded-lux border border-line px-3 py-2.5 text-sm text-ink-2 transition-colors hover:border-line-strong hover:bg-surface-2 hover:text-ink"
+    >
+      <Icon path="M19 12H5m6-6-6 6 6 6" />
+      <span className="flex-1">Volver al sitio</span>
+    </Link>
+  );
+}
+
 function SessionFooter() {
   const { status, email, signOut } = usePortalSession();
   const router = useRouter();
@@ -389,6 +407,9 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           >
             <NavList onNavigate={() => setMenuOpen(false)} />
             <div className="mt-4">
+              <BackToSite onNavigate={() => setMenuOpen(false)} />
+            </div>
+            <div className="mt-4">
               <SessionFooter />
             </div>
           </div>
@@ -408,7 +429,10 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="border-t border-line px-3 py-4">
-            <SessionFooter />
+            <BackToSite />
+            <div className="mt-3">
+              <SessionFooter />
+            </div>
             <p className="mt-3 px-1 text-[0.6rem] leading-relaxed text-ink-4">
               Uso interno de LUX CARS IMPORT S.A.C. No compartir capturas: esta
               pantalla contiene datos de clientes.
