@@ -17,7 +17,7 @@ Cómo está montado, qué eventos manda el sitio y qué marcar en GA4.
 | --- | --- | --- |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Vercel → proyecto `luxcarspe` → Settings → Environment Variables, entornos **Production** y **Preview** | El ID de medición del flujo web, formato `G-XXXXXXXXXX` |
 
-Tras crearla hay que **redesplegar**: las variables `NEXT_PUBLIC_*` se incrustan en build, no se leen en tiempo de ejecución. No ponerla en Development: en local no se quiere mandar datos.
+Estado (2026-11-10): la propiedad GA4 ya existe (cuenta "Google Ads Account", propiedad `luxcars.pe`, flujo web `luxcars.pe`, ID `G-1CH51Z0FD8`) y la variable ya está creada en Vercel con ese valor para Production y Preview. Como las variables `NEXT_PUBLIC_*` se incrustan en build, empieza a medir con el **primer despliegue** que incluya este código. No ponerla en Development: en local no se quiere mandar datos.
 
 ## Eventos
 
@@ -72,15 +72,15 @@ Los botones llevan `data-ga-cta="…"`. Los de WhatsApp salen como `whatsapp_cli
 
 ## Qué hacer en GA4 (una sola vez)
 
-1. **Crear la propiedad** (si no existe): [analytics.google.com](https://analytics.google.com) → Administrar → Crear → Propiedad. Nombre `LuxCars Perú`, zona horaria `Perú (GMT-5)`, moneda `USD`. Plataforma: Web, URL `https://www.luxcars.pe`, nombre del flujo `luxcars.pe`. Copiar el **ID de medición** (`G-…`) a Vercel como se indica arriba.
-2. **Medición mejorada:** Administrar → Flujos de datos → el flujo web → Medición mejorada: activada, y dentro de "Páginas vistas" marcar **"Cambios de página basados en eventos del historial del navegador"**. Sin eso las navegaciones internas no cuentan como vista de página.
-3. **Marcar conversiones (eventos clave):** Administrar → Eventos clave → "Nuevo evento clave" y escribir el nombre exacto. Los eventos aparecen en la lista de Eventos solo cuando ya se han recibido al menos una vez; crearlos a mano por nombre funciona igual.
-   - Marcar como clave: `whatsapp_click`, `contact_form_submit`, `valuation_form_submit`.
+1. **Propiedad:** ya existe (ver arriba). Si alguna vez hay que crear otra: Administrar → Crear → Propiedad, zona horaria `Perú (GMT-5)`, moneda `USD`, plataforma Web con la URL `https://www.luxcars.pe`.
+2. **Medición mejorada:** hecho y comprobado el 2026-11-10. Está activada y dentro de "Page views" la casilla **"Page changes based on browser history events"** está marcada, así que las navegaciones internas cuentan como vista de página. Si se revisa: Administrar → Data streams → `luxcars.pe` → rueda de Enhanced measurement.
+3. **Marcar conversiones (eventos clave).** PENDIENTE y solo se puede hacer **después del primer despliegue con tráfico**: en esta versión del panel (Administrar → Data display → Events) no se pueden crear eventos clave por nombre; un evento se marca con la **estrella** de su fila, y la fila solo aparece cuando el evento se ha recibido en los últimos 28 días. En cuanto haya datos (basta con que alguien acepte las cookies y pulse un botón de WhatsApp):
+   - Marcar con la estrella: `whatsapp_click`, `contact_form_submit`, `valuation_form_submit`.
    - Opcional, como "casi conversión": `calculator_estimate`, `calculator_pdf_download`, `stock_card_click`.
    - No marcar `cta_click` ni `calculator_model_change`: son de navegación y ensuciarían la tasa de conversión.
 4. **Dimensiones personalizadas** (para poder filtrar informes por ellas): Administrar → Definiciones personalizadas → Crear dimensión personalizada, ámbito Evento, una por parámetro: `cta`, `vehicle_brand`, `vehicle_model`, `vehicle_status`, `plan`, `vehicle_condition`. Y métricas personalizadas para `price_usd` y `final_estimate_usd` (unidad: moneda). Sin esto GA4 recibe los parámetros pero no los muestra en los informes estándar.
 5. **Retención de datos:** Administrar → Retención de datos → 14 meses (el valor por defecto es 2).
-6. **Vincular Search Console:** Administrar → Vínculos de productos → Vínculos de Search Console → Vincular. Elegir la propiedad `https://www.luxcars.pe` (o la de dominio `luxcars.pe`) y el flujo web. Después, en Informes → Biblioteca, publicar la colección "Search Console" para ver consultas y páginas de Google dentro de GA4.
+6. **Vincular Search Console:** Administrar → Product links → Search Console links → Link → Choose accounts. PENDIENTE: el 2026-11-10 el selector salió vacío ("No results found") porque la cuenta de Google con la que se entra a Analytics **no es propietaria verificada** de la propiedad `luxcars.pe` en Search Console. Dos salidas: (a) en Search Console, con la cuenta propietaria, Ajustes → Usuarios y permisos → añadir la cuenta de Analytics como **Propietario** (delegado basta), o (b) en Analytics, Administrar → Property → Property access management → añadir la cuenta propietaria de Search Console como Editor y hacer el vínculo con ella. Después, en Informes → Biblioteca, publicar la colección "Search Console" para ver consultas y páginas de Google dentro de GA4.
 7. **Excluir el tráfico propio:** Administrar → Flujos de datos → flujo web → Configurar ajustes de etiquetas → Definir tráfico interno, con la IP de la oficina; luego Administrar → Filtros de datos → activar el filtro "Internal Traffic".
 
 ## Comprobar que funciona
