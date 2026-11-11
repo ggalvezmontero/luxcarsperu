@@ -407,6 +407,7 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
     const alta = envio;
     return (
       <PanelExito
+        id={alta.id}
         titulo={alta.titulo}
         slug={alta.slug}
         publicado={alta.publicado}
@@ -1437,11 +1438,13 @@ function BorradorNoGuardado({
 }
 
 function PanelExito({
+  id,
   titulo,
   slug,
   publicado,
   onOtro,
 }: {
+  id: string;
   titulo: string;
   slug: string | null;
   publicado: boolean;
@@ -1461,10 +1464,19 @@ function PanelExito({
       </p>
 
       <div className="mt-8 flex flex-wrap gap-3">
+        {/* Las fotos son el siguiente paso natural (el texto de arriba lo pide),
+            así que van primero y con el botón lleno; "Cargar otro" pasa a
+            secundario. Antes había que ir al listado y buscar el auto. */}
+        <Link
+          href={`/portal/vehiculos/${id}/fotos`}
+          className="inline-flex min-h-12 items-center rounded-full bg-silver px-7 text-xs uppercase tracking-[0.16em] text-void transition-colors hover:bg-silver-bright"
+        >
+          Subir fotos
+        </Link>
         <button
           type="button"
           onClick={onOtro}
-          className="inline-flex min-h-12 items-center rounded-full bg-silver px-7 text-xs uppercase tracking-[0.16em] text-void transition-colors hover:bg-silver-bright"
+          className="inline-flex min-h-12 items-center rounded-full border border-line-strong px-7 text-xs uppercase tracking-[0.16em] text-ink transition-colors hover:border-silver"
         >
           Cargar otro
         </button>
