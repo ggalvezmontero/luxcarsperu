@@ -44,8 +44,10 @@ const { contact, brandName } = LUXCARS_CONFIG;
 
 const RUTA = "/calculadora";
 const TITLE = "Calculadora de importación de autos a Perú";
+/* SEO (2026-11-10): variantes "simulador de importación", "calcular impuestos
+   SUNAT", "cuánto cuesta importar un carro de USA a Perú" en la descripción. */
 const DESCRIPTION =
-  "Calcula gratis cuánto cuesta importar y nacionalizar un auto de Estados Unidos a Perú: flete, seguro, ad valorem, ISC, IGV y servicio. Resultado al instante, sin dejar tu correo.";
+  "Simulador gratis: calcula cuánto cuesta importar y nacionalizar un auto o carro de Estados Unidos a Perú con los impuestos SUNAT (ad valorem, ISC, IGV), flete, seguro y servicio. Resultado al instante, sin dejar tu correo.";
 const OG_TITLE = `${TITLE} | ${brandName}`;
 
 /** Igual que /importar: el portal pide regenerar al guardar un ejemplo. */

@@ -9,15 +9,22 @@ import { LUXCARS_CONFIG } from "@/lib/config";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { FormularioTasacion } from "./FormularioTasacion";
 
+/* SEO (2026-11-10, pedido del dueño): la página responde a "vender mi auto en
+   Lima" y sus variantes ("vender carro usado", "vender auto de lujo",
+   "consignación de autos", "tasación de autos", "cuánto vale mi auto",
+   "compran autos de lujo"). La frase principal va en el título; las variantes,
+   en el h1, la descripción y el primer párrafo. */
+const TITULO_SEO = "Vender mi auto en Lima · Consignación y tasación sin exclusividad";
+
 // Mismo texto para Open Graph y Twitter Card: una sola fuente, sin copy nuevo.
-const OG_TITLE = "Vender mi auto en Lima · Consignación sin exclusividad";
+const OG_TITLE = `${TITULO_SEO} | ${LUXCARS_CONFIG.brandName}`;
 const OG_DESCRIPTION =
-  "Dejas tu auto en venta con LuxCars y lo sigues manejando. Sin exclusividad.";
+  "Tasamos tu auto gratis y lo vendemos en consignación en Lima. Lo sigues manejando. Sin exclusividad.";
 
 export const metadata: Metadata = {
-  title: "Vender mi auto en Lima · Consignación sin exclusividad",
+  title: TITULO_SEO,
   description:
-    "Tasamos y vendemos tu auto en Lima sin contrato de exclusividad: lo sigues manejando mientras se vende y si lo vendes tú no pagas comisión.",
+    "Vende tu auto, camioneta o carro de lujo en Lima: tasación gratuita y venta en consignación sin contrato de exclusividad. Lo sigues manejando mientras se vende y si lo vendes tú no pagas comisión.",
   alternates: { canonical: "/vender" },
   openGraph: {
     ...OG_DEFAULTS,
@@ -84,7 +91,7 @@ export default function VenderPage() {
               </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
-              Lo publicamos, filtramos compradores y cerramos la venta. Sin contrato de exclusividad.
+              Vende tu auto usado, tu camioneta o tu carro de lujo en Lima: lo tasamos gratis, lo publicamos en consignación, filtramos compradores y cerramos la venta. Sin contrato de exclusividad.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button href="/cuenta/vender" variant="accent" size="lg" data-ga-cta="vender_portada_publicar">Publicar mi auto</Button>

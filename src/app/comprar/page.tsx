@@ -11,15 +11,22 @@ import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { getStockForIsr } from "@/lib/stock";
 import { StockExplorer } from "./StockExplorer";
 
+/* SEO (2026-11-10, pedido del dueño): la página responde a "comprar autos de
+   lujo en Lima" y sus variantes ("carros de lujo", "autos de alta gama",
+   "camionetas de lujo", "seminuevos premium", "en venta", "Perú"). La frase
+   principal va en el título y en el h1; las variantes, en la descripción y el
+   primer párrafo. */
+const TITULO_SEO = "Comprar autos de lujo en Lima · Stock de alta gama disponible";
+
 // Mismo texto para Open Graph y Twitter Card: una sola fuente, sin copy nuevo.
-const OG_TITLE = "Comprar auto de lujo en Lima | Stock disponible";
+const OG_TITLE = `${TITULO_SEO} | ${LUXCARS_CONFIG.brandName}`;
 const OG_DESCRIPTION =
-  "Unidades premium verificadas, en Lima y listas para entregar.";
+  "Autos, camionetas y deportivos de lujo seminuevos en Lima, verificados y listos para entregar.";
 
 export const metadata: Metadata = {
-  title: "Comprar auto de lujo en Lima · Stock disponible",
+  title: TITULO_SEO,
   description:
-    "Autos premium en Lima, verificados y listos para entregar. Stock propio de LuxCars y autos de clientes en consignación, siempre identificados: documentos en orden y entrega en días.",
+    "Autos de lujo y alta gama en venta en Lima: carros, camionetas y deportivos seminuevos verificados, con documentos en regla y entrega en días. Stock propio y consignación en San Isidro.",
   alternates: { canonical: "/comprar" },
   openGraph: {
     ...OG_DEFAULTS,
@@ -68,12 +75,16 @@ export default async function ComprarPage() {
           />
           <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-void/75 via-void/35 to-void" />
           <div className="container-lux relative">
-            <p className="eyebrow">Disponibles en Lima</p>
-            <h1 className="mt-3 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-              Autos disponibles hoy en Lima
+            {/* El h1 abarca la etiqueta y el titular: la etiqueta lleva la búsqueda y
+                el titular, la frase de marca. Se ve igual; Google lee las dos. */}
+            <h1>
+              <span className="eyebrow">Comprar autos de lujo en Lima</span>{" "}
+              <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
+                Autos de alta gama disponibles hoy en Lima
+              </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
-              Stock propio y autos de clientes en consignación, siempre identificados. Verificados, con documentos en regla y listos para entregar.
+              Carros, camionetas y deportivos de lujo seminuevos en venta en San Isidro: stock propio y autos de clientes en consignación, siempre identificados. Verificados, con documentos en regla y listos para entregar.
             </p>
             <ul className="mt-8 grid gap-3 sm:grid-cols-3">
               {PROMESAS.map((p) => (

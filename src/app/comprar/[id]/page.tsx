@@ -58,6 +58,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title,
     description,
+    // Las unidades de demostración son ficticias: Google ya llegó a indexar
+    // fichas demo (comprar/demo-01…06) y un cliente puede aterrizar en un auto
+    // que no existe. Con la base configurada no se sirven, pero en cualquier
+    // entorno sin base quedan fuera del índice.
+    ...(v.isDemo ? { robots: { index: false, follow: false } } : {}),
     alternates: { canonical: rutaFicha(v) },
     openGraph: {
       ...OG_DEFAULTS,
