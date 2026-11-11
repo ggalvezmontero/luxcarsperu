@@ -4,7 +4,7 @@
 **Fuentes:** Search Console, propiedad de dominio `luxcars.pe` (el informe de indexación tenía fecha del 5 de noviembre; el de rendimiento cubría del 5 al 8 de noviembre); el sitio publicado en `https://www.luxcars.pe`; el código de la rama de trabajo. Parte del [análisis de palabras clave](analisis-palabras-clave.md) del mismo día y no lo repite: aquí van los datos reales que ese documento no tenía.
 
 **Resumen en seis líneas.**
-1. El sitemap está enviado, se leyó hoy sin errores y Google ya descubrió sus 25 URLs (antes veía 19).
+1. El sitemap está enviado, se leyó hoy sin errores y Google ya descubrió 25 URLs (antes veía 19). Por la noche creció a 46 con las 21 páginas por marca y se volvió a enviar; Google lo leerá de nuevo en los próximos días.
 2. De las 23 URLs "no indexadas" del informe, ninguna es un problema: son versiones viejas (`/?simular=`, fichas demo borradas, `luxcars.pe` sin `www`), páginas privadas con `noindex` a propósito y archivos estáticos.
 3. robots.txt está bien: solo excluye `/portal/` y `/api/`, apunta al sitemap con `www` y Search Console no reporta ninguna página bloqueada.
 4. Hoy se pidió indexación de 10 URLs nuevas (calculadora, cómo funciona, 7 modelos y la guía de costos) hasta agotar la cuota diaria; quedan 9 para mañana, empezando por `/importar`, que cambió hoy. Las seis fichas demo que Google aún mostraba se retiraron del buscador con una eliminación temporal.
@@ -17,12 +17,12 @@
 
 | Dato | Antes de hoy | Hoy |
 |---|---|---|
-| URL enviada | `https://www.luxcars.pe/sitemap.xml` (6 nov) | Reenviada el 10 nov |
+| URL enviada | `https://www.luxcars.pe/sitemap.xml` (6 nov) | Reenviada el 10 nov, dos veces (tarde y noche) |
 | Última lectura | 9 nov | 10 nov |
 | Estado | Correcto | Correcto, sin errores |
-| URLs descubiertas | 19 | **25** |
+| URLs descubiertas | 19 | **25** en la lectura de la tarde; el sitemap en vivo ya tiene **46** |
 
-Las 25 URLs del sitemap en vivo, comprobadas con `curl`: portada, `/comprar`, `/importar`, `/calculadora`, `/vender`, `/escaneo`, `/como-funciona`, `/faq`, `/terminos`, `/privacidad`, `/cookies`, nueve `/importar/<modelo>`, `/guias` y cuatro guías. No entra ninguna ficha de stock porque hoy no hay vehículos publicados.
+Las 25 URLs que Google leyó por la tarde, comprobadas con `curl`: portada, `/comprar`, `/importar`, `/calculadora`, `/vender`, `/escaneo`, `/como-funciona`, `/faq`, `/terminos`, `/privacidad`, `/cookies`, nueve `/importar/<modelo>`, `/guias` y cuatro guías. Por la noche entraron 21 páginas por marca `/importar/marca/<marca>` (commit `cd15171`: Aston Martin, Audi, Bentley, BMW, Cadillac, Chevrolet, Chrysler, Dodge, Ferrari, Ford, Jeep, Lamborghini, Land Rover, Lexus, McLaren, Mercedes-Benz, Porsche, RAM, Rolls-Royce, Tesla y Toyota), con título del tipo "Importar Toyota de Estados Unidos a Perú: modelos y arancel" y canonical propio; el sitemap se reenvió con ellas. No entra ninguna ficha de stock porque hoy no hay vehículos publicados.
 
 ---
 
@@ -125,7 +125,7 @@ Google corta en unas 10 a 12 solicitudes por día por propiedad. Hoy entraron **
 12. `/guias/isc-vehiculos-peru`
 13. `/guias`
 14. `/cookies`
-15. Las páginas por marca que se están creando (`/importar/marca/<marca>`, commit `cd15171`), cuando estén en el sitemap; ese día reenviar también el sitemap.
+15. `/importar/marca/toyota` y `/importar/marca/ford`, las dos marcas con más modelos; las otras 19 páginas por marca llegan por el sitemap, ya reenviado con ellas.
 
 Comprobado antes de pedirlas: las seis primeras ya sirven en producción los títulos nuevos (leídos con `curl` el 10 de noviembre por la noche).
 
@@ -377,5 +377,5 @@ Estado al cierre del 10 de noviembre por la noche. Todos los commits citados est
 | vender mi auto (carro, camioneta) en lima · consignación de autos lima · tasar mi auto · cuánto vale mi auto | `/vender` | Título "Vender mi auto en Lima · Consignación y tasación sin exclusividad"; descripción y párrafo con "auto usado, camioneta o carro de lujo", "tasación gratuita", "consignación" (`4edc79f`); H1 con "Consignación y tasación de autos en Lima" (hecho antes) | En producción. Reindexación pendiente. `/tasacion` sigue como propuesta para el dueño |
 | escaneo de autos usados lima · scanner automotriz a domicilio · revisión / inspección precompra | `/escaneo` | Título "Escaneo de autos usados en Lima antes de comprar · Inspección precompra"; descripción con "revisión de autos usados antes de comprar", "escáner automotriz"; párrafo con "inspección precompra a domicilio, con diagnóstico electrónico y visual" (`4edc79f`, `2c1f60e`) | En producción. Reindexación pendiente |
 | luxcars · lux car · luxe car · autos de lujo en lima | `/` | H1 con "Autos de lujo en Lima, Perú" (hecho antes); título "Autos de lujo en Lima · Importación, compra y venta" y descripción con "stock de alta gama en San Isidro, importación a pedido desde Estados Unidos y venta en consignación" (`340ffba`) | En producción. Reindexación pendiente (cuota) |
-| [marca] en venta lima · importar [marca] | `/importar/marca/<marca>` | Páginas por marca en construcción por la otra sesión (`cd15171`); solo existen con autos de esa marca | Pedir indexación y reenviar el sitemap cuando estén listadas |
+| importar [marca] de estados unidos a perú · [marca] americano perú · qué [marca] no paga arancel | `/importar/marca/<marca>` | 21 páginas por marca (`cd15171`), título "Importar [Marca] de Estados Unidos a Perú: modelos y arancel", enlazadas desde `/importar` y listadas en el sitemap | En producción. Sitemap reenviado con ellas; Toyota y Ford en la lista de reindexación |
 | busco un [modelo] en lima · [modelo] en venta perú | Sin página | Nada todavía: decisión del dueño sobre la búsqueda local | Propuesta (6.6) |
