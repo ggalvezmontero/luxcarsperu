@@ -3,12 +3,13 @@
 **Fecha:** 10 de noviembre de 2026.
 **Fuentes:** Search Console, propiedad de dominio `luxcars.pe` (el informe de indexación tenía fecha del 5 de noviembre; el de rendimiento cubría del 5 al 8 de noviembre); el sitio publicado en `https://www.luxcars.pe`; el código de la rama de trabajo. Parte del [análisis de palabras clave](analisis-palabras-clave.md) del mismo día y no lo repite: aquí van los datos reales que ese documento no tenía.
 
-**Resumen en cinco líneas.**
+**Resumen en seis líneas.**
 1. El sitemap está enviado, se leyó hoy sin errores y Google ya descubrió sus 25 URLs (antes veía 19).
 2. De las 23 URLs "no indexadas" del informe, ninguna es un problema: son versiones viejas (`/?simular=`, fichas demo borradas, `luxcars.pe` sin `www`), páginas privadas con `noindex` a propósito y archivos estáticos.
 3. robots.txt está bien: solo excluye `/portal/` y `/api/`, apunta al sitemap con `www` y Search Console no reporta ninguna página bloqueada.
-4. Hoy se pidió indexación de 10 URLs nuevas (calculadora, cómo funciona, 7 modelos y la guía de costos) hasta agotar la cuota diaria; quedan 8 para mañana.
+4. Hoy se pidió indexación de 10 URLs nuevas (calculadora, cómo funciona, 7 modelos y la guía de costos) hasta agotar la cuota diaria; quedan 9 para mañana, empezando por `/importar`, que cambió hoy. Las seis fichas demo que Google aún mostraba se retiraron del buscador con una eliminación temporal.
 5. En cuatro días con datos, el sitio salió 97 veces en Google con 9 clics. Casi todo es marca y "autos de lujo"; la importación todavía no aparece porque sus páginas se publicaron hoy.
+6. Por pedido del dueño, cada servicio responde ahora a todas sus variantes de búsqueda: `/importar` ya está en producción con el título "Importación de autos a pedido desde Estados Unidos a Perú"; `/comprar`, `/vender`, `/escaneo` y `/calculadora` están confirmados en git y pendientes de despliegue (sección 10).
 
 ---
 
@@ -110,16 +111,21 @@ Google corta en unas 10 a 12 solicitudes por día por propiedad. Hoy entraron **
 **Enviadas el 10 de noviembre:** `/calculadora`, `/como-funciona`, `/importar/toyota-tundra-trd`, `/importar/ford-bronco-raptor`, `/importar/chevrolet-corvette-c8-stingray`, `/importar/ram-3500-limited`, `/importar/tesla-cybertruck`, `/guias/cuanto-cuesta-importar-un-auto-a-peru`, `/importar/chevrolet-corvette-z06`, `/importar/toyota-tacoma-trd`.
 
 **Pendientes para el 11 de noviembre o después, en este orden:**
-1. `/guias/requisitos-para-importar-un-auto-a-peru`
-2. `/faq`
-3. `/importar/ford-f250-super-duty`
-4. `/importar/toyota-gr-supra-final-edition`
-5. `/guias/ad-valorem-0-autos-estados-unidos`
-6. `/guias/isc-vehiculos-peru`
-7. `/guias`
-8. `/cookies`
+1. `/importar` (cambió hoy de título, H1 y texto; ya está en producción; la solicitud de hoy devolvió "Quota Exceeded")
+2. `/guias/requisitos-para-importar-un-auto-a-peru`
+3. `/faq`
+4. `/importar/ford-f250-super-duty`
+5. `/importar/toyota-gr-supra-final-edition`
+6. `/guias/ad-valorem-0-autos-estados-unidos`
+7. `/guias/isc-vehiculos-peru`
+8. `/guias`
+9. `/cookies`
+
+**Cuando se despliegue el commit `4edc79f` (ver sección 10):** pedir también `/comprar`, `/vender`, `/escaneo` y `/calculadora`, que cambian de título o descripción. Hasta que se despliegue no tiene sentido pedirlas: Google leería la versión vieja.
 
 Cómo se hace: Search Console → cuadro "Inspeccionar cualquier URL" → pegar la URL con `www` → "Solicitar indexación". En esta propiedad, inspeccionar no gasta cuota; solicitar sí.
+
+**Eliminación temporal de las fichas demo.** En Eliminaciones → Nueva solicitud se pidió retirar del buscador todo lo que empiece por `https://www.luxcars.pe/comprar/demo-` (Google aplica la petición a www, sin www, http y https). Estado: "Processing request". Dura unos seis meses; como las URLs devuelven 404 con `noindex`, al vencer ya no volverán. Motivo: Google seguía mandando clics a fichas de autos ficticios.
 
 ---
 
@@ -183,7 +189,7 @@ La propiedad solo tiene datos desde el 5 de noviembre, así que "últimos 3 mese
 
 ## 6. Propuesta por servicio
 
-Regla del proyecto: no se cambian títulos, descripciones, canonicals ni URLs existentes sin motivo. Todo lo de abajo **añade** contenido o páginas; donde se propone tocar un título se dice por qué. Las cifras, como siempre, salen de `src/core/pricing` y nunca a mano.
+Regla del proyecto: no se cambian títulos, descripciones, canonicals ni URLs existentes sin motivo. Esta noche el dueño dio el motivo: el sitio tiene que salir para todas las variantes con que la gente busca cada servicio. Con eso, la sesión principal cambió títulos, descripciones, H1 y primeros párrafos (sección 10); las URLs y canonicals no se tocaron. Lo que sigue abajo marca qué ya está **hecho** y qué sigue siendo propuesta. Las cifras, como siempre, salen de `src/core/pricing` y nunca a mano.
 
 ### 6.1 Importación a pedido desde Estados Unidos
 
@@ -192,7 +198,7 @@ Regla del proyecto: no se cambian títulos, descripciones, canonicals ni URLs ex
 
 Cambios concretos:
 1. **Cargar desde `/portal/ejemplos`, sin código, los modelos con demanda medida:** Tesla Model Y primero (es la única búsqueda de modelo con varias impresiones y el sitio ya está en el puesto 10 sin página), luego Tesla Model 3, Porsche 911 Carrera y BMW X5 (las marcas "porsche", "bmw" y "tesla" ya muestran el sitio). Land Cruiser 300 no se vende en Estados Unidos: no crear página; esa búsqueda es para la búsqueda local (6.6).
-2. **`/importar`** ya tiene 1 100 palabras, enlaza a la calculadora, a las guías y a los nueve modelos. Falta un bloque de preguntas con las que Google muestra junto a los resultados: "¿cuánto demora importar un auto?", "¿vale la pena importar un auto de Estados Unidos?", "¿qué vehículos no se pueden importar?", cada una con su enlace a la guía. Sin tocar el título.
+2. **`/importar`: hecho y en producción** (commit `694911a`). Título y H1 "Importación de autos a pedido desde Estados Unidos a Perú", descripción y primer párrafo con "auto o camioneta", "Miami o cualquier estado de EE.UU.", "puesto en Lima", y cuatro preguntas frecuentes con las palabras de la búsqueda ("¿Cómo funciona la importación de autos a pedido?", "¿Cuánto cuesta importar un auto de Estados Unidos a Perú?", "¿Qué autos se pueden importar a Perú desde USA?", "¿Conviene traer un carro de Estados Unidos o comprarlo en Lima?"). Motivo: en "importación de autos a pedido" mandaba Altagamma con ese título exacto y la página no usaba la frase. Queda por añadir "¿cuánto demora?" y "¿qué vehículos no se pueden importar?" con enlace a la guía.
 3. **`/como-funciona`**: nada que cambiar en el texto; hoy se pidió su indexación con `www`. Añadir un enlace en el paso de aduanas a la guía de costos y en el de requisitos a la de requisitos.
 4. **Guías**: pedir indexación de las tres restantes mañana. Después, una guía nueva por semana en el orden del análisis anterior: placas (validar con el gestor), "importar o comprar en Perú" por modelo, "cuánto demora importar".
 5. **Medir en dos semanas** en Rendimiento, filtrando por página `/importar/` y `/guias/`, qué consultas traen impresiones; ajustar entonces, no antes.
@@ -203,7 +209,7 @@ Cambios concretos:
 **Búsquedas a ganar:** "calculadora importación de autos perú", "calcular impuestos importación vehículo", "simulador importación autos sunat", "cuánto se paga de impuestos por importar un auto".
 
 Cambios concretos:
-1. Ya tiene 1 370 palabras y el título correcto. Comprobar en dos semanas si entra por "simulador": si no, añadir un H2 "Simulador de impuestos SUNAT para vehículos" con un párrafo, sin cambiar el título.
+1. **Hecho** (commit `4edc79f`, pendiente de despliegue): la descripción dice ahora "Simulador gratis: calcula cuánto cuesta importar y nacionalizar un auto o carro de Estados Unidos a Perú con los impuestos SUNAT (ad valorem, ISC, IGV)…". Título y H1 no cambian. Comprobar en dos semanas si entra por "simulador"; si no, añadir un H2 con esa palabra.
 2. Añadir tres preguntas al final: "¿La calculadora incluye el ISC y la percepción del IGV?", "¿Sirve para autos usados?", "¿Qué pasa si el auto es de planta fuera de Estados Unidos?" (enlace a la guía de ad valorem).
 3. Que cada página de modelo enlace a la calculadora con el modelo ya cargado (hoy ya lo hace el botón de cotizar): verificar que el enlace lleve el parámetro.
 
@@ -214,8 +220,9 @@ Cambios concretos:
 
 Cambios concretos:
 1. **Publicar stock real.** Las seis fichas demo que Google tenía indexadas ya no existen y una recibía clics. El Corvette 2027 comprado como stock (ver `plan-corvette-2027.md`) debería ser la primera ficha publicada desde el portal: entra sola al sitemap y da a Google una página de auto en venta con esquema `Car`.
-2. **Reforzar `/comprar`** de 297 a unas 700 palabras sin cambiar título ni H1: un párrafo "Autos y camionetas de lujo en Lima: cómo compramos y qué garantizamos" (nacionalizado, placas, historial, escaneo incluido), un bloque "¿No está en stock? Lo buscamos en Perú o lo importamos" (enlace a 6.6 y a `/importar`) y preguntas: "¿Venden autos usados de lujo?", "¿Aceptan auto en parte de pago?", "¿Tienen financiamiento?", "¿Puedo ver el auto antes de comprar?". Usar "camionetas" y "carros" al menos una vez cada una: son palabras que la gente escribe y el sitio casi no usa.
-3. **Motivo para tocar la descripción de `/comprar` (no el título):** hoy dice "Stock disponible" y no hay stock. Cuando haya al menos una ficha publicada, la descripción puede quedarse; si va a seguir vacía varias semanas, cambiarla por una que prometa búsqueda e importación, para no pagar en CTR una promesa que la página no cumple.
+2. **Hecho** (commit `4edc79f`, pendiente de despliegue): título "Comprar autos de lujo en Lima · Stock de alta gama disponible", H1 con etiqueta "Comprar autos de lujo en Lima" y titular "Autos de alta gama disponibles hoy en Lima", descripción y primer párrafo con "carros, camionetas y deportivos de lujo seminuevos en venta en San Isidro". Las fichas demo llevan además `noindex` por si algún entorno las sirve sin base.
+3. **Pendiente: reforzar `/comprar`** de 297 a unas 700 palabras: un bloque "¿No está en stock? Lo buscamos en Perú o lo importamos" (enlace a 6.6 y a `/importar`) y preguntas: "¿Venden autos usados de lujo?", "¿Aceptan auto en parte de pago?", "¿Tienen financiamiento?", "¿Puedo ver el auto antes de comprar?".
+4. **Vigilar la descripción:** promete "stock disponible" y hoy no hay fichas. Si va a seguir vacía varias semanas, cambiarla por una que prometa búsqueda e importación, para no pagar en CTR una promesa que la página no cumple.
 
 ### 6.4 Venta y consignación con tasación
 
@@ -223,6 +230,7 @@ Cambios concretos:
 **Búsquedas a ganar:** "tasar mi auto", "cotizar mi auto gratis peru", "cuánto vale mi auto", "tasación de autos lima", "vender mi auto en consignación lima", "consignación de autos lima".
 
 Cambios concretos:
+0. **Hecho** (commit `4edc79f`, pendiente de despliegue): título "Vender mi auto en Lima · Consignación y tasación sin exclusividad", descripción y primer párrafo con "auto usado, camioneta o carro de lujo", "tasación gratuita" y "consignación".
 1. **Página nueva `/tasacion`** con el mismo formulario de tasación que ya vive en `/vender`, igual que se hizo con `/calculadora`: título "Tasación de autos en Lima: cuánto vale tu auto hoy, gratis | LuxCars Perú", H1 "Tasación gratuita de autos en Lima", 400 palabras sobre cómo se calcula el rango (año, kilometraje, versión, mercado local) y enlace a `/vender`. Motivo: dos búsquedas distintas ("tasar" y "consignar") compiten hoy por la misma URL y el sitio sale en los puestos 50 y 65 para la primera. Ninguna URL existente cambia.
 2. En `/vender`, sumar preguntas: "¿Cuánto cobra LuxCars por vender mi auto?", "¿Cuánto demora venderlo?", "¿Puedo seguir usándolo mientras tanto?" (ya está en el H1, falta como pregunta), "¿Qué documentos necesito?".
 3. Usar "cotizar" una vez en el bloque de tasación ("cotiza tu auto gratis"): es la palabra que apareció en Search Console.
@@ -233,8 +241,9 @@ Cambios concretos:
 **Búsquedas a ganar:** "escaneo de autos usados lima", "revisión pre compra auto lima", "scanner automotriz a domicilio lima", "cuánto cuesta escanear un auto en perú", "inspección vehicular antes de comprar".
 
 Cambios concretos:
+0. **Hecho** (commits `4edc79f` y `2c1f60e`, pendientes de despliegue): título "Escaneo de autos usados en Lima antes de comprar · Inspección precompra", descripción "Revisión de autos usados antes de comprar en Lima: vamos a donde está el auto con un escáner automotriz profesional…", primer párrafo con "inspección precompra a domicilio, con diagnóstico electrónico y visual". A propósito no se promete "peritaje" ni "revisión mecánica": la página aclara que es diagnóstico electrónico y visual, no inspección de taller, y el texto no debe decir algo que el servicio no es.
 1. Añadir la pregunta "¿Cuánto cuesta escanear un auto en Lima?" con el precio que ya sale de la configuración, y "¿Van a domicilio?" con la respuesta explícita: Google muestra esas dos preguntas y la página responde pero no con esas palabras.
-2. Un subtítulo con "inspección precompra" y "revisión pre compra", que son las variantes más buscadas, sin cambiar el H1.
+2. Las variantes "inspección precompra" y "revisión de autos usados antes de comprar" ya están en título y descripción; falta "revisión pre compra" como subtítulo.
 3. Lo que más pesa está fuera de la web: perfil de Google Business verificado con categoría de inspección vehicular y reseñas de cada escaneo. Sin eso la página no entra al bloque de mapa que ocupa la parte alta de esas búsquedas.
 
 ### 6.6 Búsqueda local de autos (servicio pendiente)
@@ -250,14 +259,116 @@ Propuesta: una sección en `/comprar` ("¿Buscas un modelo que no está aquí? L
 
 | Prioridad | Qué | Por qué primero |
 |---|---|---|
-| 1 | Mañana: las 8 solicitudes de indexación pendientes | Son cinco minutos y desbloquean todo lo demás |
-| 2 | Publicar el Corvette 2027 como ficha real desde el portal | Google ya manda clics a fichas que no existen |
-| 3 | Cargar Tesla Model Y (y Model 3, 911, X5) desde `/portal/ejemplos` | Única búsqueda de modelo con impresiones y sin página |
-| 4 | Perfil de Google Business verificado | Escaneo y consignación se deciden en el mapa |
-| 5 | Reforzar `/comprar` (6.3) y preguntas en `/vender` (6.4) | Es donde ya hay impresiones y no hay clics |
-| 6 | Página `/tasacion` (6.4) | Búsqueda propia con el sitio en el puesto 50 |
-| 7 | Preguntas en `/importar`, `/calculadora` y `/escaneo` | Mejoras sobre páginas que ya responden bien |
-| 8 | Decidir la búsqueda local (6.6) | Necesita decisión del dueño |
-| 9 | Revisar Rendimiento el 24 de noviembre | Con dos semanas de datos de las páginas nuevas |
+| 1 | Desplegar el commit `4edc79f` (y `2c1f60e`) a producción | Sin despliegue los títulos nuevos de comprar, vender, escaneo y calculadora no existen para Google |
+| 2 | Mañana: las 9 solicitudes de indexación pendientes, más las 4 páginas que cambian tras el despliegue | Son minutos y desbloquean todo lo demás |
+| 3 | Perfil de Google Business verificado, en San Isidro, con reseñas | Es el hueco frente a Altagamma (sección 9) y decide escaneo, consignación y "comprar autos de lujo en lima" |
+| 4 | Publicar el Corvette 2027 como ficha real desde el portal | Google ya mandaba clics a fichas que no existen; Altagamma gana con 59 fichas |
+| 5 | Cargar Tesla Model Y (y Model 3, 911, X5) desde `/portal/ejemplos` | Única búsqueda de modelo con impresiones y sin página |
+| 6 | Título de la portada con "Autos de lujo en Lima" al frente | Recomendación de la sección 9; necesita el visto bueno del dueño |
+| 7 | Reforzar `/comprar` (6.3) y preguntas en `/vender` (6.4) | Es donde ya hay impresiones y no hay clics |
+| 8 | Página `/tasacion` (6.4) | Búsqueda propia con el sitio en el puesto 50 |
+| 9 | Preguntas en `/calculadora` y `/escaneo` | Mejoras sobre páginas que ya responden bien |
+| 10 | Decidir la búsqueda local (6.6) | Necesita decisión del dueño |
+| 11 | Revisar Rendimiento el 24 de noviembre | Con dos semanas de datos de las páginas nuevas |
 
 **Expectativa honesta.** Cuatro días de datos no son una tendencia. Lo que sí es seguro: la marca ya posiciona, "autos de lujo" ya muestra el sitio en primera página sin que la página esté preparada, y la importación se medirá recién cuando Google indexe lo publicado hoy. Nadie garantiza el primer puesto.
+
+---
+
+## 8. Todas las variantes de búsqueda, servicio por servicio
+
+Cada grupo tiene una sola página responsable. Las variantes mezclan sinónimos ("auto", "carro", "vehículo", "camioneta"), origen ("USA", "Estados Unidos", "EE.UU.", "Miami"), lugar ("Lima", "Perú"), orden de palabras y tildes; Google trata "importación" e "importacion" como lo mismo, así que no se listan por separado. Entre paréntesis, la posición medida hoy cuando la hay.
+
+### 8.1 Importación a pedido
+
+| Grupo | Variantes | Página |
+|---|---|---|
+| A pedido | importación de autos a pedido · importación de autos a pedido perú · importar auto a pedido · autos a pedido desde estados unidos · importación directa de autos | `/importar` |
+| Origen | importar auto de usa a perú · importar carro de estados unidos a perú · importar vehículo de eeuu · importar auto de miami a perú · traer auto (carro) de estados unidos a perú · importar camioneta de estados unidos · autos americanos importados | `/importar` |
+| Genéricas | importación de autos a perú · importación de vehículos perú · importadora de autos americanos perú · importadores de autos de lujo lima · importación de autos de lujo (puesto 5, con la portada) · empresas importadoras de autos en perú | `/importar` |
+| Proceso | cómo importar un auto a perú · importar auto paso a paso · proceso de importación de vehículos · cuánto demora importar un auto · vale la pena importar un auto de estados unidos | `/como-funciona` |
+| Costo | cuánto cuesta importar un auto (carro) a perú · cuánto cuesta nacionalizar un auto en perú · impuestos para importar un auto · cuánto cobran por traer un carro de estados unidos | `/guias/cuanto-cuesta-importar-un-auto-a-peru` |
+| Requisitos | requisitos para importar un auto a perú 2026 · qué autos se pueden importar · qué vehículos no se pueden importar · importar auto usado antigüedad máxima · importación de vehículos usados sunat (puesto 100) | `/guias/requisitos-para-importar-un-auto-a-peru` |
+| Arancel | ad valorem 0 autos estados unidos · arancel autos usa perú · certificado de origen tlc vehículos | `/guias/ad-valorem-0-autos-estados-unidos` |
+| ISC | isc vehículos perú 2026 · isc autos · impuesto selectivo al consumo vehículos · diferencia igv e isc | `/guias/isc-vehiculos-peru` |
+| Modelo | importar [modelo] a perú · cuánto cuesta importar una [modelo] · [modelo] precio perú · [modelo] en perú 2026 · [modelo] 0 km perú · tesla model y precio perú (puesto 10, sin página) | `/importar/<modelo>` |
+
+### 8.2 Calculadora
+
+| Variantes | Página |
+|---|---|
+| calculadora importación de autos perú · calculadora de importación de vehículos · calculadora impuestos importación auto · calcular impuestos importación vehículo perú · simulador importación autos sunat · simulador de impuestos vehículos · cuánto pagaría de impuestos por importar un carro · cotizar importación de auto · cotización importar auto de usa a perú · calculadora aduanas vehículos perú · calculadora ad valorem isc igv auto | `/calculadora` |
+
+### 8.3 Compra de stock en Lima
+
+| Variantes | Página |
+|---|---|
+| autos de lujo lima · autos de lujo en lima (puesto 11) · autos de lujo perú (9) · comprar autos de lujo (13) · comprar auto de lujo lima · autos de lujo en venta lima · carros de lujo lima · carros de lujo en perú (9) · camionetas de lujo lima (88) · camionetas de lujo en venta · autos de alta gama lima · autos premium lima · autos exclusivos lima (91) · venta de autos usados de lujo lima (19) · seminuevos de lujo lima · autos deportivos en venta lima · autos americanos en venta lima · autos importados en venta lima · concesionario autos de lujo lima · tienda de autos de lujo san isidro | `/comprar` |
+| [marca modelo año] en venta lima · [marca] en venta lima | `/comprar/<ficha>` (y páginas por marca cuando haya stock) |
+
+### 8.4 Venta, consignación y tasación
+
+| Grupo | Variantes | Página |
+|---|---|---|
+| Vender | vender mi auto en lima · vender mi carro lima · vender mi auto rápido · vender auto de lujo lima · vender mi camioneta lima · vender auto sin exclusividad · dónde vender mi auto usado lima | `/vender` |
+| Consignación | consignación de autos lima · vender mi auto en consignación · autos en consignación lima · consignación de vehículos perú · venta por consignación de autos | `/vender` |
+| Tasación | tasación de autos lima · tasar mi auto (50) · tasación vehicular gratis · cuánto vale mi auto · cotizar mi auto gratis perú (65) · cotización de mi auto usado · valorización de autos perú · avalúo vehicular lima · precio de mi auto usado | `/vender` hoy; `/tasacion` si se aprueba (6.4) |
+
+### 8.5 Escaneo pre-compra
+
+| Grupo | Variantes | Página |
+|---|---|---|
+| Escaneo | escaneo de autos usados lima · escaneo de auto antes de comprar · escanear auto lima · escaneo vehicular a domicilio · scanner automotriz lima · scanner automotriz a domicilio · escáner automotriz a domicilio lima · cuánto cuesta escanear un auto en perú | `/escaneo` |
+| Revisión | revisión pre compra auto lima · revisión precompra · inspección precompra vehicular · inspección de auto usado antes de comprar · inspección vehicular antes de comprar · revisión de autos usados antes de comprar · diagnóstico automotriz a domicilio · verificar auto usado antes de comprar | `/escaneo` |
+| No usar | peritaje vehicular · revisión mecánica: el servicio es diagnóstico electrónico y visual, no inspección de taller; prometerlo sería engañar | — |
+
+### 8.6 Portada y marca
+
+| Variantes | Página |
+|---|---|
+| luxcars · lux cars · luxcars perú · lux car (puesto 1,7) · luxe car · luccar · autos de lujo en lima (la genérica donde ya aparece la portada) | `/` |
+
+### 8.7 Búsqueda local (servicio pendiente, sin página)
+
+| Variantes | Página |
+|---|---|
+| busco un [modelo] en lima · [modelo] en venta lima/perú (ej. land cruiser 300 peru, puesto 9) · comprar auto usado verificado lima · encontrar auto en perú · auto a pedido en perú sin importar | Sección en `/comprar` o `/buscamos-tu-auto` si el dueño lo aprueba (6.6) |
+
+**Reglas de redacción que salen de aquí:** usar "carro", "camioneta" y "vehículo" además de "auto"; "Estados Unidos" en títulos y "USA / EE.UU. / Miami" en preguntas y párrafos; "Lima" en lo local y "Perú" en importación; la respuesta en el primer párrafo, porque siete de cada diez impresiones son en móvil.
+
+---
+
+## 9. Por qué Altagamma sale primera (recogido de la sesión principal y de la sección 10.5 del análisis)
+
+Verificado el 10 de noviembre en Google Perú sin personalizar. Altagamma es puesto 1 en "autos de lujo", "autos de lujo lima" e "importacion de autos de lujo" con su portada, titulada "Altagamma – Autos de Lujo". No aparece en "importación de autos" ni en "importación de autos a pedido". LuxCars: puesto 5 en "importacion de autos de lujo" (portada), 11 en "autos de lujo lima" (`/comprar`), y sale en la Visión general de IA de ambas búsquedas.
+
+Su sitio es técnicamente flojo: la página de importación tiene 75 palabras, H1 vacío, sin descripción ni JSON-LD; la portada, 195 palabras y cero datos estructurados. **Gana por autoridad, no por contenido:**
+
+| Factor | Altagamma | LuxCars |
+|---|---|---|
+| Ficha de Google Business | San Isidro, 4,7 con 18 reseñas; entra al pack local de "comprar autos de lujo en lima" junto a Autosell (4,3 / 50), Autos Exclusivos (4,4 / 33), Iconic Cars (3,0 / 6) y Auto Traders (5,0 / 1) | Sin ficha |
+| Fichas de autos indexadas | 59, más 22 páginas de marca; unas 417 URLs en el índice | 0 fichas; unas 25 URLs |
+| Antigüedad y marca | Dominio en línea desde al menos 2018; "40 años de trayectoria" | Marca nueva |
+| Redes y directorios | Facebook 13 700 seguidores, Instagram unos 49 mil, blog, nombre‑dirección‑teléfono idénticos en web, redes y Cylex | Recién empezando |
+
+**Qué hacer con esto (para el dueño):** crear y verificar la ficha de Google Business (Dionisio Derteano 184, Of. 1102, San Isidro; categorías Concesionario de automóviles, Importador e Inspección de vehículos), pedir una reseña a cada cliente, mantener nombre, dirección y teléfono idénticos en todos los perfiles y directorios, un video por semana (los TikTok y Facebook de la competencia salen en los resultados), publicar stock como fichas, y añadir `sameAs` al JSON-LD cuando existan los perfiles. Donde LuxCars ya es mejor, la importación (calculadora, modelos, guías), no hay nada que copiarles.
+
+---
+
+## 10. Búsqueda → página → cambio aplicado
+
+Estado al cierre del 10 de noviembre por la noche. "En producción" significa visible en `www.luxcars.pe`; "en git" significa confirmado en la rama `recuperacion-compartir-auditoria` y pendiente de desplegar.
+
+| Búsqueda (grupo) | Página | Cambio aplicado | Estado |
+|---|---|---|---|
+| importación de autos a pedido · importar auto de estados unidos (usa, miami) a perú · importar camioneta | `/importar` | Título y H1 "Importación de autos a pedido desde Estados Unidos a Perú"; descripción y primer párrafo con "auto o camioneta", "Miami o cualquier estado de EE.UU.", "puesto en Lima"; cuatro preguntas frecuentes con las palabras de la búsqueda (commit `694911a`) | En producción. Reindexación pendiente (cuota) |
+| cómo importar un auto a perú · paso a paso · cuánto demora | `/como-funciona` | H1 con "Cómo importar un auto a Perú" (hecho antes, `0f8cf72`) | En producción; indexación pedida hoy |
+| cuánto cuesta importar / nacionalizar · requisitos · ad valorem 0 · isc | Las cuatro guías | Guías nuevas (`f6f1e94`) | En producción; costo pedida hoy, las otras tres mañana |
+| importar [modelo] a perú · [modelo] precio perú | `/importar/<modelo>` | Nueve páginas de modelo (`14ff486` y anteriores) | En producción; 7 pedidas hoy, 2 mañana. Falta crear Tesla Model Y desde el portal |
+| calculadora importación de autos perú · simulador · calcular impuestos sunat · cotizar importación | `/calculadora` | Página propia (hecha antes); descripción nueva con "simulador", "impuestos SUNAT", "auto o carro de Estados Unidos" (`4edc79f`) | Página en producción e indexación pedida hoy; descripción en git |
+| comprar autos de lujo en lima · autos (carros, camionetas) de lujo lima/perú · alta gama · seminuevos · en venta | `/comprar` | Título "Comprar autos de lujo en Lima · Stock de alta gama disponible"; H1 con etiqueta "Comprar autos de lujo en Lima" y titular "Autos de alta gama disponibles hoy en Lima"; descripción y párrafo con "carros, camionetas y deportivos de lujo seminuevos en venta en San Isidro" (`4edc79f`) | En git. Pedir reindexación tras desplegar. Fichas demo retiradas del buscador hoy |
+| [marca modelo] en venta lima | `/comprar/<ficha>` | Fichas demo con `noindex` (`4edc79f`); eliminación temporal del prefijo `comprar/demo-` en Search Console | Hecho. Falta publicar stock real (Corvette 2027) |
+| vender mi auto (carro, camioneta) en lima · consignación de autos lima · tasar mi auto · cuánto vale mi auto | `/vender` | Título "Vender mi auto en Lima · Consignación y tasación sin exclusividad"; descripción y párrafo con "auto usado, camioneta o carro de lujo", "tasación gratuita", "consignación" (`4edc79f`); H1 con "Consignación y tasación de autos en Lima" (hecho antes) | En git. Pedir reindexación tras desplegar. `/tasacion` sigue como propuesta |
+| escaneo de autos usados lima · scanner automotriz a domicilio · revisión / inspección precompra | `/escaneo` | Título "Escaneo de autos usados en Lima antes de comprar · Inspección precompra"; descripción con "revisión de autos usados antes de comprar", "escáner automotriz"; párrafo con "inspección precompra a domicilio, con diagnóstico electrónico y visual" (`4edc79f`, `2c1f60e`) | En git. Pedir reindexación tras desplegar |
+| luxcars · lux car · luxe car · autos de lujo en lima | `/` | H1 con "Autos de lujo en Lima, Perú" (hecho antes). Propuesta abierta: poner esa frase al frente del título | En producción; título pendiente del visto bueno del dueño |
+| busco un [modelo] en lima · [modelo] en venta perú | Sin página | Nada todavía: decisión del dueño sobre la búsqueda local | Propuesta (6.6) |
