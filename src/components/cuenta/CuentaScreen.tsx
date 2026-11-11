@@ -129,7 +129,7 @@ function ConfirmacionEnvioInterna() {
 
 export function CuentaScreen() {
   const router = useRouter();
-  const { status, profile, email, client, signOut } = useCuentaSession();
+  const { status, profile, email, userId, client, signOut } = useCuentaSession();
   const [purchases, setPurchases] = useState<PurchaseRequest[]>([]);
   const [sales, setSales] = useState<SaleRequest[]>([]);
   // Ids de autos del cliente que están realmente publicados en el sitio.
@@ -145,14 +145,16 @@ export function CuentaScreen() {
   }, [status, router]);
 
   const load = useCallback(async () => {
-    if (!client || status !== "autenticado") {
+    if (!client || !userId || status !== "autenticado") {
       setLoading(false);
       return;
     }
     setLoading(true);
+    // Con el `userId` de la sesión: RLS deja a un admin leer las solicitudes
+    // de todos, y en "Mi cuenta" solo deben salir las propias.
     const [p, s, ids] = await Promise.all([
-      fetchMyPurchaseRequests(client),
-      fetchMySaleRequests(client),
+      fetchMyPurchaseRequests(client, userId),
+      fetchMySaleRequests(client, userId),
       fetchMyPublishedVehicleIds(client),
     ]);
     setPurchases(p.data);
@@ -161,7 +163,7 @@ export function CuentaScreen() {
     setPurchasesError(p.error);
     setSalesError(s.error);
     setLoading(false);
-  }, [client, status]);
+  }, [client, status, userId]);
 
   useEffect(() => {
     if (status === "verificando") return;

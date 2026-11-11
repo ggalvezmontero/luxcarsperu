@@ -6,6 +6,11 @@
  * suyas, y cambiarlas a `cerrada` / `retirada`. Todo lo demás lo rechaza
  * Postgres (ver migración 0010), no este archivo.
  *
+ * OJO: RLS también deja a los ADMIN leer todas las filas (es lo que necesita
+ * el portal). Por eso las lecturas de "Mi cuenta" filtran además por el
+ * `user_id` de la sesión: sin ese filtro, un admin que entra a /cuenta ve los
+ * autos y búsquedas de todos los clientes (pasó el 2026-11-10).
+ *
  * NINGUNA FUNCIÓN LANZA.
  */
 
@@ -144,11 +149,14 @@ export type ListResult<T> = { data: T[]; error: boolean };
 
 export async function fetchMyPurchaseRequests(
   client: PortalClient,
+  userId: string,
 ): Promise<ListResult<PurchaseRequest>> {
+  if (!userId) return { data: [], error: false };
   try {
     const { data, error } = await client
       .from("solicitudes_compra")
       .select(PURCHASE_COLUMNS)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
     if (error || !data) return { data: [], error: true };
@@ -163,11 +171,14 @@ export async function fetchMyPurchaseRequests(
 
 export async function fetchMySaleRequests(
   client: PortalClient,
+  userId: string,
 ): Promise<ListResult<SaleRequest>> {
+  if (!userId) return { data: [], error: false };
   try {
     const { data, error } = await client
       .from("solicitudes_venta")
       .select(SALE_COLUMNS)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
     if (error || !data) return { data: [], error: true };
