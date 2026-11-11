@@ -69,6 +69,17 @@ next-env.d.ts
 /tmp/
 /private/
 
+# Planes internos del negocio. ESTE REPOSITORIO ES PÚBLICO: los documentos de
+# marketing y de operaciones tienen costos, márgenes y decisiones comerciales
+# que no deben subirse nunca. Se ignora la carpeta entera a propósito, y no
+# archivo por archivo: así un documento nuevo nace privado y solo se publica
+# el que alguien exceptúa aquí de forma deliberada.
+/docs/operaciones/
+/docs/marketing/*
+# Único documento de esa carpeta que sí es público (informe de indexación,
+# revisado sin cifras sensibles):
+!/docs/marketing/indexacion-y-seo-2026-11.md
+
 # generados por next dev (agentRules)
 /AGENTS.md
 /CLAUDE.md
