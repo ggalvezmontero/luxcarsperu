@@ -148,9 +148,11 @@ export default async function VehiculoPage({ params }: Params) {
                   <VehiclePlaceholder brand={v.brand} logo={logo} large />
                 )}
                 <div className="absolute left-4 right-4 top-4 flex flex-wrap gap-2">
-                  <Badge tone={STATUS_TONE[v.status]} dot>{STATUS_LABEL[v.status]}</Badge>
-                  {consigned ? <Badge tone="silver" className="bg-void/70 backdrop-blur">{CONSIGNMENT_LABEL}</Badge> : null}
-                  {v.isDemo ? <Badge tone="warn">Demostración</Badge> : null}
+                  {/* Sobre la foto todas llevan fondo oscuro: el verde del estado
+                      se perdía contra una foto clara (visto con el Bronco). */}
+                  <Badge tone={STATUS_TONE[v.status]} dot onPhoto>{STATUS_LABEL[v.status]}</Badge>
+                  {consigned ? <Badge tone="silver" onPhoto>{CONSIGNMENT_LABEL}</Badge> : null}
+                  {v.isDemo ? <Badge tone="warn" onPhoto>Demostración</Badge> : null}
                 </div>
               </div>
               {photos.length > 1 ? (

@@ -61,11 +61,13 @@ export function VehicleCard({
           <VehiclePlaceholder brand={vehicle.brand} logo={logo} />
         )}
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          <Badge tone={STATUS_TONE[vehicle.status]} dot>
+          {/* Fondo oscuro también en el estado: sobre una foto clara el verde
+              sin fondo no se leía. */}
+          <Badge tone={STATUS_TONE[vehicle.status]} dot onPhoto>
             {STATUS_LABEL[vehicle.status]}
           </Badge>
           {isConsignment(vehicle) ? (
-            <Badge tone="silver" className="bg-void/70 backdrop-blur">{CONSIGNMENT_LABEL}</Badge>
+            <Badge tone="silver" onPhoto>{CONSIGNMENT_LABEL}</Badge>
           ) : null}
         </div>
         {vehicle.photos.length > 1 ? (
