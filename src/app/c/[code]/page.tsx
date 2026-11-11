@@ -142,13 +142,7 @@ export default async function SharedQuotePage({ params }: Props) {
                   <div className="flex items-center justify-between gap-3 py-1">
                     <h2 className="text-sm font-semibold text-ink">Desglose</h2>
                     <span className="text-xs text-ink-4">
-                      Tributos{" "}
-                      {formatPercentage(
-                        evaluation.estimate.finalEstimate > 0
-                          ? quoteTaxes(evaluation.estimate) / evaluation.estimate.finalEstimate
-                          : 0,
-                      )}{" "}
-                      del total
+                      Tributos: {formatCurrency(quoteTaxes(evaluation.estimate))}
                     </span>
                   </div>
                   <QuoteBreakdown estimate={evaluation.estimate} className="mt-2" />

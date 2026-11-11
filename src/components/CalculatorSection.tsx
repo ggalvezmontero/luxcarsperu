@@ -935,7 +935,10 @@ function ResultPanel({
     );
   }
 
-  const tributosShare = estimate.finalEstimate > 0 ? quoteTaxes(estimate) / estimate.finalEstimate : 0;
+  // Al lado de "Desglose" va el MONTO de tributos, no su porcentaje del total:
+  // "Tributos 20% del total" se leía como una tasa y no cuadraba con el 10% de
+  // ISC y el 18% de IGV que salen debajo (decisión del dueño, 2026-11-11).
+  const tributosTotal = quoteTaxes(estimate);
   const vehicleName = `${estimate.input.brand} ${estimate.input.model} ${estimate.input.year}`;
   // Un usado paga 6% haga lo que haga el certificado: no hay nada que corregir.
   const canToggleOrigin =
@@ -986,7 +989,7 @@ function ResultPanel({
         >
           <span className="text-sm font-semibold text-ink">{breakdownOpen ? "Desglose" : "Ver desglose"}</span>
           <span className="flex items-center gap-2 text-xs text-ink-4">
-            Tributos {formatPercentage(tributosShare)} del total
+            Tributos: {formatCurrency(tributosTotal)}
             <Icon
               name="chevronDown"
               size={16}
