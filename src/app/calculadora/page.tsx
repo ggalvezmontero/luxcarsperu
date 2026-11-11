@@ -26,7 +26,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
-import { PRICING_CONFIG, oldestImportableModelYear } from "@/core/pricing/pricingConfig";
+import { PRICING_CONFIG, currentYearInLima, oldestImportableModelYear } from "@/core/pricing/pricingConfig";
 import {
   USED_ISC_RATE,
   VEHICLE_CATEGORIES,
@@ -68,7 +68,7 @@ export const metadata: Metadata = {
 export default async function CalculadoraPage() {
   const { vehiculos } = await getImportExamplesForIsr();
   const cotizables = vehiculos.filter(tienePaginaPropia);
-  const anioActual = new Date().getFullYear();
+  const anioActual = currentYearInLima();
   const { igvRate, ipmRate, percepcionRates, adValoremByOrigin, usedMaxAgeYears } = PRICING_CONFIG;
   const variacion = formatPercentage(LUXCARS_CONFIG.services.finalRangeVariance, "es-PE", 1);
 

@@ -170,6 +170,21 @@ export function resolvePercepcionRate(params: {
 }
 
 /**
+ * El año en curso EN LIMA. Es el que cuenta para la regla de antigüedad: en
+ * 2026 entran usados 2026 y 2025; el 1 de enero de 2027 pasan a entrar 2027 y
+ * 2026, sin tocar el código.
+ *
+ * Se calcula en la hora de Lima a propósito. El servidor corre en UTC, cinco
+ * horas por delante: con `new Date().getFullYear()` el sitio cambiaría de año
+ * la tarde del 31 de diciembre, cuando en el Perú todavía rige el anterior.
+ */
+export function currentYearInLima(now: Date = new Date()): number {
+  return Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Lima", year: "numeric" }).format(now),
+  );
+}
+
+/**
  * Modelo más antiguo que se puede nacionalizar como usado en un año dado.
  * El año en curso cuenta como el primero de los `usedMaxAgeYears`, por eso se
  * resta uno: con 2 años, en 2026 entran modelos 2025 en adelante.

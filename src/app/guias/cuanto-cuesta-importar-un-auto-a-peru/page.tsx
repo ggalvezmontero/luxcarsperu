@@ -11,7 +11,7 @@ import {
   Tabla,
   metadataDeGuia,
 } from "@/components/guias/GuiaLayout";
-import { PRICING_CONFIG } from "@/core/pricing/pricingConfig";
+import { PRICING_CONFIG, currentYearInLima } from "@/core/pricing/pricingConfig";
 import { USED_ISC_RATE } from "@/core/pricing/vehicleCategories";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { rutaGuia } from "@/lib/guias";
@@ -25,7 +25,7 @@ export const revalidate = 86400;
 export const generateMetadata = () => metadataDeGuia(SLUG);
 
 export default async function Page() {
-  const anio = new Date().getFullYear();
+  const anio = currentYearInLima();
   const ejemplos = await ejemplosCotizados(anio);
   const { igvRate, ipmRate, percepcionRates, adValoremByOrigin, freightByCategory, planConfigs } = PRICING_CONFIG;
   const general = formatRate(adValoremByOrigin.otro);

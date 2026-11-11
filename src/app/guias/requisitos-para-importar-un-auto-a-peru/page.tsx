@@ -12,7 +12,7 @@ import {
   Tabla,
   metadataDeGuia,
 } from "@/components/guias/GuiaLayout";
-import { PRICING_CONFIG, oldestImportableModelYear } from "@/core/pricing/pricingConfig";
+import { PRICING_CONFIG, currentYearInLima, oldestImportableModelYear } from "@/core/pricing/pricingConfig";
 import { USED_ISC_RATE, VEHICLE_CATEGORIES } from "@/core/pricing/vehicleCategories";
 import { IMPORT_COMPLIANCE_REFERENCE } from "@/lib/db/types";
 import { rutaGuia } from "@/lib/guias";
@@ -24,7 +24,7 @@ export const revalidate = 86400;
 export const generateMetadata = () => metadataDeGuia(SLUG);
 
 export default function Page() {
-  const anio = new Date().getFullYear();
+  const anio = currentYearInLima();
   const masAntiguo = oldestImportableModelYear(anio);
   const { maxVehicleAgeYears, maxMileageKm } = IMPORT_COMPLIANCE_REFERENCE;
   const kmM1 = formatNumber(maxMileageKm.M1, "en-US");

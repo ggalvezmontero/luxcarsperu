@@ -1,6 +1,7 @@
 import { IMPORTER_RULES } from "@/core/pricing/importerRules";
 import {
   PRICING_CONFIG,
+  currentYearInLima,
   oldestImportableModelYear,
 } from "@/core/pricing/pricingConfig";
 import {
@@ -36,13 +37,22 @@ export const BRAND_THEME_COLOR = "#050505";
 
 /**
  * Año de referencia normativo del copy. La antigüedad máxima se cuenta desde
- * el año modelo, así que el año calendario define qué modelos entran.
+ * el año modelo, así que el año calendario define qué modelos entran: en 2026,
+ * usados 2026 y 2025.
  *
- * Deliberadamente NO es `new Date().getFullYear()`: este objeto se consume
- * también desde componentes cliente y un valor dependiente del reloj provoca
- * desajustes de hidratación cada 1 de enero. Es una línea a actualizar por año.
+ * ES DINÁMICO (decisión del dueño, 2026-11-10): sale del calendario, en hora de
+ * Lima, y no hay que tocarlo cada enero. Antes era un `2026` escrito a mano.
+ *
+ * Dos cosas lo hacen seguro:
+ *   · Los textos que citan el año (el FAQ y `hardFacts`) solo se pintan en
+ *     componentes de SERVIDOR. Si un componente cliente los pintara, el HTML
+ *     generado en diciembre y el navegador de enero no coincidirían al
+ *     hidratar. Mantenerlo así.
+ *   · El layout raíz regenera todas las páginas una vez al día
+ *     (`revalidate` en `src/app/layout.tsx`), así que el cambio de año llega a
+ *     todo el sitio sin esperar a un despliegue.
  */
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = currentYearInLima();
 const OLDEST_IMPORTABLE_MODEL_YEAR = oldestImportableModelYear(REFERENCE_YEAR);
 
 /** 0.155 → "15.5", 0.05 → "5". Sin ceros decimales de relleno. */

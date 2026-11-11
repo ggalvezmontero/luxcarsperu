@@ -9,6 +9,7 @@
 
 import { evaluateQuote, type QuoteEvaluation } from "@/lib/cotizacion";
 import { decodeSharedQuote, type SharedQuote } from "@/lib/cotizacionCompartida";
+import { currentYearInLima } from "@/core/pricing/pricingConfig";
 
 export type SharedEstimate = {
   quote: SharedQuote;
@@ -35,7 +36,7 @@ export function resolveSharedEstimate(code: string): SharedEstimate | null {
       condition: quote.condition,
       preferredPlan: quote.plan,
       originOverride: quote.origin,
-      currentYear: new Date().getFullYear(),
+      currentYear: currentYearInLima(),
     }),
   };
 }

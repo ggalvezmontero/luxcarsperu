@@ -10,6 +10,7 @@ import { LUXCARS_CONFIG } from "@/lib/config";
 import { GUIAS, rutaGuia, tituloGuia } from "@/lib/guias";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { breadcrumbSchema } from "@/lib/structuredData";
+import { currentYearInLima } from "@/core/pricing/pricingConfig";
 
 const TITLE = "Guías para importar un auto a Perú";
 const DESCRIPTION =
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export default function GuiasPage() {
-  const anio = new Date().getFullYear();
+  const anio = currentYearInLima();
   const jsonLd = breadcrumbSchema([
     { nombre: "Inicio", ruta: "/" },
     { nombre: "Guías", ruta: "/guias" },

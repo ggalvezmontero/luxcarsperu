@@ -12,7 +12,7 @@ import {
   metadataDeGuia,
 } from "@/components/guias/GuiaLayout";
 import { VIN_ASSEMBLY_COUNTRY, resolveOrigin } from "@/core/pricing/originInference";
-import { PRICING_CONFIG } from "@/core/pricing/pricingConfig";
+import { PRICING_CONFIG, currentYearInLima } from "@/core/pricing/pricingConfig";
 import { rutaGuia } from "@/lib/guias";
 import { cotizarEscenario, ejemplosCotizados } from "@/lib/guiasDatos";
 import { formatCurrency, formatRate } from "@/lib/utils";
@@ -53,7 +53,7 @@ const MODELOS: readonly [string, string][] = [
 ];
 
 export default async function Page() {
-  const anio = new Date().getFullYear();
+  const anio = currentYearInLima();
   const general = formatRate(PRICING_CONFIG.adValoremByOrigin.otro);
 
   const filas = MODELOS.flatMap(([marca, modelo]) => {

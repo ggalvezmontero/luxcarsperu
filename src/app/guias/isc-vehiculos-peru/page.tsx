@@ -10,7 +10,7 @@ import {
   Tabla,
   metadataDeGuia,
 } from "@/components/guias/GuiaLayout";
-import { PRICING_CONFIG } from "@/core/pricing/pricingConfig";
+import { PRICING_CONFIG, currentYearInLima } from "@/core/pricing/pricingConfig";
 import {
   USED_ISC_RATE,
   VEHICLE_CATEGORIES,
@@ -29,7 +29,7 @@ export const generateMetadata = () => metadataDeGuia(SLUG);
 const PRECIO_EJEMPLO = 60000;
 
 export default function Page() {
-  const anio = new Date().getFullYear();
+  const anio = currentYearInLima();
   const usado = formatRate(USED_ISC_RATE);
   const { igvRate, ipmRate } = PRICING_CONFIG;
   const diesel = VEHICLE_CATEGORIES.find((c) => c.id === "diesel");

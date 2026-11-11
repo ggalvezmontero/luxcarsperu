@@ -40,7 +40,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Icon, WhatsAppIcon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
-import { PRICING_CONFIG, oldestImportableModelYear } from "@/core/pricing/pricingConfig";
+import { PRICING_CONFIG, currentYearInLima, oldestImportableModelYear } from "@/core/pricing/pricingConfig";
 import { getVehicleCategory, resolveIscRate } from "@/core/pricing/vehicleCategories";
 import type { ImportableTrendingVehicle } from "@/data/trendingVehicles";
 import { LUXCARS_CONFIG } from "@/lib/config";
@@ -104,7 +104,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!datos) return { title: "Modelo no disponible", robots: { index: false, follow: true } };
 
   const v = datos.vehiculo;
-  const evaluacion = cotizarEjemplo(v, new Date().getFullYear());
+  const evaluacion = cotizarEjemplo(v, currentYearInLima());
   const ruta = rutaModelo(v.id);
   const title = `Importar ${v.name} a Perú: precio puesto en Lima`;
   const description =
@@ -144,7 +144,7 @@ export default async function ModeloPage({ params }: Props) {
   if (!datos) notFound();
 
   const { vehiculo: v, otros } = datos;
-  const anioActual = new Date().getFullYear();
+  const anioActual = currentYearInLima();
   const evaluacion = cotizarEjemplo(v, anioActual);
   const ruta = rutaModelo(v.id);
   const urlPagina = `${contact.website}${ruta}`;

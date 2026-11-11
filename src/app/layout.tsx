@@ -45,6 +45,18 @@ const geistMono = Geist_Mono({
 
 const BASE = LUXCARS_CONFIG.contact.website;
 
+/**
+ * Todo el sitio se regenera como mucho una vez al día. Hace falta porque hay
+ * copy que depende de la fecha: la regla de antigüedad de los usados ("en 2026
+ * entran modelos 2025 en adelante") está en el FAQ, y el FAQ va en el JSON-LD
+ * de TODAS las páginas. Sin esto, una página sin `revalidate` propio seguiría
+ * diciendo el año viejo hasta el siguiente despliegue.
+ *
+ * Gana el valor más bajo de cada ruta: la portada y /comprar, que ya se
+ * regeneran cada cinco minutos, no cambian.
+ */
+export const revalidate = 86400;
+
 export const metadata: Metadata = {
   metadataBase: new URL(BASE),
   title: {

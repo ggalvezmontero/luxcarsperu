@@ -21,13 +21,14 @@ import { GUIAS, guiaPorSlug, rutaGuia, tituloGuia } from "@/lib/guias";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { ORGANIZATION_ID, breadcrumbSchema } from "@/lib/structuredData";
 import { cn } from "@/lib/utils";
+import { currentYearInLima } from "@/core/pricing/pricingConfig";
 
 const { contact, brandName } = LUXCARS_CONFIG;
 
 /** `metadata` de una guía. El año del título es el de la última regeneración. */
 export function metadataDeGuia(slug: string): Metadata {
   const guia = guiaPorSlug(slug);
-  const title = tituloGuia(guia, new Date().getFullYear());
+  const title = tituloGuia(guia, currentYearInLima());
   const ogTitle = `${title} | ${brandName}`;
   return {
     title,
@@ -63,7 +64,7 @@ export function GuiaLayout({
   children: ReactNode;
 }) {
   const guia = guiaPorSlug(slug);
-  const titulo = tituloGuia(guia, new Date().getFullYear());
+  const titulo = tituloGuia(guia, currentYearInLima());
   const url = `${contact.website}${rutaGuia(slug)}`;
   const otras = GUIAS.filter((g) => g.slug !== slug);
 
