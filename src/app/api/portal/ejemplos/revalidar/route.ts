@@ -4,7 +4,8 @@
  *
  * El portal lo llama después de guardar un cambio en /portal/ejemplos. La
  * escritura ya ocurrió (desde el navegador, con RLS); esto solo le avisa a
- * Next que la home, /importar y el sitemap quedaron viejos. Se regeneran en la
+ * Next que la home, /importar, las páginas de cada modelo y el sitemap quedaron
+ * viejos. Se regeneran en la
  * siguiente visita: sin esto el cambio tardaría hasta la próxima regeneración
  * programada en verse.
  *
@@ -28,6 +29,9 @@ export async function POST() {
 
   try {
     for (const ruta of RUTAS) revalidatePath(ruta);
+    // Todas las páginas de modelo a la vez: cambia el precio de una y también
+    // la lista de "otros modelos" de las demás.
+    revalidatePath("/importar/[modelo]", "page");
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { rutaModelo, tienePaginaPropia } from "@/lib/importExamples/modelo";
 import { getImportExamples } from "@/lib/importExamples/servidor";
 import { isDatabaseConfigured } from "@/lib/db/client";
 import { getPublishedVehicles } from "@/lib/db/vehicles";
@@ -63,16 +64,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/cookies`, lastModified: ahora, changeFrequency: "yearly", priority: 0.3 },
   ];
 
-  // Cada vehículo destacado entra con su simulación precargada: son las URLs
-  // que capturan búsquedas de modelo concreto ("importar Tesla Cybertruck Perú").
+  // Cada ejemplo que se puede cotizar entra con SU página (`/importar/<id>`):
+  // son las URLs que capturan búsquedas de modelo concreto ("cuánto cuesta
+  // importar una Tundra a Perú"). Antes entraban como `/?simular=<id>`, que es
+  // la portada con un parámetro y canoniza a "/": Google las fundía en una.
   // Salen de la misma lista que pinta la web (la base, o el respaldo del
   // repositorio si la base no responde): nunca lanza.
   const { vehiculos: ejemplos } = await getImportExamples();
-  const vehiculos: MetadataRoute.Sitemap = ejemplos.map((v) => ({
-    url: `${BASE}/?simular=${v.id}`,
+  const vehiculos: MetadataRoute.Sitemap = ejemplos.filter(tienePaginaPropia).map((v) => ({
+    url: `${BASE}${rutaModelo(v.id)}`,
     lastModified: ahora,
     changeFrequency: "weekly" as const,
-    priority: 0.6,
+    priority: 0.8,
   }));
 
   // El stock va AL FINAL: lo de arriba no cambia de orden ni de contenido.

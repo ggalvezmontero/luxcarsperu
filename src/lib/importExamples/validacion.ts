@@ -62,7 +62,7 @@ export const EXAMPLE_VEHICLE_TYPES: readonly VehicleCategoryId[] = [
 ];
 export const EXAMPLE_PLANS: readonly PlanKey[] = ["fast", "standard"];
 
-/** El id es parte de la URL (`/?simular=<id>`): minúsculas, números y guiones. */
+/** El id es parte de la URL (`/importar/<id>` y `/?simular=<id>`): minúsculas, números y guiones. */
 export const EXAMPLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const EXAMPLE_LIMITS = {
