@@ -4,7 +4,9 @@ import { Button } from "@/components/Button";
 import { Icon, WhatsAppIcon } from "@/components/ui/Icon";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { formatNumber } from "@/lib/utils";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { BrandModelPicker } from "@/components/BrandModelPicker";
+import { aniosDesde } from "@/lib/opcionesVehiculo";
 import { PhoneInput } from "@/components/PhoneInput";
 import { errorDeTelefono } from "@/lib/telefono";
 import { GA_EVENTS, trackEvent } from "@/lib/analytics";
@@ -54,15 +56,43 @@ function enlace(campos: Campos) {
 
 const label = "grid gap-1.5 text-sm font-medium text-ink-2";
 
+/**
+ * Envoltorio de los campos de marca y modelo, con el mismo aspecto que el resto
+ * del formulario. Va fuera del componente: `BrandModelPicker` necesita que sea
+ * una función estable o los campos pierden el foco al escribir.
+ */
+function CampoTasacion({ label: texto, htmlFor, children, error }: { label: string; htmlFor: string; children: ReactNode; error?: string }) {
+  return (
+    <div className={label}>
+      <label htmlFor={htmlFor}>{texto}</label>
+      <div>{children}</div>
+      {error ? (
+        <p role="alert" className="text-xs font-normal text-danger">{error}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function FormularioTasacion() {
   const [campos, setCampos] = useState<Campos>(INICIAL);
   const [enviado, setEnviado] = useState(false);
   const [errorTelefono, setErrorTelefono] = useState<string | null>(null);
+  /** Marca o modelo sin elegir: los desplegables no llevan `required` nativo. */
+  const [errorAuto, setErrorAuto] = useState<string | null>(null);
   const set = (k: keyof Campos) => (v: string) => setCampos((p) => ({ ...p, [k]: v }));
   const anioActual = new Date().getFullYear();
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!campos.marca.trim() || !campos.modelo.trim()) {
+      setErrorAuto(!campos.marca.trim() ? "Elige la marca." : "Elige el modelo.");
+      const sinMarca = !campos.marca.trim();
+      (
+        document.getElementById(sinMarca ? "tasacion-brand" : "tasacion-model") ??
+        document.getElementById(sinMarca ? "tasacion-brand-text" : "tasacion-model-text")
+      )?.focus();
+      return;
+    }
     const problema = errorDeTelefono(campos.telefono);
     if (problema) {
       setErrorTelefono(problema);
@@ -82,17 +112,26 @@ export function FormularioTasacion() {
   return (
     <form onSubmit={onSubmit} className="rounded-[22px] border border-line bg-surface p-6 sm:p-8">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className={label} htmlFor="tasacion-marca">
-          Marca
-          <input id="tasacion-marca" required autoComplete="off" placeholder="Porsche, BMW, Toyota…" value={campos.marca} onChange={(e) => set("marca")(e.target.value)} className="field-lux" />
-        </label>
-        <label className={label} htmlFor="tasacion-modelo">
-          Modelo
-          <input id="tasacion-modelo" required autoComplete="off" placeholder="Macan, X5, 4Runner…" value={campos.modelo} onChange={(e) => set("modelo")(e.target.value)} className="field-lux" />
-        </label>
+        <BrandModelPicker
+          idPrefix="tasacion"
+          brand={campos.marca}
+          model={campos.modelo}
+          onChange={(next) => {
+            setCampos((p) => ({ ...p, marca: next.brand, modelo: next.model }));
+            setErrorAuto(null);
+          }}
+          renderField={CampoTasacion}
+          brandError={errorAuto && !campos.marca.trim() ? errorAuto : undefined}
+          modelError={errorAuto && campos.marca.trim() && !campos.modelo.trim() ? errorAuto : undefined}
+        />
         <label className={label} htmlFor="tasacion-anio">
           Año
-          <input id="tasacion-anio" required inputMode="numeric" pattern="[0-9]{4}" maxLength={4} placeholder={String(anioActual - 4)} value={campos.anio} onChange={(e) => set("anio")(e.target.value.replace(/\D/g, "").slice(0, 4))} className="field-lux tabular-nums" />
+          <select id="tasacion-anio" required value={campos.anio} onChange={(e) => set("anio")(e.target.value)} className="field-lux tabular-nums">
+            <option value="">Selecciona el año</option>
+            {aniosDesde(anioActual + 1, 1980).map((anio) => (
+              <option key={anio} value={anio}>{anio}</option>
+            ))}
+          </select>
         </label>
         <label className={label} htmlFor="tasacion-km">
           Kilometraje

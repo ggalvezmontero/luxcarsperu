@@ -20,10 +20,13 @@ import {
   createPurchaseRequest,
 } from "@/lib/cuenta/solicitudes";
 import { PURCHASE_REQUEST_CONDITIONS, type PurchaseRequestCondition } from "@/lib/db/types";
+import { aniosDesde } from "@/lib/opcionesVehiculo";
 import { cn } from "@/lib/utils";
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_MIN = 1980;
+/** Del año modelo siguiente (en EE.UU. se adelanta al calendario) hacia atrás. */
+const ANIOS = aniosDesde(CURRENT_YEAR + 1, YEAR_MIN);
 const YEAR_MAX = 2100;
 const digits = (v: string) => v.replace(/[^0-9]/g, "");
 
@@ -130,10 +133,20 @@ export function SolicitudCompraForm() {
               renderField={Field}
             />
             <Field label="Año desde" htmlFor="sc-anio-min" hint="Opcional">
-              <input id="sc-anio-min" inputMode="numeric" value={yearMin} onChange={(e) => setYearMin(digits(e.target.value).slice(0, 4))} placeholder={String(CURRENT_YEAR - 3)} className="field-lux tabular-nums" />
+              <select id="sc-anio-min" value={yearMin} onChange={(e) => setYearMin(e.target.value)} className="field-lux tabular-nums">
+                <option value="">Cualquiera</option>
+                {ANIOS.map((anio) => (
+                  <option key={anio} value={anio}>{anio}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Año hasta" htmlFor="sc-anio-max" hint="Opcional">
-              <input id="sc-anio-max" inputMode="numeric" value={yearMax} onChange={(e) => setYearMax(digits(e.target.value).slice(0, 4))} placeholder={String(CURRENT_YEAR)} className="field-lux tabular-nums" />
+              <select id="sc-anio-max" value={yearMax} onChange={(e) => setYearMax(e.target.value)} className="field-lux tabular-nums">
+                <option value="">Cualquiera</option>
+                {ANIOS.map((anio) => (
+                  <option key={anio} value={anio}>{anio}</option>
+                ))}
+              </select>
             </Field>
             <div className="sm:col-span-2">
               <span id="sc-cond-label" className="block text-sm text-ink-2">Condición</span>

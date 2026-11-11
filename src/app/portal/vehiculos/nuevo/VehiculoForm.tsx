@@ -65,6 +65,14 @@ import {
 import { checkAdmissibility } from "@/core/pricing/priceCalculator";
 import { IMPORT_COMPLIANCE_REFERENCE } from "@/lib/db/types";
 import type { VehicleCategoryId, VehicleCondition } from "@/lib/db/types";
+import { SelectConOtro } from "@/components/SelectConOtro";
+import {
+  CARROCERIAS,
+  COLORES_EXTERIOR,
+  COLORES_INTERIOR,
+  TRACCIONES,
+  TRANSMISIONES,
+} from "@/lib/opcionesVehiculo";
 
 /* -------------------------------------------------------------------------- */
 /* Estado del formulario                                                      */
@@ -605,13 +613,15 @@ export function VehiculoForm({
           deVin={deVin.anio}
           placeholder={String(anioActual)}
         />
-        <Campo
+        <CampoSelectOtro
           nombre="carroceria"
           etiqueta="Carrocería"
           valor={valores.carroceria}
           onChange={setCampo}
           deVin={deVin.carroceria}
-          placeholder="Coupé"
+          opciones={CARROCERIAS}
+          etiquetaOtro="Otra…"
+          placeholder="Describe la carrocería"
         />
         <Campo
           nombre="placa"
@@ -680,52 +690,58 @@ export function VehiculoForm({
           placeholder="0"
           ayuda="Dato que ninguna API sabe: sale del odómetro o del reporte."
         />
-        <Campo
+        <CampoSelectOtro
           nombre="transmision"
           etiqueta="Transmisión"
           valor={valores.transmision}
           onChange={setCampo}
           deVin={deVin.transmision}
-          placeholder="Automática · 8"
+          opciones={TRANSMISIONES}
+          etiquetaOtro="Otra…"
+          placeholder="Ej. Automática · 8 velocidades"
         />
-        <Campo
+        <CampoSelectOtro
           nombre="traccion"
           etiqueta="Tracción"
           valor={valores.traccion}
           onChange={setCampo}
           deVin={deVin.traccion}
-          placeholder="RWD"
+          opciones={TRACCIONES}
+          etiquetaOtro="Otra…"
+          placeholder="Describe la tracción"
         />
-        <Campo
+        <CampoSelectOtro
           nombre="color_exterior"
           etiqueta="Color exterior"
           valor={valores.color_exterior}
           onChange={setCampo}
-          placeholder="Blanco perlado"
+          opciones={COLORES_EXTERIOR}
+          placeholder="Ej. Blanco perlado"
         />
-        <Campo
+        <CampoSelectOtro
           nombre="color_interior"
           etiqueta="Color interior"
           valor={valores.color_interior}
           onChange={setCampo}
-          placeholder="Negro"
+          opciones={COLORES_INTERIOR}
+          placeholder="Ej. Cuero marrón"
         />
-        <Campo
+        <CampoSelect
           nombre="puertas"
           etiqueta="Puertas"
-          tipo="number"
           valor={valores.puertas}
           onChange={setCampo}
           error={errores.puertas}
           deVin={deVin.puertas}
+          opciones={opcionesNumericas([2, 3, 4, 5], valores.puertas)}
         />
-        <Campo
+        <CampoSelect
           nombre="asientos"
           etiqueta="Asientos"
-          tipo="number"
           valor={valores.asientos}
           onChange={setCampo}
           error={errores.asientos}
+          opciones={opcionesNumericas([2, 4, 5, 6, 7, 8, 9], valores.asientos)}
         />
       </Bloque>
 
@@ -1305,6 +1321,7 @@ function CampoSelect({
   valor,
   onChange,
   opciones,
+  error,
   ayuda,
   deVin,
 }: CampoBase & { opciones: { valor: string; texto: string }[] }) {
@@ -1316,8 +1333,9 @@ function CampoSelect({
         name={nombre}
         value={valor}
         onChange={(evento) => onChange(nombre, evento.target.value)}
-        aria-describedby={describedBy(nombre, undefined, ayuda)}
-        className={`mt-2 ${CLASE_CONTROL}`}
+        aria-invalid={Boolean(error)}
+        aria-describedby={describedBy(nombre, error, ayuda)}
+        className={`mt-2 ${CLASE_CONTROL} ${error ? "border-danger" : ""}`}
       >
         {opciones.map((opcion) => (
           <option key={opcion.valor} value={opcion.valor}>
@@ -1325,6 +1343,61 @@ function CampoSelect({
           </option>
         ))}
       </select>
+      <PieCampo id={idPie(nombre)} error={error} ayuda={ayuda} />
+    </div>
+  );
+}
+
+/**
+ * Opciones de un desplegable numérico (puertas, asientos), con "Sin dato" al
+ * frente. Si la ficha ya trae un número que no está en la lista, se añade: un
+ * desplegable que no puede mostrar el valor guardado lo borraría al guardar.
+ */
+function opcionesNumericas(base: number[], actual: string): { valor: string; texto: string }[] {
+  const numeros = new Set(base);
+  const guardado = Number(actual);
+  if (actual.trim() !== "" && Number.isFinite(guardado)) numeros.add(guardado);
+  return [
+    { valor: "", texto: "Sin dato" },
+    ...[...numeros].sort((a, b) => a - b).map((n) => ({ valor: String(n), texto: String(n) })),
+  ];
+}
+
+/**
+ * Desplegable con opciones frecuentes y salida "Otro…" que abre un campo de
+ * texto. Para datos que casi siempre son uno de pocos valores (carrocería,
+ * transmisión, tracción, color) pero que no se pueden cerrar: lo que rellena el
+ * decodificador de VIN o lo que ya estaba guardado se conserva tal cual.
+ */
+function CampoSelectOtro({
+  nombre,
+  etiqueta,
+  valor,
+  onChange,
+  opciones,
+  ayuda,
+  deVin,
+  placeholder,
+  etiquetaOtro,
+}: CampoBase & { opciones: readonly string[]; etiquetaOtro?: string }) {
+  return (
+    <div>
+      <Etiqueta nombre={nombre} etiqueta={etiqueta} deVin={deVin} />
+      <div className="mt-2">
+        <SelectConOtro
+          id={nombre}
+          name={nombre}
+          value={valor}
+          onChange={(siguiente) => onChange(nombre, siguiente)}
+          opciones={opciones}
+          vacio="Sin dato"
+          etiquetaOtro={etiquetaOtro}
+          placeholderOtro={placeholder}
+          ariaLabelOtro={`${etiqueta}: otra opción`}
+          describedBy={describedBy(nombre, undefined, ayuda)}
+          className={CLASE_CONTROL}
+        />
+      </div>
       <PieCampo id={idPie(nombre)} ayuda={ayuda} />
     </div>
   );

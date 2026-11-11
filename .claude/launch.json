@@ -4,17 +4,43 @@
     {
       "name": "luxcars-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true,
-      "env": { "NEXT_DIST_DIR": ".next-dev" }
+      "env": {
+        "NEXT_DIST_DIR": ".next-dev"
+      }
     },
     {
       "name": "luxcars-prod",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "start", "-p", "3100"],
+      "runtimeArgs": [
+        "next",
+        "start",
+        "-p",
+        "3100"
+      ],
       "port": 3100,
-      "env": { "NEXT_DIST_DIR": ".next-verify" }
+      "env": {
+        "NEXT_DIST_DIR": ".next-verify"
+      }
+    },
+    {
+      "name": "luxcars-verif",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "next",
+        "dev",
+        "-p",
+        "3050"
+      ],
+      "port": 3050,
+      "env": {
+        "NEXT_DIST_DIR": ".next-verif"
+      }
     }
   ]
 }
