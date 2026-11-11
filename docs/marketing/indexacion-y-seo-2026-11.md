@@ -110,6 +110,8 @@ Google corta en unas 10 a 12 solicitudes por día por propiedad. Hoy entraron **
 
 **Enviadas el 10 de noviembre:** `/calculadora`, `/como-funciona`, `/importar/toyota-tundra-trd`, `/importar/ford-bronco-raptor`, `/importar/chevrolet-corvette-c8-stingray`, `/importar/ram-3500-limited`, `/importar/tesla-cybertruck`, `/guias/cuanto-cuesta-importar-un-auto-a-peru`, `/importar/chevrolet-corvette-z06`, `/importar/toyota-tacoma-trd`.
 
+**Rechazadas por cuota el 10 de noviembre** (cuatro intentos, todos con "Quota Exceeded"): la guía de requisitos, `/importar` y la portada dos veces, la última por pedido expreso del dueño de "terminar la indexación". Google no deja pedir más hasta que renueve el cupo; no hay rodeo posible y no se insistió.
+
 **Pendientes para el 11 de noviembre y el 12 (son 15 y la cuota da para unas 10 por día), en este orden:**
 1. `/importar` (título, H1 y texto nuevos, en producción; la solicitud de hoy devolvió "Quota Exceeded")
 2. `/` (título nuevo con "Autos de lujo en Lima" al frente; también "Quota Exceeded" hoy)
