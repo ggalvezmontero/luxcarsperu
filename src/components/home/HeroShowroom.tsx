@@ -46,16 +46,18 @@ export function HeroShowroom() {
       />
       <div className="container-lux relative pb-10 pt-24 sm:pb-14 lg:pb-16">
         <div className="max-w-3xl">
-          <p className="eyebrow">
-            <Icon name="mapPin" size={14} />
-            {LUXCARS_CONFIG.contact.city} · Miami
-          </p>
-          <h1
-            id="hero-title"
-            className="mt-4 text-balance text-[2.75rem] font-semibold leading-[1.02] tracking-tight text-ink sm:text-6xl lg:text-7xl"
-          >
-            Tu próximo auto premium,
-            <span className="block text-silver">sin sorpresas.</span>
+          {/* El h1 abarca la etiqueta y el titular: la etiqueta dice qué es el
+              sitio y dónde ("autos de lujo en Lima, Perú") y el titular es la
+              frase de marca. Se ve igual; Google lee las dos como el título. */}
+          <h1 id="hero-title">
+            <span className="eyebrow">
+              <Icon name="mapPin" size={14} />
+              Autos de lujo en {LUXCARS_CONFIG.contact.city}, Perú
+            </span>{" "}
+            <span className="mt-4 block text-balance text-[2.75rem] font-semibold leading-[1.02] tracking-tight text-ink sm:text-6xl lg:text-7xl">
+              Tu próximo auto premium,{" "}
+              <span className="block text-silver">sin sorpresas.</span>
+            </span>
           </h1>
           <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-ink-2 sm:text-lg">
             Cómpralo hoy de nuestro stock en Lima o lo importamos a pedido

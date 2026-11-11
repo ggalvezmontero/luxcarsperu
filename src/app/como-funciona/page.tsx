@@ -83,9 +83,13 @@ export default function ComoFuncionaPage() {
           />
           <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-void/75 via-void/40 to-void" />
           <div className="container-lux relative">
-            <p className="eyebrow">Cómo funciona</p>
-            <h1 className="mt-3 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-              De Miami a tu cochera en seis pasos
+            {/* El h1 abarca la etiqueta y el titular: la etiqueta lleva la búsqueda y
+                el titular, la frase de marca. Se ve igual; Google lee las dos. */}
+            <h1>
+              <span className="eyebrow">Cómo importar un auto a Perú</span>{" "}
+              <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
+                De Miami a tu cochera en seis pasos
+              </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
               Cada hito queda documentado y lo recibes por WhatsApp. Sin sorpresas al final.

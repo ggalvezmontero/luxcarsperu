@@ -218,12 +218,17 @@ export default function EscaneoPage() {
           <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-void/90 via-void/80 to-void" />
           <div className="container-lux relative grid items-center gap-12 lg:grid-cols-12 lg:gap-16">
             <div className="lg:col-span-7">
-              <p className="eyebrow">Escaneo pre-compra · Lima</p>
-              <h1 className="mt-3 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-                Escanea el auto usado antes de comprarlo
+              {/* El h1 abarca la etiqueta y el titular: la etiqueta lleva la búsqueda y
+                  el titular, la frase de marca. Se ve igual; Google lee las dos. */}
+              <h1>
+                <span className="eyebrow">Escaneo pre-compra de autos usados en Lima</span>{" "}
+                <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
+                  Escanea el auto usado antes de comprarlo
+                </span>
               </h1>
               <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
-                Vamos a donde está el auto con un escáner profesional. En una hora sabes lo que el aviso no dice:
+                Vamos a donde está el auto con un escáner (scanner) automotriz profesional. Es una inspección
+                precompra a domicilio: en una hora sabes lo que el aviso no dice:
                 fallas guardadas, códigos borrados y kilometraje real.
               </p>
               <p className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">

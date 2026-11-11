@@ -104,9 +104,13 @@ export default function ImportarPage() {
             className="pointer-events-none absolute inset-x-0 top-0 z-0 h-48 bg-gradient-to-b from-void/80 to-transparent"
           />
           <div className="container-lux relative pb-12 pt-20 sm:pb-16">
-            <p className="eyebrow">Importación a pedido</p>
-            <h1 className="mt-3 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-              El auto exacto que quieres, puesto en Lima
+            {/* El h1 abarca la etiqueta y el titular: la etiqueta lleva la búsqueda y
+                el titular, la frase de marca. Se ve igual; Google lee las dos. */}
+            <h1>
+              <span className="eyebrow">Importar auto de Estados Unidos a Perú</span>{" "}
+              <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
+                El auto exacto que quieres, puesto en Lima
+              </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
               Lo buscamos en Estados Unidos, lo inspeccionamos antes de pagar y lo entregamos nacionalizado. Sin letra chica.
