@@ -8,6 +8,7 @@ import { Section, SectionHeader } from "@/components/ui/Section";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { FormularioTasacion } from "./FormularioTasacion";
+import { BreadcrumbJsonLd } from "@/components/BreadcrumbJsonLd";
 
 /* SEO (2026-11-10, pedido del dueño): la página responde a "vender mi auto en
    Lima" y sus variantes ("vender carro usado", "vender auto de lujo",
@@ -64,6 +65,7 @@ const PASOS: { icon: IconName; title: string; text: string }[] = [
 export default function VenderPage() {
   return (
     <div className="flex min-h-screen flex-col">
+      <BreadcrumbJsonLd items={[{ nombre: "Vender", ruta: "/vender" }]} />
       <Navbar />
       <main id="contenido" className="w-full flex-1">
         {/* Portada */}

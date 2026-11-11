@@ -10,6 +10,7 @@ import { LUXCARS_CONFIG } from "@/lib/config";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { getStockForIsr } from "@/lib/stock";
 import { StockExplorer } from "./StockExplorer";
+import { BreadcrumbJsonLd } from "@/components/BreadcrumbJsonLd";
 
 /* SEO (2026-11-10, pedido del dueño): la página responde a "comprar autos de
    lujo en Lima" y sus variantes ("carros de lujo", "autos de alta gama",
@@ -61,6 +62,7 @@ export default async function ComprarPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <BreadcrumbJsonLd items={[{ nombre: "Comprar", ruta: "/comprar" }]} />
       <Navbar />
       <main id="contenido" className="w-full flex-1">
         {/* Portada con foto de Lima (Licencia Unsplash; procedencia en docs/FOTOS.md) */}

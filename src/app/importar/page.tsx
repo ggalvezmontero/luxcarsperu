@@ -16,6 +16,7 @@ import { MARCAS_IMPORTABLES, rutaMarca } from "@/lib/importExamples/marca";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { ORGANIZATION_ID } from "@/lib/structuredData";
 import { formatCurrency } from "@/lib/utils";
+import { BreadcrumbJsonLd } from "@/components/BreadcrumbJsonLd";
 
 const { contact, brandName } = LUXCARS_CONFIG;
 const antiguedad = LUXCARS_CONFIG.hardFacts.find(
@@ -174,6 +175,7 @@ export default function ImportarPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <BreadcrumbJsonLd items={[{ nombre: "Importar", ruta: "/importar" }]} />
       <Navbar />
       <main id="contenido" className="w-full flex-1">
         {/* Portada con foto */}

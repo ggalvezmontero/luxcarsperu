@@ -6,6 +6,7 @@ import { Section } from "@/components/ui/Section";
 import type { Metadata } from "next";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
+import { BreadcrumbJsonLd } from "@/components/BreadcrumbJsonLd";
 
 // El <title> sale de la plantilla del layout ("%s | marca"); Open Graph y
 // Twitter repiten exactamente ese texto y la misma descripción. Sin `openGraph`
@@ -32,6 +33,7 @@ export const metadata: Metadata = {
 export default function FAQPage() {
   return (
     <div className="flex min-h-screen flex-col">
+      <BreadcrumbJsonLd items={[{ nombre: "Preguntas frecuentes", ruta: "/faq" }]} />
       <Navbar />
       <main id="contenido" className="w-full flex-1 pt-[var(--lux-nav-h)]">
         <FAQSection titulo="Todas las preguntas frecuentes" tituloComo="h1" />

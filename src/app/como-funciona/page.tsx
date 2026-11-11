@@ -12,6 +12,7 @@ import { Section, SectionHeader } from "@/components/ui/Section";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { FOTOS_PROCESO, type FotoProceso } from "@/lib/fotosProceso";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
+import { BreadcrumbJsonLd } from "@/components/BreadcrumbJsonLd";
 
 // El <title> sale de la plantilla del layout ("%s | marca"); Open Graph y
 // Twitter repiten exactamente ese texto y la misma descripción. Sin `openGraph`
@@ -70,6 +71,7 @@ export default function ComoFuncionaPage() {
   const { deliveryWindows } = LUXCARS_CONFIG;
   return (
     <div className="flex min-h-screen flex-col">
+      <BreadcrumbJsonLd items={[{ nombre: "Cómo funciona", ruta: "/como-funciona" }]} />
       <Navbar />
       <main id="contenido" className="w-full flex-1">
         <section className="relative isolate w-full overflow-hidden bg-void pt-[calc(var(--lux-nav-h)+3rem)] pb-12 sm:pt-[calc(var(--lux-nav-h)+4rem)] sm:pb-16">
