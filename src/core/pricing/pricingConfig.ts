@@ -123,10 +123,10 @@ export const PRICING_CONFIG = {
    */
   customsCostsUsd: 2300,
   /**
-   * COMISIÓN DE LUXCARS: 10.5% DEL TOTAL, no del precio del vehículo (decisión
+   * COMISIÓN DE LUXCARS: 10% DEL TOTAL, no del precio del vehículo (decisión
    * del dueño, 2026-11-11). El día anterior había quedado en 12% del precio de
    * compra en EE.UU.; el dueño aclaró que la base es el precio total y, ya con
-   * esa base, bajó la tasa de 12% a 10.5%.
+   * esa base, bajó la tasa ese mismo día: de 12% a 10.5% y luego a 10%.
    *
    * "El total" es el costo del auto puesto en Lima antes de la comisión:
    * CIF + tributos + costos de aduana. El recargo de Fast Track queda FUERA de
@@ -141,7 +141,7 @@ export const PRICING_CONFIG = {
    *
    * La inspección va dentro de la comisión (antes eran 10% + 5% aparte).
    */
-  brokerFeeRate: 0.105,
+  brokerFeeRate: 0.1,
   brokerFeeBase: "sobre-costo" as "sobre-costo" | "sobre-precio-final",
   /**
    * FAST TRACK CUESTA USD 1,200 MÁS QUE ESTÁNDAR, FIJOS (decisión del dueño,
