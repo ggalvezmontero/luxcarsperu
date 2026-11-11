@@ -9,19 +9,34 @@ import { Navbar } from "@/components/Navbar";
 import { IMPORT_STEPS, StepsRow } from "@/components/home/StepsSection";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
+import Link from "next/link";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { rutaGuia } from "@/lib/guias";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { ORGANIZATION_ID } from "@/lib/structuredData";
+import { formatCurrency } from "@/lib/utils";
 
 const { contact, brandName } = LUXCARS_CONFIG;
 const antiguedad = LUXCARS_CONFIG.hardFacts.find(
   (fact) => fact.id === "antiguedad",
 );
 
+/* ---------------------------------------------------------------------------
+   SEO (2026-11-10, pedido del dueño): esta página responde a la búsqueda
+   "importación de autos a pedido" y sus variantes ("importar auto/carro de
+   Estados Unidos/USA/Miami a Perú", "traer un auto de Estados Unidos",
+   "camioneta", "a pedido", "puesto en Lima"). La frase principal va al frente
+   del título y del h1; las demás se reparten en la descripción, el primer
+   párrafo y las preguntas frecuentes de abajo. Una página solo puede tener un
+   título, así que las intenciones distintas tienen página propia: /calculadora
+   (costo), /guias/* (requisitos, tributos) e /importar/<modelo> (modelos).
+   ------------------------------------------------------------------------- */
+const TITULO_SEO = "Importación de autos a pedido desde Estados Unidos a Perú";
+
 // Mismo texto para Open Graph y Twitter Card: una sola fuente, sin copy nuevo.
-const OG_TITLE = `Importar auto de Estados Unidos a Perú | ${brandName}`;
+const OG_TITLE = `${TITULO_SEO} | ${brandName}`;
 const OG_DESCRIPTION =
-  "Normativa clara, tributos explicados y una calculadora pública para saber el costo real.";
+  "Elige el auto y nosotros lo importamos: normativa clara, tributos explicados y calculadora pública del costo puesto en Lima.";
 
 /**
  * Los ejemplos de "más pedidos" salen de la base y se editan en el portal. Al
@@ -32,9 +47,9 @@ const OG_DESCRIPTION =
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
-  title: "Importar auto de Estados Unidos a Perú",
+  title: TITULO_SEO,
   description:
-    "Importa tu auto desde EE.UU. a Perú con LuxCars: qué permite la ley, qué tributos se pagan y cuánto cuesta puesto en Lima. Calculadora pública.",
+    "Importación de autos a pedido desde Estados Unidos a Perú: elige el auto o camioneta, lo compramos, inspeccionamos, nacionalizamos y entregamos en Lima con placas.",
   alternates: { canonical: "/importar" },
   openGraph: {
     ...OG_DEFAULTS,
@@ -62,6 +77,77 @@ const TRIBUTOS: { cifra: string; nombre: string; base: string }[] = [
   { cifra: "40%", nombre: "ISC usados", base: "Sobre CIF + ad valorem. Nuevos: 0–20% según motor." },
   { cifra: "18%", nombre: "IGV + IPM", base: "Sobre CIF + ad valorem + ISC." },
   { cifra: "3.5–10%", nombre: "Percepción", base: "Adelanto del IGV. Se recupera como crédito fiscal." },
+];
+
+/**
+ * Preguntas con las palabras exactas con las que la gente busca este servicio.
+ * Sin FAQPage propio: el layout raíz ya emite uno y dos en la misma página
+ * confunden a Google. Las cifras salen de la configuración, no van a mano.
+ */
+const minimo = formatCurrency(LUXCARS_CONFIG.services.minimumVehiclePrice);
+const PREGUNTAS: { pregunta: string; respuesta: React.ReactNode }[] = [
+  {
+    pregunta: "¿Cómo funciona la importación de autos a pedido?",
+    respuesta: (
+      <>
+        Nos dices qué auto o camioneta quieres (marca, modelo, año y presupuesto) y lo buscamos en
+        Estados Unidos: en Miami o en cualquier otro estado. Lo inspeccionamos antes de pagar, lo
+        embarcamos al Callao, lo nacionalizamos ante SUNAT y te lo entregamos en Lima con placas.
+        Todo el proceso, paso a paso, está en{" "}
+        <Link href="/como-funciona" className="font-medium text-ink underline underline-offset-4">
+          cómo funciona
+        </Link>
+        .
+      </>
+    ),
+  },
+  {
+    pregunta: "¿Cuánto cuesta importar un auto de Estados Unidos a Perú?",
+    respuesta: (
+      <>
+        Depende del precio del auto en EE.UU., de si es nuevo o usado y del tipo de motor: sobre el
+        valor CIF se pagan ad valorem, ISC, IGV e IPM, más flete, seguro y nuestros honorarios. La{" "}
+        <Link href="/calculadora" className="font-medium text-ink underline underline-offset-4">
+          calculadora de importación
+        </Link>{" "}
+        te da la cifra puesta en Lima al instante, y la{" "}
+        <Link href={rutaGuia("cuanto-cuesta-importar-un-auto-a-peru")} className="font-medium text-ink underline underline-offset-4">
+          guía de costos
+        </Link>{" "}
+        explica cada tributo. Trabajamos importaciones desde {minimo}.
+      </>
+    ),
+  },
+  {
+    pregunta: "¿Qué autos se pueden importar a Perú desde USA?",
+    respuesta: (
+      <>
+        Nuevos sin restricción de marca, y usados con hasta {antiguedad?.value ?? "2 años"} de
+        antigüedad contados desde el año modelo, a gasolina, híbridos o eléctricos, con timón a la
+        izquierda de fábrica. Los usados diésel no se pueden importar. Los requisitos completos
+        están en la{" "}
+        <Link href={rutaGuia("requisitos-para-importar-un-auto-a-peru")} className="font-medium text-ink underline underline-offset-4">
+          guía de requisitos
+        </Link>
+        .
+      </>
+    ),
+  },
+  {
+    pregunta: "¿Conviene traer un carro de Estados Unidos o comprarlo en Lima?",
+    respuesta: (
+      <>
+        Conviene cuando el modelo no se vende en Perú, cuando la versión o el equipamiento que
+        quieres no llega al país, o cuando la diferencia de precio cubre con holgura los tributos
+        y la logística. Si el auto se consigue en Lima por menos, te lo decimos antes de cotizar;
+        también puedes ver nuestro{" "}
+        <Link href="/comprar" className="font-medium text-ink underline underline-offset-4">
+          stock disponible en Lima
+        </Link>
+        .
+      </>
+    ),
+  },
 ];
 
 const HONESTIDAD = [
@@ -108,13 +194,13 @@ export default function ImportarPage() {
             {/* El h1 abarca la etiqueta y el titular: la etiqueta lleva la búsqueda y
                 el titular, la frase de marca. Se ve igual; Google lee las dos. */}
             <h1>
-              <span className="eyebrow">Importar auto de Estados Unidos a Perú</span>{" "}
+              <span className="eyebrow">{TITULO_SEO}</span>{" "}
               <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
                 El auto exacto que quieres, puesto en Lima
               </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
-              Lo buscamos en Estados Unidos, lo inspeccionamos antes de pagar y lo entregamos nacionalizado. Sin letra chica.
+              Importamos a pedido el auto o la camioneta que elijas, nuevo o seminuevo, desde Miami o cualquier estado de EE.UU.: lo buscamos, lo inspeccionamos antes de pagar y lo entregamos en Lima nacionalizado y con placas. Sin letra chica.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button href="/calculadora" variant="accent" size="lg" data-ga-cta="importar_portada_calculadora">
@@ -192,11 +278,32 @@ export default function ImportarPage() {
           </ul>
         </Section>
 
-        <MostSoughtVehiclesSection tone="bg" destino="pagina" />
+        <Section tone="bg">
+          <SectionHeader
+            eyebrow="Preguntas frecuentes"
+            title="Lo que más nos preguntan sobre importar a pedido"
+            description="Respuestas cortas; el detalle está en las guías y en la calculadora."
+          />
+          <div className="mt-10 divide-y divide-line rounded-[22px] border border-line bg-surface">
+            {PREGUNTAS.map((item) => (
+              <details key={item.pregunta} className="group px-5 sm:px-6">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-left text-base font-medium text-ink [&::-webkit-details-marker]:hidden">
+                  <h3 className="text-base font-medium">{item.pregunta}</h3>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-3 transition-transform duration-300 group-open:rotate-45 group-open:border-silver group-open:text-ink">
+                    <Icon name="close" size={16} className="rotate-45" />
+                  </span>
+                </summary>
+                <p className="pb-5 text-sm leading-relaxed text-ink-3">{item.respuesta}</p>
+              </details>
+            ))}
+          </div>
+        </Section>
 
-        <GuiasDestacadas tone="void" />
+        <MostSoughtVehiclesSection tone="void" destino="pagina" />
 
-        <Section tone="bg" padding="tight">
+        <GuiasDestacadas tone="bg" />
+
+        <Section tone="void" padding="tight">
           <CtaBand />
         </Section>
       </main>
