@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { GuiaFotografia } from "@/components/portal/GuiaFotografia";
 import { SubidorFotos } from "@/components/portal/SubidorFotos";
@@ -44,6 +45,15 @@ export default async function FotosVehiculoPage({
       </p>
 
       <SubidorFotos vehiculoId={id} />
+
+      <p className="flex flex-wrap gap-x-5 gap-y-2 text-xs uppercase tracking-[0.14em] text-silver">
+        <Link href={`/portal/vehiculos/${id}/editar`} className="underline-offset-4 hover:text-silver-bright hover:underline">
+          Editar ficha
+        </Link>
+        <Link href="/portal/vehiculos" className="underline-offset-4 hover:text-silver-bright hover:underline">
+          Volver al stock
+        </Link>
+      </p>
 
       <GuiaFotografia />
 

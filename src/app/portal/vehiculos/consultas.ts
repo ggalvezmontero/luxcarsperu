@@ -434,6 +434,191 @@ export async function insertarVehiculo(
   }
 }
 
+/* ========================================================================== */
+/* Edición de la ficha completa                                               */
+/* ========================================================================== */
+/*
+ * Hasta el 2026-11-11 el portal creaba un vehículo y luego solo podía moverlo
+ * por su ciclo de vida (publicar, estado, precio). Un error en el kilometraje,
+ * la versión o la descripción no tenía arreglo sin tocar la base. Estas tres
+ * funciones cierran ese hueco: leer la ficha completa, guardarla con el MISMO
+ * formulario del alta, y avisar a la web.
+ */
+
+/** Columnas que edita el formulario del alta (ver `nuevo/validacion.ts`). */
+const FICHA_COLUMNS = [
+  "id",
+  "fuente",
+  "fuente_referencia",
+  "vin",
+  "placa",
+  "marca",
+  "modelo",
+  "version",
+  "anio",
+  "carroceria",
+  "categoria",
+  "condicion",
+  "procedencia",
+  "cilindrada_cc",
+  "transmision",
+  "traccion",
+  "color_exterior",
+  "color_interior",
+  "puertas",
+  "asientos",
+  "kilometraje_km",
+  "precio_compra",
+  "moneda_compra",
+  "fecha_compra",
+  "precio_venta",
+  "moneda_venta",
+  "precio_negociable",
+  "vendido_en",
+  "estado",
+  "ubicacion",
+  "publicado",
+  "slug",
+  "titular",
+  "descripcion",
+  "destacados",
+  "notas_internas",
+].join(", ");
+
+/** Valores de la ficha como los espera el formulario: todo texto, "" = vacío. */
+export type ValoresFicha = Record<string, string>;
+
+export type FichaEditable = {
+  id: string;
+  titulo: string;
+  slug: string | null;
+  publicado: boolean;
+  negociable: boolean;
+  valores: ValoresFicha;
+};
+
+export type ResultadoFicha =
+  | { ok: true; ficha: FichaEditable }
+  | { ok: false; motivo: "sin-permiso" | "no-encontrado" | "error"; mensaje: string };
+
+/** Postgres → texto del formulario. Las listas van una por línea. */
+function textoDeFicha(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.map((v) => String(v)).join("\n");
+  if (typeof value === "boolean") return value ? "true" : "false";
+  const texto = String(value);
+  // numeric(12,2) llega como "31000.00": el formulario muestra 31000.
+  return /^-?\d+\.0+$/.test(texto) ? texto.replace(/\.0+$/, "") : texto;
+}
+
+/** Ficha completa de un vehículo, para editarla. Nunca lanza. */
+export async function leerFichaVehiculo(
+  client: PortalClient,
+  id: string,
+): Promise<ResultadoFicha> {
+  try {
+    const { data, error } = await client
+      .from(TABLE)
+      .select(FICHA_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      const rechazo = traducirRechazo(error);
+      return {
+        ok: false,
+        motivo: rechazo.motivo === "sin-permiso" ? "sin-permiso" : "error",
+        mensaje: rechazo.mensaje,
+      };
+    }
+    if (!data) {
+      return {
+        ok: false,
+        motivo: "no-encontrado",
+        mensaje: "No existe ese vehículo, o tu sesión no puede verlo.",
+      };
+    }
+
+    const row = data as RawRow;
+    const valores: ValoresFicha = {};
+    for (const [columna, valor] of Object.entries(row)) {
+      if (columna === "id" || columna === "publicado" || columna === "precio_negociable") continue;
+      valores[columna] = textoDeFicha(valor);
+    }
+    const resumen = mapRow(row);
+    return {
+      ok: true,
+      ficha: {
+        id: String(row.id),
+        titulo: resumen.title,
+        slug: resumen.slug,
+        publicado: row.publicado === true,
+        negociable: row.precio_negociable !== false,
+        valores,
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      motivo: "error",
+      mensaje: `Error inesperado al leer la ficha: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
+  }
+}
+
+/**
+ * Guarda la ficha completa (la misma fila que produce `validarVehiculo`) sobre
+ * un vehículo existente. Devuelve lo mismo que el alta para que el formulario
+ * trate los dos caminos igual. Nunca lanza.
+ */
+export async function guardarFichaVehiculo(
+  client: PortalClient,
+  id: string,
+  fila: NuevoVehiculoRow,
+): Promise<ResultadoAlta> {
+  const resultado = await actualizarVehiculo(client, id, fila, "Cambios guardados.");
+  if (resultado.ok) {
+    return { ok: true, id: resultado.vehiculo.id, slug: resultado.vehiculo.slug };
+  }
+  if (resultado.motivo === "duplicado") {
+    return {
+      ok: false,
+      motivo: "duplicado",
+      campo: resultado.campo === "slug" ? "slug" : "vin",
+      mensaje: resultado.mensaje,
+    };
+  }
+  if (resultado.motivo === "sin-permiso") {
+    return { ok: false, motivo: "sin-permiso", mensaje: resultado.mensaje };
+  }
+  return { ok: false, motivo: "error", mensaje: resultado.mensaje };
+}
+
+/**
+ * Pide a la web que regenere la portada, /comprar, la ficha del auto y el
+ * sitemap (ver `src/app/api/portal/vehiculos/revalidar`). Si falla, lo
+ * guardado sigue guardado: la web se pone al día sola cuando vence su caché.
+ */
+export async function avisarWebVehiculo(vehiculo: {
+  id: string;
+  slug: string | null;
+}): Promise<boolean> {
+  try {
+    const respuesta = await fetch("/api/portal/vehiculos/revalidar", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: vehiculo.id, slug: vehiculo.slug }),
+    });
+    return respuesta.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** El UNIQUE que chocó es el del slug (`vehicles_slug_key`) y no el del VIN. */
 function esChoqueDeSlug(error: { message: string; details?: string | null }): boolean {
   return /slug/i.test(`${error.message} ${error.details ?? ""}`);

@@ -23,6 +23,7 @@ import { useState } from "react";
 import type { PortalClient } from "@/lib/portal/portalClient";
 import type { Currency, VehicleStatus } from "@/lib/db/types";
 import {
+  avisarWebVehiculo,
   cambiarEstadoVehiculo,
   cambiarPrecioVehiculo,
   despublicarVehiculo,
@@ -104,6 +105,9 @@ export function AccionesVehiculo({
     setOcupado(false);
     if (resultado.ok) {
       onActualizado(resultado.vehiculo);
+      // Publicar, despublicar, estado o precio: la web lo refleja en segundos
+      // en vez de esperar su regeneración periódica.
+      void avisarWebVehiculo(resultado.vehiculo);
       setModo("nada");
       setPedir({ precio: false, slug: false });
       setAviso({ ok: true, texto: resultado.mensaje });

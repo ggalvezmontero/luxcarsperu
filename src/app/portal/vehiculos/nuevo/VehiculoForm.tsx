@@ -35,7 +35,12 @@ import {
   usePortalSession,
   type PortalSessionStatus,
 } from "@/components/portal/portalSession";
-import { insertarVehiculo } from "../consultas";
+import {
+  avisarWebVehiculo,
+  guardarFichaVehiculo,
+  insertarVehiculo,
+  type FichaEditable,
+} from "../consultas";
 import { validarVehiculo, type ErroresCampo } from "./validacion";
 import { getPortalAuthMissingEnv } from "@/lib/portal/portalClient";
 import {
@@ -119,6 +124,20 @@ type Campos = typeof VALORES_INICIALES;
 type NombreCampo = keyof Campos;
 
 /**
+ * De la ficha leída de la base se toman SOLO las columnas que el formulario
+ * conoce, en el orden de `VALORES_INICIALES`. Una columna nueva en la tabla
+ * no aparece aquí hasta que el formulario la tenga.
+ */
+function recortarAValores(valores: Record<string, string>): Partial<Campos> {
+  const recorte: Partial<Campos> = {};
+  for (const nombre of Object.keys(VALORES_INICIALES) as NombreCampo[]) {
+    const valor = valores[nombre];
+    if (typeof valor === "string" && valor !== "") recorte[nombre] = valor;
+  }
+  return recorte;
+}
+
+/**
  * Valor de cada campo + qué campos puso el decodificador y siguen intactos.
  * Van juntos en un solo estado para que nunca puedan discrepar.
  */
@@ -153,7 +172,19 @@ type EstadoVin =
 
 /* -------------------------------------------------------------------------- */
 
-export function VehiculoForm({ anioActual }: { anioActual: number }) {
+/**
+ * Un solo formulario para el alta y la edición. Con `edicion` (la ficha leída
+ * por `leerFichaVehiculo`) el formulario arranca con esos valores, guarda con
+ * UPDATE en vez de INSERT y "Vaciar" pasa a ser "Deshacer cambios". Así el
+ * alta y la edición no pueden divergir: mismos campos, misma validación.
+ */
+export function VehiculoForm({
+  anioActual,
+  edicion,
+}: {
+  anioActual: number;
+  edicion?: FichaEditable;
+}) {
   /**
    * La sesión del equipo es la que guarda. NO se usa `DATABASE_URL` desde el
    * servidor: esa llave salta RLS, y una acción de servidor sin autenticar
@@ -172,15 +203,20 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
    * instante. Con un único `setForm` funcional, ambas cosas se calculan sobre
    * datos frescos y no hay forma de que discrepen.
    */
+  const valoresIniciales: Campos = edicion
+    ? { ...VALORES_INICIALES, ...recortarAValores(edicion.valores) }
+    : VALORES_INICIALES;
   const [form, setForm] = useState<EstadoForm>({
-    valores: VALORES_INICIALES,
+    valores: valoresIniciales,
     deVin: {},
   });
   const { valores, deVin } = form;
 
-  const [negociable, setNegociable] = useState(true);
-  const [publicado, setPublicado] = useState(false);
-  const [vinEstado, setVinEstado] = useState<EstadoVin>({ fase: "vacio" });
+  const [negociable, setNegociable] = useState(edicion ? edicion.negociable : true);
+  const [publicado, setPublicado] = useState(edicion ? edicion.publicado : false);
+  const [vinEstado, setVinEstado] = useState<EstadoVin>(
+    valoresIniciales.vin ? { fase: "listo" } : { fase: "vacio" },
+  );
   /**
    * Id del alta cuyo panel de éxito ya se cerró ("Cargar otro"). Se guarda el
    * id y no un booleano para no necesitar un efecto que lo reinicie: el panel
@@ -188,8 +224,10 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
    */
   const [exitoDescartado, setExitoDescartado] = useState<string | null>(null);
 
-  /** Evita decodificar dos veces el mismo VIN al volver a enfocar el campo. */
-  const ultimoConsultado = useRef<string>("");
+  /** Evita decodificar dos veces el mismo VIN al volver a enfocar el campo.
+      Al editar arranca con el VIN guardado: no se vuelve a consultar NHTSA
+      (pisaría lo que el equipo corrigió a mano). */
+  const ultimoConsultado = useRef<string>(valoresIniciales.vin);
 
   const errores: ErroresCampo =
     envio.fase === "invalido" ? envio.errores : {};
@@ -229,7 +267,9 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
     }
 
     setEnvio({ fase: "guardando" });
-    const resultado = await insertarVehiculo(client, validacion.fila);
+    const resultado = edicion
+      ? await guardarFichaVehiculo(client, edicion.id, validacion.fila)
+      : await insertarVehiculo(client, validacion.fila);
 
     if (!resultado.ok) {
       if (resultado.motivo === "duplicado") {
@@ -244,6 +284,15 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
       }
       setEnvio({ fase: "error", mensaje: resultado.mensaje });
       return;
+    }
+
+    // La web se entera en segundos en vez de esperar su regeneración
+    // periódica. Si el slug cambió, también se regenera la URL anterior.
+    if (edicion || validacion.publicado) {
+      void avisarWebVehiculo({ id: resultado.id, slug: resultado.slug });
+      if (edicion?.slug && edicion.slug !== resultado.slug) {
+        void avisarWebVehiculo({ id: resultado.id, slug: edicion.slug });
+      }
     }
 
     setEnvio({
@@ -370,13 +419,14 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
     if (ultimoConsultado.current !== vin) void decodificar(vin);
   }
 
+  /** Alta: vacía todo. Edición: vuelve a lo guardado ("Deshacer cambios"). */
   function limpiarTodo() {
-    setForm({ valores: VALORES_INICIALES, deVin: {} });
-    setVinEstado({ fase: "vacio" });
-    setNegociable(true);
-    setPublicado(false);
+    setForm({ valores: valoresIniciales, deVin: {} });
+    setVinEstado(valoresIniciales.vin ? { fase: "listo" } : { fase: "vacio" });
+    setNegociable(edicion ? edicion.negociable : true);
+    setPublicado(edicion ? edicion.publicado : false);
     setEnvio({ fase: "inicial" });
-    ultimoConsultado.current = "";
+    ultimoConsultado.current = valoresIniciales.vin;
   }
 
   /* --- Avisos normativos -------------------------------------------------- */
@@ -411,7 +461,15 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
         titulo={alta.titulo}
         slug={alta.slug}
         publicado={alta.publicado}
+        modo={edicion ? "edicion" : "alta"}
         onOtro={() => {
+          if (edicion) {
+            // Seguir editando: los valores siguen en el formulario. No se
+            // marca el id como descartado, porque el siguiente guardado
+            // tendría el mismo id y su panel no aparecería.
+            setEnvio({ fase: "inicial" });
+            return;
+          }
           setExitoDescartado(alta.id);
           limpiarTodo();
         }}
@@ -829,7 +887,7 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
               className="mt-0.5 size-4 accent-silver"
             />
             <span>
-              Publicar en la web ahora
+              {edicion ? "Publicado en la web" : "Publicar en la web ahora"}
               <span className="block text-xs text-ink-4">
                 Necesita precio de venta y URL. Puedes cargarlo sin publicar,
                 subir las fotos y publicarlo después.
@@ -870,7 +928,7 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
             onClick={limpiarTodo}
             className="text-sm text-ink-3 transition-colors hover:text-ink"
           >
-            Vaciar formulario
+            {edicion ? "Deshacer cambios" : "Vaciar formulario"}
           </button>
         </div>
 
@@ -880,7 +938,11 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
           disabled={envio.fase === "guardando"}
           className="inline-flex min-h-12 items-center justify-center rounded-full bg-ink px-8 text-sm font-medium uppercase tracking-[0.16em] text-void transition-colors hover:bg-silver-bright disabled:pointer-events-none disabled:opacity-50"
         >
-          {envio.fase === "guardando" ? "Guardando…" : "Guardar vehículo"}
+          {envio.fase === "guardando"
+            ? "Guardando…"
+            : edicion
+              ? "Guardar cambios"
+              : "Guardar vehículo"}
         </button>
       </div>
     </form>
@@ -1442,25 +1504,32 @@ function PanelExito({
   titulo,
   slug,
   publicado,
+  modo,
   onOtro,
 }: {
   id: string;
   titulo: string;
   slug: string | null;
   publicado: boolean;
+  modo: "alta" | "edicion";
   onOtro: () => void;
 }) {
+  const esEdicion = modo === "edicion";
   return (
     <div className="mt-10 rounded-lux-lg border border-line-strong bg-surface p-8">
       <p className="text-xs uppercase tracking-[0.2em] text-silver">
-        Vehículo guardado
+        {esEdicion ? "Cambios guardados" : "Vehículo guardado"}
       </p>
       <h2 className="mt-3 text-2xl font-medium text-ink">{titulo}</h2>
 
       <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-2">
-        {publicado
-          ? "Ya está publicado en la web. Súbele fotos cuanto antes: una ficha sin fotos vende mucho menos que una con seis."
-          : "Quedó como borrador: solo se ve en este portal. Publícalo cuando tengas las fotos y el precio definitivo."}
+        {esEdicion
+          ? publicado
+            ? "La ficha pública se actualiza en unos segundos."
+            : "Sigue como borrador: solo se ve en este portal."
+          : publicado
+            ? "Ya está publicado en la web. Súbele fotos cuanto antes: una ficha sin fotos vende mucho menos que una con seis."
+            : "Quedó como borrador: solo se ve en este portal. Publícalo cuando tengas las fotos y el precio definitivo."}
       </p>
 
       <div className="mt-8 flex flex-wrap gap-3">
@@ -1478,7 +1547,7 @@ function PanelExito({
           onClick={onOtro}
           className="inline-flex min-h-12 items-center rounded-full border border-line-strong px-7 text-xs uppercase tracking-[0.16em] text-ink transition-colors hover:border-silver"
         >
-          Cargar otro
+          {esEdicion ? "Seguir editando" : "Cargar otro"}
         </button>
         <Link
           href="/portal/vehiculos"

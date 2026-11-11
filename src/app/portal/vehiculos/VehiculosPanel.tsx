@@ -271,7 +271,13 @@ function FilaVehiculo({
           <span aria-hidden>·</span>
           <span>Ingreso {formatearFecha(vehiculo.intakeDate)}</span>
         </p>
-        <p className="mt-3">
+        <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+          <Link
+            href={`/portal/vehiculos/${vehiculo.id}/editar`}
+            className="text-xs uppercase tracking-[0.14em] text-silver underline-offset-4 transition-colors hover:text-silver-bright hover:underline"
+          >
+            Editar ficha
+          </Link>
           <Link
             href={`/portal/vehiculos/${vehiculo.id}/fotos`}
             className="text-xs uppercase tracking-[0.14em] text-silver underline-offset-4 transition-colors hover:text-silver-bright hover:underline"
