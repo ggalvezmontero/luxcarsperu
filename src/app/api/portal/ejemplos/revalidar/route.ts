@@ -16,6 +16,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
+import { GUIAS, rutaGuia } from "@/lib/guias";
 import { verificarSesionPortal } from "@/lib/portal/authServer";
 
 /** Todo lo que pinta la lista de ejemplos. */
@@ -32,6 +33,8 @@ export async function POST() {
     // Todas las páginas de modelo a la vez: cambia el precio de una y también
     // la lista de "otros modelos" de las demás.
     revalidatePath("/importar/[modelo]", "page");
+    // Las guías citan los ejemplos con sus cifras.
+    for (const guia of GUIAS) revalidatePath(rutaGuia(guia.slug));
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

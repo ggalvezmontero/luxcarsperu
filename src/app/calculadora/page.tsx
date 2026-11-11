@@ -20,6 +20,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalculatorSection } from "@/components/CalculatorSection";
 import { CtaBand } from "@/components/CtaBand";
+import { GuiasDestacadas } from "@/components/guias/GuiasDestacadas";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/Button";
@@ -335,7 +336,9 @@ export default async function CalculadoraPage() {
           </Section>
         ) : null}
 
-        <Section tone="bg" padding="tight">
+        <GuiasDestacadas tone="bg" titulo="Entiende cada línea del cálculo" />
+
+        <Section tone="void" padding="tight">
           <CtaBand
             title="¿Ya tienes el número?"
             text="Mándanos el modelo y la versión. Te devolvemos unidades reales en dealers de Estados Unidos con el costo final por escrito."

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { LUXCARS_CONFIG } from "@/lib/config";
+import { GUIAS, rutaGuia } from "@/lib/guias";
 import { rutaModelo, tienePaginaPropia } from "@/lib/importExamples/modelo";
 import { getImportExamples } from "@/lib/importExamples/servidor";
 import { isDatabaseConfigured } from "@/lib/db/client";
@@ -81,8 +82,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  // Las guías: una por búsqueda informativa (costo, requisitos, arancel, ISC).
+  const guias: MetadataRoute.Sitemap = [
+    { url: `${BASE}/guias`, lastModified: ahora, changeFrequency: "monthly", priority: 0.7 },
+    ...GUIAS.map((g) => ({
+      url: `${BASE}${rutaGuia(g.slug)}`,
+      // La fecha real de la última revisión del contenido, no la del despliegue.
+      lastModified: new Date(`${g.actualizada}T00:00:00Z`),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
+  ];
+
   // El stock va AL FINAL: lo de arriba no cambia de orden ni de contenido.
   const stock = await fichasDelStock();
 
-  return [...fijas, ...vehiculos, ...stock];
+  return [...fijas, ...vehiculos, ...guias, ...stock];
 }

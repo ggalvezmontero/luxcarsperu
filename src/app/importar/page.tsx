@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Button } from "@/components/Button";
 import { CtaBand } from "@/components/CtaBand";
 import { Footer } from "@/components/Footer";
+import { GuiasDestacadas } from "@/components/guias/GuiasDestacadas";
 import { MostSoughtVehiclesSection } from "@/components/MostSoughtVehiclesSection";
 import { Navbar } from "@/components/Navbar";
 import { IMPORT_STEPS, StepsRow } from "@/components/home/StepsSection";
@@ -193,7 +194,9 @@ export default function ImportarPage() {
 
         <MostSoughtVehiclesSection tone="bg" destino="pagina" />
 
-        <Section tone="void" padding="tight">
+        <GuiasDestacadas tone="void" />
+
+        <Section tone="bg" padding="tight">
           <CtaBand />
         </Section>
       </main>
