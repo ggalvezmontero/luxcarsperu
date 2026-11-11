@@ -469,6 +469,19 @@ export const VEHICLE_STATUSES: readonly VehicleStatus[] = [
   "en_transito",
 ];
 
+/**
+ * `public.procedencia_vehiculo`. De dónde viene el AUTO (no el dato): si lo
+ * importó LuxCars o si ya estaba en el Perú (compra local, consignación). Las
+ * reglas de importación (antigüedad, kilometraje, diésel) solo tienen sentido
+ * para `importado`; un auto comprado en Lima se inventaría tal cual está.
+ */
+export type VehicleProcedencia = "importado" | "local";
+
+export const VEHICLE_PROCEDENCIAS: readonly VehicleProcedencia[] = [
+  "importado",
+  "local",
+];
+
 export const VEHICLE_SOURCES: readonly VehicleSource[] = [
   "carga_manual",
   "importacion_directa",

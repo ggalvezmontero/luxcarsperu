@@ -10,6 +10,7 @@ import type {
   Currency,
   VehicleCategoryId,
   VehicleCondition,
+  VehicleProcedencia,
   VehicleSource,
   VehicleStatus,
 } from "@/lib/db/types";
@@ -58,6 +59,16 @@ export const FUENTE_OPCIONES: readonly VehicleSource[] = [
   "carga_manual",
   "importacion_directa",
   "consignacion",
+];
+
+export const PROCEDENCIA_LABEL: Record<VehicleProcedencia, string> = {
+  importado: "Importado por LuxCars",
+  local: "Ya está en el Perú (compra local o consignación)",
+};
+
+export const PROCEDENCIA_OPCIONES: readonly VehicleProcedencia[] = [
+  "importado",
+  "local",
 ];
 
 export const MONEDA_OPCIONES: readonly Currency[] = ["USD", "PEN"];

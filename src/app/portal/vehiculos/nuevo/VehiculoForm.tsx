@@ -46,6 +46,8 @@ import {
   FUENTE_LABEL,
   FUENTE_OPCIONES,
   MONEDA_OPCIONES,
+  PROCEDENCIA_LABEL,
+  PROCEDENCIA_OPCIONES,
 } from "../etiquetas";
 import {
   normalizeVin,
@@ -87,6 +89,7 @@ const VALORES_INICIALES = {
   carroceria: "",
   categoria: "gasolina",
   condicion: "usado",
+  procedencia: "importado",
   cilindrada_cc: "",
   transmision: "",
   traccion: "",
@@ -392,6 +395,7 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
     kmNumero > IMPORT_COMPLIANCE_REFERENCE.maxMileageKm.M1;
 
   const avisosModelo = avisosDeModelo(valores.marca, valores.modelo);
+  const esImportado = valores.procedencia === "importado";
 
   const vinValidado = validateVin(valores.vin);
   const digitoSospechoso =
@@ -586,6 +590,17 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
             texto,
           }))}
         />
+        <CampoSelect
+          nombre="procedencia"
+          etiqueta="Origen del vehículo"
+          valor={valores.procedencia}
+          onChange={setCampo}
+          opciones={PROCEDENCIA_OPCIONES.map((valor) => ({
+            valor,
+            texto: PROCEDENCIA_LABEL[valor],
+          }))}
+          ayuda="Si ya está en el Perú, las reglas de importación no aplican y no se avisan."
+        />
         <Campo
           nombre="cilindrada_cc"
           etiqueta="Cilindrada (cc)"
@@ -655,7 +670,10 @@ export function VehiculoForm({ anioActual }: { anioActual: number }) {
         />
       </Bloque>
 
-      {(!admisibilidad.allowed || excedeKm || avisosModelo.length > 0) ? (
+      {/* Las reglas de importación solo importan si el auto todavía hay que
+          importarlo. Uno comprado en Lima puede tener ocho años y 150,000 km. */}
+      {esImportado &&
+      (!admisibilidad.allowed || excedeKm || avisosModelo.length > 0) ? (
         <PanelNormativa
           razon={admisibilidad.allowed ? null : admisibilidad.reason}
           excedeKm={excedeKm}
@@ -1072,8 +1090,11 @@ function PanelNormativa({
 /* Piezas de formulario                                                       */
 /* ========================================================================== */
 
-const CLASE_CONTROL =
-  "w-full rounded-lux border border-line bg-surface-2 px-3 py-3 text-sm text-ink transition-colors placeholder:text-ink-4 hover:border-line-strong focus:border-silver";
+/** Estilo de un control sin ancho: quien lo use decide cuánto ocupa. */
+const CLASE_CONTROL_BASE =
+  "rounded-lux border border-line bg-surface-2 px-3 py-3 text-sm text-ink transition-colors placeholder:text-ink-4 hover:border-line-strong focus:border-silver";
+
+const CLASE_CONTROL = `w-full ${CLASE_CONTROL_BASE}`;
 
 function Bloque({
   titulo,
@@ -1303,14 +1324,16 @@ function CampoMoneda({
           placeholder="0"
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy(nombre, error, ayuda)}
-          className={`${CLASE_CONTROL} tabular-nums ${error ? "border-danger" : ""}`}
+          className={`${CLASE_CONTROL_BASE} min-w-0 flex-1 tabular-nums ${error ? "border-danger" : ""}`}
         />
+        {/* Sin CLASE_CONTROL a propósito: su `w-full` le ganaba al `w-24` y el
+            selector se comía todo el ancho, dejando el precio sin sitio. */}
         <select
           name={nombreMoneda}
           value={moneda}
           onChange={(evento) => onChange(nombreMoneda, evento.target.value)}
           aria-label={`Moneda de ${etiqueta.toLowerCase()}`}
-          className={`${CLASE_CONTROL} w-24 shrink-0`}
+          className={`${CLASE_CONTROL_BASE} w-24 shrink-0`}
         >
           {MONEDA_OPCIONES.map((opcion) => (
             <option key={opcion} value={opcion}>

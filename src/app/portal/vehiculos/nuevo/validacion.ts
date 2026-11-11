@@ -27,6 +27,7 @@ import type {
   Currency,
   VehicleCategoryId,
   VehicleCondition,
+  VehicleProcedencia,
   VehicleSource,
   VehicleStatus,
 } from "@/lib/db/types";
@@ -45,6 +46,7 @@ const CATEGORIES: readonly VehicleCategoryId[] = [
   "phev",
 ];
 const CONDITIONS: readonly VehicleCondition[] = ["nuevo", "usado"];
+const PROCEDENCIAS: readonly VehicleProcedencia[] = ["importado", "local"];
 const STATUSES: readonly VehicleStatus[] = [
   "disponible",
   "reservado",
@@ -280,6 +282,12 @@ export function validarVehiculo(formData: FormData): ResultadoValidacion {
 
   const categoria = opcion(formData, "categoria", CATEGORIES, "gasolina");
   const condicion = opcion(formData, "condicion", CONDITIONS, "usado");
+  const procedencia = opcion(
+    formData,
+    "procedencia",
+    PROCEDENCIAS,
+    "importado",
+  );
   const estado = opcion(formData, "estado", STATUSES, "disponible");
   const fuente = opcion(formData, "fuente", SOURCES, "carga_manual");
   const monedaCompra = opcion(formData, "moneda_compra", CURRENCIES, "USD");
@@ -361,6 +369,8 @@ export function validarVehiculo(formData: FormData): ResultadoValidacion {
 
     categoria,
     condicion,
+    // Procedencia del AUTO (importado o ya en el Perú). Distinta de `fuente`.
+    procedencia,
     cilindrada_cc: cilindrada.ok ? cilindrada.value : null,
     transmision: texto(formData, "transmision"),
     traccion: texto(formData, "traccion"),

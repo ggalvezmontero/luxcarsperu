@@ -73,6 +73,10 @@ escribir una migración y justificarlo. **Esa fricción es intencional.**
   admite `TRUE`. Cambiarlo exige una migración: es la promesa comercial de esa
   línea de negocio. `vendido_por_dueno` registra que el dueño lo vendió él
   mismo — desenlace previsto, sin comisión, no una fuga.
+- **`vehicles.procedencia` dice de dónde viene el auto** (`importado` o `local`),
+  no de dónde salió el dato (eso es `fuente`). El portal solo muestra los avisos
+  de antigüedad y kilometraje cuando es `importado`: un auto comprado en Lima
+  para reventa se inventaría tal cual está.
 - **Una sola portada por vehículo**, garantizada por índice único parcial.
 - **No se publica un auto sin precio ni sin slug.** Publicar algo que obliga al
   cliente a escribir solo para saber cuánto cuesta no es publicar.
