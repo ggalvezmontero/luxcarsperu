@@ -60,11 +60,14 @@ export const revalidate = 86400;
 export const metadata: Metadata = {
   metadataBase: new URL(BASE),
   title: {
-    default: `${LUXCARS_CONFIG.brandName} | Importación y compra venta de autos de lujo`,
+    // SEO (2026-11-10, pedido del dueño): la búsqueda genérica en la que ya
+    // aparece la portada ("autos de lujo en Lima / Perú") va al frente; la
+    // marca cierra el título para las búsquedas de marca ("luxcars").
+    default: `Autos de lujo en Lima · Importación, compra y venta | ${LUXCARS_CONFIG.brandName}`,
     template: `%s | ${LUXCARS_CONFIG.brandName}`,
   },
   description:
-    "Importamos, compramos y vendemos autos de lujo en Perú. Calcula impuestos SUNAT, flete y honorarios al instante. Consignación sin exclusividad. Oficina en San Isidro, Lima.",
+    "Autos de lujo en Lima, Perú: stock de alta gama en San Isidro, importación a pedido desde Estados Unidos y venta en consignación sin exclusividad. Calcula impuestos SUNAT, flete y honorarios al instante.",
   applicationName: LUXCARS_CONFIG.brandName,
   authors: [{ name: LUXCARS_CONFIG.legalName }],
   creator: LUXCARS_CONFIG.legalName,
