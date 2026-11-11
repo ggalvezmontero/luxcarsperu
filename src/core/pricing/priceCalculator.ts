@@ -45,7 +45,7 @@ export type PremiumImportQuote = LogisticsBreakdown &
     adValoremRate: number;
     /** Costos de aduana: monto fijo, fuera de la base de los tributos. */
     customsFee: number;
-    /** Comisión de LuxCars sobre el precio del vehículo. */
+    /** Comisión de LuxCars sobre el costo total puesto en Lima (CIF + tributos + aduana). */
     brokerFee: number;
     documentHandlingFee: number;
     /** Costo real de la importación. NO incluye la percepción, que es recuperable. */
@@ -175,8 +175,16 @@ export function calculateImportQuote(
 
   const customsFee = PRICING_CONFIG.customsCostsUsd;
 
+  // La comisión se calcula sobre el costo total puesto en Lima, no sobre el
+  // precio de compra: ver `brokerFeeRate` en pricingConfig.
   const brokerFee = BrokerModule.calculate({
-    priceMiami: input.priceMiami,
+    costBeforeFee:
+      logistics.cif +
+      fiscalFees.adValorem +
+      fiscalFees.isc +
+      fiscalFees.igv +
+      fiscalFees.ipm +
+      customsFee,
   });
 
   const documentHandlingFee =

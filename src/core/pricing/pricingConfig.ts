@@ -123,11 +123,25 @@ export const PRICING_CONFIG = {
    */
   customsCostsUsd: 2300,
   /**
-   * COMISIÓN DE LUXCARS: 12% DEL PRECIO DEL VEHÍCULO (decisión del dueño,
-   * 2026-11-10). Reemplaza a los dos cargos anteriores, 10% de honorarios más
-   * 5% de inspección, que sumaban 15%. La inspección va dentro de la comisión.
+   * COMISIÓN DE LUXCARS: 12% DEL TOTAL, no del precio del vehículo (decisión
+   * del dueño, 2026-11-11). El día anterior había quedado en 12% del precio de
+   * compra en EE.UU.; el dueño aclaró que la base es el precio total.
+   *
+   * "El total" es el costo del auto puesto en Lima antes de la comisión:
+   * CIF + tributos + costos de aduana. El recargo de Fast Track queda FUERA de
+   * la base a propósito, para que la diferencia entre los dos planes siga
+   * siendo exactamente su cargo fijo (ver `planConfigs`).
+   *
+   * `brokerFeeBase` dice cómo se aplica el 12% sobre ese total:
+   *   · "sobre-costo":        comisión = 12% del costo.            total = costo × 1.12
+   *   · "sobre-precio-final": la comisión es el 12% del precio que paga el
+   *                           cliente, comisión incluida.          total = costo ÷ 0.88
+   * Cambiar de una lectura a la otra es cambiar esta sola palabra.
+   *
+   * La inspección va dentro de la comisión (antes eran 10% + 5% aparte).
    */
   brokerFeeRate: 0.12,
+  brokerFeeBase: "sobre-costo" as "sobre-costo" | "sobre-precio-final",
   /**
    * FAST TRACK CUESTA USD 1,200 MÁS QUE ESTÁNDAR, FIJOS (decisión del dueño,
    * 2026-11-06). Es un cargo de servicio: no toca el flete, así que no cambia
