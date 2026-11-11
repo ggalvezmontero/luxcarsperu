@@ -58,9 +58,10 @@ export function autoDealerSchema() {
         description: linea.description,
       },
     })),
-    // Sin `sameAs`: apuntaba al propio sitio, que no aporta nada (sameAs es
-    // para perfiles EXTERNOS de la misma entidad). Cuando existan redes
-    // oficiales en LUXCARS_CONFIG, van aquí.
+    // Perfiles externos de la misma entidad (nunca el propio sitio): es como
+    // se le dice a Google que la ficha de Google Business, Instagram, Facebook
+    // y TikTok son LuxCars Perú. Salen de LUXCARS_CONFIG.social.
+    sameAs: Object.values(LUXCARS_CONFIG.social),
   };
 }
 

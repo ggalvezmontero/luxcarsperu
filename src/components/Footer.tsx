@@ -37,8 +37,27 @@ const COLUMNS = [
   },
 ];
 
+/** Iconos de marca (trazos oficiales simplificados, un solo color). */
+const REDES: { id: keyof typeof LUXCARS_CONFIG.social; nombre: string; path: string }[] = [
+  {
+    id: "instagram",
+    nombre: "Instagram",
+    path: "M12 2.2c3.2 0 3.6 0 4.8.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1.1.4 2.2.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1.1.4-2.2.4-1.3.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1.1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1.1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.1 0-3.5 0-4.7.1-1.1 0-1.5.2-1.8.3-.4.2-.7.3-1 .7-.3.3-.5.6-.7 1-.1.3-.3.7-.3 1.8C3.4 9 3.4 9.3 3.4 12s0 3.1.1 4.3c0 1.1.2 1.5.3 1.8.2.4.3.7.7 1 .3.3.6.5 1 .7.3.1.7.3 1.8.3 1.2.1 1.6.1 4.7.1s3.5 0 4.7-.1c1.1 0 1.5-.2 1.8-.3.4-.2.7-.3 1-.7.3-.3.5-.6.7-1 .1-.3.3-.7.3-1.8.1-1.2.1-1.6.1-4.7s0-3.5-.1-4.7c0-1.1-.2-1.5-.3-1.8-.2-.4-.3-.7-.7-1-.3-.3-.6-.5-1-.7-.3-.1-.7-.3-1.8-.3C15.5 4 15.1 4 12 4zm0 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 1.8a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4zm5.2-3.1a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4z",
+  },
+  {
+    id: "facebook",
+    nombre: "Facebook",
+    path: "M13.5 21v-7.5h2.5l.4-3h-2.9V8.6c0-.9.2-1.5 1.5-1.5h1.5V4.4c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.4H8v3h2.6V21h2.9z",
+  },
+  {
+    id: "tiktok",
+    nombre: "TikTok",
+    path: "M16.6 3c.3 2.2 1.6 3.7 3.8 3.9v3c-1.4 0-2.7-.4-3.8-1.2v6.4c0 3.6-2.9 5.9-5.8 5.9-3.1 0-5.6-2.5-5.6-5.6 0-3.3 2.8-5.9 6.2-5.5v3.1c-1.6-.4-3.1.8-3.1 2.4 0 1.4 1.1 2.5 2.5 2.5 1.5 0 2.7-1.1 2.7-2.9V3h3.1z",
+  },
+];
+
 export function Footer() {
-  const { contact, legalName, ruc } = LUXCARS_CONFIG;
+  const { contact, legalName, ruc, social } = LUXCARS_CONFIG;
   return (
     <footer className="w-full border-t border-line bg-void">
       <div className="container-lux py-14 lg:py-20">
@@ -72,6 +91,25 @@ export function Footer() {
                   {contact.email}
                 </a>
               </li>
+            </ul>
+            {/* Redes oficiales: las mismas URLs que el `sameAs` del JSON-LD. */}
+            <ul className="mt-6 flex items-center gap-3" aria-label="Redes sociales">
+              {REDES.map((red) => (
+                <li key={red.nombre}>
+                  <a
+                    href={social[red.id]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${LUXCARS_CONFIG.brandName} en ${red.nombre}`}
+                    data-ga-cta={`footer_${red.id}`}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-ink-3 transition-colors hover:border-silver hover:text-ink"
+                  >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                      <path d={red.path} />
+                    </svg>
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 

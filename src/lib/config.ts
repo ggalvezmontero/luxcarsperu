@@ -128,6 +128,17 @@ export const LUXCARS_CONFIG = {
     website: "https://www.luxcars.pe",
   },
   /**
+   * Perfiles oficiales. Van al JSON-LD como `sameAs` (así Google sabe que la
+   * ficha de Google Business, las redes y la web son la misma empresa) y al
+   * pie de página. URLs canónicas, no enlaces de "compartir". Si se abre un
+   * perfil nuevo, se añade aquí y sale en los dos sitios.
+   */
+  social: {
+    instagram: "https://www.instagram.com/luxcars.pe/",
+    facebook: "https://www.facebook.com/p/Lux-Cars-Peru-61596107865637/",
+    tiktok: "https://www.tiktok.com/@luxcars.pe",
+  },
+  /**
    * Las cuatro líneas de negocio. Los `id` son contrato: `LineasNegocioSection`
    * y el footer mapean metadatos y rutas contra ellos. El orden define la
    * numeración visible. Se puede reescribir label y description; no los ids.
