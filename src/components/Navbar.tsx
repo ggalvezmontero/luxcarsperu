@@ -97,7 +97,7 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <div className="hidden sm:block">
-            <Button href={WA_HREF} variant="whatsapp" size="md">
+            <Button href={WA_HREF} variant="whatsapp" size="md" data-ga-cta="navbar_whatsapp">
               <WhatsAppIcon size={18} />
               WhatsApp
             </Button>
@@ -145,7 +145,7 @@ export function Navbar() {
           ))}
         </ul>
         <div className="container-lux mt-auto flex flex-col gap-3 border-t border-line py-6">
-          <Button href={WA_HREF} variant="whatsapp" size="lg" className="w-full">
+          <Button href={WA_HREF} variant="whatsapp" size="lg" className="w-full" data-ga-cta="menu_movil_whatsapp">
             <WhatsAppIcon size={20} />
             Escribir por WhatsApp
           </Button>

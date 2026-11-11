@@ -61,13 +61,13 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-3">
                 <WhatsAppIcon size={18} className="shrink-0 text-silver-dim" />
-                <a href={`https://wa.me/${contact.whatsappNumber}`} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-ink">
+                <a href={`https://wa.me/${contact.whatsappNumber}`} target="_blank" rel="noopener noreferrer" data-ga-cta="footer_whatsapp" className="transition-colors hover:text-ink">
                   {contact.phone}
                 </a>
               </li>
               <li className="flex items-center gap-3">
                 <Icon name="mail" size={18} className="shrink-0 text-silver-dim" />
-                <a href={`mailto:${contact.email}`} className="transition-colors hover:text-ink">
+                <a href={`mailto:${contact.email}`} data-ga-cta="footer_correo" className="transition-colors hover:text-ink">
                   {contact.email}
                 </a>
               </li>

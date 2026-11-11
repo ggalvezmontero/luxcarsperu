@@ -4,6 +4,7 @@ import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { formatCurrency } from "@/lib/utils";
 import { buildWhatsappLink } from "@/lib/whatsapp";
+import { GA_EVENTS, trackEvent } from "@/lib/analytics";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./Button";
 import { Icon, WhatsAppIcon } from "./ui/Icon";
@@ -142,6 +143,11 @@ export function ContactSection() {
           })
         : buildPlainWhatsapp(form);
       setFeedback("Abrimos WhatsApp con tu mensaje listo. Tú decides si lo envías.");
+      trackEvent(GA_EVENTS.contactFormSubmit, {
+        with_estimate: Boolean(latestEstimate),
+        preferred_plan: form.preferredPlan,
+        with_email: Boolean(form.email.trim()),
+      });
       window.open(link, "_blank", "noopener,noreferrer");
     } catch {
       setError("No pudimos abrir WhatsApp. Escríbenos directamente al número de abajo.");
@@ -163,6 +169,7 @@ export function ContactSection() {
                 href={`https://wa.me/${contact.whatsappNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                data-ga-cta="contacto_whatsapp_directo"
                 className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-line-strong"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-whatsapp/15 text-whatsapp">
@@ -177,6 +184,7 @@ export function ContactSection() {
             <li>
               <a
                 href={`mailto:${contact.email}`}
+                data-ga-cta="contacto_correo"
                 className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-line-strong"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-silver-bright">

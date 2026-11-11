@@ -8,6 +8,13 @@
       "port": 3000,
       "autoPort": true,
       "env": { "NEXT_DIST_DIR": ".next-dev" }
+    },
+    {
+      "name": "luxcars-prod",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "start", "-p", "3100"],
+      "port": 3100,
+      "env": { "NEXT_DIST_DIR": ".next-verify" }
     }
   ]
 }

@@ -231,11 +231,11 @@ export default function EscaneoPage() {
                 <span className="text-sm text-ink-3">y se descuenta si luego compras, importas o consignas con nosotros</span>
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Button href={WA} variant="whatsapp" size="lg">
+                <Button href={WA} variant="whatsapp" size="lg" data-ga-cta="escaneo_portada_agendar_whatsapp">
                   <WhatsAppIcon size={18} />
                   Agendar por WhatsApp
                 </Button>
-                <Button href="#incluye" variant="secondary" size="lg">
+                <Button href="#incluye" variant="secondary" size="lg" data-ga-cta="escaneo_portada_que_revisamos">
                   Ver qué revisamos
                 </Button>
               </div>

@@ -181,12 +181,12 @@ export default async function VehiculoPage({ params }: Params) {
                   {sold ? (
                     <Button variant="secondary" size="lg" disabled className="w-full">Unidad vendida</Button>
                   ) : (
-                    <Button href={wa} variant="whatsapp" size="lg" className="w-full">
+                    <Button href={wa} variant="whatsapp" size="lg" className="w-full" data-ga-cta="vehiculo_whatsapp">
                       <WhatsAppIcon size={20} />
                       {v.status === "reservado" ? "Avisarme si se libera" : "Coordinar visita"}
                     </Button>
                   )}
-                  <Button href="/vender#tasacion" variant="secondary" size="lg" className="w-full">
+                  <Button href="/vender#tasacion" variant="secondary" size="lg" className="w-full" data-ga-cta="vehiculo_parte_de_pago">
                     Entregar mi auto como parte de pago
                   </Button>
                 </div>

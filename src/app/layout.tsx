@@ -1,4 +1,5 @@
 import { CookieBanner } from "@/components/CookieBanner";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { ScrollPrevention } from "@/components/ScrollPrevention";
 import { SkipLink } from "@/components/SkipLink";
 import { BRAND_THEME_COLOR, LUXCARS_CONFIG } from "@/lib/config";
@@ -137,6 +138,8 @@ export default function RootLayout({
         <ScrollPrevention />
         {children}
         <CookieBanner />
+        {/* Solo se monta en producción y tras aceptar el banner: ver el componente. */}
+        <GoogleAnalytics />
       </body>
     </html>
   );

@@ -26,11 +26,11 @@ export function CtaBand({
         </h2>
         <p className="mt-4 text-pretty text-base text-ink-2 sm:text-lg">{text}</p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <Button href={href} variant="whatsapp" size="lg">
+          <Button href={href} variant="whatsapp" size="lg" data-ga-cta="banda_cierre_whatsapp">
             <WhatsAppIcon size={20} />
             Escribir por WhatsApp
           </Button>
-          <Button href={secondaryHref} variant="secondary" size="lg">
+          <Button href={secondaryHref} variant="secondary" size="lg" data-ga-cta="banda_cierre_secundario">
             {secondaryLabel}
           </Button>
         </div>

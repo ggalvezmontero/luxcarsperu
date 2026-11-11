@@ -45,7 +45,7 @@ export function ImportBand() {
         title="Así traemos tu auto desde Estados Unidos"
         description="Cuatro pasos, seguimiento semanal por WhatsApp y una sola cifra desde el inicio."
         action={
-          <Button href="/como-funciona" variant="secondary">
+          <Button href="/como-funciona" variant="secondary" data-ga-cta="portada_importacion_proceso">
             Ver el proceso completo
             <Icon name="arrowRight" size={16} />
           </Button>

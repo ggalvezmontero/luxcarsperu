@@ -39,10 +39,10 @@ export function ConsignmentBand() {
             ))}
           </ul>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button href="/cuenta/vender" size="lg">
+            <Button href="/cuenta/vender" size="lg" data-ga-cta="portada_consignacion_publicar">
               Publicar mi auto
             </Button>
-            <Button href="/vender#tasacion" variant="secondary" size="lg">
+            <Button href="/vender#tasacion" variant="secondary" size="lg" data-ga-cta="portada_consignacion_tasar">
               Tasar mi auto gratis
             </Button>
           </div>

@@ -7,6 +7,7 @@ import { formatNumber } from "@/lib/utils";
 import { useState, type FormEvent } from "react";
 import { PhoneInput } from "@/components/PhoneInput";
 import { errorDeTelefono } from "@/lib/telefono";
+import { GA_EVENTS, trackEvent } from "@/lib/analytics";
 
 /**
  * Formulario de tasación. Sin backend: arma el enlace wa.me con el mensaje
@@ -69,6 +70,12 @@ export function FormularioTasacion() {
       return;
     }
     setEnviado(true);
+    trackEvent(GA_EVENTS.valuationFormSubmit, {
+      vehicle_brand: campos.marca.trim(),
+      vehicle_model: campos.modelo.trim(),
+      vehicle_year: campos.anio.trim(),
+      vehicle_condition: campos.condicion,
+    });
     window.open(enlace(campos), "_blank", "noopener,noreferrer");
   };
 

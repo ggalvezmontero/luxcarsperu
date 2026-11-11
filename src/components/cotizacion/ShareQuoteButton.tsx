@@ -12,6 +12,7 @@
  * funciona en una vista previa o en local.
  */
 
+import { GA_EVENTS, trackEvent } from "@/lib/analytics";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -59,6 +60,7 @@ export function ShareQuoteButton({
   async function compartir() {
     const url = `${window.location.origin}${sharedQuotePath(code)}`;
     setEnlace(url);
+    trackEvent(GA_EVENTS.calculatorShare, { share_code: code });
 
     if (typeof navigator.share === "function") {
       try {

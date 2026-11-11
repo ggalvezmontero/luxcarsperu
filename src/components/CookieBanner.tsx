@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-
-const COOKIE_CONSENT_KEY = "luxcars-cookie-consent";
+import { readCookieConsent, writeCookieConsent } from "@/lib/analytics";
 
 /**
  * Aviso de cookies.
@@ -38,8 +37,7 @@ export function CookieBanner() {
   const focoPrevio = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (consent) return;
+    if (readCookieConsent()) return;
 
     const temporizador = setTimeout(() => {
       focoPrevio.current =
@@ -71,17 +69,18 @@ export function CookieBanner() {
     main.focus();
   }, []);
 
-  /* PENDIENTE (no es accesibilidad, pero se ve desde aquí): ni "aceptar" ni
-     "rechazar" activan o bloquean nada todavía. El día que se añada analítica,
-     tiene que leer esta clave ANTES de cargarse, o el banner es decorativo. */
+  /* La decisión gobierna Google Analytics de verdad: GoogleAnalytics.tsx lee
+     esta clave antes de cargar la etiqueta y escucha el evento que dispara
+     `writeCookieConsent`, así que "Aceptar" la carga al instante y "Rechazar"
+     deja el sitio sin una sola petición a Google. */
   const handleAccept = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
+    writeCookieConsent("accepted");
     setShowBanner(false);
     devolverFoco();
   };
 
   const handleReject = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, "rejected");
+    writeCookieConsent("rejected");
     setShowBanner(false);
     devolverFoco();
   };

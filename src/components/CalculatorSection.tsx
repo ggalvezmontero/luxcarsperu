@@ -20,6 +20,7 @@ import {
 import type { OriginInference } from "@/core/pricing/originInference";
 import type { SimulationPreset } from "@/data/trendingVehicles";
 import { LUXCARS_CONFIG, type VehicleTypeId } from "@/lib/config";
+import { GA_EVENTS, trackEvent } from "@/lib/analytics";
 import { evaluateQuote } from "@/lib/cotizacion";
 import {
   SHARED_QUOTE_PARAM,
@@ -363,12 +364,53 @@ export function CalculatorSection({
     }
   }, [estimate, hydrated]);
 
+  /* Analítica: "calculó". El resultado es en vivo, así que se espera a que el
+     estimado lleve 1,5 s sin cambiar y se manda una sola vez por combinación
+     de auto, precio, plan y condición. Teclear el precio dígito a dígito no
+     genera un evento por dígito.
+
+     `calculatorTouched` distingue un cálculo de esta visita de uno restaurado
+     de localStorage: el restaurado se anota como ya enviado y no cuenta, o
+     cada visita a la portada con un cálculo guardado sumaría un evento. */
+  const calculatorTouched = useRef(false);
+  const lastTrackedEstimate = useRef<string | null>(null);
+  useEffect(() => {
+    if (!estimate) return;
+    const signature = [
+      estimate.input.brand,
+      estimate.input.model,
+      estimate.input.year,
+      estimate.input.priceMiami,
+      estimate.planKey,
+      estimate.condition,
+    ].join("|");
+    if (signature === lastTrackedEstimate.current) return;
+    if (!calculatorTouched.current) {
+      lastTrackedEstimate.current = signature;
+      return;
+    }
+    const timer = setTimeout(() => {
+      lastTrackedEstimate.current = signature;
+      trackEvent(GA_EVENTS.calculatorEstimate, {
+        vehicle_brand: estimate.input.brand,
+        vehicle_model: estimate.input.model,
+        vehicle_year: estimate.input.year,
+        vehicle_condition: estimate.condition,
+        plan: estimate.planKey,
+        price_usd: Math.round(estimate.input.priceMiami),
+        final_estimate_usd: Math.round(estimate.finalEstimate),
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [estimate]);
+
   /* Preset desde "más buscados": /?simular=<id>#calculator */
   const simularPresetId = urlPreset.simular;
   useEffect(() => {
     if (!simularPresetId) return;
     const preset = presets.find((p) => p.id === simularPresetId);
     if (!preset) return;
+    calculatorTouched.current = true;
     const c = preset.calculator;
     // El año es el que anuncia la tarjeta ("… Raptor 2026"), no uno fijo.
     const year = yearFromName(preset.name) ?? String(CURRENT_YEAR);
@@ -396,6 +438,7 @@ export function CalculatorSection({
     if (!sharedPresetCode) return;
     const shared = decodeSharedQuote(sharedPresetCode);
     if (!shared) return;
+    calculatorTouched.current = true;
     setForm({
       condition: shared.condition,
       vehicleType: shared.vehicleType,
@@ -428,8 +471,10 @@ export function CalculatorSection({
 
   /* --- Handlers --- */
 
-  const patch = (changes: Partial<FormState>) =>
+  const patch = (changes: Partial<FormState>) => {
+    calculatorTouched.current = true;
     setForm((prev) => ({ ...prev, ...changes }));
+  };
 
   const handlePrice = (event: ChangeEvent<HTMLInputElement>) => {
     patch({ price: onlyDigits(event.target.value) });
@@ -467,6 +512,11 @@ export function CalculatorSection({
       // al pulsar el botón. No convertir en import estático.
       const { generatePDF } = await import("@/lib/pdfExport");
       await generatePDF(estimate);
+      trackEvent(GA_EVENTS.calculatorPdfDownload, {
+        vehicle_brand: estimate.input.brand,
+        vehicle_model: estimate.input.model,
+        vehicle_year: estimate.input.year,
+      });
     } catch (err) {
       console.error("Error generando PDF:", err);
       setPdfError("No se pudo generar el PDF. Intenta de nuevo.");
@@ -618,7 +668,16 @@ export function CalculatorSection({
                 brand={form.brand}
                 model={form.model}
                 // Cambiar el auto invalida la corrección manual del origen.
-                onChange={({ brand, model }) => patch({ brand, model, originOverride: null })}
+                onChange={({ brand, model }) => {
+                  // Solo cuando se elige un modelo (elegir marca lo vacía).
+                  if (model && model !== form.model) {
+                    trackEvent(GA_EVENTS.calculatorModelChange, {
+                      vehicle_brand: brand,
+                      vehicle_model: model,
+                    });
+                  }
+                  patch({ brand, model, originOverride: null });
+                }}
                 renderField={Field}
               />
               <div>
@@ -710,6 +769,7 @@ export function CalculatorSection({
               href={adviceLink}
               target="_blank"
               rel="noopener noreferrer"
+              data-ga-cta="calculadora_asesoria_whatsapp"
               className="font-semibold text-ink underline underline-offset-4 decoration-line-strong hover:decoration-ink"
             >
               Pide asesoría por WhatsApp
@@ -848,7 +908,7 @@ function ResultPanel({
           ))}
         </ul>
         {blocked ? (
-          <Button href={adviceLink} variant="whatsapp" size="lg" className="mt-6 w-full">
+          <Button href={adviceLink} variant="whatsapp" size="lg" className="mt-6 w-full" data-ga-cta="calculadora_bloqueada_whatsapp">
             Consultar por WhatsApp
           </Button>
         ) : null}
@@ -942,7 +1002,7 @@ function ResultPanel({
       {/* Acciones */}
       <div className="mt-6 grid gap-3">
         {whatsappLink ? (
-          <Button href={whatsappLink} variant="whatsapp" size="lg" className="w-full">
+          <Button href={whatsappLink} variant="whatsapp" size="lg" className="w-full" data-ga-cta="calculadora_enviar_estimado_whatsapp">
             Enviar estimado por WhatsApp
           </Button>
         ) : null}

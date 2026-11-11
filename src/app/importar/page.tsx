@@ -112,11 +112,11 @@ export default function ImportarPage() {
               Lo buscamos en Estados Unidos, lo inspeccionamos antes de pagar y lo entregamos nacionalizado. Sin letra chica.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button href="/#calculator" variant="accent" size="lg">
+              <Button href="/#calculator" variant="accent" size="lg" data-ga-cta="importar_portada_calculadora">
                 <Icon name="calculator" size={18} />
                 Calcular mi importación
               </Button>
-              <Button href="/como-funciona" variant="secondary" size="lg">
+              <Button href="/como-funciona" variant="secondary" size="lg" data-ga-cta="importar_portada_proceso">
                 Ver el proceso
               </Button>
             </div>
@@ -170,7 +170,7 @@ export default function ImportarPage() {
             <p className="text-sm text-ink-2 sm:text-base">
               La calculadora aplica exactamente estas tasas. Es la misma herramienta que usamos internamente.
             </p>
-            <Button href="/#calculator" variant="accent">Ir a la calculadora</Button>
+            <Button href="/#calculator" variant="accent" data-ga-cta="importar_tasas_calculadora">Ir a la calculadora</Button>
           </div>
         </Section>
 
@@ -187,7 +187,7 @@ export default function ImportarPage() {
           </ul>
         </Section>
 
-        <MostSoughtVehiclesSection tone="bg" />
+        <MostSoughtVehiclesSection tone="bg" destino="pagina" />
 
         <Section tone="void" padding="tight">
           <CtaBand />

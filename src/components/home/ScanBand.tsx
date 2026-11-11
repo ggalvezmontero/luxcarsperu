@@ -12,6 +12,7 @@ export function ScanBand() {
     <Section tone="void" padding="none" className="pt-6 sm:pt-8">
       <Link
         href="/escaneo"
+        data-ga-cta="portada_banda_escaneo"
         className="group flex flex-col gap-5 rounded-[22px] border border-line bg-surface p-6 transition-colors hover:border-line-strong sm:flex-row sm:items-center sm:justify-between sm:p-8"
       >
         <span className="flex items-start gap-4 sm:items-center">

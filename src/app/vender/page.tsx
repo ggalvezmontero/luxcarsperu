@@ -83,9 +83,9 @@ export default function VenderPage() {
               Lo publicamos, filtramos compradores y cerramos la venta. Sin contrato de exclusividad.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button href="/cuenta/vender" variant="accent" size="lg">Publicar mi auto</Button>
-              <Button href="#tasacion" variant="secondary" size="lg">Tasar mi auto gratis</Button>
-              <Button href={WA} variant="whatsapp" size="lg">
+              <Button href="/cuenta/vender" variant="accent" size="lg" data-ga-cta="vender_portada_publicar">Publicar mi auto</Button>
+              <Button href="#tasacion" variant="secondary" size="lg" data-ga-cta="vender_portada_tasar">Tasar mi auto gratis</Button>
+              <Button href={WA} variant="whatsapp" size="lg" data-ga-cta="vender_portada_whatsapp">
                 <WhatsAppIcon size={18} />
                 WhatsApp
               </Button>

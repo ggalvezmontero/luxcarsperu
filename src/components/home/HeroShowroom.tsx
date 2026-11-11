@@ -63,11 +63,11 @@ export function HeroShowroom() {
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button href="/comprar" size="lg">
+            <Button href="/comprar" size="lg" data-ga-cta="portada_hero_stock">
               Ver stock disponible
               <Icon name="arrowRight" size={18} />
             </Button>
-            <Button href="/#calculator" variant="accent" size="lg">
+            <Button href="/#calculator" variant="accent" size="lg" data-ga-cta="portada_hero_calculadora">
               <Icon name="calculator" size={18} />
               Calcular importación
             </Button>
