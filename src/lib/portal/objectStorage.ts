@@ -114,6 +114,77 @@ export async function firmarSubida(storagePath: string): Promise<string | null> 
 }
 
 /**
+ * URL prefirmada para subir UN archivo de un tipo y un tamaño EXACTOS.
+ *
+ * Es la que se usa cuando quien sube no es del equipo (un cliente adjuntando
+ * fotos a su solicitud). A diferencia de `firmarSubida`, aquí el `Content-Type`
+ * y el `Content-Length` entran en la firma: si el navegador manda otro tipo u
+ * otro tamaño, el almacenamiento contesta 403. Sin eso, una URL pensada para
+ * una foto de 1 MB serviría para subir cualquier archivo de cualquier peso.
+ * Comprobado contra Neon Object Storage el 2026-11-11.
+ */
+export async function firmarSubidaExacta(
+  storagePath: string,
+  contentType: string,
+  bytes: number,
+): Promise<string | null> {
+  const actual = getAlmacen();
+  if (!actual) return null;
+
+  const url = urlDeObjeto(actual.endpoint, storagePath);
+  url.searchParams.set("X-Amz-Expires", String(SEGUNDOS_VIGENCIA));
+
+  const firmada = await actual.cliente.sign(url.toString(), {
+    method: "PUT",
+    headers: { "content-type": contentType, "content-length": String(bytes) },
+    aws: { signQuery: true, allHeaders: true },
+  });
+  return firmada.url;
+}
+
+export type ObjetoListado = { path: string; bytes: number };
+
+/**
+ * Los objetos que cuelgan de un prefijo (una "carpeta"), hasta 100. `null` si
+ * no hay credencial o si el almacenamiento no responde: quien llama decide si
+ * eso es "no hay fotos" o un error.
+ */
+export async function listarObjetos(prefijo: string): Promise<ObjetoListado[] | null> {
+  const actual = getAlmacen();
+  if (!actual) return null;
+
+  try {
+    const url = new URL(`${actual.endpoint}/${VEHICLE_PHOTOS_BUCKET}`);
+    url.searchParams.set("list-type", "2");
+    url.searchParams.set("max-keys", "100");
+    url.searchParams.set("prefix", prefijo);
+    const respuesta = await actual.cliente.fetch(url.toString(), { method: "GET" });
+    if (!respuesta.ok) return null;
+
+    const xml = await respuesta.text();
+    const objetos: ObjetoListado[] = [];
+    for (const bloque of xml.match(/<Contents>[\s\S]*?<\/Contents>/g) ?? []) {
+      const clave = /<Key>([^<]*)<\/Key>/.exec(bloque)?.[1];
+      const peso = /<Size>(\d+)<\/Size>/.exec(bloque)?.[1];
+      if (clave) objetos.push({ path: decodificarXml(clave), bytes: Number(peso ?? 0) });
+    }
+    return objetos;
+  } catch {
+    return null;
+  }
+}
+
+/** Las cinco entidades que S3 escapa en las claves del listado. */
+function decodificarXml(valor: string): string {
+  return valor
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+/**
  * Borra un objeto del bucket. Devuelve `false` si no hay credencial o si Neon
  * rechaza el borrado; borrar algo que ya no existe cuenta como éxito.
  */

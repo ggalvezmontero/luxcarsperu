@@ -351,11 +351,17 @@ export type NewSaleRequest = {
   contactPhone: string;
 };
 
+/**
+ * Resultado de registrar un auto. `id` es el de la solicitud recién creada, y
+ * hace falta para adjuntarle fotos; `null` si se creó pero no se pudo leer.
+ */
+export type SaleRequestCreated = MutationResult & { id?: string | null };
+
 export async function createSaleRequest(
   client: PortalClient,
   userId: string,
   input: NewSaleRequest,
-): Promise<MutationResult> {
+): Promise<SaleRequestCreated> {
   try {
     const fila = {
       user_id: userId,
@@ -378,8 +384,27 @@ export async function createSaleRequest(
       client.from("solicitudes_venta").insert(fila),
     );
     if (!envio.ok) return { ok: false, message: envio.message };
+
+    // El id se lee aparte, y no con un `returning` en el insert, para no tocar
+    // la escritura que ya funciona: la solicitud recién creada es la más
+    // reciente de este cliente. Si la lectura falla, el auto igual quedó
+    // registrado; solo no se le pueden adjuntar fotos desde aquí.
+    let id: string | null = null;
+    try {
+      const { data } = await client
+        .from("solicitudes_venta")
+        .select("id")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const fila = (data as unknown as { id?: string }[] | null)?.[0];
+      id = typeof fila?.id === "string" ? fila.id : null;
+    } catch {
+      id = null;
+    }
     return {
       ok: true,
+      id,
       message: "Recibimos tu auto. Lo revisamos y te avisamos cuando esté publicado.",
     };
   } catch {

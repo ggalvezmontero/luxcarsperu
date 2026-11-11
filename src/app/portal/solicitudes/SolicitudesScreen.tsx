@@ -38,6 +38,7 @@ import {
   type SaleRequestStatus,
 } from "@/lib/db/types";
 import { CATEGORY_LABEL } from "@/lib/stockLabels";
+import { listarFotosDeSolicitud, type FotoDeSolicitud } from "@/lib/cuenta/fotosSolicitud";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { normalizePhoneForWhatsapp } from "@/lib/whatsappPortal";
 import Link from "next/link";
@@ -283,6 +284,71 @@ function Requester({ name, email, phone, wa }: { name: string; email: string | n
   );
 }
 
+/**
+ * Fotos que el cliente adjuntó al registrar su auto. Se piden recién al pulsar
+ * el botón: cargarlas todas al abrir la pantalla sería una consulta al
+ * almacenamiento por cada solicitud de la lista.
+ */
+function FotosDelCliente({ solicitudId }: { solicitudId: string }) {
+  const [estado, setEstado] = useState<"cerrado" | "cargando" | "listo" | "error">("cerrado");
+  const [fotos, setFotos] = useState<FotoDeSolicitud[]>([]);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+
+  const cargar = async () => {
+    setEstado("cargando");
+    const resultado = await listarFotosDeSolicitud(solicitudId);
+    if (!resultado.ok) {
+      setMensaje(resultado.mensaje);
+      return setEstado("error");
+    }
+    setFotos(resultado.fotos);
+    setEstado("listo");
+  };
+
+  if (estado === "cerrado" || estado === "cargando") {
+    return (
+      <button
+        type="button"
+        onClick={cargar}
+        disabled={estado === "cargando"}
+        className="mt-2 block text-xs font-medium text-silver underline-offset-4 hover:underline disabled:opacity-50"
+      >
+        {estado === "cargando" ? "Buscando fotos…" : "Ver fotos del cliente"}
+      </button>
+    );
+  }
+  if (estado === "error") {
+    return (
+      <p className="mt-2 text-xs text-danger">
+        {mensaje}{" "}
+        <button type="button" onClick={cargar} className="underline underline-offset-4">Reintentar</button>
+      </p>
+    );
+  }
+  if (fotos.length === 0) {
+    return <p className="mt-2 text-xs text-ink-4">El cliente no adjuntó fotos.</p>;
+  }
+  return (
+    <ul className="mt-2 flex max-w-md flex-wrap gap-2">
+      {fotos.map((foto, i) => (
+        <li key={foto.path}>
+          <a
+            href={foto.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block h-16 w-20 overflow-hidden rounded-lg border border-line bg-surface-2"
+            title="Abrir la foto en tamaño completo"
+          >
+            {/* Foto del cliente, sin pasar por el optimizador: no es contenido del sitio. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={foto.url} alt={`Foto ${i + 1} enviada por el cliente`} loading="lazy" className="h-full w-full object-cover" />
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function SaleRow({
   request: s,
   onApprove,
@@ -318,6 +384,7 @@ function SaleRow({
         </p>
         {s.declaredCondition ? <p className="mt-1 text-xs text-ink-4">Condición declarada: {s.declaredCondition}</p> : null}
         {s.description ? <p className="mt-2 max-w-md text-xs leading-relaxed text-ink-3">{s.description}</p> : null}
+        <FotosDelCliente solicitudId={s.id} />
         <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-ink-4">{fecha(s.createdAt)}</p>
       </Td>
       <Td>

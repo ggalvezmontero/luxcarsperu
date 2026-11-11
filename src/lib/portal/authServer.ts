@@ -141,3 +141,47 @@ export async function verificarSesionPortal(): Promise<ResultadoSesion> {
     };
   }
 }
+
+export type ResultadoSesionCliente =
+  | { ok: true; userId: string; esAdmin: boolean }
+  | { ok: false; status: 401 | 403 | 503; mensaje: string };
+
+/**
+ * ¿Esta petición viene de alguien con sesión abierta y cuenta activa?
+ *
+ * Para las rutas que usa un CLIENTE desde "Mi cuenta" (hoy: adjuntar fotos a
+ * su solicitud de venta). No exige rol de administrador, pero sí dice si lo
+ * es, porque el equipo ve las fotos de todas las solicitudes.
+ *
+ * Que haya sesión no autoriza nada por sí solo: cada ruta comprueba además que
+ * el recurso sea de ese `userId`. Nunca lanza.
+ */
+export async function verificarSesionCliente(): Promise<ResultadoSesionCliente> {
+  const auth = getPortalAuth();
+  const sql = getSql();
+  if (!auth || !sql) {
+    return { ok: false, status: 503, mensaje: "Las cuentas no están configuradas." };
+  }
+
+  try {
+    const { data } = await auth.getSession();
+    const user = data?.user;
+    if (!data?.session || !user?.id) {
+      return { ok: false, status: 401, mensaje: "Tu sesión venció. Vuelve a ingresar." };
+    }
+
+    const perfil = await sql`
+      select rol, activo
+      from public.profiles
+      where id = ${user.id}::uuid
+      limit 1
+    `;
+    const fila = perfil[0] as { rol?: string; activo?: boolean } | undefined;
+    if (fila && fila.activo === false) {
+      return { ok: false, status: 403, mensaje: "Esta cuenta está suspendida." };
+    }
+    return { ok: true, userId: user.id, esAdmin: fila?.rol === "admin" && fila.activo === true };
+  } catch {
+    return { ok: false, status: 401, mensaje: "No se pudo comprobar tu sesión. Vuelve a ingresar." };
+  }
+}

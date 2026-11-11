@@ -19,20 +19,24 @@
  *     muestra cómo va quedando la publicación.
  */
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { BrandModelPicker } from "@/components/BrandModelPicker";
 import { Button } from "@/components/Button";
 import { PhoneInput } from "@/components/PhoneInput";
+import { SelectConOtro } from "@/components/SelectConOtro";
 import { Icon } from "@/components/ui/Icon";
 import { Section } from "@/components/ui/Section";
 import { AvisoCuentaSuspendida } from "@/components/cuenta/CuentaScreen";
 import { useCuentaSession } from "@/components/cuenta/cuentaSession";
 import { SinCuentas } from "@/components/cuenta/SinCuentas";
+import { FOTOS_MAXIMAS_SOLICITUD, subirFotoDeSolicitud } from "@/lib/cuenta/fotosSolicitud";
 import { DECLARED_CONDITIONS, createSaleRequest } from "@/lib/cuenta/solicitudes";
+import { esArchivoDeFotoValido } from "@/lib/portal/imageCompression";
 import { VEHICLE_CATEGORIES } from "@/core/pricing/vehicleCategories";
 import type { Currency, VehicleCategoryId } from "@/lib/db/types";
 import { CATEGORY_LABEL } from "@/lib/stockLabels";
+import { COLORES_EXTERIOR } from "@/lib/opcionesVehiculo";
 import { errorDeTelefono } from "@/lib/telefono";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +66,7 @@ type FieldName = keyof typeof FIELD_IDS;
 type Errors = Partial<Record<FieldName, string>>;
 
 const NEXT_STEPS = [
-  { title: "Lo revisamos", text: "Un asesor mira tu solicitud y te escribe para ver documentos y pedirte fotos." },
+  { title: "Lo revisamos", text: "Un asesor mira tu solicitud y tus fotos, y te escribe para ver los documentos." },
   { title: "Lo publicamos", text: "Si encaja, sale en la web marcado como consignación, con el precio que acordemos." },
   { title: "Sigues manejándolo", text: "Sin exclusividad: si lo vendes por tu cuenta, no pagas comisión." },
 ];
@@ -89,6 +93,54 @@ export function SolicitudVentaForm() {
   const [errors, setErrors] = useState<Errors>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Fotos elegidas. Se suben recién al enviar, cuando la solicitud ya existe y
+  // tiene un id al que colgarlas. `vista` es una URL local para la miniatura.
+  const [fotos, setFotos] = useState<{ clave: string; archivo: File; vista: string }[]>([]);
+  const [avisoFotos, setAvisoFotos] = useState<string | null>(null);
+  /** Texto del botón mientras suben: "Subiendo fotos 2 de 5…". */
+  const [progreso, setProgreso] = useState<string | null>(null);
+  /** El auto ya se registró pero alguna foto no subió: no se reenvía el formulario. */
+  const [registrado, setRegistrado] = useState<string | null>(null);
+  const inputFotos = useRef<HTMLInputElement>(null);
+  const fotosRef = useRef(fotos);
+  useEffect(() => {
+    fotosRef.current = fotos;
+  }, [fotos]);
+  // Al salir de la pantalla se liberan las miniaturas que queden.
+  useEffect(() => () => fotosRef.current.forEach((f) => URL.revokeObjectURL(f.vista)), []);
+
+  const agregarFotos = (e: ChangeEvent<HTMLInputElement>) => {
+    const elegidas = Array.from(e.target.files ?? []);
+    e.target.value = ""; // permite volver a elegir el mismo archivo
+    if (elegidas.length === 0) return;
+
+    const validas = elegidas.filter(esArchivoDeFotoValido);
+    const libres = FOTOS_MAXIMAS_SOLICITUD - fotos.length;
+    const aceptadas = validas.slice(0, Math.max(0, libres));
+    const avisos: string[] = [];
+    if (validas.length < elegidas.length) avisos.push("Algunos archivos no eran fotos y se dejaron fuera.");
+    if (validas.length > aceptadas.length) avisos.push(`Solo se pueden adjuntar ${FOTOS_MAXIMAS_SOLICITUD} fotos.`);
+    setAvisoFotos(avisos.join(" ") || null);
+
+    setFotos((prev) => [
+      ...prev,
+      ...aceptadas.map((archivo) => ({
+        clave: `${archivo.name}-${archivo.size}-${archivo.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
+        archivo,
+        vista: URL.createObjectURL(archivo),
+      })),
+    ]);
+  };
+
+  const quitarFoto = (clave: string) => {
+    setAvisoFotos(null);
+    setFotos((prev) => {
+      const fuera = prev.find((f) => f.clave === clave);
+      if (fuera) URL.revokeObjectURL(fuera.vista);
+      return prev.filter((f) => f.clave !== clave);
+    });
+  };
 
   useEffect(() => {
     if (status === "anonimo") router.replace("/cuenta/login?next=/cuenta/vender&modo=registro");
@@ -143,8 +195,35 @@ export function SolicitudVentaForm() {
       currency,
       contactPhone: phoneValue,
     });
+    if (!result.ok) {
+      setSubmitting(false);
+      return setError(result.message);
+    }
+
+    // El auto ya quedó registrado. Las fotos son un extra: si alguna falla no
+    // se pierde la solicitud ni se le pide al cliente llenar todo otra vez.
+    if (fotos.length > 0) {
+      let fallidas = 0;
+      if (!result.id) {
+        fallidas = fotos.length;
+      } else {
+        for (let i = 0; i < fotos.length; i += 1) {
+          setProgreso(`Subiendo fotos ${i + 1} de ${fotos.length}…`);
+          const subida = await subirFotoDeSolicitud(result.id, fotos[i].archivo);
+          if (!subida.ok) fallidas += 1;
+        }
+      }
+      setProgreso(null);
+      if (fallidas > 0) {
+        setSubmitting(false);
+        return setRegistrado(
+          fallidas === fotos.length
+            ? "Tu auto quedó registrado, pero las fotos no se pudieron subir. Envíalas por WhatsApp cuando el asesor te escriba."
+            : `Tu auto quedó registrado. ${fallidas} de ${fotos.length} fotos no se pudieron subir; envíalas por WhatsApp cuando el asesor te escriba.`,
+        );
+      }
+    }
     setSubmitting(false);
-    if (!result.ok) return setError(result.message);
     router.replace("/cuenta?enviada=venta");
   };
 
@@ -289,7 +368,16 @@ export function SolicitudVentaForm() {
                 </div>
               </Field>
               <Field label="Color" htmlFor="sv-color" optional>
-                <input id="sv-color" value={color} onChange={(e) => setColor(e.target.value)} maxLength={60} placeholder="Ej. Azul" className="field-lux" />
+                <SelectConOtro
+                  id="sv-color"
+                  value={color}
+                  onChange={setColor}
+                  opciones={COLORES_EXTERIOR}
+                  vacio="Selecciona el color"
+                  placeholderOtro="Escribe el color"
+                  ariaLabelOtro="Otro color"
+                  maxLength={60}
+                />
               </Field>
             </div>
 
@@ -407,6 +495,59 @@ export function SolicitudVentaForm() {
             </div>
           </Step>
 
+          <Step n={4} title="Fotos">
+            <p className="text-sm leading-relaxed text-ink-3">
+              Opcional, pero ayuda: con fotos lo revisamos más rápido. Hasta {FOTOS_MAXIMAS_SOLICITUD}, por ejemplo exterior, interior, tablero y cualquier detalle.
+            </p>
+            <input
+              ref={inputFotos}
+              id="sv-fotos"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={agregarFotos}
+              className="sr-only"
+              aria-label="Agregar fotos del auto"
+            />
+            {fotos.length > 0 ? (
+              <ul className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {fotos.map((foto, i) => (
+                  <li key={foto.clave} className="relative aspect-[4/3] overflow-hidden rounded-xl border border-line bg-surface-2">
+                    {/* Miniatura local (blob:): next/image no aplica a un archivo que aún no se subió. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={foto.vista} alt={`Foto ${i + 1} del auto`} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => quitarFoto(foto.clave)}
+                      disabled={submitting}
+                      aria-label={`Quitar la foto ${i + 1}`}
+                      className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-void/80 text-ink backdrop-blur transition-colors hover:bg-void disabled:opacity-50"
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => inputFotos.current?.click()}
+                disabled={submitting || Boolean(registrado) || fotos.length >= FOTOS_MAXIMAS_SOLICITUD}
+              >
+                <Icon name="camera" size={16} />
+                {fotos.length > 0 ? "Agregar más fotos" : "Agregar fotos"}
+              </Button>
+              <span className="text-xs tabular-nums text-ink-4">
+                {fotos.length} de {FOTOS_MAXIMAS_SOLICITUD}
+              </span>
+            </div>
+            {avisoFotos ? (
+              <p role="status" className="mt-3 text-xs leading-relaxed text-warn">{avisoFotos}</p>
+            ) : null}
+          </Step>
+
           {error ? (
             <p role="alert" className="mt-6 flex items-start gap-2 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
               <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
@@ -414,9 +555,21 @@ export function SolicitudVentaForm() {
             </p>
           ) : null}
 
+          {registrado ? (
+            <div role="status" className="mt-6 rounded-2xl border border-warn/30 bg-warn/10 px-4 py-4 text-sm text-ink">
+              <p className="flex items-start gap-2">
+                <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-warn" />
+                <span>{registrado}</span>
+              </p>
+              <Button href="/cuenta?enviada=venta" variant="secondary" className="mt-3">
+                Ir a mi cuenta
+              </Button>
+            </div>
+          ) : null}
+
           <div className="mt-8 flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <Button type="submit" variant="accent" size="lg" disabled={submitting || status !== "autenticado"} className="w-full sm:w-auto">
-              {submitting ? "Enviando…" : "Enviar para revisión"}
+            <Button type="submit" variant="accent" size="lg" disabled={submitting || Boolean(registrado) || status !== "autenticado"} className="w-full sm:w-auto">
+              {submitting ? (progreso ?? "Enviando…") : "Enviar para revisión"}
             </Button>
             <p className="flex items-start gap-2 text-xs leading-relaxed text-ink-4 sm:max-w-xs">
               <Icon name="shield" size={14} className="mt-0.5 shrink-0" />
