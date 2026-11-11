@@ -27,9 +27,13 @@ export function rutaModelo(id: string): string {
   return `/importar/${id}`;
 }
 
-/** Ruta que abre la calculadora de la portada con los datos del modelo. */
-export function rutaCalculadora(id: string): string {
-  return `/?simular=${id}#calculator`;
+/**
+ * Ruta que abre la calculadora con los datos del modelo. Por defecto la de la
+ * portada (las tarjetas de la home la abren ahí mismo, sin cambiar de página);
+ * con `base = "/calculadora"`, la de la página propia de la calculadora.
+ */
+export function rutaCalculadora(id: string, base: "/" | "/calculadora" = "/"): string {
+  return `${base}?simular=${id}#calculator`;
 }
 
 /** ¿Este ejemplo tiene página propia? Solo los que se pueden cotizar. */

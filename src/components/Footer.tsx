@@ -19,7 +19,7 @@ const COLUMNS = [
   {
     title: "Recursos",
     links: [
-      { label: "Calculadora de importación", href: "/#calculator" },
+      { label: "Calculadora de importación", href: "/calculadora" },
       { label: "Cómo funciona", href: "/como-funciona" },
       { label: "Preguntas frecuentes", href: "/faq" },
       { label: "Contacto", href: "/#contact" },

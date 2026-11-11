@@ -13,7 +13,7 @@ const NAV_LINKS = [
   { label: "Comprar", href: "/comprar" },
   { label: "Importar", href: "/importar" },
   { label: "Vender", href: "/vender" },
-  { label: "Calculadora", href: "/#calculator" },
+  { label: "Calculadora", href: "/calculadora" },
   { label: "Cómo funciona", href: "/como-funciona" },
   { label: "Mi cuenta", href: "/cuenta" },
 ];

@@ -345,8 +345,8 @@ export default async function ModeloPage({ params }: Props) {
                         <WhatsAppIcon size={20} />
                         Quiero importar este auto
                       </Button>
-                      {/* nofollow: es la portada con un parámetro, no una página nueva que rastrear. */}
-                      <Button href={rutaCalculadora(v.id)} rel="nofollow" variant="secondary" size="lg" className="w-full">
+                      {/* nofollow: es /calculadora con un parámetro, no una página nueva que rastrear. */}
+                      <Button href={rutaCalculadora(v.id, "/calculadora")} rel="nofollow" variant="secondary" size="lg" className="w-full">
                         <Icon name="calculator" size={18} />
                         Ajustar en la calculadora
                       </Button>
@@ -378,7 +378,7 @@ export default async function ModeloPage({ params }: Props) {
                         <WhatsAppIcon size={20} />
                         Consultar por WhatsApp
                       </Button>
-                      <Button href={rutaCalculadora(v.id)} rel="nofollow" variant="secondary" size="lg" className="w-full">
+                      <Button href={rutaCalculadora(v.id, "/calculadora")} rel="nofollow" variant="secondary" size="lg" className="w-full">
                         <Icon name="calculator" size={18} />
                         Ajustar en la calculadora
                       </Button>

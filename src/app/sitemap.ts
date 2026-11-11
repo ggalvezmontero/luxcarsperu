@@ -55,6 +55,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // "vender mi auto en consignación"), no solo la de importación.
     { url: `${BASE}/comprar`, lastModified: ahora, changeFrequency: "weekly", priority: 0.9 },
     { url: `${BASE}/importar`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
+    // La calculadora en su propia URL: responde "calculadora importación de
+    // autos Perú", que como ancla de la portada no tenía página.
+    { url: `${BASE}/calculadora`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
     { url: `${BASE}/vender`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
     { url: `${BASE}/escaneo`, lastModified: ahora, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/como-funciona`, lastModified: ahora, changeFrequency: "monthly", priority: 0.8 },

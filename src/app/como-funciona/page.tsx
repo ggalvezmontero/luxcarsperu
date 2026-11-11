@@ -161,7 +161,7 @@ export default function ComoFuncionaPage() {
             ))}
           </ul>
           <div className="mt-8">
-            <Button href="/#calculator" variant="accent" size="lg">
+            <Button href="/calculadora" variant="accent" size="lg">
               <Icon name="calculator" size={18} />
               Calcular mi importación
             </Button>

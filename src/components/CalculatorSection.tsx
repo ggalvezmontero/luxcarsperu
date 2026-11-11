@@ -284,9 +284,21 @@ function UrlPresetReader({ onPreset }: { onPreset: (preset: UrlPreset) => void }
 
 export function CalculatorSection({
   presets,
+  basePath = "/",
+  titulo = "¿Cuánto cuesta importar tu auto?",
+  tituloComo = "h2",
 }: {
-  /** Ejemplos que se pueden precargar con `/?simular=<id>`. Los pasa la página. */
+  /** Ejemplos que se pueden precargar con `?simular=<id>`. Los pasa la página. */
   presets: readonly SimulationPreset[];
+  /**
+   * Ruta de la página que monta la calculadora: "/" en la portada,
+   * "/calculadora" en su página propia. Al limpiar un cálculo que llegó por la
+   * URL se vuelve a ESTA ruta, no siempre a la portada.
+   */
+  basePath?: string;
+  titulo?: string;
+  /** `h1` solo en /calculadora, donde este título es el de la página. */
+  tituloComo?: "h1" | "h2";
 }) {
   const router = useRouter();
   const [urlPreset, setUrlPreset] = useState<UrlPreset>(SIN_PRESET);
@@ -499,7 +511,7 @@ export function CalculatorSection({
     } catch (err) {
       console.warn("No se pudo limpiar el cálculo guardado", err);
     }
-    if (simularPresetId || sharedPresetCode) router.replace("/#calculator", { scroll: false });
+    if (simularPresetId || sharedPresetCode) router.replace(`${basePath}#calculator`, { scroll: false });
     document.getElementById("calculator")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -600,9 +612,16 @@ export function CalculatorSection({
       </Suspense>
       <SectionHeader
         eyebrow="Calculadora pública"
-        title="¿Cuánto cuesta importar tu auto?"
+        title={titulo}
+        as={tituloComo}
         description="Cuatro datos y ves el costo puesto en Lima al instante, con tributos SUNAT, flete, seguro y honorarios. Sin dejar tu correo."
         align="center"
+        // Como h1 conserva el tamaño de siempre: cambia la etiqueta, no el diseño.
+        className={
+          tituloComo === "h1"
+            ? "[&_h1]:text-3xl [&_h1]:leading-[1.1] sm:[&_h1]:text-4xl lg:[&_h1]:text-4xl"
+            : undefined
+        }
       />
 
       <div className="mx-auto mt-10 grid max-w-6xl gap-6 lg:mt-14 lg:grid-cols-12 lg:items-start lg:gap-8">

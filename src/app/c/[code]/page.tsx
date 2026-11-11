@@ -221,7 +221,7 @@ export default async function SharedQuotePage({ params }: Props) {
 
             <p className="mt-8 text-center text-sm text-ink-3">
               ¿Otro auto en mente?{" "}
-              <Link href="/#calculator" className="font-semibold text-ink underline underline-offset-4">
+              <Link href="/calculadora" className="font-semibold text-ink underline underline-offset-4">
                 Calcula el tuyo
               </Link>{" "}
               o mira{" "}

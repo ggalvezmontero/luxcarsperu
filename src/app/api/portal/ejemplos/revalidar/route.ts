@@ -19,7 +19,7 @@ import { NextResponse } from "next/server";
 import { verificarSesionPortal } from "@/lib/portal/authServer";
 
 /** Todo lo que pinta la lista de ejemplos. */
-const RUTAS = ["/", "/importar", "/sitemap.xml"] as const;
+const RUTAS = ["/", "/importar", "/calculadora", "/sitemap.xml"] as const;
 
 export async function POST() {
   const sesion = await verificarSesionPortal();
