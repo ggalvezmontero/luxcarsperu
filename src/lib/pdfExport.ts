@@ -188,7 +188,7 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
     ...rows,
   ];
 
-  const servicio = estimate.stateComplianceFee + estimate.brokerFee + estimate.documentHandlingFee;
+  const servicio = estimate.brokerFee + estimate.documentHandlingFee;
   const body = [
     ...group("VEHÍCULO Y LOGÍSTICA", [
       ["Precio en EE.UU.", formatCurrency(estimate.input.priceMiami)],
@@ -201,6 +201,9 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
       [`ISC ${formatPercentage(estimate.iscRate)} sobre CIF + ad valorem`, formatCurrency(estimate.isc)],
       ["IGV 15.5% sobre CIF + ad valorem + ISC", formatCurrency(estimate.igv)],
       ["IPM 2.5% sobre la misma base", formatCurrency(estimate.ipm)],
+    ]),
+    ...group("ADUANA", [
+      ["Costos de aduana y despacho en el Callao", formatCurrency(estimate.customsFee)],
     ]),
     ...group("SERVICIO LUXCARS", [
       ["Inspección, negociación, logística y gestión documentaria", formatCurrency(servicio)],

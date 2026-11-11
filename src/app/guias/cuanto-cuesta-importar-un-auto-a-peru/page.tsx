@@ -35,6 +35,11 @@ export default async function Page() {
   const menor = porSobrecosto[0];
   const mayor = porSobrecosto[porSobrecosto.length - 1];
   const fletes = Object.values(freightByCategory);
+  // Un solo flete para toda propulsión se dice como una cifra, no como un rango.
+  const textoFlete =
+    Math.min(...fletes) === Math.max(...fletes)
+      ? formatCurrency(fletes[0])
+      : `entre ${formatCurrency(Math.min(...fletes))} y ${formatCurrency(Math.max(...fletes))}`;
 
   // El mismo vehículo, nuevo y usado, para que se vea cuánto pesa la condición.
   const base = ejemplos[0];
@@ -67,13 +72,14 @@ export default async function Page() {
     >
       <H2>Qué incluye el costo de importar un auto</H2>
       <P>
-        El número que importa es el del vehículo <Fuerte>puesto en Lima</Fuerte>: comprado, embarcado, nacionalizado y con placas. Tiene cinco partes.
+        El número que importa es el del vehículo <Fuerte>puesto en Lima</Fuerte>: comprado, embarcado, nacionalizado y con placas. Tiene seis partes.
       </P>
       <Lista
         items={[
           <><Fuerte>El precio de compra en Estados Unidos.</Fuerte> Es la base de todo lo demás.</>,
-          <><Fuerte>Flete marítimo y seguro.</Fuerte> De Miami al Callao, entre {formatCurrency(Math.min(...fletes))} y {formatCurrency(Math.max(...fletes))} de flete según el tipo de vehículo, más un seguro de {formatPercentage(PRICING_CONFIG.insuranceRate, "es-PE", 2)} sobre el valor asegurado.</>,
+          <><Fuerte>Flete marítimo y seguro.</Fuerte> De Miami al Callao, {textoFlete} de flete, más un seguro de {formatRate(PRICING_CONFIG.insuranceRate)} sobre el {formatPercentage(PRICING_CONFIG.insuredValueFactor)} del precio del vehículo.</>,
           <><Fuerte>Tributos de SUNAT.</Fuerte> Ad valorem, ISC, IGV e IPM, calculados en cascada.</>,
+          <><Fuerte>Costos de aduana.</Fuerte> {formatCurrency(PRICING_CONFIG.customsCostsUsd)} por vehículo para el despacho en el Callao. No entran en la base de los tributos.</>,
           <><Fuerte>El servicio de importación.</Fuerte> Búsqueda, inspección de la unidad, compra, logística y trámite hasta las placas.</>,
           <><Fuerte>La percepción del IGV.</Fuerte> No es un costo, es un adelanto que se recupera, pero hay que tener ese efectivo el día del despacho.</>,
         ]}
@@ -171,7 +177,7 @@ export default async function Page() {
           },
           {
             pregunta: "¿Cuánto cobran por traer un carro de Estados Unidos?",
-            respuesta: `El flete marítimo de Miami al Callao va de ${formatCurrency(Math.min(...fletes))} a ${formatCurrency(Math.max(...fletes))} según el tipo de vehículo. A eso se suman el seguro, los tributos y el servicio de importación. El plan ${planConfigs.fast.label} (${planConfigs.fast.timelineLabel}) cuesta ${formatCurrency(planConfigs.fast.documentHandlingFee)} más que el ${planConfigs.standard.label} (${planConfigs.standard.timelineLabel}).`,
+            respuesta: `El flete marítimo de Miami al Callao cuesta ${textoFlete}. A eso se suman el seguro, los tributos, ${formatCurrency(PRICING_CONFIG.customsCostsUsd)} de costos de aduana y el servicio de importación. El plan ${planConfigs.fast.label} (${planConfigs.fast.timelineLabel}) cuesta ${formatCurrency(planConfigs.fast.documentHandlingFee)} más que el ${planConfigs.standard.label} (${planConfigs.standard.timelineLabel}).`,
           },
           {
             pregunta: "¿Desde qué precio conviene importar?",

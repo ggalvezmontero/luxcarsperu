@@ -109,9 +109,16 @@ export default async function CalculadoraPage() {
         },
         {
           n: "5",
+          titulo: "Costos de aduana",
+          formula: "Monto fijo por vehículo",
+          monto: ejemplo.e.customsFee,
+          nota: "El despacho en el Callao. No entra en la base de ningún tributo.",
+        },
+        {
+          n: "6",
           titulo: "Servicio LuxCars",
           formula: "Inspección, compra, logística y trámite",
-          monto: ejemplo.e.stateComplianceFee + ejemplo.e.brokerFee + ejemplo.e.documentHandlingFee,
+          monto: ejemplo.e.brokerFee + ejemplo.e.documentHandlingFee,
           nota: "Ya está dentro del estimado: no aparece como cargo nuevo al final.",
         },
       ]

@@ -1,11 +1,33 @@
 import type { VehicleCategoryId } from "./vehicleCategories";
 
+/**
+ * COSTOS LOGÍSTICOS: USD 3,800 PARA LA UNIDAD DE REFERENCIA (decisión del
+ * dueño, 2026-11-10). Es el costo real de traer un auto de USD 104,000 y ya
+ * incluye el seguro, que es 0.5% sobre el 110% del precio:
+ *
+ *     seguro = 104,000 × 1.10 × 0.005 = 572
+ *     flete  = 3,800 − 572          = 3,228
+ *
+ * El flete es el mismo para toda propulsión; lo que se mueve con el precio del
+ * auto es el seguro. Antes eran estimados por categoría (USD 1,900 a 2,400)
+ * que quedaban por debajo de lo que se paga de verdad.
+ *
+ * Para cambiar el costo logístico se tocan dos números: `LOGISTICS_REFERENCE`
+ * y, si cambia la póliza, `insuranceRate`.
+ */
+const LOGISTICS_REFERENCE = { totalUsd: 3800, vehiclePriceUsd: 104000 } as const;
+const INSURANCE_RATE = 0.005;
+const INSURED_VALUE_FACTOR = 1.1;
+const FREIGHT_USD =
+  LOGISTICS_REFERENCE.totalUsd -
+  LOGISTICS_REFERENCE.vehiclePriceUsd * INSURED_VALUE_FACTOR * INSURANCE_RATE;
+
 const FREIGHT_ESTIMATES: Record<VehicleCategoryId, number> = {
-  gasolina: 2100,
-  hev: 1900,
-  diesel: 2400,
-  ev: 2200,
-  phev: 2000,
+  gasolina: FREIGHT_USD,
+  hev: FREIGHT_USD,
+  diesel: FREIGHT_USD,
+  ev: FREIGHT_USD,
+  phev: FREIGHT_USD,
 };
 
 /**
@@ -54,12 +76,12 @@ export const PRICING_CONFIG = {
   freightByCategory: FREIGHT_ESTIMATES,
 
   /**
-   * Seguro internacional: 0.35% sobre el 110% del valor FOB + flete, con un
-   * mínimo de USD 45. Reproduce de cerca la proforma real (modelado USD 157.81
-   * vs USD 160.38 liquidados).
+   * Seguro internacional: 0.5% sobre el 110% del PRECIO del vehículo (sin el
+   * flete), con un mínimo de USD 45. Ver `LOGISTICS_REFERENCE` arriba: con el
+   * flete, da USD 3,800 de costo logístico para un auto de USD 104,000.
    */
-  insuranceRate: 0.0035,
-  insuredValueFactor: 1.1,
+  insuranceRate: INSURANCE_RATE,
+  insuredValueFactor: INSURED_VALUE_FACTOR,
   insuranceMinimum: 45,
 
   adValoremByOrigin: AD_VALOREM_BY_ORIGIN,
@@ -94,8 +116,18 @@ export const PRICING_CONFIG = {
    */
   usedMaxAgeYears: 2,
 
-  stateComplianceRate: 0.05,
-  brokerFeeRate: 0.1,
+  /**
+   * COSTOS DE ADUANA: USD 2,300 FIJOS POR VEHÍCULO (decisión del dueño,
+   * 2026-11-10). No forman parte del valor en aduana: no entran al CIF ni a la
+   * base de ningún tributo. Se suman al costo final como una línea propia.
+   */
+  customsCostsUsd: 2300,
+  /**
+   * COMISIÓN DE LUXCARS: 12% DEL PRECIO DEL VEHÍCULO (decisión del dueño,
+   * 2026-11-10). Reemplaza a los dos cargos anteriores, 10% de honorarios más
+   * 5% de inspección, que sumaban 15%. La inspección va dentro de la comisión.
+   */
+  brokerFeeRate: 0.12,
   /**
    * FAST TRACK CUESTA USD 1,200 MÁS QUE ESTÁNDAR, FIJOS (decisión del dueño,
    * 2026-11-06). Es un cargo de servicio: no toca el flete, así que no cambia

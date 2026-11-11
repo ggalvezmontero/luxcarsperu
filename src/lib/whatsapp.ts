@@ -1,6 +1,7 @@
 import { LUXCARS_CONFIG } from "./config";
 import { formatCurrency, formatPercentage, formatRate } from "./utils";
 import type { PremiumImportQuote } from "@/core/pricing/priceCalculator";
+import { PRICING_CONFIG } from "@/core/pricing/pricingConfig";
 
 export type WhatsappPayload = {
   name?: string;
@@ -45,8 +46,8 @@ export function buildWhatsappLink(
     `Ad Valorem ${formatPercentage(estimate.adValoremRate)}: ${formatCurrency(estimate.adValorem)}`,
     `ISC ${formatPercentage(estimate.iscRate)} (sobre CIF + Ad Valorem): ${formatCurrency(estimate.isc)}`,
     `IGV 15.5% + IPM 2.5% (sobre CIF + Ad Valorem + ISC): ${formatCurrency(estimate.igv + estimate.ipm)}`,
-    `State Compliance Fee (5%): ${formatCurrency(estimate.stateComplianceFee)}`,
-    `Broker Fee (10%): ${formatCurrency(estimate.brokerFee)}`,
+    `Costos de aduana: ${formatCurrency(estimate.customsFee)}`,
+    `Comisión LuxCars (${formatRate(PRICING_CONFIG.brokerFeeRate)}): ${formatCurrency(estimate.brokerFee)}`,
     estimate.documentHandlingFee > 0
       ? `Fast Track (cargo fijo): ${formatCurrency(estimate.documentHandlingFee)}`
       : undefined,

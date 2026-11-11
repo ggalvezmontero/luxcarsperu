@@ -403,7 +403,7 @@ export default async function ModeloPage({ params }: Props) {
                     Con un precio de compra de <strong className="font-semibold text-ink">{formatCurrency(evaluacion.estimate.input.priceMiami)}</strong> en Estados Unidos, queda en alrededor de <strong className="font-semibold text-ink">{formatCurrency(evaluacion.estimate.finalEstimate)}</strong> puesto en Lima, nacionalizado y con placas.
                   </p>
                   <p>
-                    De ese total, {formatCurrency(quoteTaxes(evaluacion.estimate))} son tributos SUNAT ({formatPercentage(quoteTaxes(evaluacion.estimate) / evaluacion.estimate.finalEstimate)} del costo), {formatCurrency(evaluacion.estimate.freight + evaluacion.estimate.insurance)} son flete marítimo y seguro de Miami al Callao, y el resto es el servicio: inspección de la unidad, compra, logística y trámite hasta la entrega.
+                    De ese total, {formatCurrency(quoteTaxes(evaluacion.estimate))} son tributos SUNAT ({formatPercentage(quoteTaxes(evaluacion.estimate) / evaluacion.estimate.finalEstimate)} del costo), {formatCurrency(evaluacion.estimate.freight + evaluacion.estimate.insurance)} son flete marítimo y seguro de Miami al Callao, {formatCurrency(evaluacion.estimate.customsFee)} son costos de aduana, y el resto es el servicio: inspección de la unidad, compra, logística y trámite hasta la entrega.
                   </p>
                   <p className="text-sm text-ink-3">{v.priceNote}</p>
                 </div>

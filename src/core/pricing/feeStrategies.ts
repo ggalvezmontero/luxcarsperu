@@ -41,11 +41,11 @@ export function calculateLogistics(
   context: LogisticsContext,
 ): LogisticsBreakdown {
   const freightBase =
-    PRICING_CONFIG.freightByCategory[context.vehicleCategoryId] ?? 2000;
+    PRICING_CONFIG.freightByCategory[context.vehicleCategoryId] ??
+    PRICING_CONFIG.freightByCategory.gasolina;
   const freight = freightBase * context.planConfig.fleteAdjustment;
   const insurance = InsuranceModule.calculate({
     priceMiami: context.priceMiami,
-    freight,
   });
   const cif = context.priceMiami + freight + insurance;
 

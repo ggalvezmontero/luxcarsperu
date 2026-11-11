@@ -94,7 +94,7 @@ function Group({
   );
 }
 
-/** El desglose completo: precio, flete, tributos, servicio y percepción. */
+/** El desglose completo: precio, flete, tributos, aduana, servicio y percepción. */
 export function QuoteBreakdown({
   estimate,
   id,
@@ -104,7 +104,7 @@ export function QuoteBreakdown({
   id?: string;
   className?: string;
 }) {
-  const servicio = estimate.stateComplianceFee + estimate.brokerFee + estimate.documentHandlingFee;
+  const servicio = estimate.brokerFee + estimate.documentHandlingFee;
 
   return (
     <dl id={id} className={cn("divide-y divide-line border-t border-line", className)}>
@@ -138,6 +138,11 @@ export function QuoteBreakdown({
           tooltip="IGV 15.5% más IPM 2.5%, sobre CIF + ad valorem + ISC."
         />
       </Group>
+      <Line
+        label="Costos de aduana"
+        amount={estimate.customsFee}
+        tooltip="Monto fijo por vehículo para el despacho en el Callao. No forma parte de la base de los tributos."
+      />
       <Line
         label="Servicio LuxCars"
         amount={servicio}

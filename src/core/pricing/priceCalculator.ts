@@ -22,7 +22,6 @@ import {
   type VehicleCategory,
   type VehicleCategoryId,
 } from "./vehicleCategories";
-import { ComplianceModule } from "../modules/ComplianceModule";
 import { BrokerModule } from "../modules/BrokerModule";
 import { FastTrackModule } from "../modules/FastTrackModule";
 
@@ -44,7 +43,9 @@ export type PremiumImportQuote = LogisticsBreakdown &
     iscRate: number;
     iscTooltip: string;
     adValoremRate: number;
-    stateComplianceFee: number;
+    /** Costos de aduana: monto fijo, fuera de la base de los tributos. */
+    customsFee: number;
+    /** Comisión de LuxCars sobre el precio del vehículo. */
     brokerFee: number;
     documentHandlingFee: number;
     /** Costo real de la importación. NO incluye la percepción, que es recuperable. */
@@ -172,9 +173,7 @@ export function calculateImportQuote(
     percepcionRate,
   });
 
-  const stateComplianceFee = ComplianceModule.calculate({
-    priceMiami: input.priceMiami,
-  });
+  const customsFee = PRICING_CONFIG.customsCostsUsd;
 
   const brokerFee = BrokerModule.calculate({
     priceMiami: input.priceMiami,
@@ -191,7 +190,7 @@ export function calculateImportQuote(
     fiscalFees.isc +
     fiscalFees.igv +
     fiscalFees.ipm +
-    stateComplianceFee +
+    customsFee +
     brokerFee +
     documentHandlingFee;
 
@@ -209,7 +208,7 @@ export function calculateImportQuote(
     iscRate,
     iscTooltip: vehicleCategory.tooltip,
     adValoremRate,
-    stateComplianceFee,
+    customsFee,
     brokerFee,
     documentHandlingFee,
     finalEstimate,
