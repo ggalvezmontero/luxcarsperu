@@ -12,6 +12,7 @@ import { Section, SectionHeader } from "@/components/ui/Section";
 import Link from "next/link";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { rutaGuia } from "@/lib/guias";
+import { MARCAS_IMPORTABLES, rutaMarca } from "@/lib/importExamples/marca";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { ORGANIZATION_ID } from "@/lib/structuredData";
 import { formatCurrency } from "@/lib/utils";
@@ -301,9 +302,29 @@ export default function ImportarPage() {
 
         <MostSoughtVehiclesSection tone="void" destino="pagina" />
 
-        <GuiasDestacadas tone="bg" />
+        <Section tone="bg" padding="tight">
+          <SectionHeader
+            eyebrow="Por marca"
+            title="Importar por marca"
+            description="Qué modelos de cada marca se ensamblan en Estados Unidos y cuáles pagan ad valorem."
+          />
+          <ul className="mt-8 flex flex-wrap gap-2">
+            {MARCAS_IMPORTABLES.map((m) => (
+              <li key={m.slug}>
+                <Link
+                  href={rutaMarca(m.nombre)}
+                  className="inline-flex rounded-full border border-line bg-surface px-4 py-2 text-sm text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
+                >
+                  {m.nombre}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Section>
 
-        <Section tone="void" padding="tight">
+        <GuiasDestacadas tone="void" />
+
+        <Section tone="bg" padding="tight">
           <CtaBand />
         </Section>
       </main>

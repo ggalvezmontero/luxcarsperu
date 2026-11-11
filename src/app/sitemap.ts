@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { GUIAS, rutaGuia } from "@/lib/guias";
+import { MARCAS_IMPORTABLES, rutaMarca } from "@/lib/importExamples/marca";
 import { rutaModelo, tienePaginaPropia } from "@/lib/importExamples/modelo";
 import { getImportExamples } from "@/lib/importExamples/servidor";
 import { isDatabaseConfigured } from "@/lib/db/client";
@@ -82,6 +83,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  // Una página por marca: "importar [marca] de Estados Unidos a Perú".
+  const marcas: MetadataRoute.Sitemap = MARCAS_IMPORTABLES.map((m) => ({
+    url: `${BASE}${rutaMarca(m.nombre)}`,
+    lastModified: ahora,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
   // Las guías: una por búsqueda informativa (costo, requisitos, arancel, ISC).
   const guias: MetadataRoute.Sitemap = [
     { url: `${BASE}/guias`, lastModified: ahora, changeFrequency: "monthly", priority: 0.7 },
@@ -97,5 +106,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // El stock va AL FINAL: lo de arriba no cambia de orden ni de contenido.
   const stock = await fichasDelStock();
 
-  return [...fijas, ...vehiculos, ...guias, ...stock];
+  return [...fijas, ...vehiculos, ...marcas, ...guias, ...stock];
 }

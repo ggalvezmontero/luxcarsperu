@@ -52,6 +52,7 @@ import {
   rutaModelo,
   tienePaginaPropia,
 } from "@/lib/importExamples/modelo";
+import { marcaPorNombre, rutaMarca } from "@/lib/importExamples/marca";
 import { getImportExamples, getImportExamplesForIsr } from "@/lib/importExamples/servidor";
 import { OG_DEFAULTS, OG_IMAGE, twitterCard } from "@/lib/seo";
 import { ORGANIZATION_ID, breadcrumbSchema } from "@/lib/structuredData";
@@ -149,6 +150,8 @@ export default async function ModeloPage({ params }: Props) {
   const ruta = rutaModelo(v.id);
   const urlPagina = `${contact.website}${ruta}`;
   const nombreConArticulo = conArticulo(v);
+  // La página de su marca, si la marca tiene una (ver lib/importExamples/marca.ts).
+  const marca = marcaPorNombre(v.calculator.brand);
   const categoria = getVehicleCategory(v.calculator.vehicleType);
   const esRango = v.priceMinUsd !== v.priceMaxUsd;
   const hoy = new Intl.DateTimeFormat("es-PE", {
@@ -230,6 +233,7 @@ export default async function ModeloPage({ params }: Props) {
     breadcrumbSchema([
       { nombre: "Inicio", ruta: "/" },
       { nombre: "Importar", ruta: "/importar" },
+      ...(marca ? [{ nombre: marca.nombre, ruta: rutaMarca(marca.nombre) }] : []),
       { nombre: v.name, ruta },
     ]),
   ];
@@ -248,6 +252,12 @@ export default async function ModeloPage({ params }: Props) {
           <nav aria-label="Migas de pan" className="flex flex-wrap items-center gap-2 text-sm text-ink-4">
             <Link href="/importar" className="hover:text-ink">Importar</Link>
             <Icon name="chevronRight" size={14} />
+            {marca ? (
+              <>
+                <Link href={rutaMarca(marca.nombre)} className="hover:text-ink">{marca.nombre}</Link>
+                <Icon name="chevronRight" size={14} />
+              </>
+            ) : null}
             <span className="text-ink-2">{v.name}</span>
           </nav>
 
