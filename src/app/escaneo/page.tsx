@@ -26,8 +26,9 @@ const soles = (monto: number) => `S/ ${monto}`;
 
 /* SEO (2026-11-10, pedido del dueño): la página responde a "escaneo de autos
    en Lima" y sus variantes ("scanner automotriz", "revisión de auto usado antes
-   de comprar", "inspección precompra a domicilio", "peritaje vehicular",
-   "revisión mecánica", "kilometraje real"). La frase principal va en el título
+   de comprar", "inspección precompra a domicilio", "kilometraje real"). No se
+   promete "peritaje" ni "revisión mecánica": la página aclara abajo que es un
+   diagnóstico electrónico y visual, no una inspección mecánica de taller. La frase principal va en el título
    y el h1; las variantes, en la descripción y el primer párrafo. */
 const TITLE = "Escaneo de autos usados en Lima antes de comprar · Inspección precompra";
 const DESCRIPTION = `Revisión de autos usados antes de comprar en Lima: vamos a donde está el auto con un escáner automotriz profesional y en una hora sabes si conviene: fallas ocultas, códigos borrados y kilometraje real. Desde ${soles(PRECIO.limaModerna)}.`;
@@ -233,7 +234,7 @@ export default function EscaneoPage() {
               </h1>
               <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
                 Vamos a donde está el auto con un escáner (scanner) automotriz profesional. Es una inspección
-                precompra a domicilio, un peritaje mecánico y electrónico en una hora: sabes lo que el aviso
+                precompra a domicilio, con diagnóstico electrónico y visual en una hora: sabes lo que el aviso
                 no dice, con fallas guardadas, códigos borrados y kilometraje real, antes de pagar.
               </p>
               <p className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
