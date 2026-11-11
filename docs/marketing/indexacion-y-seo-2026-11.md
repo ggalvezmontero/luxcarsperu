@@ -112,6 +112,8 @@ Google corta en unas 10 a 12 solicitudes por día por propiedad. Hoy entraron **
 
 **Rechazadas por cuota el 10 de noviembre** (cuatro intentos, todos con "Quota Exceeded"): la guía de requisitos, `/importar` y la portada dos veces, la última por pedido expreso del dueño de "terminar la indexación". Google no deja pedir más hasta que renueve el cupo; no hay rodeo posible y no se insistió.
 
+**Nuevo intento el 11 de noviembre a las 00:50 (hora de Lima):** se volvió a pedir la portada y Search Console respondió de nuevo "Quota Exceeded". El cupo no se renueva a medianoche sino unas 24 horas después de las primeras solicitudes del 10 de noviembre, así que la siguiente tanda va por la tarde o noche del 11. Se detuvo ahí, sin más intentos.
+
 **Pendientes para el 11 de noviembre y el 12 (son 15 y la cuota da para unas 10 por día), en este orden:**
 1. `/importar` (título, H1 y texto nuevos, en producción; la solicitud de hoy devolvió "Quota Exceeded")
 2. `/` (título nuevo con "Autos de lujo en Lima" al frente; también "Quota Exceeded" hoy)
