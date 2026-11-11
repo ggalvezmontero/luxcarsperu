@@ -92,6 +92,40 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   Desplegables: una sola flecha para TODO el sitio
+   ---------------------------------------------------------------------------
+   Antes solo llevaban flecha propia los <select> con la clase `select-lux`. Los
+   demás (casi todos los del portal) mostraban la flecha nativa del navegador,
+   pegada al borde derecho y distinta en cada sistema. Esta regla se aplica a
+   cualquier <select>, tenga las clases que tenga, así que uno nuevo sale bien
+   sin acordarse de nada.
+
+   Va FUERA de las capas de Tailwind a propósito: una regla sin capa gana a las
+   utilidades, y hace falta para que un `px-3` no deje el texto debajo de la
+   flecha. Las medidas van en `em` para que la flecha acompañe al tamaño de
+   letra del control (los filtros del portal son más chicos que un formulario).
+   --------------------------------------------------------------------------- */
+select:not([multiple]) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5 10 12.5 15 7.5' stroke='%23C0C0C0' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.8em center;
+  background-size: 1.25em 1.25em;
+  padding-right: 2.5em;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+select:not([multiple]):disabled {
+  cursor: not-allowed;
+}
+select:not([multiple]) option,
+select:not([multiple]) optgroup {
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+}
+
+/* ---------------------------------------------------------------------------
    Utilidades del sistema
    --------------------------------------------------------------------------- */
 @utility container-lux {
@@ -142,15 +176,11 @@ body {
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
+/* La flecha de los desplegables ya la pone la regla global de arriba para
+   cualquier <select>. La clase se conserva porque muchos componentes la llevan;
+   hoy no añade nada. */
 @utility select-lux {
-  appearance: none;
-  padding-right: 2.75rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5 10 12.5 15 7.5' stroke='%23C0C0C0' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.9rem center;
-  background-size: 20px 20px;
   cursor: pointer;
-  & option { background: var(--color-surface-2); color: var(--color-ink); }
 }
 
 /* Fondo con resplandor plateado sutil detrás de portadas y bandas. */
