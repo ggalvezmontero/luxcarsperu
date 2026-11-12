@@ -62,7 +62,7 @@ export const FUENTE_OPCIONES: readonly VehicleSource[] = [
 ];
 
 export const PROCEDENCIA_LABEL: Record<VehicleProcedencia, string> = {
-  importado: "Importado por LuxCars",
+  importado: "Importado por Luxcars",
   local: "Ya está en el Perú (compra local o consignación)",
 };
 

@@ -62,7 +62,7 @@ import { PortalShell } from "@/components/portal/PortalShell";
  * ══════════════════════════════════════════════════════════════════════════
  */
 export const metadata: Metadata = {
-  title: { default: "Portal", template: "%s · Portal LuxCars" },
+  title: { default: "Portal", template: "%s · Portal Luxcars" },
   description: "Portal interno de administración. Acceso restringido al equipo.",
   // Dos capas a propósito: `robots` para los rastreadores serios y el
   // `googleBot` explícito para anular la herencia del layout raíz, que sí pide

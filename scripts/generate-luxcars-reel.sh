@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Genera un reel vertical 9:16 (1080x1920) sobre por qué existe LuxCars.
+# Genera un reel vertical 9:16 (1080x1920) sobre por qué existe Luxcars.
 # Requiere: brew install ffmpeg-full (el ffmpeg de Homebrew sin -full no incluye drawtext).
 # Uso: ./scripts/generate-luxcars-reel.sh
 
@@ -35,7 +35,7 @@ trap cleanup EXIT
 
 # Slide 1 — gancho + logo
 "$FF" -y -f lavfi -i "color=c=0x0a0a0f:s=1080x1920:d=3" -loop 1 -i "$LOGO" \
-  -filter_complex "[0:v]drawtext=fontfile=${FONT}:text='¿Por qué existe':fontsize=64:fontcolor=0xf5d072:x=(w-text_w)/2:y=780,drawtext=fontfile=${FONT}:text='LuxCars?':fontsize=88:fontcolor=0xf5d072:x=(w-text_w)/2:y=870,drawtext=fontfile=${FONT}:text='Te lo explicamos en segundos.':fontsize=32:fontcolor=white:x=(w-text_w)/2:y=1000[base];[1:v]scale=190:-1,format=rgba[lg];[base][lg]overlay=(W-w)/2:90:format=auto[outv]" \
+  -filter_complex "[0:v]drawtext=fontfile=${FONT}:text='¿Por qué existe':fontsize=64:fontcolor=0xf5d072:x=(w-text_w)/2:y=780,drawtext=fontfile=${FONT}:text='Luxcars?':fontsize=88:fontcolor=0xf5d072:x=(w-text_w)/2:y=870,drawtext=fontfile=${FONT}:text='Te lo explicamos en segundos.':fontsize=32:fontcolor=white:x=(w-text_w)/2:y=1000[base];[1:v]scale=190:-1,format=rgba[lg];[base][lg]overlay=(W-w)/2:90:format=auto[outv]" \
   -map "[outv]" -t 3 -c:v libx264 -pix_fmt yuv420p "$TMP/s1.mp4"
 
 # Slides 2–5 — solo texto
@@ -57,7 +57,7 @@ trap cleanup EXIT
 
 # Slide 6 — cierre + logo
 "$FF" -y -f lavfi -i "color=c=0x0a0a0f:s=1080x1920:d=4.5" -loop 1 -i "$LOGO" \
-  -filter_complex "[0:v]drawtext=fontfile=${FONT}:text='LuxCars Perú':fontsize=72:fontcolor=0xf5d072:x=(w-text_w)/2:y=820,drawtext=fontfile=${FONT}:text='Importación premium con datos,':fontsize=38:fontcolor=white:x=(w-text_w)/2:y=920,drawtext=fontfile=${FONT}:text='no con promesas vacías.':fontsize=38:fontcolor=white:x=(w-text_w)/2:y=980[base];[1:v]scale=200:-1,format=rgba[lg];[base][lg]overlay=(W-w)/2:100:format=auto[outv]" \
+  -filter_complex "[0:v]drawtext=fontfile=${FONT}:text='Luxcars Perú':fontsize=72:fontcolor=0xf5d072:x=(w-text_w)/2:y=820,drawtext=fontfile=${FONT}:text='Importación premium con datos,':fontsize=38:fontcolor=white:x=(w-text_w)/2:y=920,drawtext=fontfile=${FONT}:text='no con promesas vacías.':fontsize=38:fontcolor=white:x=(w-text_w)/2:y=980[base];[1:v]scale=200:-1,format=rgba[lg];[base][lg]overlay=(W-w)/2:100:format=auto[outv]" \
   -map "[outv]" -t 4.5 -c:v libx264 -pix_fmt yuv420p "$TMP/s6.mp4"
 
 {

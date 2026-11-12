@@ -9,7 +9,7 @@ export type BrokerContext = {
 };
 
 export const BrokerModule = {
-  /** Comisión de LuxCars. La base y la forma de aplicarla viven en `PRICING_CONFIG`. */
+  /** Comisión de Luxcars. La base y la forma de aplicarla viven en `PRICING_CONFIG`. */
   calculate(context: BrokerContext) {
     const tasa = PRICING_CONFIG.brokerFeeRate;
     if (PRICING_CONFIG.brokerFeeBase === "sobre-precio-final") {

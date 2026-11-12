@@ -54,7 +54,7 @@ import { fotoEnUso, type Ejemplo, type EjemploMutationResult } from "./queries";
 
 const L = EXAMPLE_LIMITS;
 
-const LICENCIA_PROPIA = "Foto propia de LuxCars";
+const LICENCIA_PROPIA = "Foto propia de Luxcars";
 const LICENCIAS = [LICENCIA_PROPIA, "CC0 1.0", "CC BY 4.0", "CC BY-SA 4.0"] as const;
 const OTRA_LICENCIA = "__otra__";
 
@@ -302,11 +302,11 @@ export function EjemploForm({
       ...prev,
       licencia: valor,
       // La validación trata cualquier licencia que no sea CC0 como "exige
-      // crédito y enlace". Para una foto propia se completa con LuxCars y el
+      // crédito y enlace". Para una foto propia se completa con Luxcars y el
       // sitio, editable, en vez de obligar a inventar algo.
       ...(valor === LICENCIA_PROPIA
         ? {
-            imageCredit: prev.imageCredit.trim() ? prev.imageCredit : "LuxCars",
+            imageCredit: prev.imageCredit.trim() ? prev.imageCredit : "Luxcars",
             imageSourceUrl: prev.imageSourceUrl.trim() ? prev.imageSourceUrl : "https://luxcars.pe",
           }
         : {}),
@@ -684,7 +684,7 @@ export function EjemploForm({
         <Bloque titulo="Foto">
           <div className="sm:col-span-2">
             <p className="rounded-lux border border-warn/30 bg-warn/5 px-4 py-3 text-xs leading-relaxed text-ink-2">
-              Solo fotos propias de LuxCars o con una licencia que permita uso comercial (CC0, CC BY, CC BY-SA). No se
+              Solo fotos propias de Luxcars o con una licencia que permita uso comercial (CC0, CC BY, CC BY-SA). No se
               usan fotos de otras páginas web ni de marketplaces (eBay, Autotrader, Cars.com, CarGurus, Facebook
               Marketplace…), ni de salas de prensa de fabricantes. Si no tienes una foto así, déjalo sin foto: la
               tarjeta se ve bien sin ella.
@@ -790,7 +790,7 @@ export function EjemploForm({
           <Campo
             id="ej-imageCredit"
             label="Crédito (autor)"
-            hint="Obligatorio con CC BY. Con foto propia, LuxCars."
+            hint="Obligatorio con CC BY. Con foto propia, Luxcars."
             error={errorDe("imageCredit")}
             campo="imageCredit"
           >

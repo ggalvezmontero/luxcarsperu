@@ -30,7 +30,7 @@ declare
   --  config — edita estos dos valores
   -- ---------------------------------------------------------------------------
   v_email  text := 'admin@luxcars.pe';
-  v_nombre text := 'Administrador LuxCars';
+  v_nombre text := 'Administrador Luxcars';
   -- El registro del sitio no confirma el correo: una cuenta con esta dirección
   -- pudo crearla otra persona. Ponlo en `true` solo después de confirmar con
   -- el dueño del correo que la cuenta es suya.

@@ -215,7 +215,7 @@ catálogo sale de un listado de esas plataformas. Ver la cabecera de
 
 Vectores de Wikimedia Commons, versiones vigentes de cada marca. Son marcas
 registradas: se usan solo para identificar a la marca (uso nominativo), nunca
-como si LuxCars fuera concesionario oficial. Commons los aloja como dominio
+como si Luxcars fuera concesionario oficial. Commons los aloja como dominio
 público o CC0 por no alcanzar el umbral de originalidad (texto y formas simples).
 
 | Archivo | Archivo en Commons | Licencia | Fuente |
@@ -300,7 +300,7 @@ un velo del 85 % que casi la tapaba: esa portada es una franja ancha y baja, y
 el Bronco, encuadrado para una tarjeta, quedaba cortado por la mitad. Se cambió
 por la toma panorámica de la tabla y el velo bajó al 75 %.
 
-**Son ilustrativas del paso, no operaciones de LuxCars.** En cuanto existan
+**Son ilustrativas del paso, no operaciones de Luxcars.** En cuanto existan
 fotos propias (el Corvette en el patio del Callao, una entrega real con permiso
 del cliente, un escaneo propio), reemplazan a estas: ver la lista de tomas en
 `docs/IMAGENES.md`, sección 4.

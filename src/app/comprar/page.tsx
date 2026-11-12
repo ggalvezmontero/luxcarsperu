@@ -112,7 +112,7 @@ export default async function ComprarPage() {
           <CtaBand
             title="¿No está el que buscas?"
             text="Dinos cuál y lo buscamos en Estados Unidos o en Lima. Sigues el avance desde tu cuenta."
-            message="Hola LuxCars, busco un auto que no vi en su stock. ¿Pueden ayudarme a conseguirlo?"
+            message="Hola Luxcars, busco un auto que no vi en su stock. ¿Pueden ayudarme a conseguirlo?"
             secondaryHref="/cuenta/comprar"
             secondaryLabel="Pedir que lo busquen"
           />

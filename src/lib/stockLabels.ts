@@ -4,7 +4,7 @@ import type { Vehicle } from "@/lib/db/types";
 export type StockVehicle = Vehicle & { isDemo?: boolean };
 
 /**
- * Un consignado es el auto de un cliente que LuxCars vende por él, sin
+ * Un consignado es el auto de un cliente que Luxcars vende por él, sin
  * exclusividad. Se publica junto al stock propio pero SIEMPRE etiquetado:
  * el comprador debe saber antes de la visita que el dueño es otro.
  */

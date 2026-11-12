@@ -52,7 +52,7 @@ function fecha(iso: string) {
   return new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric" }).format(d);
 }
 
-/** Enlace de WhatsApp de LuxCars con un texto ya escrito. */
+/** Enlace de WhatsApp de Luxcars con un texto ya escrito. */
 function enlaceWhatsApp(texto: string) {
   return `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(texto)}`;
 }
@@ -69,7 +69,7 @@ export function AvisoCuentaSuspendida() {
       <p className="mt-1.5 text-sm leading-relaxed text-ink-2">
         Por ahora no puedes crear ni cambiar solicitudes. Para reactivarla,{" "}
         <a
-          href={enlaceWhatsApp("Hola LuxCars, mi cuenta aparece suspendida y quisiera saber cómo reactivarla.")}
+          href={enlaceWhatsApp("Hola Luxcars, mi cuenta aparece suspendida y quisiera saber cómo reactivarla.")}
           target="_blank"
           rel="noopener noreferrer"
           className="font-semibold text-ink underline underline-offset-4"
@@ -201,7 +201,7 @@ export function CuentaScreen() {
   }
 
   const nombre = profile?.name?.trim() || email || "Hola";
-  const wa = enlaceWhatsApp(`Hola LuxCars, soy ${nombre} y tengo una consulta sobre mis solicitudes.`);
+  const wa = enlaceWhatsApp(`Hola Luxcars, soy ${nombre} y tengo una consulta sobre mis solicitudes.`);
   // Solo con el perfil leído: si la lectura falló (`profile` nulo) no se asume
   // nada y la base sigue siendo quien decide.
   const suspendida = profile ? !profile.active : false;
@@ -221,7 +221,7 @@ export function CuentaScreen() {
                 href="/portal"
                 variant="secondary"
                 size="sm"
-                title="Stock, leads, consignaciones y solicitudes. Solo para el equipo de LuxCars."
+                title="Stock, leads, consignaciones y solicitudes. Solo para el equipo de Luxcars."
               >
                 <Icon name="shield" size={14} />
                 Panel de administración
@@ -310,7 +310,7 @@ export function CuentaScreen() {
                   </div>
                   {p.reply ? (
                     <p className="mt-3 rounded-2xl border border-line bg-void/40 p-3 text-sm leading-relaxed text-ink-2">
-                      <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-silver">Respuesta de LuxCars</span>
+                      <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-silver">Respuesta de Luxcars</span>
                       {p.reply}
                     </p>
                   ) : null}

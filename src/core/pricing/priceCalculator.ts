@@ -45,7 +45,7 @@ export type PremiumImportQuote = LogisticsBreakdown &
     adValoremRate: number;
     /** Costos de aduana: monto fijo, fuera de la base de los tributos. */
     customsFee: number;
-    /** Comisión de LuxCars sobre el costo total puesto en Lima (CIF + tributos + aduana). */
+    /** Comisión de Luxcars sobre el costo total puesto en Lima (CIF + tributos + aduana). */
     brokerFee: number;
     documentHandlingFee: number;
     /** Costo real de la importación. NO incluye la percepción, que es recuperable. */

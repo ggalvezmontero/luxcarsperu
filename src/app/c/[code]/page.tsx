@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     evaluation.kind === "ready"
       ? `Costo estimado de importar un ${vehicleName} desde Estados Unidos: precio ${formatCurrency(quote.price)}, más flete, seguro, tributos SUNAT y servicio. Mira el desglose completo.`
-      : `Estimado de importación de un ${vehicleName} desde Estados Unidos a Perú, calculado con LuxCars.`;
+      : `Estimado de importación de un ${vehicleName} desde Estados Unidos a Perú, calculado con Luxcars.`;
 
   return {
     title,

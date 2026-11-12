@@ -2,7 +2,7 @@
  * Enlaces de WhatsApp SALIENTES del portal de administración.
  *
  * Diferencia con `src/lib/whatsapp.ts`: aquel arma el mensaje que el CLIENTE
- * le envía a LuxCars (destino = número de la empresa). Este arma el mensaje que
+ * le envía a Luxcars (destino = número de la empresa). Este arma el mensaje que
  * el EQUIPO le envía al cliente o al dueño de un auto en consignación
  * (destino = número de la persona). Por eso vive en un archivo aparte: el
  * destinatario es distinto y el tono también.

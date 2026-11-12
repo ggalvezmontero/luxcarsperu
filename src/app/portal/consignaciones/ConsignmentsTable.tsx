@@ -11,7 +11,7 @@
  *     aparezca en una captura compartida por WhatsApp.
  *
  *  2. “VENDIDO POR EL DUEÑO” ES UNA ACCIÓN DE PRIMER NIVEL, no un estado
- *     escondido en un desplegable. LuxCars trabaja SIN exclusividad: que el
+ *     escondido en un desplegable. Luxcars trabaja SIN exclusividad: que el
  *     dueño venda su propio auto es un desenlace previsto y se cierra en cero,
  *     sin comisión y sin fricción. Ponerlo a mano es reflejar el negocio.
  *
@@ -186,7 +186,7 @@ export function ConsignmentsTable({
                   </p>
                   {item.appraisal ? (
                     <p className="mt-1 text-[11px] text-ink-4">
-                      Tasación LuxCars:{" "}
+                      Tasación Luxcars:{" "}
                       {formatCurrency(item.appraisal, "es-PE", item.currency)}
                     </p>
                   ) : null}
@@ -387,7 +387,7 @@ export function ConsignmentsTable({
                       <p className="mt-1 text-[11px] leading-relaxed text-ink-3">
                         El dueño vendió su {item.vehicleLabel} por su cuenta. No
                         hay exclusividad, así que la consignación se cierra en
-                        cero: LuxCars no cobra comisión.
+                        cero: Luxcars no cobra comisión.
                       </p>
                       <label
                         className="mt-3 block text-[11px] text-ink-3"

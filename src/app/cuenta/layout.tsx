@@ -14,7 +14,7 @@ import { CuentaSessionProvider } from "@/components/cuenta/cuentaSession";
  * `noindex`: son pantallas personales, no contenido.
  */
 export const metadata: Metadata = {
-  title: { default: "Mi cuenta", template: "%s · Mi cuenta · LuxCars" },
+  title: { default: "Mi cuenta", template: "%s · Mi cuenta · Luxcars" },
   robots: { index: false, follow: false, nocache: true },
   alternates: { canonical: undefined },
 };

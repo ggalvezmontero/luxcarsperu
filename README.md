@@ -68,9 +68,9 @@ La calculadora y el formulario reutilizan estos datos para generar el enlace dir
 
 Utiliza estos prompts en Midjourney, DALL·E, Leonardo u otra IA visual. Ajusta formato o idioma según la plataforma.
 
-#### Logo principal · LuxCars Perú
+#### Logo principal · Luxcars Perú
 ```
-luxury automotive broker logo, text "LuxCars Perú", metallic gold and graphite palette, minimalist sans serif typography, subtle shield silhouette, negative space, premium feel, dark background, vector style
+luxury automotive broker logo, text "Luxcars Perú", metallic gold and graphite palette, minimalist sans serif typography, subtle shield silhouette, negative space, premium feel, dark background, vector style
 ```
 
 #### Logo alterno · LXCARS

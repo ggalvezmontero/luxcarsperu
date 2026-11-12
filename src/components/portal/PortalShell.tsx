@@ -288,7 +288,7 @@ function SinPermiso() {
         <h1 className="mt-3 text-base font-medium text-ink">Esta cuenta no es del equipo</h1>
         <p className="mt-2 text-xs leading-relaxed text-ink-3">
           {email ? <>Entraste como <span className="text-ink-2">{email}</span>. </> : null}
-          El portal es solo para administradores de LuxCars. Tus solicitudes están en tu cuenta.
+          El portal es solo para administradores de Luxcars. Tus solicitudes están en tu cuenta.
         </p>
         <Link
           href="/cuenta"

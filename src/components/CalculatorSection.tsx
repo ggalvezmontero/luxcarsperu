@@ -69,7 +69,7 @@ import { Section, SectionHeader } from "./ui/Section";
       entrega. Nada más es obligatorio.
    3. No se pide el VIN. Es un dato que el cliente casi nunca tiene a mano. El
       origen (0% o 6% de ad valorem) se sugiere por marca y modelo con la regla
-      conservadora del motor de origen, y LuxCars lo verifica con el VIN de la
+      conservadora del motor de origen, y Luxcars lo verifica con el VIN de la
       unidad antes de comprar. El cliente solo puede afinar una cosa: si el
       vendedor emite certificado de origen.
    4. Los errores se muestran donde se corrigen (bajo el campo) y el panel de
@@ -917,7 +917,7 @@ function ResultPanel({
           {[
             "Flete Miami → Callao y seguro",
             "Ad valorem, ISC, IGV e IPM según SUNAT",
-            "Honorario LuxCars y gestión documentaria",
+            "Honorario Luxcars y gestión documentaria",
             "Percepción del IGV separada, porque se recupera",
           ].map((item) => (
             <li key={item} className="flex items-start gap-2.5">

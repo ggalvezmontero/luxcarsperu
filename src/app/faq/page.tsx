@@ -13,7 +13,7 @@ import { BreadcrumbJsonLd } from "@/components/BreadcrumbJsonLd";
 // propio la página heredaba og:url y og:title de la home.
 const TITLE = "Preguntas frecuentes";
 const DESCRIPTION =
-  "Dudas comunes sobre comprar, importar y vender autos con LuxCars: impuestos SUNAT, plazos, antigüedad permitida y consignación sin exclusividad.";
+  "Dudas comunes sobre comprar, importar y vender autos con Luxcars: impuestos SUNAT, plazos, antigüedad permitida y consignación sin exclusividad.";
 const OG_TITLE = `${TITLE} | ${LUXCARS_CONFIG.brandName}`;
 
 export const metadata: Metadata = {
@@ -38,7 +38,7 @@ export default function FAQPage() {
       <main id="contenido" className="w-full flex-1 pt-[var(--lux-nav-h)]">
         <FAQSection titulo="Todas las preguntas frecuentes" tituloComo="h1" />
         <Section tone="void" padding="tight">
-          <CtaBand title="¿Tu duda no está aquí?" text="Escríbenos y te respondemos el mismo día." message="Hola LuxCars, tengo una consulta." />
+          <CtaBand title="¿Tu duda no está aquí?" text="Escríbenos y te respondemos el mismo día." message="Hola Luxcars, tengo una consulta." />
         </Section>
       </main>
       <Footer />

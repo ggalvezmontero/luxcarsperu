@@ -118,7 +118,7 @@ export default async function CalculadoraPage() {
         },
         {
           n: "6",
-          titulo: "Servicio LuxCars",
+          titulo: "Servicio Luxcars",
           formula: "Inspección, compra, logística y trámite",
           monto: ejemplo.e.brokerFee + ejemplo.e.documentHandlingFee,
           nota: "Ya está dentro del estimado: no aparece como cargo nuevo al final.",
@@ -351,7 +351,7 @@ export default async function CalculadoraPage() {
           <CtaBand
             title="¿Ya tienes el número?"
             text="Mándanos el modelo y la versión. Te devolvemos unidades reales en dealers de Estados Unidos con el costo final por escrito."
-            message="Hola LuxCars, usé la calculadora y quiero una cotización por escrito."
+            message="Hola Luxcars, usé la calculadora y quiero una cotización por escrito."
           />
         </Section>
       </main>

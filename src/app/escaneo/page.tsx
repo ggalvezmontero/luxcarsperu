@@ -49,7 +49,7 @@ export const metadata: Metadata = {
 };
 
 const WA = `https://wa.me/${contact.whatsappNumber}?text=${encodeURIComponent(
-  "Hola LuxCars, quiero agendar un escaneo pre-compra. Este es el auto que quiero revisar: ",
+  "Hola Luxcars, quiero agendar un escaneo pre-compra. Este es el auto que quiero revisar: ",
 )}`;
 
 const REVISION: { icon: IconName; title: string; text: string }[] = [
@@ -113,7 +113,7 @@ const PREGUNTAS: { question: string; answer: string }[] = [
   },
   {
     question: "¿Cómo se descuenta lo que pagué por el escaneo?",
-    answer: `Si después contratas con LuxCars la búsqueda de un auto, una consignación, una importación o un trámite documentario, los ${soles(PRECIO.limaModerna)} del escaneo se restan del precio de ese servicio.`,
+    answer: `Si después contratas con Luxcars la búsqueda de un auto, una consignación, una importación o un trámite documentario, los ${soles(PRECIO.limaModerna)} del escaneo se restan del precio de ese servicio.`,
   },
 ];
 
@@ -300,7 +300,7 @@ export default function EscaneoPage() {
               <SectionHeader
                 eyebrow="Precio"
                 title="Un precio fijo, y te lo devolvemos"
-                description="Incluye el traslado, el escaneo, la prueba de ruta y el informe. Lo que pagas se descuenta por completo de cualquier servicio que contrates después con LuxCars."
+                description="Incluye el traslado, el escaneo, la prueba de ruta y el informe. Lo que pagas se descuenta por completo de cualquier servicio que contrates después con Luxcars."
               />
               <dl className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-[22px] border border-silver/50 bg-surface-2 p-6">
@@ -399,7 +399,7 @@ export default function EscaneoPage() {
           <CtaBand
             title="¿Ya viste un auto que te gusta?"
             text="Mándanos el aviso y te decimos cuándo podemos escanearlo. Antes de pagar, que hable el auto."
-            message="Hola LuxCars, quiero agendar un escaneo pre-compra. Este es el auto que quiero revisar: "
+            message="Hola Luxcars, quiero agendar un escaneo pre-compra. Este es el auto que quiero revisar: "
             secondaryHref="/#contact"
             secondaryLabel="Dejar mis datos"
           />

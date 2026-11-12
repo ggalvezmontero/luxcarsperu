@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 };
 
 const WA = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(
-  "Hola LuxCars, quiero tasar mi auto y conocer la consignación sin exclusividad.",
+  "Hola Luxcars, quiero tasar mi auto y conocer la consignación sin exclusividad.",
 )}`;
 
 const PROMESAS: { icon: IconName; title: string; text: string }[] = [
@@ -164,7 +164,7 @@ export default function VenderPage() {
               <thead>
                 <tr className="border-b border-line text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">
                   <th scope="col" className="px-5 py-4 font-semibold">Criterio</th>
-                  <th scope="col" className="bg-surface-2 px-5 py-4 text-silver-bright">Con LuxCars</th>
+                  <th scope="col" className="bg-surface-2 px-5 py-4 text-silver-bright">Con Luxcars</th>
                   <th scope="col" className="px-5 py-4">Por tu cuenta</th>
                   <th scope="col" className="px-5 py-4">Concesionario</th>
                 </tr>

@@ -150,7 +150,7 @@ function updatedRows(data: unknown): { id: string; vehicle_id: string | null }[]
 /**
  * EL DIFERENCIADOR DEL NEGOCIO: el dueño vendió su auto por su cuenta.
  *
- * LuxCars trabaja SIN contrato de exclusividad. El dueño sigue usando su auto
+ * Luxcars trabaja SIN contrato de exclusividad. El dueño sigue usando su auto
  * mientras se vende y puede venderlo él mismo; cuando eso pasa, la consignación
  * se cierra **sin comisión**. No es una fuga que haya que penalizar: es la
  * promesa comercial cumpliéndose, y el sistema tiene que poder registrarla en
@@ -222,7 +222,7 @@ export async function markSoldByOwner(
  * `vendida_por_dueno` tiene su propia función y `vendida_por_luxcars` exige
  * `precio_venta_final` por la constraint `consignments_venta_luxcars_exige_precio`.
  *
- * TODO(cierre): formulario de venta por LuxCars con precio final y comisión.
+ * TODO(cierre): formulario de venta por Luxcars con precio final y comisión.
  * Cuando exista, tiene que llamar a `closeLinkedVehicle(client, vehicle_id,
  * vendido_en)` igual que `markSoldByOwner`, para que la ficha deje la web y
  * quede vendida.
@@ -237,7 +237,7 @@ export async function updateConsignmentStatus(
       message:
         input.status === "vendida_por_dueno"
           ? "Usa la acción “Vendido por el dueño”: cierra sin comisión."
-          : "Una venta por LuxCars necesita el precio final; regístrala desde el cierre de venta.",
+          : "Una venta por Luxcars necesita el precio final; regístrala desde el cierre de venta.",
     };
   }
 
@@ -266,7 +266,7 @@ export async function updateConsignmentStatus(
       };
     }
 
-    // Retirada o vencida: el auto ya no está a la venta con LuxCars, así que
+    // Retirada o vencida: el auto ya no está a la venta con Luxcars, así que
     // su ficha sale de la web. No es una venta: el estado del vehículo no se
     // toca. (`vendida_por_luxcars` no llega acá: exige precio final.)
     const vehicleNote = isClosedConsignment(input.status)

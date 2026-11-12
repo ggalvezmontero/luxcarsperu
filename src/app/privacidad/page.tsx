@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 // propio la página heredaba og:url y og:title de la home.
 const TITLE = "Política de privacidad";
 const DESCRIPTION =
-  "Cómo LuxCars Perú trata tus datos personales conforme a la Ley de Protección de Datos Personales del Perú.";
+  "Cómo Luxcars Perú trata tus datos personales conforme a la Ley de Protección de Datos Personales del Perú.";
 const OG_TITLE = `${TITLE} | ${LUXCARS_CONFIG.brandName}`;
 
 export const metadata: Metadata = {

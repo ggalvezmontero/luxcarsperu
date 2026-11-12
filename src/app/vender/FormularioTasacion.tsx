@@ -43,7 +43,7 @@ const INICIAL: Campos = {
 function enlace(campos: Campos) {
   const km = Number(campos.kilometraje.replace(/\D/g, ""));
   const lines = [
-    "Hola LuxCars, quiero tasar mi auto para consignación.",
+    "Hola Luxcars, quiero tasar mi auto para consignación.",
     `Marca: ${campos.marca.trim()}`,
     `Modelo: ${campos.modelo.trim()}`,
     `Año: ${campos.anio.trim()}`,

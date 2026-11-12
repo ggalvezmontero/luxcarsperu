@@ -355,7 +355,7 @@ export default async function MarcaPage({ params }: Props) {
           <CtaBand
             title={`¿Buscas un ${m.nombre}?`}
             text="Dinos el modelo, la versión y el color. Te mandamos unidades reales en dealers de Estados Unidos con el costo final por escrito."
-            message={`Hola LuxCars, quiero importar un ${m.nombre}. ¿Me ayudan con unidades disponibles y el costo final?`}
+            message={`Hola Luxcars, quiero importar un ${m.nombre}. ¿Me ayudan con unidades disponibles y el costo final?`}
           />
         </Section>
       </main>

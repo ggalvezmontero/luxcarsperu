@@ -114,6 +114,6 @@ export function resolveIscRate(params: {
   if (category.newIscRate !== null) return category.newIscRate;
 
   // Gasolina nueva sin cilindrada declarada: se asume el tramo más alto, que es
-  // el de la enorme mayoría del catálogo de LuxCars (autos sobre 1,500 cc).
+  // el de la enorme mayoría del catálogo de Luxcars (autos sobre 1,500 cc).
   return gasolineNewIscRate(cylinderCapacityCc ?? 2000);
 }

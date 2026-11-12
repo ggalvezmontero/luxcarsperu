@@ -65,7 +65,7 @@ export function Navbar() {
         aria-label="Principal"
         className="container-lux flex h-[var(--lux-nav-h)] items-center justify-between gap-6"
       >
-        <Link href="/" className="flex shrink-0 items-center" aria-label="LuxCars Perú, inicio">
+        <Link href="/" className="flex shrink-0 items-center" aria-label="Luxcars Perú, inicio">
           <Image
             src="/brand/logo-blanco.svg"
             alt=""

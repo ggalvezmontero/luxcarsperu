@@ -17,7 +17,7 @@ import { resolveSharedEstimate } from "./estimado";
  * evita. Los colores vienen de BRAND_PALETTE porque satori no ve globals.css.
  * -------------------------------------------------------------------------- */
 
-export const alt = "Estimado de importación de un auto a Perú, calculado con LuxCars";
+export const alt = "Estimado de importación de un auto a Perú, calculado con Luxcars";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

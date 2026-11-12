@@ -17,7 +17,7 @@ import { ImageResponse } from "next/og";
  *
  * Es una composicion tipografica a proposito: no lleva foto de auto porque no
  * hay ninguna foto propia todavia y meter stock ajeno como si fuera inventario
- * de LuxCars es justo lo que esta auditoria vino a sacar. Cuando exista una
+ * de Luxcars es justo lo que esta auditoria vino a sacar. Cuando exista una
  * toma real del stock (ver docs/IMAGENES.md) se puede montar aqui de fondo.
  *
  * Los colores vienen de BRAND_PALETTE: satori resuelve estilos inline y no ve

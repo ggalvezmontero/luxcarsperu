@@ -19,7 +19,7 @@ foto muestra contra lo que su `alt` y su contexto afirmaban.
 > afirma. Si no existe esa foto, va un tratamiento gráfico del sistema de
 > diseño — nunca un stock parecido.**
 
-Por qué importa más acá que en otros rubros: el cliente de LuxCars está por
+Por qué importa más acá que en otros rubros: el cliente de Luxcars está por
 girar entre USD 50,000 y USD 1,000,000 a una empresa que conoció por internet.
 Lo único que compra antes de confiar es coherencia. El día que nota que el
 "Bronco Raptor" de la portada era un 4x4 cualquiera de banco de imágenes, no
@@ -37,8 +37,8 @@ El reemplazo honesto es `src/components/PlaceholderGrafico.tsx`.
 |---|---|---|---|
 | `images/how/search.jpg` | Paso "Búsqueda inteligente" y bloque lateral de `WebsitesSection` con el alt *"Selección de autos de lujo en marketplaces premium"* | Búsqueda de autos en marketplaces | Una laptop con un **dashboard de analítica de marketing** (plantilla de admin genérica). Cero autos, cero marketplaces. |
 | `images/how/inspection.jpg` | Paso "Inspección certificada · checklist ASE de 150 puntos" | Inspección técnica certificada | Alguien **echando aceite de motor** (bidón Mobil 1) en un motor con el capó abierto. Un cambio de aceite no es una inspección de 150 puntos. |
-| `images/contact/concierge.jpg` | `ContactSection` (*"Concierge de LuxCars coordinando una importación desde Miami"*) y `WhyUsSection` (*"Asesor concierge de LuxCars atendiendo a un cliente"*) | El equipo de LuxCars | **Stock de dos oficinistas desconocidos chocando las manos.** Ni es LuxCars, ni hay auto, ni hay importación. Presentar stock como "nuestro equipo" miente sobre quién atiende al cliente. |
-| `images/faq/questions.jpg` | `FAQSection` (*"Asesor LuxCars respondiendo preguntas frecuentes"*) | Un asesor respondiendo | **Stock de tres desconocidos señalando una laptop.** |
+| `images/contact/concierge.jpg` | `ContactSection` (*"Concierge de Luxcars coordinando una importación desde Miami"*) y `WhyUsSection` (*"Asesor concierge de Luxcars atendiendo a un cliente"*) | El equipo de Luxcars | **Stock de dos oficinistas desconocidos chocando las manos.** Ni es Luxcars, ni hay auto, ni hay importación. Presentar stock como "nuestro equipo" miente sobre quién atiende al cliente. |
+| `images/faq/questions.jpg` | `FAQSection` (*"Asesor Luxcars respondiendo preguntas frecuentes"*) | Un asesor respondiendo | **Stock de tres desconocidos señalando una laptop.** |
 
 Las cuatro se borraron del repo y su hueco lo ocupa `PlaceholderGrafico`.
 Están en el historial de git si alguna vez hiciera falta recuperarlas.
@@ -51,7 +51,7 @@ usa lector de pantalla necesita la imagen, no el título que ya leyó al lado.
 | Archivo | `alt` anterior | `alt` corregido |
 |---|---|---|
 | `images/hero/main.jpg` (en `Hero.tsx`) | "SUV de lujo en estudio con iluminación dorada" — ni SUV, ni estudio, ni dorado | "Audi R8 gris mate visto de tres cuartos trasero sobre una carretera de montaña al atardecer" |
-| `images/how/purchase.jpg` | "Paso 03: Negociación & compra en el proceso de importación de LuxCars" | "Dos personas de traje se dan la mano cerrando un acuerdo en una oficina" |
+| `images/how/purchase.jpg` | "Paso 03: Negociación & compra en el proceso de importación de Luxcars" | "Dos personas de traje se dan la mano cerrando un acuerdo en una oficina" |
 | `images/how/shipping.jpg` | "Paso 04: Envío asegurado…" / "Plan Fast Track timeline" | "Vista aérea de un terminal portuario con contenedores apilados y grúas pórtico" |
 | `images/how/customs.jpg` | "Paso 05: Aduanas & SUNAT…" | "Una persona firma con lapicero un juego de documentos impresos sobre un escritorio" |
 | `images/how/delivery.jpg` | "Paso 06: Entrega VIP…" | "Toyota RAV4 plateada recién lavada, estacionada al aire libre y vista de tres cuartos" |
@@ -153,7 +153,7 @@ modificada (acá se recortan a 16:10 y se convierten a WebP). Queda pendiente:
    no está en el repo.
 2. Que el crédito se renderice de verdad donde la licencia lo exige.
 3. Dejar claro en la ficha que la foto es **ilustrativa del modelo**, no de la
-   unidad en venta. Ninguna de estas fotos es un auto de LuxCars: son unidades
+   unidad en venta. Ninguna de estas fotos es un auto de Luxcars: son unidades
    de concesionario, de salón del automóvil o de vía pública fotografiadas por
    terceros. Mostrarlas sin esa aclaración vuelve a prometer algo que no es.
 4. Para el RAM 3500: o se confirma el acabado Limited o se le quita la palabra

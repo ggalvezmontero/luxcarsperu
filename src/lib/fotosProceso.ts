@@ -5,7 +5,7 @@
  * Cada foto muestra el paso con un auto dentro: un patio de unidades, un
  * mecánico revisando un motor, un showroom, un buque, autos en un puerto, una
  * llave que se entrega. Son ilustrativas: no aparentan ser una operación de
- * LuxCars. Salen de Unsplash bajo la Licencia Unsplash (uso comercial, sin
+ * Luxcars. Salen de Unsplash bajo la Licencia Unsplash (uso comercial, sin
  * atribución obligatoria) y están autohospedadas; el autor y la página de
  * origen de cada una están en docs/FOTOS.md.
  *

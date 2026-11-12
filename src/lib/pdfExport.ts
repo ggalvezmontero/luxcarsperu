@@ -301,5 +301,5 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
   doc.text(`${contact.email} · luxcars.pe`, W - M, H - FOOT_H + 13.5, { align: "right" });
 
   const clean = (s: string) => s.replace(/[^a-zA-Z0-9]/g, "_");
-  doc.save(`LuxCars_Estimado_${clean(estimate.input.brand)}_${clean(estimate.input.model)}_${estimate.input.year}.pdf`);
+  doc.save(`Luxcars_Estimado_${clean(estimate.input.brand)}_${clean(estimate.input.model)}_${estimate.input.year}.pdf`);
 }

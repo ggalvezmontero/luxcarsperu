@@ -3,7 +3,7 @@ import { CATEGORY_LABEL, type StockVehicle } from "./stockLabels";
 
 /**
  * Datos estructurados JSON-LD. Es lo que permite que Google entienda que
- * LuxCars es un negocio local con dirección, teléfono y servicios concretos,
+ * Luxcars es un negocio local con dirección, teléfono y servicios concretos,
  * en vez de una página más. Sin esto no hay rich results ni ficha de negocio.
  */
 
@@ -60,7 +60,7 @@ export function autoDealerSchema() {
     })),
     // Perfiles externos de la misma entidad (nunca el propio sitio): es como
     // se le dice a Google que la ficha de Google Business, Instagram, Facebook
-    // y TikTok son LuxCars Perú. Salen de LUXCARS_CONFIG.social.
+    // y TikTok son Luxcars Perú. Salen de LUXCARS_CONFIG.social.
     sameAs: Object.values(LUXCARS_CONFIG.social),
   };
 }

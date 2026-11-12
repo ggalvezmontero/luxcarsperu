@@ -1,5 +1,5 @@
 /**
- * Tipos de dominio de la capa de datos de LuxCars.
+ * Tipos de dominio de la capa de datos de Luxcars.
  *
  * FUENTE DE VERDAD DEL ESQUEMA: `db/migrations/`. Este archivo es su
  * espejo en TypeScript, nada más. Las columnas en Postgres están en español
@@ -471,7 +471,7 @@ export const VEHICLE_STATUSES: readonly VehicleStatus[] = [
 
 /**
  * `public.procedencia_vehiculo`. De dónde viene el AUTO (no el dato): si lo
- * importó LuxCars o si ya estaba en el Perú (compra local, consignación). Las
+ * importó Luxcars o si ya estaba en el Perú (compra local, consignación). Las
  * reglas de importación (antigüedad, kilometraje, diésel) solo tienen sentido
  * para `importado`; un auto comprado en Lima se inventaría tal cual está.
  */

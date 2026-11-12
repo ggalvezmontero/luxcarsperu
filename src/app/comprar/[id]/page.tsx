@@ -92,8 +92,8 @@ export default async function VehiculoPage({ params }: Params) {
   const wa = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(
     [
       consigned
-        ? `Hola LuxCars, me interesa el ${v.brand} ${v.model} ${v.year} que tienen en consignación.`
-        : `Hola LuxCars, me interesa el ${v.brand} ${v.model} ${v.year} de su stock.`,
+        ? `Hola Luxcars, me interesa el ${v.brand} ${v.model} ${v.year} que tienen en consignación.`
+        : `Hola Luxcars, me interesa el ${v.brand} ${v.model} ${v.year} de su stock.`,
       `Referencia: ${(v.slug ?? v.id).toUpperCase()}`,
       "Quisiera coordinar una visita y conocer el precio final.",
     ].join("\n"),
@@ -205,13 +205,13 @@ export default async function VehiculoPage({ params }: Params) {
                       {CONSIGNMENT_LABEL}
                     </p>
                     <p className="mt-1.5 text-sm leading-relaxed text-ink-2">
-                      Este auto es de un cliente que nos lo confió para venderlo. LuxCars verifica historial y documentos, coordina la visita con el dueño y acompaña la transferencia hasta la tarjeta de propiedad.
+                      Este auto es de un cliente que nos lo confió para venderlo. Luxcars verifica historial y documentos, coordina la visita con el dueño y acompaña la transferencia hasta la tarjeta de propiedad.
                     </p>
                   </div>
                 ) : null}
 
                 <ul className="mt-6 space-y-2.5 border-t border-line pt-5 text-sm text-ink-3">
-                  <li className="flex items-center gap-2"><Icon name="fileCheck" size={16} className="text-silver" />{consigned ? "Con placa y transferencia acompañada por LuxCars" : "Nacionalizado, con placa y transferencia incluida"}</li>
+                  <li className="flex items-center gap-2"><Icon name="fileCheck" size={16} className="text-silver" />{consigned ? "Con placa y transferencia acompañada por Luxcars" : "Nacionalizado, con placa y transferencia incluida"}</li>
                   <li className="flex items-center gap-2"><Icon name="eye" size={16} className="text-silver" />{consigned ? "Se ve y se maneja en Lima, con cita coordinada" : "Se ve y se maneja en San Isidro"}</li>
                   <li className="flex items-center gap-2"><Icon name="shield" size={16} className="text-silver" />Historial y documentos a la vista antes de la visita</li>
                 </ul>

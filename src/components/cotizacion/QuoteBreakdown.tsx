@@ -144,7 +144,7 @@ export function QuoteBreakdown({
         tooltip="Monto fijo por vehículo para el despacho en el Callao. No forma parte de la base de los tributos."
       />
       <Line
-        label="Servicio LuxCars"
+        label="Servicio Luxcars"
         amount={servicio}
         tooltip="Inspección, negociación, logística, gestión documentaria y Fast Track si aplica."
       />

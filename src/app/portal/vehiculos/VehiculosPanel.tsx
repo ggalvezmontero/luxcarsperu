@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Listado del stock para el equipo de LuxCars.
+ * Listado del stock para el equipo de Luxcars.
  *
  * El portal es SOLO PARA ADMINISTRACIÓN: el dueño y su equipo. El cliente no
  * tiene cuenta — cotiza, llena formularios y sigue por WhatsApp. Acá se ve lo

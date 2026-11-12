@@ -5,7 +5,7 @@ import { WhatsAppIcon } from "./ui/Icon";
 export function CtaBand({
   title = "¿Tienes un auto en mente?",
   text = "Cuéntanos cuál y te decimos si conviene traerlo, cuánto cuesta puesto en Lima y en cuánto tiempo llega.",
-  message = "Hola LuxCars, tengo un auto en mente y quiero saber si conviene importarlo.",
+  message = "Hola Luxcars, tengo un auto en mente y quiero saber si conviene importarlo.",
   secondaryHref = "/#contact",
   secondaryLabel = "Dejar mis datos",
 }: {

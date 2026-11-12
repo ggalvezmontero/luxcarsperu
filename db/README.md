@@ -1,7 +1,7 @@
 # Base de datos — LUX CARS IMPORT S.A.C.
 
 Esquema de Postgres en **Neon** (proyecto `luxcarsperu`) para el **portal de
-administración** de LuxCars y el **área de cuenta** del cliente. El equipo
+administración** de Luxcars y el **área de cuenta** del cliente. El equipo
 (rol `admin`) lo ve todo; el cliente (rol `cliente`) crea cuenta solo para
 pedir una búsqueda u ofrecer su auto, y ve únicamente lo suyo.
 
@@ -42,7 +42,7 @@ La columna `vehicles.fuente` es una **lista blanca** (`fuente_inventario`):
 | Valor | Significado |
 |---|---|
 | `carga_manual` | Cargado a mano en el admin |
-| `importacion_directa` | Unidad importada por LuxCars a pedido |
+| `importacion_directa` | Unidad importada por Luxcars a pedido |
 | `consignacion` | Unidad de un tercero en consignación |
 | `feed_partner_licenciado` | Feed de dealer con licencia **firmada** |
 

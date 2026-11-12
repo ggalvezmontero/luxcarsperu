@@ -205,7 +205,7 @@ export function LeadsScreen() {
         <Notice tone="warn" label="Sin base de datos conectada">
           La pantalla funciona, pero no hay nada que listar todavía. Mientras
           tanto, los formularios del sitio siguen derivando a cada cliente al
-          WhatsApp de LuxCars: ningún lead se pierde.
+          WhatsApp de Luxcars: ningún lead se pierde.
         </Notice>
       ) : null}
 

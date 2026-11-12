@@ -116,7 +116,7 @@ export function ownBucketPrefix(): string | null {
 
 /**
  * ¿La foto es propia? Vale un archivo del sitio (`/images/…`) o uno del bucket
- * de LuxCars. Nada enlazado desde otro dominio: ese fue el origen de las fotos
+ * de Luxcars. Nada enlazado desde otro dominio: ese fue el origen de las fotos
  * que no correspondían al auto.
  */
 export function isOwnImage(src: string): boolean {

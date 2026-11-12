@@ -135,7 +135,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   // Un solo bloque JSON-LD con los tres esquemas: es lo que permite que Google
-  // muestre a LuxCars como negocio local con dirección, servicios y preguntas.
+  // muestre a Luxcars como negocio local con dirección, servicios y preguntas.
   const jsonLd = [autoDealerSchema(), websiteSchema(), faqSchema()];
 
   return (

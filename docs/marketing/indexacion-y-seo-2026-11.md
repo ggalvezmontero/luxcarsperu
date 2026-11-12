@@ -1,4 +1,4 @@
-# Indexación y SEO · noviembre 2026 · LuxCars Perú
+# Indexación y SEO · noviembre 2026 · Luxcars Perú
 
 **Fecha:** 10 de noviembre de 2026.
 **Fuentes:** Search Console, propiedad de dominio `luxcars.pe` (el informe de indexación tenía fecha del 5 de noviembre; el de rendimiento cubría del 5 al 8 de noviembre); el sitio publicado en `https://www.luxcars.pe`; el código de la rama de trabajo. Parte del [análisis de palabras clave](analisis-palabras-clave.md) del mismo día y no lo repite: aquí van los datos reales que ese documento no tenía.
@@ -188,7 +188,7 @@ La propiedad solo tiene datos desde el 5 de noviembre, así que "últimos 3 mese
 ### 5.3 Qué dicen estos datos
 
 - **La marca ya funciona.** Cuatro variantes del nombre, todas en el puesto 1 o 2. El nombre del sitio en Google se corregirá solo con el canonical `www`.
-- **Google ve a LuxCars como vendedor de autos de lujo, no como importador.** Las consultas con impresiones son "autos de lujo peru", "comprar autos de lujo", "carros de lujo en peru", "venta autos usados de lujo lima", "camionetas de lujo", "autos exclusivos". Tres de ellas ya están en primera página. Pero la página que debería responderlas, `/comprar`, tiene 297 palabras y cero autos publicados: aparece y no gana el clic.
+- **Google ve a Luxcars como vendedor de autos de lujo, no como importador.** Las consultas con impresiones son "autos de lujo peru", "comprar autos de lujo", "carros de lujo en peru", "venta autos usados de lujo lima", "camionetas de lujo", "autos exclusivos". Tres de ellas ya están en primera página. Pero la página que debería responderlas, `/comprar`, tiene 297 palabras y cero autos publicados: aparece y no gana el clic.
 - **`/importar` es la página con más impresiones y ningún clic.** Sale por búsquedas donde no es la mejor respuesta. Las búsquedas de importación propiamente dichas ("importar auto de usa a perú", "cuánto cuesta importar") aún no aparecen: las guías, la calculadora y los modelos se publicaron hoy. Hay que medir de nuevo en dos semanas.
 - **Hay demanda de modelos que no tienen página:** Tesla Model Y (4 impresiones, puesto 10) y Land Cruiser 300. Model Y está en la lista de modelos por cargar desde el portal del análisis anterior; el dato lo sube al primer lugar.
 - **La tasación tiene búsquedas propias** ("tasar mi auto", "cotizar mi auto gratis peru") y el sitio sale en los puestos 50 y 65: existe el bloque en `/vender`, pero no una página que responda esa pregunta.
@@ -241,8 +241,8 @@ Cambios concretos:
 
 Cambios concretos:
 0. **Hecho** (commit `4edc79f`, en producción): título "Vender mi auto en Lima · Consignación y tasación sin exclusividad", descripción y primer párrafo con "auto usado, camioneta o carro de lujo", "tasación gratuita" y "consignación".
-1. **Página nueva `/tasacion`** con el mismo formulario de tasación que ya vive en `/vender`, igual que se hizo con `/calculadora`: título "Tasación de autos en Lima: cuánto vale tu auto hoy, gratis | LuxCars Perú", H1 "Tasación gratuita de autos en Lima", 400 palabras sobre cómo se calcula el rango (año, kilometraje, versión, mercado local) y enlace a `/vender`. Motivo: dos búsquedas distintas ("tasar" y "consignar") compiten hoy por la misma URL y el sitio sale en los puestos 50 y 65 para la primera. Ninguna URL existente cambia.
-2. En `/vender`, sumar preguntas: "¿Cuánto cobra LuxCars por vender mi auto?", "¿Cuánto demora venderlo?", "¿Puedo seguir usándolo mientras tanto?" (ya está en el H1, falta como pregunta), "¿Qué documentos necesito?".
+1. **Página nueva `/tasacion`** con el mismo formulario de tasación que ya vive en `/vender`, igual que se hizo con `/calculadora`: título "Tasación de autos en Lima: cuánto vale tu auto hoy, gratis | Luxcars Perú", H1 "Tasación gratuita de autos en Lima", 400 palabras sobre cómo se calcula el rango (año, kilometraje, versión, mercado local) y enlace a `/vender`. Motivo: dos búsquedas distintas ("tasar" y "consignar") compiten hoy por la misma URL y el sitio sale en los puestos 50 y 65 para la primera. Ninguna URL existente cambia.
+2. En `/vender`, sumar preguntas: "¿Cuánto cobra Luxcars por vender mi auto?", "¿Cuánto demora venderlo?", "¿Puedo seguir usándolo mientras tanto?" (ya está en el H1, falta como pregunta), "¿Qué documentos necesito?".
 3. Usar "cotizar" una vez en el bloque de tasación ("cotiza tu auto gratis"): es la palabra que apareció en Search Console.
 
 ### 6.5 Escaneo pre-compra
@@ -350,18 +350,18 @@ Cada grupo tiene una sola página responsable. Las variantes mezclan sinónimos 
 
 ## 9. Por qué Altagamma sale primera (recogido de la sesión principal y de la sección 10.5 del análisis)
 
-Verificado el 10 de noviembre en Google Perú sin personalizar. Altagamma es puesto 1 en "autos de lujo", "autos de lujo lima" e "importacion de autos de lujo" con su portada, titulada "Altagamma – Autos de Lujo". No aparece en "importación de autos" ni en "importación de autos a pedido". LuxCars: puesto 5 en "importacion de autos de lujo" (portada), 11 en "autos de lujo lima" (`/comprar`), y sale en la Visión general de IA de ambas búsquedas.
+Verificado el 10 de noviembre en Google Perú sin personalizar. Altagamma es puesto 1 en "autos de lujo", "autos de lujo lima" e "importacion de autos de lujo" con su portada, titulada "Altagamma – Autos de Lujo". No aparece en "importación de autos" ni en "importación de autos a pedido". Luxcars: puesto 5 en "importacion de autos de lujo" (portada), 11 en "autos de lujo lima" (`/comprar`), y sale en la Visión general de IA de ambas búsquedas.
 
 Su sitio es técnicamente flojo: la página de importación tiene 75 palabras, H1 vacío, sin descripción ni JSON-LD; la portada, 195 palabras y cero datos estructurados. **Gana por autoridad, no por contenido:**
 
-| Factor | Altagamma | LuxCars |
+| Factor | Altagamma | Luxcars |
 |---|---|---|
 | Ficha de Google Business | San Isidro, 4,7 con 18 reseñas; entra al pack local de "comprar autos de lujo en lima" junto a Autosell (4,3 / 50), Autos Exclusivos (4,4 / 33), Iconic Cars (3,0 / 6) y Auto Traders (5,0 / 1) | Sin ficha |
 | Fichas de autos indexadas | 59, más 22 páginas de marca; unas 417 URLs en el índice | 0 fichas; unas 25 URLs |
 | Antigüedad y marca | Dominio en línea desde al menos 2018; "40 años de trayectoria" | Marca nueva |
 | Redes y directorios | Facebook 13 700 seguidores, Instagram unos 49 mil, blog, nombre‑dirección‑teléfono idénticos en web, redes y Cylex | Recién empezando |
 
-**Qué hacer con esto (para el dueño):** crear y verificar la ficha de Google Business (Dionisio Derteano 184, Of. 1102, San Isidro; categorías Concesionario de automóviles, Importador e Inspección de vehículos), pedir una reseña a cada cliente, mantener nombre, dirección y teléfono idénticos en todos los perfiles y directorios, un video por semana (los TikTok y Facebook de la competencia salen en los resultados), publicar stock como fichas, y añadir `sameAs` al JSON-LD cuando existan los perfiles. Donde LuxCars ya es mejor, la importación (calculadora, modelos, guías), no hay nada que copiarles.
+**Qué hacer con esto (para el dueño):** crear y verificar la ficha de Google Business (Dionisio Derteano 184, Of. 1102, San Isidro; categorías Concesionario de automóviles, Importador e Inspección de vehículos), pedir una reseña a cada cliente, mantener nombre, dirección y teléfono idénticos en todos los perfiles y directorios, un video por semana (los TikTok y Facebook de la competencia salen en los resultados), publicar stock como fichas, y añadir `sameAs` al JSON-LD cuando existan los perfiles. Donde Luxcars ya es mejor, la importación (calculadora, modelos, guías), no hay nada que copiarles.
 
 ---
 

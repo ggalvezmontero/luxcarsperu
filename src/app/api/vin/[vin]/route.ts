@@ -1,7 +1,7 @@
 /**
  * GET /api/vin/{VIN} — decodifica un VIN contra NHTSA vPIC.
  *
- * Es el único "enriquecimiento automático" de datos que LuxCars puede usar de
+ * Es el único "enriquecimiento automático" de datos que Luxcars puede usar de
  * forma legal (el porqué completo está en `src/lib/vin.ts`): vPIC es del
  * Departamento de Transporte de EE.UU., es gratuito, no pide llave y no
  * prohíbe almacenar su respuesta. Devuelve la ficha técnica del VIN, no
@@ -132,7 +132,7 @@ function suggestCategory(
   return null;
 }
 
-/** Países que aparecen de verdad en el catálogo de LuxCars. */
+/** Países que aparecen de verdad en el catálogo de Luxcars. */
 const COUNTRY_ES: Record<string, string> = {
   "united states (usa)": "Estados Unidos",
   "united states": "Estados Unidos",

@@ -1,4 +1,4 @@
-# LuxCars.pe · Prompts de generación de imágenes
+# Luxcars.pe · Prompts de generación de imágenes
 
 ## Hero
 - "cinematic photograph of a black luxury SUV emerging from dramatic studio lighting with gold reflections, wet floor, volumetric haze, 16:9, ultra realistic, high dynamic range, miami nightlife mood"

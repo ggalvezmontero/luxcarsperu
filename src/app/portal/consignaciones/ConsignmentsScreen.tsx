@@ -155,7 +155,7 @@ export function ConsignmentsScreen() {
       <PortalPageHeader
         eyebrow="Portal · Administración"
         title="Consignaciones"
-        description="Autos de clientes que LuxCars vende sin comprarlos. No hay contrato de exclusividad: el dueño sigue usando su auto y, si lo vende por su cuenta, no paga comisión."
+        description="Autos de clientes que Luxcars vende sin comprarlos. No hay contrato de exclusividad: el dueño sigue usando su auto y, si lo vende por su cuenta, no paga comisión."
         actions={
           <Link
             href="/portal/leads"

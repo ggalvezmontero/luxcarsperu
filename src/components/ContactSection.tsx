@@ -59,7 +59,7 @@ function isUsableEstimate(payload: StoredPayload | null): payload is StoredPaylo
 /** Enlace genérico cuando no hay un cálculo previo que adjuntar. */
 function buildPlainWhatsapp(form: FormState) {
   const lines = [
-    `Hola LuxCars, soy ${form.name.trim()}.`,
+    `Hola Luxcars, soy ${form.name.trim()}.`,
     form.notes.trim() ? form.notes.trim() : "Quiero información sobre sus servicios.",
     `Teléfono: ${form.phone.trim()}`,
     form.email.trim() ? `Correo: ${form.email.trim()}` : undefined,

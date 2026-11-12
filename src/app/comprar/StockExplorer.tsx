@@ -56,7 +56,7 @@ function inBucket(v: StockVehicle, bucket: PriceBucket) {
 }
 
 const SEARCH_WHATSAPP = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(
-  ["Hola LuxCars, quiero dejar registrada mi búsqueda.", "Marca y modelo:", "Año:", "Presupuesto:"].join("\n"),
+  ["Hola Luxcars, quiero dejar registrada mi búsqueda.", "Marca y modelo:", "Año:", "Presupuesto:"].join("\n"),
 )}`;
 
 export function StockExplorer({ stock }: { stock: StockVehicle[] }) {

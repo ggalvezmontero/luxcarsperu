@@ -4,7 +4,7 @@
  * El portal no llama a Neon Auth directo: llama acá, y esta ruta reenvía la
  * petición (iniciar sesión, leer la sesión, pedir el token de la Data API,
  * cerrar sesión, recuperar contraseña). El motivo es la cookie: así queda en el
- * dominio de LuxCars y no en uno de terceros, que Safari y los modos privados
+ * dominio de Luxcars y no en uno de terceros, que Safari y los modos privados
  * bloquean. El detalle está en `src/lib/portal/portalClient.ts`.
  *
  * No hay lógica propia: todo lo resuelve `@neon/neon-js`. Lo único que agrega

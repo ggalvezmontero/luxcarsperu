@@ -290,7 +290,7 @@ Y del lado del cliente:
 | Ruta | Qué hace |
 |---|---|
 | `/cuenta/login` | Registro e ingreso (Neon Auth; el trigger copia el nombre al perfil y el formulario le agrega el WhatsApp apenas hay sesión) |
-| `/cuenta` | Sus solicitudes con estado, respuesta de LuxCars y motivo de rechazo |
+| `/cuenta` | Sus solicitudes con estado, respuesta de Luxcars y motivo de rechazo |
 | `/cuenta/comprar` | Pedir un auto que no está en stock ni en consignación |
 | `/cuenta/vender` | Ofrecer su auto en consignación; queda pendiente hasta la aprobación |
 

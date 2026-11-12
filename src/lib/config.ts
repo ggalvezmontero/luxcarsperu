@@ -100,13 +100,13 @@ const fastTrackRange = `${DELIVERY_WINDOWS.fastTrack.days[0]} y ${DELIVERY_WINDO
 const standardRange = `${DELIVERY_WINDOWS.standard.days[0]} y ${DELIVERY_WINDOWS.standard.days[1]}`;
 
 export const LUXCARS_CONFIG = {
-  brandName: "LuxCars Perú",
+  brandName: "Luxcars Perú",
   brandVariants: [
-    "LuxCars",
-    "LuxCars Perú",
+    "Luxcars",
+    "Luxcars Perú",
     "luxcars.pe",
-    "LuxCars Broker",
-    "LuxCars Imports",
+    "Luxcars Broker",
+    "Luxcars Imports",
     "LuxAutoCars",
     "LuxCarX",
     "LXCARS",
@@ -198,7 +198,7 @@ export const LUXCARS_CONFIG = {
   deliveryWindows: DELIVERY_WINDOWS,
   faq: [
     {
-      question: "¿Qué hace exactamente LuxCars Perú?",
+      question: "¿Qué hace exactamente Luxcars Perú?",
       answer:
         "Cuatro cosas. Vendemos vehículos de nuestro stock en Lima. Importamos a pedido desde Estados Unidos. Tasamos tu auto y lo vendemos en consignación sin contrato de exclusividad. Y hacemos gestión documentaria. Puedes contratar una sola línea; no hay paquete obligatorio.",
     },

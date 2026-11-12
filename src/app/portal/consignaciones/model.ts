@@ -2,7 +2,7 @@
  * Modelo de las consignaciones: tipos, etiquetas y utilidades puras.
  *
  * ┌── LA REGLA QUE DEFINE ESTA LÍNEA DE NEGOCIO: SIN EXCLUSIVIDAD ───────────┐
- * │ LuxCars no pide contrato de exclusividad. El dueño sigue usando su auto  │
+ * │ Luxcars no pide contrato de exclusividad. El dueño sigue usando su auto  │
  * │ mientras se vende y puede venderlo por su cuenta sin pagar comisión.     │
  * │ Por eso `soldByOwner` no es una excepción rara: es un desenlace previsto │
  * │ que el sistema tiene que poder cerrar limpio y en cero.                  │
@@ -49,7 +49,7 @@ export type { CommissionType, ConsignmentRow, ConsignmentStatus };
 export const CONSIGNMENT_STATUS_LABEL: Record<ConsignmentStatus, string> = {
   activa: "Activa",
   pausada: "Pausada",
-  vendida_por_luxcars: "Vendida por LuxCars",
+  vendida_por_luxcars: "Vendida por Luxcars",
   vendida_por_dueno: "Vendida por el dueño",
   retirada: "Retirada",
   vencida: "Vencida",
@@ -196,7 +196,7 @@ function toNumberOrNull(
 }
 
 /**
- * Comisión que le corresponde a LuxCars.
+ * Comisión que le corresponde a Luxcars.
  *
  * Si el dueño vendió por su cuenta es CERO por definición del acuerdo, no por
  * un cálculo. Si ya está cobrada, manda el monto real cobrado.

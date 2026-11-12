@@ -181,7 +181,7 @@ export default async function ModeloPage({ params }: Props) {
     const e = evaluacion.estimate;
     preguntas.push({
       pregunta: `¿Cuánto cuesta importar ${nombreConArticulo} a Perú?`,
-      respuesta: `Con un precio de compra de ${formatCurrency(e.input.priceMiami)} en Estados Unidos, queda en alrededor de ${formatCurrency(e.finalEstimate)} puesto en Lima con placas (rango ${formatCurrency(e.finalRange.min)} – ${formatCurrency(e.finalRange.max)}). Incluye flete marítimo, seguro, tributos SUNAT y el servicio de LuxCars.`,
+      respuesta: `Con un precio de compra de ${formatCurrency(e.input.priceMiami)} en Estados Unidos, queda en alrededor de ${formatCurrency(e.finalEstimate)} puesto en Lima con placas (rango ${formatCurrency(e.finalRange.min)} – ${formatCurrency(e.finalRange.max)}). Incluye flete marítimo, seguro, tributos SUNAT y el servicio de Luxcars.`,
     });
     preguntas.push({
       pregunta: "¿Cuánto se paga de impuestos?",
@@ -610,7 +610,7 @@ export default async function ModeloPage({ params }: Props) {
           <CtaBand
             title={`¿Buscas ${nombreConArticulo}?`}
             text="Dinos la versión y el color. Te mandamos unidades reales en dealers de Estados Unidos con el costo final por escrito."
-            message={`Hola LuxCars, quiero importar ${nombreConArticulo}. ¿Me ayudan con unidades disponibles y el costo final?`}
+            message={`Hola Luxcars, quiero importar ${nombreConArticulo}. ¿Me ayudan con unidades disponibles y el costo final?`}
           />
         </Section>
       </main>

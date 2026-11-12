@@ -1,7 +1,7 @@
 /**
  * Clientes de Neon con detección de configuración.
  *
- * REGLA INNEGOCIABLE DE ESTE ARCHIVO: nunca lanza. El sitio de LuxCars debe
+ * REGLA INNEGOCIABLE DE ESTE ARCHIVO: nunca lanza. El sitio de Luxcars debe
  * compilar y renderizar HOY, sin base de datos y sin variables de entorno. Si
  * falta configuración, `getPublicClient()` y `getSql()` devuelven `null` y cada
  * consumidor decide su respaldo (lista vacía, WhatsApp, etc.). Un `throw` aquí
