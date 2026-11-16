@@ -1,3 +1,4 @@
+import { logoOgSize, logoOgSrc } from "@/lib/brandLogoOg";
 import { BRAND_PALETTE } from "@/lib/brandPalette";
 import { formatCurrency } from "@/lib/utils";
 import { ImageResponse } from "next/og";
@@ -11,10 +12,10 @@ import { resolveSharedEstimate } from "./estimado";
  * del mismo cálculo que la página (`estimado.ts`), así que no pueden decir
  * números distintos.
  *
- * Misma composición tipográfica que la imagen general del sitio
- * (`src/app/opengraph-image.tsx`) y por la misma razón: no hay foto propia de
- * cada modelo, y poner una ajena como si fuera la unidad es lo que el sitio
- * evita. Los colores vienen de BRAND_PALETTE porque satori no ve globals.css.
+ * Lleva el logo real (`src/lib/brandLogoOg.ts`), igual que la imagen general
+ * del sitio (`src/app/opengraph-image.tsx`), y sin foto por la misma razón: no
+ * hay foto propia de cada modelo, y poner una ajena como si fuera la unidad es
+ * lo que el sitio evita. Los colores vienen de BRAND_PALETTE porque satori no ve globals.css.
  * -------------------------------------------------------------------------- */
 
 export const alt = "Estimado de importación de un auto a Perú, calculado con Luxcars";
@@ -36,6 +37,9 @@ export default async function SharedQuoteImage({
     ? `Precio en EE.UU. ${formatCurrency(estimate.input.priceMiami)} · flete y seguro · tributos SUNAT · servicio`
     : "Calcula el costo puesto en Lima, con tributos SUNAT, flete y seguro";
 
+  const logo = await logoOgSrc();
+  const medidas = logoOgSize(118);
+
   return new ImageResponse(
     (
       <div
@@ -46,24 +50,13 @@ export default async function SharedQuoteImage({
           flexDirection: "column",
           justifyContent: "space-between",
           background: BRAND_PALETTE.void,
-          padding: "64px 80px",
+          padding: "44px 80px 52px",
           fontFamily: "sans-serif",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 34,
-              letterSpacing: "0.22em",
-              color: BRAND_PALETTE.ink,
-              fontWeight: 600,
-            }}
-          >
-            LUX
-            <span style={{ color: BRAND_PALETTE.silver, padding: "0 12px" }}>|</span>
-            CARS
-          </div>
+          {/* El logo real, no un texto: ver src/lib/brandLogoOg.ts. */}
+          <img src={logo} width={medidas.width} height={medidas.height} alt="" />
           <div
             style={{
               display: "flex",

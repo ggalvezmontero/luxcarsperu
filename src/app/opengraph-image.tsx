@@ -1,4 +1,5 @@
 import { BRAND_PALETTE } from "@/lib/brandPalette";
+import { logoOgSize, logoOgSrc } from "@/lib/brandLogoOg";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { ImageResponse } from "next/og";
 
@@ -15,10 +16,13 @@ import { ImageResponse } from "next/og";
  * desincronizarse: no hay archivo que se pueda borrar ni renombrar por error, y
  * el nombre legal y la web salen de LUXCARS_CONFIG.
  *
- * Es una composicion tipografica a proposito: no lleva foto de auto porque no
- * hay ninguna foto propia todavia y meter stock ajeno como si fuera inventario
- * de Luxcars es justo lo que esta auditoria vino a sacar. Cuando exista una
- * toma real del stock (ver docs/IMAGENES.md) se puede montar aqui de fondo.
+ * Lleva el logo real de la marca (el mismo SVG de la barra de navegacion, via
+ * src/lib/brandLogoOg.ts), centrado y grande: WhatsApp y otras apps recortan la
+ * miniatura a un cuadrado por el centro, y ahi tiene que quedar el logo entero.
+ * No lleva foto de auto porque no hay ninguna foto propia todavia y meter stock
+ * ajeno como si fuera inventario de Luxcars es justo lo que la auditoria vino a
+ * sacar. Cuando exista una toma real del stock (ver docs/IMAGENES.md) se puede
+ * montar aqui de fondo.
  *
  * Los colores vienen de BRAND_PALETTE: satori resuelve estilos inline y no ve
  * las variables de globals.css, por eso no se usan tokens de Tailwind aqui.
@@ -28,7 +32,10 @@ export const alt = `${LUXCARS_CONFIG.brandName} — importación, compra y venta
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
+  const logo = await logoOgSrc();
+  const medidas = logoOgSize(330);
+
   return new ImageResponse(
     (
       <div
@@ -39,61 +46,33 @@ export default function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           background: BRAND_PALETTE.void,
-          padding: "72px 80px",
+          padding: "52px 80px 48px",
           fontFamily: "sans-serif",
         }}
       >
-        {/* Filete plateado superior: el mismo gesto que abre cada seccion. */}
         <div
           style={{
             display: "flex",
-            width: "120px",
-            height: "2px",
-            background: BRAND_PALETTE.silver,
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            flexGrow: 1,
           }}
-        />
-
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 64,
-              letterSpacing: "0.22em",
-              color: BRAND_PALETTE.ink,
-              fontWeight: 600,
-            }}
-          >
-            LUX
-            <span style={{ color: BRAND_PALETTE.silver, padding: "0 18px" }}>
-              |
-            </span>
-            CARS
-          </div>
+        >
+          {/* El logo real, no un texto: ver src/lib/brandLogoOg.ts. */}
+          <img src={logo} width={medidas.width} height={medidas.height} alt="" />
 
           <div
             style={{
               display: "flex",
-              marginTop: 36,
-              fontSize: 40,
+              marginTop: 30,
+              fontSize: 34,
               lineHeight: 1.25,
               color: BRAND_PALETTE.silverBright,
-              maxWidth: 900,
+              textAlign: "center",
             }}
           >
             Importación, compra y venta de autos de lujo en Perú
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              marginTop: 24,
-              fontSize: 26,
-              color: BRAND_PALETTE.ink3,
-              maxWidth: 880,
-            }}
-          >
-            Calculadora pública de impuestos de importación · Consignación sin
-            exclusividad
           </div>
         </div>
 
@@ -103,7 +82,7 @@ export default function OpengraphImage() {
             alignItems: "center",
             justifyContent: "space-between",
             borderTop: `1px solid ${BRAND_PALETTE.line}`,
-            paddingTop: 28,
+            paddingTop: 24,
             fontSize: 22,
             color: BRAND_PALETTE.ink3,
             letterSpacing: "0.12em",
