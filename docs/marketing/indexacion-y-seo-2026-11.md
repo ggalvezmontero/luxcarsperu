@@ -133,6 +133,26 @@ Google corta en unas 10 a 12 solicitudes por día por propiedad. Hoy entraron **
 14. `/cookies`
 15. `/importar/marca/toyota` y `/importar/marca/ford`, las dos marcas con más modelos; las otras 19 páginas por marca llegan por el sitemap, ya reenviado con ellas.
 
+**Tanda del 16 de noviembre.** La tarea programada de la noche del 11 no llegó a pedir nada (la extensión de Chrome estaba desconectada). El 16 se retomó a mano y Google aceptó **9 solicitudes** antes de responder "Quota Exceeded" en la décima:
+
+- Aceptadas: `/guias/requisitos-para-importar-un-auto-a-peru`, `/guias`, `/guias/ad-valorem-0-autos-estados-unidos`, `/guias/isc-vehiculos-peru`, `/importar/marca/toyota`, `/importar/marca/tesla`, `/importar/marca/bmw`, `/importar/marca/mercedes-benz`, `/importar/ford-f250-super-duty`.
+- Ya indexadas, sin necesidad de pedirlas (inspeccionadas ese día): `/`, `/importar`, `/comprar`, `/vender`, `/escaneo`, `/cookies`, `/importar/marca/ford`.
+- Rechazada por cuota: `/importar/toyota-gr-supra-final-edition`.
+- Sin confirmar: `/importar/marca/chevrolet` (la solicitud se lanzó pero no se llegó a ver la respuesta; al inspeccionarla después seguía como "desconocida para Google").
+
+**Pendientes desde el 17 de noviembre:** `/importar/toyota-gr-supra-final-edition`, `/importar/marca/chevrolet`, `/faq`, y luego las 15 páginas por marca restantes, a razón de unas 9 por día.
+
+**Los dos correos de Search Console del 11 de noviembre** ("Página alternativa con etiqueta canónica adecuada" y "No se ha encontrado (404)") se revisaron URL por URL el 16 y ninguno señala un fallo vigente del sitio:
+
+| Motivo | URLs | Qué son |
+|---|---|---|
+| Página alternativa con canónica adecuada (16) | 12 con `?simular=` sobre `/` y `/calculadora`; `/comprar/demo-03` y `/comprar/demo-04`; `/faq`; `/cookies` | Las de `?simular=` son la calculadora con un modelo cargado y declaran bien su canónica: es lo esperado. Las demo ya no existen. `/faq` y `/cookies` se rastrearon el 4 de noviembre y el 19 de octubre, cuando la canónica salía como `https://luxcars.pe/…` sin `www`; hoy sale con `www` (`/cookies` ya está indexada, `/faq` espera un nuevo rastreo) |
+| No se ha encontrado (404) (1) | `/comprar/demo-06` | Ficha demo retirada a propósito |
+| Excluida por `noindex` (3) | `/cuenta`, `/cuenta/comprar`, `/cuenta/vender` | Páginas privadas, `noindex` a propósito |
+| Página con redirección (3) | `http://luxcars.pe/`, `https://luxcars.pe/`, `https://luxcars.pe/como-funciona` | La versión sin `www` redirige a la que sí se indexa |
+| Rastreada, sin indexar (4) | `/opengraph-image`, dos fuentes `.woff2`, `favicon.ico` | Archivos, no páginas |
+| Descubierta, sin indexar (26) | Guías, páginas por marca y `/importar/ford-f250-super-duty` | Páginas nuevas que Google conoce por el sitemap y aún no visitó; es la cola que se acelera con las solicitudes |
+
 Comprobado antes de pedirlas: las seis primeras ya sirven en producción los títulos nuevos (leídos con `curl` el 10 de noviembre por la noche).
 
 Cómo se hace: Search Console → cuadro "Inspeccionar cualquier URL" → pegar la URL con `www` → "Solicitar indexación". En esta propiedad, inspeccionar no gasta cuota; solicitar sí.
