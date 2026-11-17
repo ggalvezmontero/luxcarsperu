@@ -206,7 +206,7 @@ export async function generatePDF(estimate: PremiumImportQuote): Promise<void> {
       ["Costos de aduana y despacho en el Callao", formatCurrency(estimate.customsFee)],
     ]),
     ...group("SERVICIO LUXCARS", [
-      ["Inspección, negociación, logística y gestión documentaria", formatCurrency(servicio)],
+      [`Inspección, negociación, logística y gestión documentaria (comisión ${formatRate(estimate.brokerFeeRate)} sobre el costo puesto en Lima${estimate.documentHandlingFee > 0 ? " + Fast Track" : ""})`, formatCurrency(servicio)],
     ]),
   ];
 

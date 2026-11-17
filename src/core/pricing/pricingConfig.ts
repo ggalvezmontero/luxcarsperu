@@ -49,6 +49,9 @@ export type VehicleCondition = "nuevo" | "usado";
  */
 export type ImporterProfile = "recurrente" | "primera-importacion";
 
+/** Un tramo de la comisión escalonada. `upTo: null` marca el último tramo, sin tope. */
+export type BrokerFeeTier = { upTo: number | null; rate: number };
+
 const AD_VALOREM_BY_ORIGIN: Record<VehicleOrigin, number> = {
   "originario-usa": 0,
   otro: 0.06,
@@ -123,25 +126,55 @@ export const PRICING_CONFIG = {
    */
   customsCostsUsd: 2300,
   /**
-   * COMISIÓN DE LUXCARS: 10% DEL TOTAL, no del precio del vehículo (decisión
-   * del dueño, 2026-11-11). El día anterior había quedado en 12% del precio de
-   * compra en EE.UU.; el dueño aclaró que la base es el precio total y, ya con
-   * esa base, bajó la tasa ese mismo día: de 12% a 10.5% y luego a 10%.
+   * COMISIÓN DE LUXCARS: ESCALONADA SOBRE EL TOTAL (decisión del dueño,
+   * 2026-11-16). Hasta ese día era un 10% plano del total; antes había pasado
+   * por 12% del precio de compra, 12% del total y 10.5%.
    *
    * "El total" es el costo del auto puesto en Lima antes de la comisión:
    * CIF + tributos + costos de aduana. El recargo de Fast Track queda FUERA de
    * la base a propósito, para que la diferencia entre los dos planes siga
    * siendo exactamente su cargo fijo (ver `planConfigs`).
    *
-   * `brokerFeeBase` dice cómo se aplica la tasa sobre ese total:
-   *   · "sobre-costo":        comisión = tasa × costo.        total = costo × (1 + tasa)
-   *   · "sobre-precio-final": la comisión es esa tasa del precio que paga el
-   *                           cliente, comisión incluida.     total = costo ÷ (1 − tasa)
+   * La tasa se aplica SOBRE EL MONTO COMPLETO: el auto cae en un tramo según
+   * su costo puesto en Lima y paga la tasa de ese tramo sobre todo el costo
+   * (decisión del dueño, 2026-11-16, tras ver la alternativa marginal, en la
+   * que cada tramo paga su tasa y se suman: la descartó porque el Corvette de
+   * referencia quedaba igual que con el 10% plano). Consecuencia asumida: hay
+   * saltos en los cortes (costo 99,999 → 10,000; 100,001 → 8,000).
+   *
+   * Por qué una escala: el trabajo de una importación es casi el mismo para
+   * cualquier auto, así que hay un piso (`brokerFeeMinimum`), y por encima de
+   * 100 mil el cliente negocia cada punto y la competencia cobra tarifa fija.
+   *
+   * Tramos sobre el costo puesto en Lima (`upTo` es el tope del tramo; el
+   * último no tiene tope):
+   *
+   *   10% hasta 100,000 · 8% de 100,000 a 200,000 · 6% por encima de 200,000.
+   *   Mínimo USD 5,000.
+   *
+   * Con el Corvette de referencia (USD 104,000 → costo ≈ 142,200) la comisión
+   * baja de 14,222 (10% plano) a ≈ 11,400 (8%), y el equivalente "a pedido"
+   * de ≈ 157,600 a ≈ 154,800.
+   *
+   * Para cambiar la escala se edita esta lista; las páginas, el PDF y el
+   * mensaje de WhatsApp se recalculan solos. Las cifras de docs/marketing hay
+   * que recalcularlas aparte (no están en git).
+   *
+   * `brokerFeeBase` dice sobre qué se lee la escala:
+   *   · "sobre-costo":        la comisión se calcula sobre el costo.
+   *   · "sobre-precio-final": la comisión se lee del precio que paga el
+   *                           cliente, comisión incluida (se resuelve por
+   *                           iteración en `BrokerModule`).
    * Cambiar de una lectura a la otra es cambiar esta sola palabra.
    *
    * La inspección va dentro de la comisión (antes eran 10% + 5% aparte).
    */
-  brokerFeeRate: 0.1,
+  brokerFeeTiers: [
+    { upTo: 100_000, rate: 0.1 },
+    { upTo: 200_000, rate: 0.08 },
+    { upTo: null, rate: 0.06 },
+  ] as readonly BrokerFeeTier[],
+  brokerFeeMinimum: 5000,
   brokerFeeBase: "sobre-costo" as "sobre-costo" | "sobre-precio-final",
   /**
    * FAST TRACK CUESTA USD 1,200 MÁS QUE ESTÁNDAR, FIJOS (decisión del dueño,

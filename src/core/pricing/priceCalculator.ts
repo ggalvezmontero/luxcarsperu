@@ -45,8 +45,12 @@ export type PremiumImportQuote = LogisticsBreakdown &
     adValoremRate: number;
     /** Costos de aduana: monto fijo, fuera de la base de los tributos. */
     customsFee: number;
-    /** Comisión de Luxcars sobre el costo total puesto en Lima (CIF + tributos + aduana). */
+    /** Costo puesto en Lima antes de la comisión: CIF + tributos + aduana. Es la base de la escala. */
+    brokerFeeBase: number;
+    /** Comisión de Luxcars: la tasa del tramo en que cae `brokerFeeBase`, sobre todo el monto, con piso. */
     brokerFee: number;
+    /** Tasa efectiva de la comisión (brokerFee ÷ brokerFeeBase). Es la del tramo salvo cuando manda el piso. */
+    brokerFeeRate: number;
     documentHandlingFee: number;
     /** Costo real de la importación. NO incluye la percepción, que es recuperable. */
     finalEstimate: number;
@@ -175,17 +179,17 @@ export function calculateImportQuote(
 
   const customsFee = PRICING_CONFIG.customsCostsUsd;
 
-  // La comisión se calcula sobre el costo total puesto en Lima, no sobre el
-  // precio de compra: ver `brokerFeeRate` en pricingConfig.
-  const brokerFee = BrokerModule.calculate({
-    costBeforeFee:
-      logistics.cif +
-      fiscalFees.adValorem +
-      fiscalFees.isc +
-      fiscalFees.igv +
-      fiscalFees.ipm +
-      customsFee,
-  });
+  // La comisión es escalonada sobre el costo total puesto en Lima, no sobre
+  // el precio de compra: ver `brokerFeeTiers` en pricingConfig.
+  const brokerFeeBase =
+    logistics.cif +
+    fiscalFees.adValorem +
+    fiscalFees.isc +
+    fiscalFees.igv +
+    fiscalFees.ipm +
+    customsFee;
+  const brokerFee = BrokerModule.calculate({ costBeforeFee: brokerFeeBase });
+  const brokerFeeRate = brokerFeeBase > 0 ? brokerFee / brokerFeeBase : 0;
 
   const documentHandlingFee =
     FastTrackModule.calculateDocumentHandlingFee({
@@ -217,7 +221,9 @@ export function calculateImportQuote(
     iscTooltip: vehicleCategory.tooltip,
     adValoremRate,
     customsFee,
+    brokerFeeBase,
     brokerFee,
+    brokerFeeRate,
     documentHandlingFee,
     finalEstimate,
     cashRequired,

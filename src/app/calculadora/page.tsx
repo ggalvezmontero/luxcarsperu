@@ -26,6 +26,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
+import { BrokerModule } from "@/core/modules/BrokerModule";
 import { PRICING_CONFIG, currentYearInLima, oldestImportableModelYear } from "@/core/pricing/pricingConfig";
 import {
   USED_ISC_RATE,
@@ -119,12 +120,27 @@ export default async function CalculadoraPage() {
         {
           n: "6",
           titulo: "Servicio Luxcars",
-          formula: "Inspección, compra, logística y trámite",
+          formula: `Comisión de ${formatRate(ejemplo.e.brokerFeeRate)} sobre el costo puesto en Lima`,
           monto: ejemplo.e.brokerFee + ejemplo.e.documentHandlingFee,
-          nota: "Ya está dentro del estimado: no aparece como cargo nuevo al final.",
+          nota: `Inspección, compra, logística y trámite. La tasa depende del tramo en que cae el costo (la tabla está más abajo)${ejemplo.e.documentHandlingFee > 0 ? `, más el cargo fijo de Fast Track de ${formatCurrency(ejemplo.e.documentHandlingFee)}` : ""}. Ya está dentro del estimado: no aparece como cargo nuevo al final.`,
         },
       ]
     : [];
+
+  /* La escala de la comisión, tramo por tramo, leída de la configuración. */
+  const tramos = BrokerModule.tiers();
+  const filasComision = tramos.map((t, i) => ({
+    tramo:
+      t.upTo === null
+        ? `Por encima de ${formatCurrency(t.from)}`
+        : i === 0
+          ? `Hasta ${formatCurrency(t.upTo)}`
+          : `De ${formatCurrency(t.from)} a ${formatCurrency(t.upTo)}`,
+    tasa: formatRate(t.rate),
+  }));
+  const comisionMinima = formatCurrency(PRICING_CONFIG.brokerFeeMinimum);
+  const primerTramo = tramos[0];
+  const ultimoTramo = tramos[tramos.length - 1];
 
   const filasIsc = VEHICLE_CATEGORIES.map((c) => ({
     motor: c.label,
@@ -156,6 +172,10 @@ export default async function CalculadoraPage() {
     {
       pregunta: "¿Qué es la percepción del IGV y por qué sale aparte?",
       respuesta: `Es un adelanto del IGV que SUNAT cobra al importar y que luego se recupera como crédito fiscal. No es un costo, pero sí es efectivo que hay que tener el día del despacho: ${formatRate(percepcionRates.recurrenteNuevo)} para un importador recurrente con vehículo nuevo, ${formatRate(percepcionRates.usado)} en usados y ${formatRate(percepcionRates.primeraImportacion)} en una primera importación. Por eso la calculadora muestra dos cifras: el costo real y el efectivo necesario.`,
+    },
+    {
+      pregunta: "¿Cuánto cobra Luxcars por el servicio?",
+      respuesta: `Una comisión por tramos sobre el costo del auto puesto en Lima (CIF, tributos y aduana): ${formatRate(primerTramo.rate)} si el costo llega hasta ${formatCurrency(primerTramo.upTo ?? 0)}, y tasas menores en cada tramo siguiente, hasta ${formatRate(ultimoTramo.rate)} por encima de ${formatCurrency(ultimoTramo.from)}. La tasa del tramo se aplica sobre todo el costo: cuanto más caro el auto, menor el porcentaje. El mínimo es ${comisionMinima}, porque la inspección, la compra, el embarque y el trámite cuestan lo mismo para cualquier auto. La comisión incluye la inspección previa y ya está dentro del resultado de la calculadora.`,
     },
     {
       pregunta: "¿El resultado incluye placas?",
@@ -263,6 +283,47 @@ export default async function CalculadoraPage() {
 
         <Section tone="void">
           <SectionHeader
+            eyebrow="Servicio Luxcars"
+            title="Una comisión por tramos, no un porcentaje plano"
+            description="El costo puesto en Lima define el tramo, y la tasa de ese tramo se aplica sobre todo el costo. Cuanto más caro el auto, menor el porcentaje."
+          />
+          <div className="mt-10 grid gap-6 lg:grid-cols-12 lg:gap-10">
+            <div className="overflow-x-auto rounded-[22px] border border-line bg-surface lg:col-span-7">
+              <table className="w-full min-w-[22rem] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-ink-4">
+                    <th scope="col" className="px-5 py-4 font-semibold">Tramo del costo puesto en Lima</th>
+                    <th scope="col" className="px-5 py-4 text-right font-semibold">Tasa del tramo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {filasComision.map((f) => (
+                    <tr key={f.tramo}>
+                      <th scope="row" className="px-5 py-4 font-medium text-ink">{f.tramo}</th>
+                      <td className="px-5 py-4 text-right tabular-nums text-ink-2">{f.tasa}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="space-y-4 text-pretty text-sm leading-relaxed text-ink-3 lg:col-span-5">
+              <p>
+                El costo puesto en Lima es el valor CIF más los tributos y los costos de aduana, antes de la comisión. El cargo de Fast Track va aparte y no entra en la base.
+              </p>
+              <p>
+                Comisión mínima: {comisionMinima}. La inspección, la compra, el embarque y el trámite cuestan lo mismo para cualquier auto, y el mínimo cubre ese trabajo en los vehículos de menor valor.
+              </p>
+              {ejemplo ? (
+                <p>
+                  En el ejemplo de arriba, el {ejemplo.v.name} tiene un costo puesto en Lima de {formatCurrency(ejemplo.e.brokerFeeBase)}, así que paga {formatRate(ejemplo.e.brokerFeeRate)}: {formatCurrency(ejemplo.e.brokerFee)} de comisión.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </Section>
+
+        <Section tone="bg">
+          <SectionHeader
             eyebrow="ISC por tipo de motor"
             title="El motor decide el impuesto más variable"
             description="El Impuesto Selectivo al Consumo va de 0% a 40% según la propulsión y la condición del vehículo. Es lo que más mueve el resultado."
@@ -292,7 +353,7 @@ export default async function CalculadoraPage() {
           </p>
         </Section>
 
-        <Section tone="bg">
+        <Section tone="void">
           <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
             <div className="lg:col-span-4">
               <SectionHeader eyebrow="Dudas comunes" title="Preguntas sobre la calculadora" />
@@ -320,7 +381,7 @@ export default async function CalculadoraPage() {
         </Section>
 
         {cotizables.length > 0 ? (
-          <Section tone="void">
+          <Section tone="bg">
             <SectionHeader
               eyebrow="Ya calculados"
               title="Cuánto cuesta importar los modelos más pedidos"
