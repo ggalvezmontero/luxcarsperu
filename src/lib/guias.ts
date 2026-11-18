@@ -65,6 +65,17 @@ export const GUIAS: readonly Guia[] = [
     publicada: "2026-11-10",
     actualizada: "2026-11-10",
   },
+  {
+    // Para quien vive en Estados Unidos y vuelve con SU auto: no es el cliente
+    // principal, pero escribe mucho y casi siempre con un auto que no entra.
+    slug: "traer-tu-auto-de-estados-unidos-a-peru",
+    titulo: "Traer tu auto de Estados Unidos a Perú: Ley del Retorno {anio}",
+    corto: "Traer tu auto de Estados Unidos",
+    descripcion:
+      "Si vuelves a Perú después de vivir en Estados Unidos, puedes traer tu auto sin tributos de importación. Quién califica, qué exige el vehículo y cuánto cuesta el envío.",
+    publicada: "2026-11-18",
+    actualizada: "2026-11-18",
+  },
 ];
 
 export function rutaGuia(slug: string): string {

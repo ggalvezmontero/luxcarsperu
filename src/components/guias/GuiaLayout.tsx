@@ -125,7 +125,7 @@ export function GuiaLayout({
 
         <Section tone="void">
           <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Sigue leyendo</h2>
-          <ul className="mt-8 grid gap-3 lg:grid-cols-3">
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2">
             {otras.map((g) => (
               <li key={g.slug}>
                 <Link

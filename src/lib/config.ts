@@ -9,6 +9,7 @@ import {
   VEHICLE_CATEGORIES,
 } from "@/core/pricing/vehicleCategories";
 import { IMPORT_COMPLIANCE_REFERENCE } from "@/lib/db/types";
+import { LEY_RETORNO } from "@/lib/retorno";
 
 /**
  * Negro de marca (#050505, el mismo `--color-void` de globals.css) para los
@@ -221,6 +222,11 @@ export const LUXCARS_CONFIG = {
       question: "¿Hacen trámites de un auto que no compré con ustedes?",
       answer:
         "Sí. La gestión documentaria es una línea independiente: nacionalización, homologación ante el MTC, revisión técnica, inscripción registral, placas y transferencia de propiedad. No exigimos que el vehículo haya salido de nuestro stock.",
+    },
+    {
+      question: "¿Puedo traer a Perú el auto que ya tengo en Estados Unidos?",
+      answer:
+        `Sí, si es modelo ${OLDEST_IMPORTABLE_MODEL_YEAR} o más nuevo, no es diésel y no supera el tope de kilometraje: son los mismos requisitos de cualquier usado. Si eres peruano y viviste fuera ${LEY_RETORNO.aniosMinimosFuera} años o más, la Ley del Retorno te libera de los tributos de importación de un vehículo de hasta US$ ${usd(LEY_RETORNO.valorMaximoUsd)}. Nos encargamos del embarque, la aduana y las placas. La guía "Traer tu auto de Estados Unidos a Perú" tiene un filtro que te dice si el tuyo puede entrar.`,
     },
     {
       question: `¿Qué vehículos usados se pueden importar al Perú en ${REFERENCE_YEAR}?`,

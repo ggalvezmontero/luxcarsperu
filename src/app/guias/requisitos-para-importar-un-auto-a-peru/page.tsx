@@ -92,6 +92,9 @@ export default function Page() {
       <P>
         Para un vehículo nuevo no hay límite de antigüedad. Lo que cambia es el costo: un usado paga bastante más en tributos, como muestra la guía de <Enlace href={rutaGuia("cuanto-cuesta-importar-un-auto-a-peru")}>cuánto cuesta importar un auto</Enlace>.
       </P>
+      <P>
+        La regla es la misma si el auto ya es tuyo y vuelves de vivir fuera: la Ley del Retorno quita los tributos, no el límite de antigüedad. Está explicado en <Enlace href={rutaGuia("traer-tu-auto-de-estados-unidos-a-peru")}>cómo traer tu auto de Estados Unidos a Perú</Enlace>.
+      </P>
 
       <H2>El trámite, paso a paso</H2>
       <P>

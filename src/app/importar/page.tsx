@@ -150,6 +150,22 @@ const PREGUNTAS: { pregunta: string; respuesta: React.ReactNode }[] = [
       </>
     ),
   },
+  {
+    // Quien ya tiene el auto y vuelve de vivir fuera es otro caso, con su guía.
+    pregunta: "¿Puedo traer a Perú el auto que ya tengo en Estados Unidos?",
+    respuesta: (
+      <>
+        Sí, si cumple los mismos requisitos que cualquier usado: hasta {antiguedad?.value ?? "2 años"}{" "}
+        de antigüedad, sin diésel y dentro del tope de recorrido. Si además eres peruano y viviste
+        fuera tres años o más, la Ley del Retorno te libera de los tributos de importación. En la
+        guía para{" "}
+        <Link href={rutaGuia("traer-tu-auto-de-estados-unidos-a-peru")} className="font-medium text-ink underline underline-offset-4">
+          traer tu auto de Estados Unidos a Perú
+        </Link>{" "}
+        compruebas en un minuto si el tuyo puede entrar.
+      </>
+    ),
+  },
 ];
 
 const HONESTIDAD = [
