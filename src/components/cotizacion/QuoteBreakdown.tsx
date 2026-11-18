@@ -146,7 +146,7 @@ export function QuoteBreakdown({
       <Line
         label="Servicio Luxcars"
         amount={servicio}
-        tooltip={`Inspección, negociación, logística y gestión documentaria: comisión de ${formatRate(estimate.brokerFeeRate)} sobre el costo puesto en Lima (tasa por tramos)${estimate.documentHandlingFee > 0 ? ` más el cargo fijo de Fast Track (${formatCurrency(estimate.documentHandlingFee)})` : ""}.`}
+        tooltip={`Inspección, negociación, logística y gestión documentaria: comisión de ${formatRate(estimate.brokerFeeRate)} sobre el costo puesto en Lima (tasa por tramos)${estimate.documentHandlingFee > 0 ? ` más el cargo fijo de Fast Track (${formatCurrency(estimate.documentHandlingFee)})` : ""}. Honorarios con IGV incluido.`}
       />
       <Line
         label={`Percepción IGV ${formatRate(estimate.percepcionRate)}`}

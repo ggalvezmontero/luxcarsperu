@@ -122,7 +122,7 @@ export default async function CalculadoraPage() {
           titulo: "Servicio Luxcars",
           formula: `Comisión de ${formatRate(ejemplo.e.brokerFeeRate)} sobre el costo puesto en Lima`,
           monto: ejemplo.e.brokerFee + ejemplo.e.documentHandlingFee,
-          nota: `Inspección, compra, logística y trámite. La tasa depende del tramo en que cae el costo (la tabla está más abajo)${ejemplo.e.documentHandlingFee > 0 ? `, más el cargo fijo de Fast Track de ${formatCurrency(ejemplo.e.documentHandlingFee)}` : ""}. Ya está dentro del estimado: no aparece como cargo nuevo al final.`,
+          nota: `Inspección, compra, logística y trámite. La tasa depende del tramo en que cae el costo (la tabla está más abajo)${ejemplo.e.documentHandlingFee > 0 ? `, más el cargo fijo de Fast Track de ${formatCurrency(ejemplo.e.documentHandlingFee)}` : ""}. Incluye el IGV de nuestros honorarios. Ya está dentro del estimado: no aparece como cargo nuevo al final.`,
         },
       ]
     : [];
@@ -311,7 +311,7 @@ export default async function CalculadoraPage() {
                 El costo puesto en Lima es el valor CIF más los tributos y los costos de aduana, antes de la comisión. El cargo de Fast Track va aparte y no entra en la base.
               </p>
               <p>
-                Comisión mínima: {comisionMinima}. La inspección, la compra, el embarque y el trámite cuestan lo mismo para cualquier auto, y el mínimo cubre ese trabajo en los vehículos de menor valor.
+                Comisión mínima: {comisionMinima}. La inspección, la compra, el embarque y el trámite cuestan lo mismo para cualquier auto, y el mínimo cubre ese trabajo en los vehículos de menor valor. Todas las cifras de la comisión incluyen IGV: no se suma nada al final.
               </p>
               {ejemplo ? (
                 <p>

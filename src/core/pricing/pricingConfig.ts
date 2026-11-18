@@ -168,6 +168,13 @@ export const PRICING_CONFIG = {
    * Cambiar de una lectura a la otra es cambiar esta sola palabra.
    *
    * La inspección va dentro de la comisión (antes eran 10% + 5% aparte).
+   *
+   * LA COMISIÓN INCLUYE EL IGV (confirmado por el dueño, 2026-11-18): la cifra
+   * de los tramos y el mínimo son lo que paga el cliente, IGV adentro. La base
+   * imponible de la factura de Luxcars es comisión ÷ 1.18 (mínimo 5,000 →
+   * 4,237 + 763 de IGV). Los tramos netos equivalen a 8.47%, 6.78% y 5.08%.
+   * El desglose, el PDF, el WhatsApp y /calculadora lo dicen en la línea de
+   * servicio. Los swifts al dealer y costos como la grúa salen de ese neto.
    */
   brokerFeeTiers: [
     { upTo: 100_000, rate: 0.1 },

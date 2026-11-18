@@ -46,7 +46,7 @@ export function buildWhatsappLink(
     `ISC ${formatPercentage(estimate.iscRate)} (sobre CIF + Ad Valorem): ${formatCurrency(estimate.isc)}`,
     `IGV 15.5% + IPM 2.5% (sobre CIF + Ad Valorem + ISC): ${formatCurrency(estimate.igv + estimate.ipm)}`,
     `Costos de aduana: ${formatCurrency(estimate.customsFee)}`,
-    `Comisión Luxcars (${formatRate(estimate.brokerFeeRate)} sobre el costo puesto en Lima, por tramos): ${formatCurrency(estimate.brokerFee)}`,
+    `Comisión Luxcars (${formatRate(estimate.brokerFeeRate)} sobre el costo puesto en Lima, por tramos, IGV incluido): ${formatCurrency(estimate.brokerFee)}`,
     estimate.documentHandlingFee > 0
       ? `Fast Track (cargo fijo): ${formatCurrency(estimate.documentHandlingFee)}`
       : undefined,
