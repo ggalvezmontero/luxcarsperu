@@ -113,6 +113,15 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Icon path="M5 4h14v16H5V4Zm3 5h8m-8 4h8m-8 4h5" />,
   },
   {
+    // Vive bajo /admin, no bajo /portal: su puerta es un layout de servidor
+    // que responde 404 a quien no sea administrador (ver src/app/admin/layout.tsx).
+    href: "/admin/cotizador-envios",
+    label: "Cotizador de envíos",
+    hint: "Traer el auto propio desde EE.UU.",
+    ready: true,
+    icon: <Icon path="M3 20c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5M5 16 3.5 11H20l-1.5 5M6 11V7h12v4M10 7V4h4v3" />,
+  },
+  {
     href: "/portal/usuarios",
     label: "Usuarios",
     hint: "Cuentas y roles",

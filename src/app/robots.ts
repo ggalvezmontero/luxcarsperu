@@ -8,7 +8,8 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         // El portal interno no se indexa.
-        disallow: ["/portal/", "/api/"],
+        // Tampoco las herramientas internas bajo /admin (hoy: el cotizador de envíos).
+        disallow: ["/portal/", "/admin/", "/api/"],
       },
     ],
     sitemap: `${LUXCARS_CONFIG.contact.website}/sitemap.xml`,
