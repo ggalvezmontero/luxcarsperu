@@ -142,6 +142,13 @@ Google corta en unas 10 a 12 solicitudes por día por propiedad. Hoy entraron **
 
 **Pendientes desde el 17 de noviembre:** `/importar/toyota-gr-supra-final-edition`, `/importar/marca/chevrolet`, `/faq`, y luego las 15 páginas por marca restantes, a razón de unas 9 por día.
 
+**Tanda del 18 de noviembre: lista cerrada.** Entre las 14:39 y las 14:58 (Lima) se inspeccionaron las 18 pendientes y la guía nueva. Google aceptó **11 solicitudes** y esta vez no respondió "Quota Exceeded":
+
+- Aceptadas: `/faq` (seguía como "página alternativa", rastreada el 4 nov con la canónica vieja sin www), `/guias/traer-tu-auto-de-estados-unidos-a-peru` (publicada ese mismo día; Google aún no la conocía), y las marcas `porsche`, `lexus`, `audi`, `cadillac`, `ram`, `dodge`, `aston-martin`, `mclaren` y `rolls-royce`. En `audi` el primer intento dio un error genérico de Search Console y el segundo fue aceptado.
+- Ya indexadas, sin pedirlas: `/importar/toyota-gr-supra-final-edition`, y las marcas `chevrolet` (la solicitud sin confirmar del 16 sí había entrado), `land-rover`, `jeep`, `ferrari`, `lamborghini`, `bentley` y `chrysler`.
+
+Con esto **no queda ninguna URL del sitemap sin indexar o sin solicitud aceptada**. El sitemap tiene 48 URLs desde el 18 nov (se sumó la guía para traer el auto propio). Lo que sigue es esperar a que Google rastree las aceptadas y revisar el informe de páginas en unos días.
+
 **Los dos correos de Search Console del 11 de noviembre** ("Página alternativa con etiqueta canónica adecuada" y "No se ha encontrado (404)") se revisaron URL por URL el 16 y ninguno señala un fallo vigente del sitio:
 
 | Motivo | URLs | Qué son |
