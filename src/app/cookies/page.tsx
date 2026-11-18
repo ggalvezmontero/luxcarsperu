@@ -88,7 +88,7 @@ export default function CookiesPage() {
                   <li>Origen del tráfico</li>
                   <li>Patrones de navegación</li>
                 </ul>
-                <p className="mt-2 text-sm text-ink-3">Utilizamos herramientas como Google Analytics.</p>
+                <p className="mt-2 text-sm text-ink-3">Utilizamos Google Analytics y el píxel de Meta (Facebook e Instagram); ninguno se carga hasta que aceptas las cookies.</p>
               </div>
 
               <div className="rounded-lux border border-line bg-surface-2 p-5 md:p-6">
@@ -120,6 +120,7 @@ export default function CookiesPage() {
             </p>
             <ul className="list-disc space-y-2 pl-6">
               <li><strong className="text-ink">Google Analytics:</strong> Análisis de uso del sitio</li>
+              <li><strong className="text-ink">Meta (Facebook e Instagram):</strong> Medición de los anuncios que te trajeron al sitio</li>
               <li><strong className="text-ink">Google Fonts:</strong> Tipografías del sitio</li>
               <li><strong className="text-ink">Vercel:</strong> Hosting y optimización</li>
             </ul>

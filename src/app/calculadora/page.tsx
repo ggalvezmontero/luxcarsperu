@@ -175,7 +175,7 @@ export default async function CalculadoraPage() {
     },
     {
       pregunta: "¿Cuánto cobra Luxcars por el servicio?",
-      respuesta: `Una comisión por tramos sobre el costo del auto puesto en Lima (CIF, tributos y aduana): ${formatRate(primerTramo.rate)} si el costo llega hasta ${formatCurrency(primerTramo.upTo ?? 0)}, y tasas menores en cada tramo siguiente, hasta ${formatRate(ultimoTramo.rate)} por encima de ${formatCurrency(ultimoTramo.from)}. La tasa del tramo se aplica sobre todo el costo: cuanto más caro el auto, menor el porcentaje. El mínimo es ${comisionMinima}, porque la inspección, la compra, el embarque y el trámite cuestan lo mismo para cualquier auto. La comisión incluye la inspección previa y ya está dentro del resultado de la calculadora.`,
+      respuesta: `Una comisión por tramos sobre el costo del auto puesto en Lima (CIF, tributos y aduana): ${formatRate(primerTramo.rate)} si el costo llega hasta ${formatCurrency(primerTramo.upTo ?? 0)}, y tasas menores en cada tramo siguiente, hasta ${formatRate(ultimoTramo.rate)} por encima de ${formatCurrency(ultimoTramo.from)}. La tasa del tramo se aplica sobre todo el costo: cuanto más caro el auto, menor el porcentaje. El mínimo es ${comisionMinima}, porque la inspección, la compra, el embarque y el trámite cuestan lo mismo para cualquier auto. La comisión incluye la inspección previa y el IGV de nuestros honorarios, y ya está dentro del resultado de la calculadora.`,
     },
     {
       pregunta: "¿El resultado incluye placas?",

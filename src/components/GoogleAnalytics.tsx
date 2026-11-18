@@ -4,6 +4,7 @@ import {
   ANALYTICS_ENABLED,
   GA_EVENTS,
   GA_MEASUREMENT_ID,
+  META_PIXEL_ENABLED,
   consentDefault,
   consentGrantAnalytics,
   readCookieConsent,
@@ -47,12 +48,15 @@ export function GoogleAnalytics() {
   const consent = useSyncExternalStore(subscribeCookieConsent, readCookieConsent, sinDecision);
 
   const active = ANALYTICS_ENABLED && consent === "accepted";
+  /* El listener de clics alimenta también al píxel de Meta (trackEvent reparte
+     a los dos), así que corre si cualquiera de las dos etiquetas está activa. */
+  const listening = (ANALYTICS_ENABLED || META_PIXEL_ENABLED) && consent === "accepted";
 
   useEffect(() => {
-    if (!active) return;
+    if (!listening) return;
     document.addEventListener("click", onDocumentClick);
     return () => document.removeEventListener("click", onDocumentClick);
-  }, [active]);
+  }, [listening]);
 
   if (!active) return null;
   return (

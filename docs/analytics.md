@@ -1,6 +1,6 @@
-# Google Analytics 4 en luxcars.pe
+# Medición en luxcars.pe: Google Analytics 4 y píxel de Meta
 
-Cómo está montado, qué eventos manda el sitio y qué marcar en GA4.
+Cómo está montado, qué eventos manda el sitio, qué marcar en GA4 y cómo se conecta el píxel de Meta para la pauta. La parte de Meta está al final.
 
 ## Cómo funciona
 
@@ -88,3 +88,58 @@ Los botones llevan `data-ga-cta="…"`. Los de WhatsApp salen como `whatsapp_cli
 2. Pulsar "Aceptar": aparecen `gtag/js?id=G-…` y una petición `collect?v=2…` (vista de página).
 3. Hacer clic en un botón de WhatsApp: aparece otra `collect` con `en=whatsapp_click`.
 4. En GA4 → Informes → Tiempo real, en menos de un minuto se ve el usuario activo, la página y los eventos por nombre. Para verlos con parámetros, instalar la extensión "Google Analytics Debugger" de Chrome y abrir Administrar → DebugView.
+
+## Píxel de Meta y API de conversiones
+
+Es lo que la pauta "clic a WhatsApp" de Facebook e Instagram necesita para optimizarse. Montado el 2026-11-18; empieza a medir con el primer despliegue que tenga las variables.
+
+### Cómo funciona
+
+- **Carga:** `src/components/MetaPixel.tsx`, montado en `src/app/layout.tsx` junto a GA. Mismas dos condiciones que GA4: hay `NEXT_PUBLIC_META_PIXEL_ID` y el build es de producción, y el visitante aceptó el banner. "Rechazar" deja el sitio sin una petición a `connect.facebook.net`.
+- **Vistas de página:** el script de Meta manda `PageView` al cargar; las navegaciones internas las manda el componente al cambiar la ruta.
+- **Eventos:** el mismo `trackEvent` de `src/lib/analytics.ts` traduce cada evento de GA4 a uno de Meta según `META_EVENT_MAP` y lo manda dos veces con el mismo `eventID`: por `fbq` (navegador) y por `POST /api/meta/eventos` (servidor, `src/app/api/meta/eventos/route.ts`), que lo reenvía a la API de conversiones. Meta deduplica por `event_id`. Si el píxel no está cargado (sin consentimiento, sin ID, en desarrollo) no sale nada por ninguna vía.
+- **Qué manda del visitante el servidor:** IP, user agent y las cookies `_fbp`/`_fbc` que el propio píxel dejó (o el `fbclid` de la URL). Nada más: el sitio no pide nombre ni teléfono antes de WhatsApp.
+- **Google Ads:** no necesita píxel propio. Las conversiones se importan desde GA4 (`whatsapp_click`, `contact_form_submit`, `valuation_form_submit`), como dice `docs/marketing/google-ads-campana-inicial.md`.
+
+### Variables de entorno
+
+| Variable | Dónde | Valor |
+| --- | --- | --- |
+| `NEXT_PUBLIC_META_PIXEL_ID` | Vercel → `luxcarspe` → Settings → Environment Variables, **Production** y **Preview** | ID del conjunto de datos del píxel (solo dígitos). Events Manager → Orígenes de datos → el píxel → Configuración |
+| `META_CAPI_ACCESS_TOKEN` | Igual, **solo Production** (secreto) | Events Manager → el píxel → Configuración → API de conversiones → "Generar token de acceso" |
+| `META_CAPI_TEST_EVENT_CODE` | Opcional, solo mientras se prueba | Pestaña "Probar eventos" de Events Manager. Quitarlo después |
+
+Como `NEXT_PUBLIC_*` se incrusta en build, tras crear la variable hay que **redesplegar**. Sin el token, la ruta del servidor responde 204 y mide solo el píxel del navegador.
+
+Antes de nada: la página de Facebook tiene que estar dentro del portafolio de Meta Business (quedó fuera el 2026-11-11) y el píxel creado en ese portafolio.
+
+### Traducción de eventos
+
+| Evento GA4 | Evento Meta | Tipo | Para qué |
+| --- | --- | --- | --- |
+| `whatsapp_click`, `phone_click`, `email_click` | `Contact` | estándar | **La conversión de la pauta "clic a WhatsApp".** Optimizar las campañas por este evento |
+| `contact_form_submit`, `valuation_form_submit` | `Lead` | estándar | Conversión secundaria (formularios que terminan en WhatsApp) |
+| `stock_card_click` | `ViewContent` | estándar | Remarketing a quien miró un auto (`content_name` = marca y modelo) |
+| `calculator_estimate` | `CalculatorEstimate` | personalizado | Público "cotizó"; lleva `value` (estimado en USD) y `currency` |
+| `calculator_pdf_download` | `CalculatorPdfDownload` | personalizado | Señal de intención alta |
+| `calculator_share` | `CalculatorShare` | personalizado | Señal de intención alta |
+| `cta_click`, `calculator_model_change` | no se mandan | | Navegación; ensuciarían la optimización |
+
+Los parámetros de GA4 viajan tal cual dentro de `custom_data` (`cta`, `vehicle_brand`, `vehicle_model`, `plan`…), así que en Meta se pueden crear públicos por ellos.
+
+### Qué hacer en Meta (una sola vez)
+
+1. Meta Business → Configuración → Orígenes de datos → Píxeles: crear el píxel "luxcars.pe" si no existe, dentro del portafolio de Luxcars.
+2. Copiar el ID y generar el token (ver tabla). Pegarlos en Vercel y redesplegar.
+3. Events Manager → el píxel → Configuración → activar "Coincidencias avanzadas automáticas" apagado (no hace falta: no hay formularios con datos personales) y dejar "Cookies de origen" encendido.
+4. Events Manager → Agregar eventos → Verificar dominio `luxcars.pe` en Business → Seguridad de la marca → Dominios, y en "Medición de eventos agregados" dejar `Contact` como el evento de mayor prioridad.
+5. En cada campaña de clic a WhatsApp, elegir el píxel y optimizar por `Contact` (o por "Conversaciones" si la campaña es de mensajes nativos).
+
+### Comprobar que funciona
+
+1. Ventana privada en `https://www.luxcars.pe`, pestaña Red filtrando `facebook`: **nada** hasta pulsar "Aceptar".
+2. Al aceptar: aparece `fbevents.js` y una petición `tr?id=…&ev=PageView`.
+3. Clic en un botón de WhatsApp: aparece `tr?…&ev=Contact` y un `POST /api/meta/eventos` con respuesta 202 (204 si falta el token).
+4. Events Manager → el píxel → Resumen: en 1-2 minutos aparecen `PageView` y `Contact` con dos orígenes (Navegador y Servidor) y la columna "Desduplicados". Con `META_CAPI_TEST_EVENT_CODE` puesto, los del servidor salen en la pestaña "Probar eventos".
+5. La extensión "Meta Pixel Helper" de Chrome muestra el ID y los eventos con su `eventID`.
+
