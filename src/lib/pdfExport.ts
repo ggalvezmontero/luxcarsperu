@@ -6,8 +6,8 @@ import { findBrandLogo } from "./brandLogos";
 import { LUXCARS_CONFIG } from "./config";
 import { formatCurrency, formatPercentage, formatRate } from "./utils";
 
-type DocWithAutoTable = jsPDF & { lastAutoTable: { finalY: number } };
-type RGB = [number, number, number];
+export type DocWithAutoTable = jsPDF & { lastAutoTable: { finalY: number } };
+export type RGB = [number, number, number];
 
 /* Paleta del PDF: mismo sistema que la web, sobre papel blanco. */
 const INK: RGB = [10, 10, 11];
@@ -17,11 +17,13 @@ const LINE: RGB = [225, 225, 229];
 const PAPER: RGB = [245, 245, 247];
 const WHITE: RGB = [255, 255, 255];
 const SILVER: RGB = [192, 192, 192];
+/** La misma paleta para otros PDF del sitio (p. ej. el cotizador de envíos). */
+export const PDF_PALETTE = { INK, INK_2, INK_3, LINE, PAPER, WHITE, SILVER } as const;
 
-type Raster = { data: string; width: number; height: number };
+export type Raster = { data: string; width: number; height: number };
 
 /** Carga una imagen de /public y la devuelve como PNG en base64 (los SVG se rasterizan). */
-async function loadRaster(url: string, rasterWidth = 1200): Promise<Raster | null> {
+export async function loadRaster(url: string, rasterWidth = 1200): Promise<Raster | null> {
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -59,7 +61,7 @@ async function loadRaster(url: string, rasterWidth = 1200): Promise<Raster | nul
 }
 
 /** Dibuja una imagen dentro de una caja respetando la proporción. */
-function drawFitted(doc: jsPDF, img: Raster, x: number, y: number, w: number, h: number, align: "left" | "right" = "left") {
+export function drawFitted(doc: jsPDF, img: Raster, x: number, y: number, w: number, h: number, align: "left" | "right" = "left") {
   const ratio = img.width / img.height;
   let dw = w;
   let dh = dw / ratio;

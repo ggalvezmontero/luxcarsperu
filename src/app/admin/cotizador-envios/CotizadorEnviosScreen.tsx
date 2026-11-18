@@ -7,6 +7,10 @@
  * `src/core/envios/` y se actualiza con cada tecla. Guardar manda la ENTRADA
  * al servidor, que la recalcula y archiva su propio resultado: lo que se ve y
  * lo que se guarda salen de la misma función.
+ *
+ * Abrir una cotización del historial la deja "abierta": desde ese momento
+ * guardar la CORRIGE (mismo número, misma fecha) en vez de crear otra.
+ * "Nueva cotización" cierra la abierta y vuelve a crear.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,6 +22,7 @@ import { generarMensajeWhatsapp } from "@/core/envios/mensajeWhatsapp";
 import { anioEnLima } from "@/core/envios/valorAduana";
 
 import {
+  actualizarCotizacion,
   cambiarEstado,
   guardarCotizacion,
   listarCotizaciones,
@@ -33,7 +38,7 @@ import { aEntrada, desdeEntrada, faltantes, formularioInicial, type Formulario }
 export function CotizadorEnviosScreen() {
   const anioActual = useMemo(() => anioEnLima(), []);
   const [form, setForm] = useState<Formulario>(() => formularioInicial(anioActual));
-  const [abierta, setAbierta] = useState<string | null>(null);
+  const [abierta, setAbierta] = useState<{ id: string; numero: string } | null>(null);
 
   const [historial, setHistorial] = useState<CotizacionEnvioResumen[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -77,11 +82,18 @@ export function CotizadorEnviosScreen() {
       return;
     }
     setGuardando(true);
-    const r = await guardarCotizacion(entrada, estado);
+    const r = abierta
+      ? await actualizarCotizacion(abierta.id, entrada, estado)
+      : await guardarCotizacion(entrada, estado);
     setGuardando(false);
     if (r.ok) {
-      setAbierta(r.datos.id);
-      setAviso({ ok: true, texto: `Cotización ${r.datos.numero} guardada como ${estado}.` });
+      setAbierta({ id: r.datos.id, numero: r.datos.numero });
+      setAviso({
+        ok: true,
+        texto: abierta
+          ? `Cotización ${r.datos.numero} actualizada como ${estado}.`
+          : `Cotización ${r.datos.numero} guardada como ${estado}.`,
+      });
       void cargarHistorial();
     } else {
       setAviso({ ok: false, texto: r.mensaje });
@@ -95,8 +107,8 @@ export function CotizadorEnviosScreen() {
       return;
     }
     setForm(desdeEntrada(r.datos.entrada));
-    setAbierta(id);
-    setAviso({ ok: true, texto: `Cotización ${r.datos.numero} cargada en el formulario. Al guardar se crea una nueva versión.` });
+    setAbierta({ id, numero: r.datos.numero });
+    setAviso({ ok: true, texto: `Cotización ${r.datos.numero} cargada en el formulario. Al guardar se actualiza esa misma; "Nueva cotización" para empezar otra.` });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -119,7 +131,7 @@ export function CotizadorEnviosScreen() {
   return (
     <div className="flex flex-col gap-8">
       <PortalPageHeader
-        eyebrow="Herramienta interna"
+        eyebrow={abierta ? `Editando ${abierta.numero}` : "Herramienta interna"}
         title="Cotizador de envíos"
         description="Para clientes que traen su propio vehículo desde Estados Unidos, por Ley del Retorno o importación regular. Se calcula al escribir; guarda cuando quieras archivarla."
         actions={
@@ -142,17 +154,17 @@ export function CotizadorEnviosScreen() {
           <FormularioEnvio valor={form} onChange={setForm} anioActual={anioActual} recorridoKm={resultado.recorridoKm} />
           <div className="flex flex-wrap items-center gap-3 rounded-lux border border-line bg-surface p-4">
             <Button onClick={() => guardar("borrador")} variant="secondary" size="md" disabled={guardando}>
-              {guardando ? "Guardando…" : "Guardar borrador"}
+              {guardando ? "Guardando…" : abierta ? "Actualizar como borrador" : "Guardar borrador"}
             </Button>
             <Button onClick={() => guardar("enviada")} variant="primary" size="md" disabled={guardando}>
-              Guardar como enviada
+              {abierta ? "Actualizar como enviada" : "Guardar como enviada"}
             </Button>
             {faltan.length > 0 ? (
               <p className="text-xs text-ink-4">Para guardar falta: {faltan.join(", ")}.</p>
             ) : null}
           </div>
         </div>
-        <ResultadoEnvio entrada={entrada} resultado={resultado} mensaje={mensaje} />
+        <ResultadoEnvio entrada={entrada} resultado={resultado} mensaje={mensaje} numero={abierta?.numero ?? null} />
       </div>
 
       <HistorialEnvios

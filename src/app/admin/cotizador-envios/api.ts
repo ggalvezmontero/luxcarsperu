@@ -60,6 +60,11 @@ export function guardarCotizacion(entrada: EntradaCotizacionEnvio, estado: Estad
   return pedir(BASE, { method: "POST", body: JSON.stringify({ entrada, estado }) }, (j) => j.cotizacion as CotizacionEnvioResumen);
 }
 
+/** Corrige una cotización ya guardada: conserva número y fecha. */
+export function actualizarCotizacion(id: string, entrada: EntradaCotizacionEnvio, estado: EstadoCotizacionEnvio) {
+  return pedir(`${BASE}/${id}`, { method: "PATCH", body: JSON.stringify({ entrada, estado }) }, (j) => j.cotizacion as CotizacionEnvioResumen);
+}
+
 export function obtenerCotizacion(id: string) {
   return pedir(`${BASE}/${id}`, { method: "GET" }, (j) => j.cotizacion as CotizacionEnvioCompleta);
 }

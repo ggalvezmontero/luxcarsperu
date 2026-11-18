@@ -157,6 +157,51 @@ export async function crearCotizacionEnvio(input: {
   }
 }
 
+/**
+ * Reemplaza entrada y resultado de una cotización existente. Conserva el
+ * número y la fecha de creación: es la misma cotización corregida, no una
+ * nueva. El estado solo cambia si se manda.
+ */
+export async function actualizarCotizacionEnvio(
+  id: string,
+  input: {
+    entrada: EntradaCotizacionEnvio;
+    resultado: ResultadoCotizacionEnvio;
+    estado: EstadoCotizacionEnvio | null;
+  },
+): Promise<CotizacionEnvioResumen | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  const { entrada, resultado } = input;
+  try {
+    const filas = (await sql.query(
+      `update public.cotizaciones_envio set
+         cliente_nombre = $2, cliente_whatsapp = $3, marca = $4, modelo = $5, anio_modelo = $6,
+         regimen = $7::public.regimen_envio,
+         estado = coalesce($8::public.estado_cotizacion_envio, estado),
+         total_usd = $9, entrada = $10::jsonb, resultado = $11::jsonb, motor_version = $12
+       where id = $1::uuid returning ${COLUMNAS_RESUMEN}`,
+      [
+        id,
+        entrada.cliente.nombre,
+        entrada.cliente.whatsapp,
+        entrada.vehiculo.marca,
+        entrada.vehiculo.modelo,
+        entrada.vehiculo.anioModelo,
+        entrada.regimen,
+        input.estado,
+        Math.round(resultado.elegido.totalUsd * 100) / 100,
+        JSON.stringify(entrada),
+        JSON.stringify(resultado),
+        resultado.motorVersion,
+      ],
+    )) as Fila[];
+    return filas[0] ? aResumen(filas[0]) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function cambiarEstadoCotizacionEnvio(
   id: string,
   estado: EstadoCotizacionEnvio,

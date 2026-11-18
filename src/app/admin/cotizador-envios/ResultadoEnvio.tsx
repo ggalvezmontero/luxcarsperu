@@ -11,6 +11,8 @@ import { fechaCorta } from "@/core/envios/validaciones";
 import { cn, formatCurrency, formatRate } from "@/lib/utils";
 import { normalizePhoneForWhatsapp } from "@/lib/whatsappPortal";
 
+import { generarPdfEnvio } from "./pdfEnvio";
+
 const NOMBRE_CORTO: Record<DesgloseRegimen["regimen"], string> = {
   "ley-retorno": "Ley del Retorno",
   "importacion-regular": "Importación regular",
@@ -22,9 +24,11 @@ type Props = {
   entrada: EntradaCotizacionEnvio;
   resultado: ResultadoCotizacionEnvio;
   mensaje: string;
+  /** Número de la cotización abierta (EN-2026-0001), para el PDF. */
+  numero?: string | null;
 };
 
-export function ResultadoEnvio({ entrada, resultado, mensaje }: Props) {
+export function ResultadoEnvio({ entrada, resultado, mensaje, numero = null }: Props) {
   const { elegido, retorno, regular, alertas, valorAduana } = resultado;
   const telefono = normalizePhoneForWhatsapp(entrada.cliente.whatsapp);
   const enlaceWa = telefono ? `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}` : null;
@@ -55,6 +59,7 @@ export function ResultadoEnvio({ entrada, resultado, mensaje }: Props) {
           ` · origen ${resultado.origen === "originario-usa" ? "EE.UU." : "otro"} · importación en ${resultado.anioImportacion}` +
           (resultado.fechaLimiteIngreso ? ` · ingreso hasta el ${fechaCorta(resultado.fechaLimiteIngreso)}` : "")
         }
+        toolbar={<BotonPdf entrada={entrada} resultado={resultado} numero={numero} />}
       >
         <TableScroll>
           <table className="w-full">
@@ -217,6 +222,27 @@ function Comparada({ concepto, a, b, tasaB }: { concepto: string; a: number | nu
       <Td align="right" className="tabular-nums">{a === null ? "—" : usd(a)}</Td>
       <Td align="right" className="tabular-nums">{b === null ? "—" : usd(b)}</Td>
     </tr>
+  );
+}
+
+function BotonPdf({ entrada, resultado, numero }: { entrada: EntradaCotizacionEnvio; resultado: ResultadoCotizacionEnvio; numero: string | null }) {
+  const [estado, setEstado] = useState<"reposo" | "generando" | "error">("reposo");
+
+  async function descargar() {
+    setEstado("generando");
+    try {
+      await generarPdfEnvio(entrada, resultado, numero);
+      setEstado("reposo");
+    } catch {
+      setEstado("error");
+    }
+  }
+
+  return (
+    <Button onClick={descargar} variant="secondary" size="sm" disabled={estado === "generando"}>
+      <Icon name="download" size={14} />
+      {estado === "generando" ? "Generando…" : estado === "error" ? "No se pudo generar" : "Descargar PDF"}
+    </Button>
   );
 }
 

@@ -1,16 +1,21 @@
 /**
  * /api/admin/cotizaciones-envio/[id]
  *
- *   GET              → la cotización completa (entrada y resultado), para reabrirla
- *   PATCH { estado } → cambia el estado: borrador, enviada o aceptada
+ *   GET                        → la cotización completa (entrada y resultado), para reabrirla
+ *   PATCH { estado }           → cambia solo el estado: borrador, enviada o aceptada
+ *   PATCH { entrada, estado? } → la corrige: recalcula en el servidor y reemplaza
+ *                                entrada y resultado conservando número y fecha
  *
  * Mismas reglas que la ruta padre: solo administradores, nunca lanza.
  */
 
 import { NextResponse } from "next/server";
 
+import { cotizarEnvio } from "@/core/envios/calculoEnvio";
+import { parsearEntradaEnvio } from "@/core/envios/parsearEntrada";
 import {
   ESTADOS_COTIZACION_ENVIO,
+  actualizarCotizacionEnvio,
   cambiarEstadoCotizacionEnvio,
   obtenerCotizacionEnvio,
   type EstadoCotizacionEnvio,
@@ -44,17 +49,27 @@ export async function PATCH(request: Request, { params }: Contexto) {
   const { id } = await params;
   if (!RE_UUID.test(id)) return fallo(404, "No existe esa cotización.");
 
-  let cuerpo: { estado?: unknown } = {};
+  let cuerpo: { estado?: unknown; entrada?: unknown } = {};
   try {
     cuerpo = (await request.json()) as typeof cuerpo;
   } catch {
     return fallo(400, "El cuerpo debe ser JSON.");
   }
-  if (!(ESTADOS_COTIZACION_ENVIO as readonly string[]).includes(String(cuerpo.estado))) {
-    return fallo(400, "Estado inválido: borrador, enviada o aceptada.");
+  const estadoValido = (ESTADOS_COTIZACION_ENVIO as readonly string[]).includes(String(cuerpo.estado));
+  const estado = estadoValido ? (cuerpo.estado as EstadoCotizacionEnvio) : null;
+
+  if (cuerpo.entrada !== undefined) {
+    const entrada = parsearEntradaEnvio(cuerpo.entrada);
+    if (!entrada) {
+      return fallo(400, "Faltan datos obligatorios: nombre del cliente, marca, modelo, año y régimen.");
+    }
+    const actualizada = await actualizarCotizacionEnvio(id, { entrada, resultado: cotizarEnvio(entrada), estado });
+    if (!actualizada) return fallo(404, "No se pudo actualizar la cotización.");
+    return NextResponse.json({ ok: true, cotizacion: actualizada });
   }
 
-  const actualizada = await cambiarEstadoCotizacionEnvio(id, cuerpo.estado as EstadoCotizacionEnvio);
+  if (!estado) return fallo(400, "Estado inválido: borrador, enviada o aceptada.");
+  const actualizada = await cambiarEstadoCotizacionEnvio(id, estado);
   if (!actualizada) return fallo(404, "No se pudo actualizar la cotización.");
   return NextResponse.json({ ok: true, cotizacion: actualizada });
 }
