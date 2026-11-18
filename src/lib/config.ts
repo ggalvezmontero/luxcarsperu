@@ -134,7 +134,7 @@ export const LUXCARS_CONFIG = {
    * perfil nuevo, se añade aquí y sale en los dos sitios.
    */
   social: {
-    instagram: "https://www.instagram.com/luxcars.pe/",
+    instagram: "https://www.instagram.com/luxcarspe/",
     facebook: "https://www.facebook.com/p/Lux-Cars-Peru-61596107865637/",
     tiktok: "https://www.tiktok.com/@luxcars.pe",
   },
