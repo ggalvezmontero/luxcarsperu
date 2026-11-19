@@ -28,11 +28,11 @@ export function rutaModelo(id: string): string {
 }
 
 /**
- * Ruta que abre la calculadora con los datos del modelo. Por defecto la de la
- * portada (las tarjetas de la home la abren ahí mismo, sin cambiar de página);
- * con `base = "/calculadora"`, la de la página propia de la calculadora.
+ * Ruta que abre la calculadora con los datos del modelo. Desde el 2026-11-18
+ * la calculadora vive solo en /calculadora (la portada la enlaza); `base = "/"`
+ * queda por compatibilidad y next.config redirige `/?simular=` allí.
  */
-export function rutaCalculadora(id: string, base: "/" | "/calculadora" = "/"): string {
+export function rutaCalculadora(id: string, base: "/" | "/calculadora" = "/calculadora"): string {
   return `${base}?simular=${id}#calculator`;
 }
 

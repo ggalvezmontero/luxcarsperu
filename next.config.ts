@@ -40,6 +40,27 @@ function bucketPropioDeFotos(): RemotePattern[] {
 }
 
 const nextConfig: NextConfig = {
+  /**
+   * La calculadora dejó de vivir en la portada el 2026-11-18. Los enlaces
+   * viejos (`/?simular=<id>` desde el portal, `/?c=<código>` de estimados
+   * compartidos) siguen abriéndola, ahora en /calculadora.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/",
+        has: [{ type: "query", key: "simular", value: "(?<simular>.*)" }],
+        destination: "/calculadora?simular=:simular",
+        permanent: true,
+      },
+      {
+        source: "/",
+        has: [{ type: "query", key: "c", value: "(?<c>.*)" }],
+        destination: "/calculadora?c=:c",
+        permanent: true,
+      },
+    ];
+  },
   // Permite mover el directorio de build cuando `.next` no es escribible.
   // Sin la variable definida se comporta exactamente igual que antes.
   distDir: process.env.NEXT_DIST_DIR || ".next",

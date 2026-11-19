@@ -82,7 +82,9 @@ export async function MostSoughtVehiclesSection({
         }
       />
 
-      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {/* En móvil, una fila deslizable (nueve tarjetas apiladas eran 4,000 px);
+          desde sm, la rejilla de siempre. */}
+      <div className="-mx-4 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
         {vehiculos.map((v) => {
           const noConviene = v.importViability === "no-conviene-importar";
           const advertencia = v.importViability === "importable-con-advertencia";
@@ -90,7 +92,7 @@ export async function MostSoughtVehiclesSection({
           // queda con el enlace de siempre.
           const vaAPagina = aPagina && tienePaginaPropia(v);
           return (
-            <div key={v.id} className="flex flex-col">
+            <div key={v.id} className="flex w-[82%] shrink-0 snap-start flex-col sm:w-auto sm:shrink">
               <Link
                 href={vaAPagina ? rutaModelo(v.id) : rutaCalculadora(v.id)}
                 scroll={vaAPagina ? undefined : false}

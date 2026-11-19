@@ -6,7 +6,8 @@ import { Footer } from "@/components/Footer";
 import { GuiasDestacadas } from "@/components/guias/GuiasDestacadas";
 import { MostSoughtVehiclesSection } from "@/components/MostSoughtVehiclesSection";
 import { Navbar } from "@/components/Navbar";
-import { IMPORT_STEPS, StepsRow } from "@/components/home/StepsSection";
+import { ImportBand } from "@/components/home/ImportBand";
+import { EjemploReal } from "@/components/importar/EjemploReal";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import Link from "next/link";
@@ -74,12 +75,6 @@ const REGLAS: { icon: IconName; title: string; text: string }[] = [
   { icon: "gauge", title: "Tope de kilómetros", text: "Se contrasta el odómetro con el historial CarFax." },
 ];
 
-const TRIBUTOS: { cifra: string; nombre: string; base: string }[] = [
-  { cifra: "0–6%", nombre: "Ad valorem", base: "Sobre CIF. 0% solo para nuevos originarios de EE.UU." },
-  { cifra: "40%", nombre: "ISC usados", base: "Sobre CIF + ad valorem. Nuevos: 0–20% según motor." },
-  { cifra: "18%", nombre: "IGV + IPM", base: "Sobre CIF + ad valorem + ISC." },
-  { cifra: "3.5–10%", nombre: "Percepción", base: "Adelanto del IGV. Se recupera como crédito fiscal." },
-];
 
 /**
  * Preguntas con las palabras exactas con las que la gente busca este servicio.
@@ -219,7 +214,7 @@ export default function ImportarPage() {
               </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
-              Importamos a pedido el auto o la camioneta que elijas, nuevo o seminuevo, desde Miami o cualquier estado de EE.UU.: lo buscamos, lo inspeccionamos antes de pagar y lo entregamos en Lima nacionalizado y con placas. Sin letra chica.
+              Elige el auto o la camioneta, nuevo o seminuevo, en cualquier estado de EE.UU. Lo inspeccionamos antes de pagar y te lo entregamos en Lima con placas.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button href="/calculadora" variant="accent" size="lg" data-ga-cta="importar_portada_calculadora">
@@ -245,57 +240,54 @@ export default function ImportarPage() {
           </div>
         </section>
 
-        <Section tone="bg">
-          <SectionHeader eyebrow="Cómo funciona" title="Cuatro pasos, una sola cifra" description="Del pedido a la entrega, con seguimiento semanal por WhatsApp." />
-          <div className="mt-10"><StepsRow steps={IMPORT_STEPS} /></div>
-        </Section>
+        {/* Un auto concreto antes que cualquier explicación: de qué se compone el costo. */}
+        <EjemploReal />
+
+        <MostSoughtVehiclesSection tone="void" destino="pagina" />
+
+        {/* Los cuatro pasos con foto, los mismos de la portada y de /como-funciona. */}
+        <ImportBand />
 
         <Section tone="void">
           <SectionHeader eyebrow="Lo que permite la ley" title="Cuatro reglas deciden si tu auto puede entrar" description="Las revisamos antes de cotizar. Si no cumple, te lo decimos en la primera conversación." />
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="mt-10 grid gap-px overflow-hidden rounded-[22px] border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
             {REGLAS.map((r) => (
-              <li key={r.title} className="rounded-[22px] border border-line bg-surface p-6">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
-                  <Icon name={r.icon} size={24} />
+              <li key={r.title} className="flex items-start gap-4 bg-surface p-6">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
+                  <Icon name={r.icon} size={22} />
                 </span>
-                <h3 className="mt-5 text-lg font-semibold text-ink">{r.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-3">{r.text}</p>
+                <span>
+                  <h3 className="text-base font-semibold text-ink">{r.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-ink-3">{r.text}</p>
+                </span>
               </li>
             ))}
           </ul>
         </Section>
 
-        <Section tone="bg">
-          <SectionHeader eyebrow="Tributos" title="Qué se paga y sobre qué base" description="Los impuestos se aplican en cascada, cada uno sobre la base que dejó el anterior." />
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {TRIBUTOS.map((t) => (
-              <li key={t.nombre} className="rounded-[22px] border border-line bg-surface p-6">
-                <p className="text-3xl font-semibold tabular-nums tracking-tight text-silver-bright">{t.cifra}</p>
-                <h3 className="mt-2 text-base font-semibold text-ink">{t.nombre}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-3">{t.base}</p>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-8 flex flex-col items-start gap-4 rounded-[22px] border border-line-strong bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-ink-2 sm:text-base">
-              La calculadora aplica exactamente estas tasas. Es la misma herramienta que usamos internamente.
-            </p>
-            <Button href="/calculadora" variant="accent" data-ga-cta="importar_tasas_calculadora">Ir a la calculadora</Button>
+        {/* Transparencia sobre foto: rompe la secuencia de tarjetas y le da peso a lo que decimos aunque cueste la venta. */}
+        <section className="relative isolate overflow-hidden py-20 sm:py-24 lg:py-28">
+          <Image
+            src="/images/lima/costa-verde-noche.webp"
+            alt=""
+            fill
+            sizes="100vw"
+            className="-z-20 object-cover"
+          />
+          <div aria-hidden className="absolute inset-0 -z-10 bg-void/85" />
+          <div className="container-lux">
+            <SectionHeader eyebrow="Transparencia" title="Tres cosas que te decimos aunque nos cuesten la venta" />
+            <ol className="mt-10 grid gap-4 lg:grid-cols-3">
+              {HONESTIDAD.map((h, i) => (
+                <li key={h.title} className="rounded-[22px] border border-line/80 bg-void/60 p-6 backdrop-blur">
+                  <span className="font-mono text-sm text-silver">{String(i + 1).padStart(2, "0")}</span>
+                  <h3 className="mt-3 text-lg font-semibold text-ink">{h.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-2">{h.text}</p>
+                </li>
+              ))}
+            </ol>
           </div>
-        </Section>
-
-        <Section tone="void">
-          <SectionHeader eyebrow="Transparencia" title="Tres cosas que te decimos aunque nos cuesten la venta" />
-          <ul className="mt-10 grid gap-4 lg:grid-cols-3">
-            {HONESTIDAD.map((h, i) => (
-              <li key={h.title} className="rounded-[22px] border border-line bg-surface p-6">
-                <span className="text-sm font-semibold tabular-nums text-ink-4">{String(i + 1).padStart(2, "0")}</span>
-                <h3 className="mt-3 text-lg font-semibold text-ink">{h.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-3">{h.text}</p>
-              </li>
-            ))}
-          </ul>
-        </Section>
+        </section>
 
         <Section tone="bg">
           <SectionHeader
@@ -318,9 +310,7 @@ export default function ImportarPage() {
           </div>
         </Section>
 
-        <MostSoughtVehiclesSection tone="void" destino="pagina" />
-
-        <Section tone="bg" padding="tight">
+        <Section tone="void" padding="tight">
           <SectionHeader
             eyebrow="Por marca"
             title="Importar por marca"
@@ -340,9 +330,9 @@ export default function ImportarPage() {
           </ul>
         </Section>
 
-        <GuiasDestacadas tone="void" />
+        <GuiasDestacadas tone="bg" />
 
-        <Section tone="bg" padding="tight">
+        <Section tone="void" padding="tight">
           <CtaBand />
         </Section>
       </main>

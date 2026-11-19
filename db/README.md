@@ -67,6 +67,7 @@ escribir una migración y justificarlo. **Esa fricción es intencional.**
 | `solicitudes_venta` | Autos que un cliente ofrece en consignación; un admin aprueba o rechaza |
 | `ejemplos_importacion` | Autos de referencia de "importación a pedido" (home y `/importar`); se editan en `/portal/ejemplos` |
 | `cotizaciones_envio` | Cotizaciones del cotizador interno de envíos (`/admin/cotizador-envios`): traer al Perú el auto propio desde EE.UU., por Ley del Retorno o importación regular; entrada y resultado en JSON, estado borrador/enviada/aceptada |
+| `reclamaciones` | Libro de Reclamaciones virtual: una fila por hoja (número LR-AAAA-0001, consumidor, bien, detalle, pedido, respuesta). Inserta el servidor desde `/api/reclamaciones`; leen y responden los admins. |
 
 ### Reglas de negocio que viven en el esquema
 

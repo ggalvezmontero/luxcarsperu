@@ -33,6 +33,8 @@ const COLUMNS = [
       { label: "Términos y condiciones", href: "/terminos" },
       { label: "Política de privacidad", href: "/privacidad" },
       { label: "Política de cookies", href: "/cookies" },
+      // Obligatorio para quien vende por internet (Ley 29571). Visible en todas las páginas.
+      { label: "Libro de Reclamaciones", href: "/libro-de-reclamaciones" },
     ],
   },
 ];

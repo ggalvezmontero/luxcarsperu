@@ -69,7 +69,7 @@ export function HeroShowroom() {
               Ver stock disponible
               <Icon name="arrowRight" size={18} />
             </Button>
-            <Button href="/#calculator" variant="accent" size="lg" data-ga-cta="portada_hero_calculadora">
+            <Button href="/calculadora" variant="accent" size="lg" data-ga-cta="portada_hero_calculadora">
               <Icon name="calculator" size={18} />
               Calcular importación
             </Button>

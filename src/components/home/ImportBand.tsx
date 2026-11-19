@@ -51,7 +51,7 @@ export function ImportBand() {
           </Button>
         }
       />
-      <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {PASOS.map((p) => (
           <li key={p.n} className="group overflow-hidden rounded-[22px] border border-line bg-surface">
             <div className="relative aspect-[4/3] w-full">
@@ -66,9 +66,9 @@ export function ImportBand() {
                 {p.n}
               </span>
             </div>
-            <div className="p-5">
-              <h3 className="text-lg font-semibold text-ink">{p.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-3">{p.text}</p>
+            <div className="p-4 sm:p-5">
+              <h3 className="text-base font-semibold text-ink sm:text-lg">{p.title}</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-ink-3 sm:text-sm">{p.text}</p>
               {p.foto.credito ? (
                 <CreditoFoto
                   credito={p.foto.credito.autor}

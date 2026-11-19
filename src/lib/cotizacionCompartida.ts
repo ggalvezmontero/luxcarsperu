@@ -337,5 +337,5 @@ export function sharedQuotePath(codigo: string): string {
 
 /** Ruta que abre la calculadora precargada con ese estimado. */
 export function sharedQuoteCalculatorPath(codigo: string): string {
-  return `/?${SHARED_QUOTE_PARAM}=${codigo}#calculator`;
+  return `/calculadora?${SHARED_QUOTE_PARAM}=${codigo}#calculator`;
 }

@@ -438,7 +438,7 @@ export function EjemploForm({
             label="Identificador"
             hint={
               creando
-                ? `Se sugiere solo a partir del nombre. Es parte del enlace público (luxcars.pe/?simular=${enlacePublico}) y no se puede cambiar después. Solo minúsculas, números y guiones.`
+                ? `Se sugiere solo a partir del nombre. Es parte del enlace público (luxcars.pe/calculadora?simular=${enlacePublico}) y no se puede cambiar después. Solo minúsculas, números y guiones.`
                 : "Es parte del enlace público del ejemplo: no se cambia."
             }
             error={errorDe("id")}

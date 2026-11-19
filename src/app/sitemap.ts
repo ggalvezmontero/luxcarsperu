@@ -67,6 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/terminos`, lastModified: ahora, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/privacidad`, lastModified: ahora, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/cookies`, lastModified: ahora, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/libro-de-reclamaciones`, lastModified: ahora, changeFrequency: "yearly", priority: 0.3 },
   ];
 
   // Cada ejemplo que se puede cotizar entra con SU página (`/importar/<id>`):
