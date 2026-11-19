@@ -10,6 +10,7 @@ import { LUXCARS_CONFIG } from "@/lib/config";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { getStockForIsr } from "@/lib/stock";
 import { StockExplorer } from "./StockExplorer";
+import { BusquedaLocalSection } from "@/components/comprar/BusquedaLocalSection";
 import { BreadcrumbJsonLd } from "@/components/BreadcrumbJsonLd";
 
 /* SEO (2026-11-10, pedido del dueño): la página responde a "comprar autos de
@@ -106,12 +107,14 @@ export default async function ComprarPage() {
 
         <StockExplorer stock={stock} />
 
+        <BusquedaLocalSection />
+
         <ScanBand />
 
         <Section tone="void" padding="tight">
           <CtaBand
             title="¿No está el que buscas?"
-            text="Dinos cuál y lo buscamos en Estados Unidos o en Lima. Sigues el avance desde tu cuenta."
+            text="Dinos cuál y lo buscamos en Lima o lo importamos de Estados Unidos. Sigues el avance desde tu cuenta."
             message="Hola Luxcars, busco un auto que no vi en su stock. ¿Pueden ayudarme a conseguirlo?"
             secondaryHref="/cuenta/comprar"
             secondaryLabel="Pedir que lo busquen"

@@ -180,6 +180,17 @@ export const LUXCARS_CONFIG = {
      * consignación con un auto de USD 18,000.
      */
     minimumAppliesTo: "importacion" as const,
+    /**
+     * Búsqueda y verificación de un auto dentro de Perú (sección de /comprar).
+     * Honorario por tramos según el precio del auto; el escaneo pre-compra de
+     * la unidad comprada va incluido. Rango del plan de marketing
+     * (2026-11-18); el dueño lo ajusta aquí y la web se actualiza sola.
+     */
+    localSearch: {
+      feeFromUsd: 600,
+      feeToUsd: 1500,
+      minimumVehiclePriceUsd: 15_000,
+    },
   },
   vehicleTypes: VEHICLE_CATEGORIES,
   /**
@@ -207,6 +218,11 @@ export const LUXCARS_CONFIG = {
       question: "¿Puedo comprar un auto ya disponible en Lima, sin importar nada?",
       answer:
         "Sí. El stock propio ya está nacionalizado, con placas y tarjeta de propiedad. Lo ves, lo pruebas y lo compras. También publicamos autos de clientes en consignación, marcados como tales: los verificamos igual y coordinamos la visita con el dueño. De cada unidad publicamos marca, modelo, año, kilometraje y precio. Si un dato no está verificado, no lo publicamos.",
+    },
+    {
+      question: "¿Me ayudan a encontrar un auto en Perú si no quiero esperar una importación?",
+      answer:
+        "Sí. Nos dices modelo, año y presupuesto y lo buscamos en el mercado limeño: dealers, particulares y consignaciones. Antes de que pagues, escaneamos la unidad, verificamos el VIN y revisamos cargas registrales y papeles; si no pasa, seguimos buscando. El honorario va de USD 600 a 1,500 según el precio del auto y se confirma por escrito antes de empezar.",
     },
     {
       question: "¿Tengo que dejarles mi auto para venderlo en consignación?",

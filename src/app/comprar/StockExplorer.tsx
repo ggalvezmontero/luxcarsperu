@@ -204,11 +204,11 @@ export function StockExplorer({ stock }: { stock: StockVehicle[] }) {
               {stock.length ? "Nada coincide con esos filtros." : "Ahora mismo no hay unidades en piso."}
             </p>
             <p className="mx-auto mt-2 max-w-md text-sm text-ink-3">
-              Déjanos tu búsqueda y te avisamos el día que entre una unidad así.
+              Te lo buscamos en Lima y lo verificamos antes de que pagues, o te avisamos el día que entre una unidad así.
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               {stock.length ? <Button onClick={reset} variant="secondary">Quitar filtros</Button> : null}
-              <Button href="/cuenta/comprar" variant="secondary">Pedir que lo busquen</Button>
+              <Button href="#busqueda-local" variant="secondary" data-ga-cta="comprar_vacio_busqueda_local">Que lo busquen en Lima</Button>
               <Button href={SEARCH_WHATSAPP} variant="whatsapp">Dejar mi búsqueda</Button>
             </div>
           </div>
