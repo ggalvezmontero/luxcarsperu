@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
-import { Badge, Notice, PortalPanel, TableScroll, Td, Th } from "@/components/portal/CrmUI";
+import { Badge, EmptyState, Notice, PortalPanel, StatCard, TableScroll, Td, Th, type StatTone } from "@/components/portal/CrmUI";
 import { Icon } from "@/components/ui/Icon";
 import { CONFIG_ENVIOS, CONFIG_ENVIOS_VERIFICADA } from "@/core/envios/configEnvios";
 import type { DesgloseRegimen, EntradaCotizacionEnvio, ResultadoCotizacionEnvio } from "@/core/envios/tipos";
@@ -26,19 +26,90 @@ type Props = {
   mensaje: string;
   /** Número de la cotización abierta (EN-2026-0001), para el PDF. */
   numero?: string | null;
+  /** Hay datos suficientes para que el estimado tenga sentido. */
+  listo: boolean;
 };
 
-export function ResultadoEnvio({ entrada, resultado, mensaje, numero = null }: Props) {
+/**
+ * Columna de resultado. Orden pensado para leerse de arriba abajo en 10
+ * segundos: primero las tres cifras que importan, luego lo que puede frenar la
+ * importación (alertas), después el detalle, la comparación y el mensaje.
+ */
+export function ResultadoEnvio({ entrada, resultado, mensaje, numero = null, listo }: Props) {
+  if (!listo) {
+    return (
+      <PortalPanel>
+        <EmptyState
+          title="El estimado aparece aquí"
+          description="Se calcula al escribir. Basta con la marca, el modelo y el valor de factura; el resto afina las alertas y el régimen."
+          steps={[
+            "Cliente: nombre y WhatsApp, para el mensaje y el PDF.",
+            "Vehículo: valor de factura, condición y país de fabricación.",
+            "Régimen: Ley del Retorno o importación regular; los dos se comparan siempre.",
+          ]}
+        />
+      </PortalPanel>
+    );
+  }
+
   const { elegido, retorno, regular, alertas, valorAduana } = resultado;
   const telefono = normalizePhoneForWhatsapp(entrada.cliente.whatsapp);
   const enlaceWa = telefono ? `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}` : null;
+  const esRetorno = elegido.regimen === "ley-retorno";
+  const aplica = Boolean(elegido.tributos) || esRetorno;
+
+  const criticas = alertas.filter((a) => a.nivel !== "info");
+  const informativas = alertas.filter((a) => a.nivel === "info");
+
+  const margen = valorAduana.margenTopeUsd;
+  const tonoMargen: StatTone = margen < 0 ? "danger" : margen < CONFIG_ENVIOS.valorAduana.margenAlertaUsd ? "warn" : "default";
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Alertas ──────────────────────────────────────────────────────── */}
-      {alertas.length > 0 ? (
+      {/* ── Las tres cifras ──────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard
+          label={`Total · ${NOMBRE_CORTO[elegido.regimen]}`}
+          value={aplica ? usd(elegido.totalUsd) : "No aplica"}
+          hint={esRetorno ? "Sin tributos, por la Ley del Retorno." : "Sin la percepción, que va aparte."}
+          tone={aplica ? "default" : "danger"}
+        />
+        {esRetorno ? (
+          <StatCard
+            label="Ahorro frente a la regular"
+            value={regular.tributos ? usd(regular.totalUsd - retorno.totalUsd) : "—"}
+            hint={regular.tributos ? `Regular: ${usd(regular.totalUsd)} + percepción.` : "Como regular no podría nacionalizarse."}
+            tone={retorno.beneficioAplica ? "ok" : "warn"}
+          />
+        ) : (
+          <StatCard
+            label="Efectivo a desembolsar"
+            value={elegido.tributos ? usd(elegido.efectivoUsd) : "—"}
+            hint={elegido.tributos ? `Incluye percepción ${formatRate(elegido.tributos.tasas.percepcion)}, recuperable.` : "No puede nacionalizarse por esta vía."}
+          />
+        )}
+        <StatCard
+          label="Valor para aduanas"
+          value={usd(valorAduana.valorUsd)}
+          hint={
+            esRetorno
+              ? margen < 0
+                ? `Supera el tope de ${usd(CONFIG_ENVIOS.leyRetorno.valorMaximoUsd)} por ${usd(-margen)}.`
+                : `Margen frente al tope: ${usd(margen)}.`
+              : valorAduana.metodo === "depreciacion"
+                ? `Factura menos ${Math.round(valorAduana.depreciacion * 100)}% por ${valorAduana.aniosUso} año(s) de uso.`
+                : valorAduana.metodo === "referencia"
+                  ? "Valor de referencia indicado."
+                  : "Igual a la factura (nuevo)."
+          }
+          tone={esRetorno ? tonoMargen : "default"}
+        />
+      </div>
+
+      {/* ── Lo que puede frenar la importación ───────────────────────────── */}
+      {criticas.length > 0 ? (
         <div className="flex flex-col gap-2">
-          {alertas.map((a) => (
+          {criticas.map((a) => (
             <Notice key={a.clave} tone={a.nivel} label={a.titulo}>
               {a.detalle}
             </Notice>
@@ -46,18 +117,28 @@ export function ResultadoEnvio({ entrada, resultado, mensaje, numero = null }: P
         </div>
       ) : null}
 
+      {informativas.length > 0 ? (
+        <details className="group rounded-lux border border-line bg-surface-2 px-4 py-3 text-xs leading-relaxed text-ink-2">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-silver">
+            <span>Condiciones y plazos ({informativas.length})</span>
+            <Icon name="chevronDown" size={14} className="transition-transform group-open:rotate-180" />
+          </summary>
+          <ul className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
+            {informativas.map((a) => (
+              <li key={a.clave}>
+                <span className="font-semibold text-ink">{a.titulo}.</span> {a.detalle}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+
       {/* ── Desglose del régimen elegido ─────────────────────────────────── */}
       <PortalPanel
         title={`Desglose · ${NOMBRE_CORTO[elegido.regimen]}`}
         description={
-          `Valor estimado para aduanas ${usd(valorAduana.valorUsd)}` +
-          (valorAduana.metodo === "depreciacion"
-            ? ` (factura menos ${Math.round(valorAduana.depreciacion * 100)}%)`
-            : valorAduana.metodo === "referencia"
-              ? " (valor de referencia)"
-              : "") +
-          ` · origen ${resultado.origen === "originario-usa" ? "EE.UU." : "otro"} · importación en ${resultado.anioImportacion}` +
-          (resultado.fechaLimiteIngreso ? ` · ingreso hasta el ${fechaCorta(resultado.fechaLimiteIngreso)}` : "")
+          `Importación en ${resultado.anioImportacion} · origen ${resultado.origen === "originario-usa" ? "EE.UU." : "otro"}` +
+          (resultado.fechaLimiteIngreso ? ` · ingreso como usado hasta el ${fechaCorta(resultado.fechaLimiteIngreso)}` : "")
         }
         toolbar={<BotonPdf entrada={entrada} resultado={resultado} numero={numero} />}
       >
@@ -82,7 +163,7 @@ export function ResultadoEnvio({ entrada, resultado, mensaje, numero = null }: P
               />
               <tr className="bg-surface-2">
                 <Td className="font-semibold text-ink">Total referencial</Td>
-                <Td align="right" className="text-base font-semibold tabular-nums text-ink">{usd(elegido.totalUsd)}</Td>
+                <Td align="right" className="text-base font-semibold tabular-nums text-ink">{aplica ? usd(elegido.totalUsd) : "No aplica"}</Td>
               </tr>
               {elegido.tributos && elegido.tributos.percepcion > 0 ? (
                 <tr>
@@ -104,15 +185,15 @@ export function ResultadoEnvio({ entrada, resultado, mensaje, numero = null }: P
       {/* ── Comparación lado a lado ──────────────────────────────────────── */}
       <PortalPanel title="Ley del Retorno vs. importación regular" description="Mismos costos; cambia solo lo tributario.">
         <TableScroll>
-          <table className="w-full">
+          <table className="w-full min-w-[30rem] table-fixed">
             <thead className="border-b border-line">
               <tr>
                 <Th>Concepto</Th>
-                <Th align="right">
-                  <Encabezado activo={elegido.regimen === "ley-retorno"} beneficio={retorno.beneficioAplica}>Ley del Retorno</Encabezado>
+                <Th align="right" className="w-28">
+                  <Encabezado activo={esRetorno} beneficio={retorno.beneficioAplica}>Ley del Retorno</Encabezado>
                 </Th>
-                <Th align="right">
-                  <Encabezado activo={elegido.regimen === "importacion-regular"}>Importación regular</Encabezado>
+                <Th align="right" className="w-28">
+                  <Encabezado activo={!esRetorno}>Importación regular</Encabezado>
                 </Th>
               </tr>
             </thead>
@@ -124,13 +205,13 @@ export function ResultadoEnvio({ entrada, resultado, mensaje, numero = null }: P
               <Comparada concepto="Gastos de aduana y servicio" a={retorno.gastosAduanaUsd + retorno.servicioUsd} b={regular.gastosAduanaUsd + regular.servicioUsd} />
               <tr className="bg-surface-2">
                 <Td className="font-semibold text-ink">Total referencial</Td>
-                <Td align="right" className={cn("font-semibold tabular-nums", elegido.regimen === "ley-retorno" ? "text-ink" : "text-ink-2")}>{usd(retorno.totalUsd)}</Td>
-                <Td align="right" className={cn("font-semibold tabular-nums", elegido.regimen === "importacion-regular" ? "text-ink" : "text-ink-2")}>{regular.tributos ? usd(regular.totalUsd) : "No aplica"}</Td>
+                <Td align="right" className={cn("whitespace-nowrap font-semibold tabular-nums", esRetorno ? "text-ink" : "text-ink-2")}>{usd(retorno.totalUsd)}</Td>
+                <Td align="right" className={cn("whitespace-nowrap font-semibold tabular-nums", !esRetorno ? "text-ink" : "text-ink-2")}>{regular.tributos ? usd(regular.totalUsd) : "No aplica"}</Td>
               </tr>
               <Comparada concepto="Percepción del IGV (adelanto, aparte)" a={0} b={regular.tributos?.percepcion ?? null} />
               <tr>
                 <Td className="text-ink">Ahorro con la Ley del Retorno</Td>
-                <Td align="right" className="font-semibold tabular-nums text-ok" >
+                <Td align="right" className="font-semibold tabular-nums text-ok">
                   {regular.tributos ? usd(regular.totalUsd - retorno.totalUsd) : "—"}
                 </Td>
                 <Td align="right" className="text-ink-4">—</Td>
@@ -143,9 +224,9 @@ export function ResultadoEnvio({ entrada, resultado, mensaje, numero = null }: P
       {/* ── Mensaje para WhatsApp ────────────────────────────────────────── */}
       <PortalPanel
         title="Mensaje para WhatsApp"
-        description="Texto plano, de usted, con el desglose y el total referencial. Cópialo o ábrelo en el chat."
+        description="Texto plano, de usted, con el desglose y el total referencial."
         toolbar={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <BotonCopiar texto={mensaje} />
             {enlaceWa ? (
               <Button href={enlaceWa} variant="whatsapp" size="sm">
@@ -158,7 +239,7 @@ export function ResultadoEnvio({ entrada, resultado, mensaje, numero = null }: P
         <textarea
           readOnly
           value={mensaje}
-          rows={Math.min(26, mensaje.split("\n").length + 1)}
+          rows={Math.min(14, mensaje.split("\n").length + 1)}
           onFocus={(e) => e.currentTarget.select()}
           className="field-lux w-full resize-y rounded-none border-0 bg-transparent font-mono text-xs leading-relaxed"
           aria-label="Mensaje para el cliente"
@@ -185,7 +266,7 @@ function Fila({ concepto, monto, nota }: { concepto: string; monto: number; nota
         {concepto}
         {nota ? <span className="block text-xs text-ink-4">{nota}</span> : null}
       </Td>
-      <Td align="right" className="tabular-nums">{usd(monto)}</Td>
+      <Td align="right" className="w-32 whitespace-nowrap tabular-nums">{usd(monto)}</Td>
     </tr>
   );
 }
@@ -219,8 +300,8 @@ function Comparada({ concepto, a, b, tasaB }: { concepto: string; a: number | nu
         {concepto}
         {tasaB !== undefined ? <span className="block text-xs text-ink-4">{formatRate(tasaB)} en la regular</span> : null}
       </Td>
-      <Td align="right" className="tabular-nums">{a === null ? "—" : usd(a)}</Td>
-      <Td align="right" className="tabular-nums">{b === null ? "—" : usd(b)}</Td>
+      <Td align="right" className="w-28 whitespace-nowrap tabular-nums">{a === null ? "—" : usd(a)}</Td>
+      <Td align="right" className="w-28 whitespace-nowrap tabular-nums">{b === null ? "—" : usd(b)}</Td>
     </tr>
   );
 }

@@ -9,17 +9,19 @@
  * lo que se guarda salen de la misma función.
  *
  * Abrir una cotización del historial la deja "abierta": desde ese momento
- * guardar la CORRIGE (mismo número, misma fecha) en vez de crear otra.
- * "Nueva cotización" cierra la abierta y vuelve a crear.
+ * guardar la CORRIGE (mismo número, misma fecha) en vez de crear otra, y la
+ * pantalla avisa si hay cambios sin guardar. "Nueva cotización" cierra la
+ * abierta y vuelve a crear.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/Button";
-import { Notice, PortalPageHeader } from "@/components/portal/CrmUI";
+import { Badge, Notice, PortalPageHeader } from "@/components/portal/CrmUI";
 import { cotizarEnvio } from "@/core/envios/calculoEnvio";
 import { generarMensajeWhatsapp } from "@/core/envios/mensajeWhatsapp";
 import { anioEnLima } from "@/core/envios/valorAduana";
+import { formatCurrency } from "@/lib/utils";
 
 import {
   actualizarCotizacion,
@@ -32,25 +34,34 @@ import {
 } from "./api";
 import { FormularioEnvio } from "./FormularioEnvio";
 import { HistorialEnvios } from "./HistorialEnvios";
+import { generarPdfEnvio } from "./pdfEnvio";
 import { ResultadoEnvio } from "./ResultadoEnvio";
 import { aEntrada, desdeEntrada, faltantes, formularioInicial, type Formulario } from "./formulario";
+
+const REGIMEN_CORTO = { "ley-retorno": "Ley del Retorno", "importacion-regular": "Importación regular" } as const;
 
 export function CotizadorEnviosScreen() {
   const anioActual = useMemo(() => anioEnLima(), []);
   const [form, setForm] = useState<Formulario>(() => formularioInicial(anioActual));
   const [abierta, setAbierta] = useState<{ id: string; numero: string } | null>(null);
+  /** La entrada tal como quedó guardada, para saber si hay cambios pendientes. */
+  const [guardadaJson, setGuardadaJson] = useState<string | null>(null);
 
   const [historial, setHistorial] = useState<CotizacionEnvioResumen[]>([]);
   const [cargando, setCargando] = useState(true);
   const [errorHistorial, setErrorHistorial] = useState<string | null>(null);
 
   const [guardando, setGuardando] = useState(false);
+  const [pdfDe, setPdfDe] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
 
   const entrada = useMemo(() => aEntrada(form), [form]);
   const resultado = useMemo(() => cotizarEnvio(entrada), [entrada]);
   const mensaje = useMemo(() => generarMensajeWhatsapp(entrada, resultado), [entrada, resultado]);
   const faltan = faltantes(form);
+  const listo = entrada.vehiculo.valorFacturaUsd > 0;
+  const entradaJson = useMemo(() => JSON.stringify(entrada), [entrada]);
+  const sinGuardar = abierta !== null && guardadaJson !== entradaJson;
 
   const cargarHistorial = useCallback(async () => {
     setCargando(true);
@@ -88,6 +99,7 @@ export function CotizadorEnviosScreen() {
     setGuardando(false);
     if (r.ok) {
       setAbierta({ id: r.datos.id, numero: r.datos.numero });
+      setGuardadaJson(entradaJson);
       setAviso({
         ok: true,
         texto: abierta
@@ -106,10 +118,28 @@ export function CotizadorEnviosScreen() {
       setAviso({ ok: false, texto: r.mensaje });
       return;
     }
-    setForm(desdeEntrada(r.datos.entrada));
+    const formulario = desdeEntrada(r.datos.entrada);
+    setForm(formulario);
+    setGuardadaJson(JSON.stringify(aEntrada(formulario)));
     setAbierta({ id, numero: r.datos.numero });
-    setAviso({ ok: true, texto: `Cotización ${r.datos.numero} cargada en el formulario. Al guardar se actualiza esa misma; "Nueva cotización" para empezar otra.` });
+    setAviso({ ok: true, texto: `${r.datos.numero} cargada en el formulario. Al guardar se corrige esa misma; "Nueva cotización" para empezar otra.` });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function pdfDeGuardada(id: string) {
+    setPdfDe(id);
+    const r = await obtenerCotizacion(id);
+    if (r.ok) {
+      try {
+        // El resultado guardado, no uno recalculado: es lo que se le dijo al cliente.
+        await generarPdfEnvio(r.datos.entrada, r.datos.resultado, r.datos.numero);
+      } catch {
+        setAviso({ ok: false, texto: "No se pudo generar el PDF." });
+      }
+    } else {
+      setAviso({ ok: false, texto: r.mensaje });
+    }
+    setPdfDe(null);
   }
 
   async function cambiar(id: string, estado: EstadoCotizacionEnvio) {
@@ -125,20 +155,28 @@ export function CotizadorEnviosScreen() {
   function nueva() {
     setForm(formularioInicial(anioActual));
     setAbierta(null);
+    setGuardadaJson(null);
     setAviso(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  const total = resultado.elegido;
+  const totalTexto = total.tributos || total.regimen === "ley-retorno" ? formatCurrency(total.totalUsd) : "No aplica";
 
   return (
     <div className="flex flex-col gap-8">
       <PortalPageHeader
         eyebrow={abierta ? `Editando ${abierta.numero}` : "Herramienta interna"}
         title="Cotizador de envíos"
-        description="Para clientes que traen su propio vehículo desde Estados Unidos, por Ley del Retorno o importación regular. Se calcula al escribir; guarda cuando quieras archivarla."
+        description="Para clientes que traen su propio vehículo desde Estados Unidos. Se calcula al escribir; guarda cuando quieras archivarla."
         actions={
           abierta ? (
-            <Button onClick={nueva} variant="ghost" size="sm">
-              Nueva cotización
-            </Button>
+            <div className="flex items-center gap-3">
+              <Badge tone={sinGuardar ? "warn" : "ok"}>{sinGuardar ? "Cambios sin guardar" : "Guardada"}</Badge>
+              <Button onClick={nueva} variant="ghost" size="sm">
+                Nueva cotización
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -152,26 +190,44 @@ export function CotizadorEnviosScreen() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
         <div className="flex flex-col gap-5">
           <FormularioEnvio valor={form} onChange={setForm} anioActual={anioActual} recorridoKm={resultado.recorridoKm} />
-          <div className="flex flex-wrap items-center gap-3 rounded-lux border border-line bg-surface p-4">
-            <Button onClick={() => guardar("borrador")} variant="secondary" size="md" disabled={guardando}>
-              {guardando ? "Guardando…" : abierta ? "Actualizar como borrador" : "Guardar borrador"}
-            </Button>
-            <Button onClick={() => guardar("enviada")} variant="primary" size="md" disabled={guardando}>
-              {abierta ? "Actualizar como enviada" : "Guardar como enviada"}
-            </Button>
+
+          {/* Barra de acciones: se pega al borde inferior mientras se recorre el formulario. */}
+          <div className="sticky bottom-0 z-10 -mx-1 rounded-lux border border-line bg-bg/90 p-4 shadow-[0_-8px_24px_rgba(0,0,0,0.35)] backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-ink-3">Total referencial</p>
+                <p className="text-lg font-semibold tabular-nums text-ink">
+                  {listo ? totalTexto : "—"}
+                  <span className="ml-2 text-xs font-normal text-ink-4">{REGIMEN_CORTO[entrada.regimen]}</span>
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => guardar("borrador")} variant="secondary" size="sm" disabled={guardando}>
+                  {guardando ? "Guardando…" : abierta ? "Actualizar borrador" : "Guardar borrador"}
+                </Button>
+                <Button onClick={() => guardar("enviada")} variant="primary" size="sm" disabled={guardando}>
+                  {abierta ? "Actualizar como enviada" : "Guardar como enviada"}
+                </Button>
+              </div>
+            </div>
             {faltan.length > 0 ? (
-              <p className="text-xs text-ink-4">Para guardar falta: {faltan.join(", ")}.</p>
+              <p className="mt-2 text-xs text-ink-4">Para guardar falta: {faltan.join(", ")}.</p>
+            ) : sinGuardar ? (
+              <p className="mt-2 text-xs text-warn">Hay cambios sin guardar en {abierta?.numero}.</p>
             ) : null}
           </div>
         </div>
-        <ResultadoEnvio entrada={entrada} resultado={resultado} mensaje={mensaje} numero={abierta?.numero ?? null} />
+        <ResultadoEnvio entrada={entrada} resultado={resultado} mensaje={mensaje} numero={abierta?.numero ?? null} listo={listo} />
       </div>
 
       <HistorialEnvios
         cotizaciones={historial}
         cargando={cargando}
         error={errorHistorial}
+        abiertaId={abierta?.id ?? null}
+        pdfDe={pdfDe}
         onAbrir={abrir}
+        onPdf={pdfDeGuardada}
         onCambiarEstado={cambiar}
         onRecargar={cargarHistorial}
       />
