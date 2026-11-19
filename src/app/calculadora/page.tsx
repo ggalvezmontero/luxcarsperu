@@ -220,8 +220,28 @@ export default async function CalculadoraPage() {
         <CalculatorSection
           presets={simulationPresets(vehiculos)}
           basePath={RUTA}
-          titulo={TITLE}
+          // Mismo texto que TITLE: el <span> solo cambia la tipografía.
+          titulo={
+            <>
+              Calculadora de importación de autos <span className="display-accent">a Perú</span>
+            </>
+          }
           tituloComo="h1"
+          bajoTitulo={
+            <ul className="mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-x-7 gap-y-2 text-sm text-ink-3">
+              {[
+                { icon: "check" as const, texto: "Gratis y sin registro" },
+                { icon: "fileCheck" as const, texto: "Tasas SUNAT vigentes" },
+                { icon: "calculator" as const, texto: "Desglose línea por línea" },
+                { icon: "share" as const, texto: "PDF y enlace para compartir" },
+              ].map((t) => (
+                <li key={t.texto} className="inline-flex items-center gap-2">
+                  <Icon name={t.icon} size={15} className="text-silver" />
+                  {t.texto}
+                </li>
+              ))}
+            </ul>
+          }
         />
 
         <Section tone="bg">
@@ -229,7 +249,11 @@ export default async function CalculadoraPage() {
             <div className="lg:col-span-5">
               <SectionHeader
                 eyebrow="Cómo se calcula"
-                title="Los impuestos van en cascada, no en un porcentaje plano"
+                title={
+                  <>
+                    Los impuestos van <span className="display-accent">en cascada,</span> no en un porcentaje plano
+                  </>
+                }
               />
               <div className="mt-6 space-y-4 text-pretty text-base leading-relaxed text-ink-2">
                 <p>
@@ -255,7 +279,7 @@ export default async function CalculadoraPage() {
                 <ol className="divide-y divide-line panel-lux">
                   {pasos.map((p) => (
                     <li key={p.n} className="flex gap-4 p-5 sm:p-6">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line text-sm font-semibold tabular-nums text-ink-3">
+                      <span className="icon-lux !h-9 !w-9 text-sm font-semibold tabular-nums">
                         {p.n}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -268,9 +292,9 @@ export default async function CalculadoraPage() {
                       </div>
                     </li>
                   ))}
-                  <li className="flex items-center justify-between gap-4 p-5 sm:p-6">
+                  <li className="flex flex-wrap items-center justify-between gap-4 rounded-b-[22px] bg-white/[0.03] p-5 sm:p-6">
                     <p className="text-base font-semibold text-ink">Costo final puesto en Lima, con placas</p>
-                    <p className="text-xl font-semibold tabular-nums text-ink">{formatCurrency(ejemplo.e.finalEstimate)}</p>
+                    <p className="text-2xl font-semibold tabular-nums tracking-tight text-ink">{formatCurrency(ejemplo.e.finalEstimate)}</p>
                   </li>
                 </ol>
                 <p className="mt-3 px-1 text-xs leading-relaxed text-ink-4">

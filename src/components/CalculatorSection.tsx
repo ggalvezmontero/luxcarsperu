@@ -287,6 +287,7 @@ export function CalculatorSection({
   basePath = "/",
   titulo = "¿Cuánto cuesta importar tu auto?",
   tituloComo = "h2",
+  bajoTitulo,
 }: {
   /** Ejemplos que se pueden precargar con `?simular=<id>`. Los pasa la página. */
   presets: readonly SimulationPreset[];
@@ -296,9 +297,11 @@ export function CalculatorSection({
    * URL se vuelve a ESTA ruta, no siempre a la portada.
    */
   basePath?: string;
-  titulo?: string;
+  titulo?: ReactNode;
   /** `h1` solo en /calculadora, donde este título es el de la página. */
   tituloComo?: "h1" | "h2";
+  /** Fila bajo la cabecera (p. ej. la tira de confianza de /calculadora). */
+  bajoTitulo?: ReactNode;
 }) {
   const router = useRouter();
   const [urlPreset, setUrlPreset] = useState<UrlPreset>(SIN_PRESET);
@@ -606,7 +609,7 @@ export function CalculatorSection({
   ];
 
   return (
-    <Section id="calculator" tone="surface">
+    <Section id="calculator" tone={tituloComo === "h1" ? "void" : "surface"}>
       <Suspense fallback={null}>
         <UrlPresetReader onPreset={setUrlPreset} />
       </Suspense>
@@ -616,13 +619,8 @@ export function CalculatorSection({
         as={tituloComo}
         description="Cuatro datos y ves el costo puesto en Lima al instante, con tributos SUNAT, flete, seguro y honorarios. Sin dejar tu correo."
         align="center"
-        // Como h1 conserva el tamaño de siempre: cambia la etiqueta, no el diseño.
-        className={
-          tituloComo === "h1"
-            ? "[&_h1]:text-3xl [&_h1]:leading-[1.1] sm:[&_h1]:text-4xl lg:[&_h1]:text-4xl"
-            : undefined
-        }
       />
+      {bajoTitulo}
 
       <div className="mx-auto mt-10 grid max-w-6xl gap-6 lg:mt-14 lg:grid-cols-12 lg:items-start lg:gap-8">
         {/* ======================= Formulario ======================= */}
@@ -630,7 +628,7 @@ export function CalculatorSection({
           noValidate
           onSubmit={(event) => event.preventDefault()}
           aria-label="Datos del vehículo a importar"
-          className="rounded-[22px] border border-line bg-bg p-5 sm:p-8 lg:col-span-7"
+          className="panel-lux p-5 sm:p-8 lg:col-span-7"
         >
           {/* 1 · Condición */}
           <Step n={1} title="¿Nuevo o usado?" tooltip="El ISC que cobra SUNAT no es el mismo para un vehículo nuevo que para uno usado, y los usados tienen tope de antigüedad.">

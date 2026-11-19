@@ -1,5 +1,4 @@
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { PaginaLegal, type SeccionLegal } from "@/components/legal/PaginaLegal";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 
@@ -27,170 +26,192 @@ export const metadata: Metadata = {
   twitter: twitterCard(OG_TITLE, DESCRIPTION),
 };
 
+/** Los cuatro tipos, en una rejilla de filetes en lugar de cuatro tarjetas. */
+const TIPOS = [
+  {
+    titulo: "1. Cookies Esenciales",
+    clase: "Necesarias",
+    texto: "Requeridas para el funcionamiento básico del sitio.",
+    items: ["Gestión de sesión", "Seguridad y autenticación", "Preferencias de idioma"],
+    nota: "Estas cookies no pueden ser desactivadas.",
+  },
+  {
+    titulo: "2. Cookies de Funcionalidad",
+    clase: "Opcionales",
+    texto: "Mejoran la experiencia del usuario.",
+    items: ["Recordar preferencias de cálculo", "Guardar vehículos favoritos", "Configuración de visualización"],
+    nota: null,
+  },
+  {
+    titulo: "3. Cookies Analíticas",
+    clase: "Opcionales",
+    texto: "Nos ayudan a entender cómo se usa el sitio.",
+    items: ["Páginas más visitadas", "Tiempo de permanencia", "Origen del tráfico", "Patrones de navegación"],
+    nota: "Utilizamos Google Analytics y el píxel de Meta (Facebook e Instagram); ninguno se carga hasta que aceptas las cookies.",
+  },
+  {
+    titulo: "4. Cookies de Marketing",
+    clase: "Opcionales",
+    texto: "Para personalizar anuncios y comunicaciones.",
+    items: ["Publicidad relevante", "Retargeting", "Medición de campañas"],
+    nota: null,
+  },
+];
+
+const NAVEGADORES = [
+  { nombre: "Chrome", ruta: "Configuración → Privacidad y seguridad → Cookies" },
+  { nombre: "Firefox", ruta: "Opciones → Privacidad y Seguridad" },
+  { nombre: "Safari", ruta: "Preferencias → Privacidad" },
+  { nombre: "Edge", ruta: "Configuración → Cookies y permisos del sitio" },
+];
+
+const SECCIONES: SeccionLegal[] = [
+  {
+    id: "que-son",
+    titulo: "¿Qué son las Cookies?",
+    contenido: (
+      <p>
+        Las cookies son pequeños archivos de texto que se almacenan en su dispositivo cuando visita nuestro sitio web. Nos ayudan a mejorar su experiencia, recordar sus preferencias y entender cómo utiliza nuestro sitio.
+      </p>
+    ),
+  },
+  {
+    id: "tipos",
+    titulo: "Tipos de Cookies que Utilizamos",
+    contenido: (
+      <div className="grid gap-px overflow-hidden rounded-[22px] border border-white/[0.07] bg-line sm:grid-cols-2">
+        {TIPOS.map((t) => (
+          <div key={t.titulo} className="bg-surface p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-base font-semibold text-ink">{t.titulo}</h3>
+              <span
+                className={
+                  t.clase === "Necesarias"
+                    ? "shrink-0 rounded-full border border-silver/40 bg-silver/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-silver-bright"
+                    : "shrink-0 rounded-full border border-line px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-4"
+                }
+              >
+                {t.clase}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-ink-3">{t.texto}</p>
+            <ul className="mt-3">
+              {t.items.map((i) => (
+                <li key={i} className="text-sm">{i}</li>
+              ))}
+            </ul>
+            {t.nota ? <p className="mt-3 text-xs leading-relaxed text-ink-4">{t.nota}</p> : null}
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    id: "duracion",
+    titulo: "Duración de las Cookies",
+    contenido: (
+      <ul>
+        <li><strong>Cookies de Sesión:</strong> Se eliminan al cerrar el navegador</li>
+        <li><strong>Cookies Persistentes:</strong> Permanecen hasta 12 meses o hasta que las elimine</li>
+      </ul>
+    ),
+  },
+  {
+    id: "terceros",
+    titulo: "Cookies de Terceros",
+    contenido: (
+      <>
+        <p>Algunos servicios que utilizamos pueden instalar sus propias cookies:</p>
+        <ul>
+          <li><strong>Google Analytics:</strong> Análisis de uso del sitio</li>
+          <li><strong>Meta (Facebook e Instagram):</strong> Medición de los anuncios que te trajeron al sitio</li>
+          <li><strong>Google Fonts:</strong> Tipografías del sitio</li>
+          <li><strong>Vercel:</strong> Hosting y optimización</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "preferencias",
+    titulo: "Gestionar sus Preferencias de Cookies",
+    contenido: (
+      <>
+        <p>Puede gestionar o eliminar cookies de las siguientes maneras:</p>
+        <ul>
+          <li><strong>Banner de Cookies:</strong> Al visitar nuestro sitio por primera vez, puede aceptar o rechazar cookies opcionales</li>
+          <li><strong>Configuración del Navegador:</strong> Puede configurar su navegador para bloquear o alertar sobre cookies</li>
+          <li><strong>Eliminar Cookies:</strong> Puede eliminar cookies existentes desde la configuración de su navegador</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "navegadores",
+    titulo: "Instrucciones por Navegador",
+    contenido: (
+      <dl className="grid gap-px overflow-hidden rounded-[22px] border border-white/[0.07] bg-line sm:grid-cols-2">
+        {NAVEGADORES.map((n) => (
+          <div key={n.nombre} className="bg-surface p-4 sm:p-5">
+            <dt className="text-sm font-semibold text-ink">{n.nombre}</dt>
+            <dd className="mt-1 text-sm text-ink-3">{n.ruta}</dd>
+          </div>
+        ))}
+      </dl>
+    ),
+  },
+  {
+    id: "rechazar",
+    titulo: "Consecuencias de Rechazar Cookies",
+    contenido: (
+      <>
+        <p>Si rechaza las cookies opcionales:</p>
+        <ul>
+          <li>El sitio seguirá funcionando normalmente</li>
+          <li>Algunas funciones de personalización pueden no estar disponibles</li>
+          <li>Deberá reingresar información en cada visita</li>
+          <li>No podremos mejorar su experiencia basándonos en sus preferencias</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "actualizaciones",
+    titulo: "Actualizaciones",
+    contenido: (
+      <p>
+        Podemos actualizar esta política de cookies periódicamente para reflejar cambios en las tecnologías que utilizamos. Le recomendamos revisar esta página ocasionalmente.
+      </p>
+    ),
+  },
+];
+
 export default function CookiesPage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-      <main id="contenido" className="w-full flex-1 pt-[calc(var(--lux-nav-h)+3rem)] pb-20">
-        <div className="container-lux max-w-3xl space-y-10">
-        <div>
-          <h1 className="text-balance text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-            Política de Cookies
-          </h1>
-          <p className="mt-3 text-sm text-ink-4">Última actualización: 15 de septiembre de 2026</p>
-        </div>
-
-        <div className="space-y-10 text-[15px] leading-relaxed text-ink-2">
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-ink">¿Qué son las Cookies?</h2>
-            <p>
-              Las cookies son pequeños archivos de texto que se almacenan en su dispositivo cuando visita nuestro sitio web. Nos ayudan a mejorar su experiencia, recordar sus preferencias y entender cómo utiliza nuestro sitio.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-ink">Tipos de Cookies que Utilizamos</h2>
-            
-            <div className="space-y-4">
-              <div className="rounded-lux border border-line bg-surface-2 p-5 md:p-6">
-                <h3 className="mb-2 text-base font-semibold text-ink">1. Cookies Esenciales</h3>
-                <p className="mb-2">
-                  <strong className="text-ink">Necesarias:</strong> Requeridas para el funcionamiento básico del sitio.
-                </p>
-                <ul className="list-disc space-y-1 pl-6">
-                  <li>Gestión de sesión</li>
-                  <li>Seguridad y autenticación</li>
-                  <li>Preferencias de idioma</li>
-                </ul>
-                <p className="mt-2 text-sm text-ink-3">Estas cookies no pueden ser desactivadas.</p>
-              </div>
-
-              <div className="rounded-lux border border-line bg-surface-2 p-5 md:p-6">
-                <h3 className="mb-2 text-base font-semibold text-ink">2. Cookies de Funcionalidad</h3>
-                <p className="mb-2">
-                  <strong className="text-ink">Opcionales:</strong> Mejoran la experiencia del usuario.
-                </p>
-                <ul className="list-disc space-y-1 pl-6">
-                  <li>Recordar preferencias de cálculo</li>
-                  <li>Guardar vehículos favoritos</li>
-                  <li>Configuración de visualización</li>
-                </ul>
-              </div>
-
-              <div className="rounded-lux border border-line bg-surface-2 p-5 md:p-6">
-                <h3 className="mb-2 text-base font-semibold text-ink">3. Cookies Analíticas</h3>
-                <p className="mb-2">
-                  <strong className="text-ink">Opcionales:</strong> Nos ayudan a entender cómo se usa el sitio.
-                </p>
-                <ul className="list-disc space-y-1 pl-6">
-                  <li>Páginas más visitadas</li>
-                  <li>Tiempo de permanencia</li>
-                  <li>Origen del tráfico</li>
-                  <li>Patrones de navegación</li>
-                </ul>
-                <p className="mt-2 text-sm text-ink-3">Utilizamos Google Analytics y el píxel de Meta (Facebook e Instagram); ninguno se carga hasta que aceptas las cookies.</p>
-              </div>
-
-              <div className="rounded-lux border border-line bg-surface-2 p-5 md:p-6">
-                <h3 className="mb-2 text-base font-semibold text-ink">4. Cookies de Marketing</h3>
-                <p className="mb-2">
-                  <strong className="text-ink">Opcionales:</strong> Para personalizar anuncios y comunicaciones.
-                </p>
-                <ul className="list-disc space-y-1 pl-6">
-                  <li>Publicidad relevante</li>
-                  <li>Retargeting</li>
-                  <li>Medición de campañas</li>
-                </ul>
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-ink">Duración de las Cookies</h2>
-            <ul className="list-disc space-y-2 pl-6">
-              <li><strong className="text-ink">Cookies de Sesión:</strong> Se eliminan al cerrar el navegador</li>
-              <li><strong className="text-ink">Cookies Persistentes:</strong> Permanecen hasta 12 meses o hasta que las elimine</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-ink">Cookies de Terceros</h2>
-            <p>
-              Algunos servicios que utilizamos pueden instalar sus propias cookies:
-            </p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li><strong className="text-ink">Google Analytics:</strong> Análisis de uso del sitio</li>
-              <li><strong className="text-ink">Meta (Facebook e Instagram):</strong> Medición de los anuncios que te trajeron al sitio</li>
-              <li><strong className="text-ink">Google Fonts:</strong> Tipografías del sitio</li>
-              <li><strong className="text-ink">Vercel:</strong> Hosting y optimización</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-ink">Gestionar sus Preferencias de Cookies</h2>
-            <p>
-              Puede gestionar o eliminar cookies de las siguientes maneras:
-            </p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li><strong className="text-ink">Banner de Cookies:</strong> Al visitar nuestro sitio por primera vez, puede aceptar o rechazar cookies opcionales</li>
-              <li><strong className="text-ink">Configuración del Navegador:</strong> Puede configurar su navegador para bloquear o alertar sobre cookies</li>
-              <li><strong className="text-ink">Eliminar Cookies:</strong> Puede eliminar cookies existentes desde la configuración de su navegador</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-ink">Instrucciones por Navegador</h2>
-            <div className="space-y-3">
-              <div className="rounded-lux-lg border border-line bg-surface-2 p-4">
-                <p><strong className="text-ink">Chrome:</strong> Configuración → Privacidad y seguridad → Cookies</p>
-              </div>
-              <div className="rounded-lux-lg border border-line bg-surface-2 p-4">
-                <p><strong className="text-ink">Firefox:</strong> Opciones → Privacidad y Seguridad</p>
-              </div>
-              <div className="rounded-lux-lg border border-line bg-surface-2 p-4">
-                <p><strong className="text-ink">Safari:</strong> Preferencias → Privacidad</p>
-              </div>
-              <div className="rounded-lux-lg border border-line bg-surface-2 p-4">
-                <p><strong className="text-ink">Edge:</strong> Configuración → Cookies y permisos del sitio</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-ink">Consecuencias de Rechazar Cookies</h2>
-            <p>
-              Si rechaza las cookies opcionales:
-            </p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li>El sitio seguirá funcionando normalmente</li>
-              <li>Algunas funciones de personalización pueden no estar disponibles</li>
-              <li>Deberá reingresar información en cada visita</li>
-              <li>No podremos mejorar su experiencia basándonos en sus preferencias</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-ink">Actualizaciones</h2>
-            <p>
-              Podemos actualizar esta política de cookies periódicamente para reflejar cambios en las tecnologías que utilizamos. Le recomendamos revisar esta página ocasionalmente.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-ink">Contacto</h2>
-            <p>
-              Para preguntas sobre nuestra política de cookies, contáctenos en:
-            </p>
-            <ul className="space-y-2">
-              <li>Email: {LUXCARS_CONFIG.contact.email}</li>
-              <li>WhatsApp: +{LUXCARS_CONFIG.contact.whatsappNumber}</li>
-            </ul>
-          </section>
-        </div>
-        </div>
-      </main>
-      <Footer />
-    </div>
+    <PaginaLegal
+      eyebrow="Legal · Cookies y medición"
+      titulo="Política de Cookies"
+      actualizada="15 de septiembre de 2026"
+      intro="Qué guarda luxcars.pe en tu navegador, qué servicios de medición usamos y cómo aceptarlos, rechazarlos o borrarlos."
+      resumen={[
+        {
+          icon: "shield",
+          titulo: "Nada se carga sin tu permiso",
+          texto: "Google Analytics y el píxel de Meta solo se activan cuando aceptas las cookies opcionales.",
+        },
+        {
+          icon: "activity",
+          titulo: "Medición, no vigilancia",
+          texto: "Las analíticas nos dicen qué páginas se visitan y de dónde llega la gente, en conjunto.",
+        },
+        {
+          icon: "clock",
+          titulo: "Máximo 12 meses",
+          texto: "Las cookies persistentes caducan en un año; las de sesión, al cerrar el navegador.",
+        },
+      ]}
+      secciones={SECCIONES}
+      contactoTitulo="Contacto"
+      contactoTexto="Para preguntas sobre nuestra política de cookies, contáctenos en:"
+    />
   );
 }
-

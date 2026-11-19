@@ -7,9 +7,11 @@ import { Button } from "@/components/Button";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { VehicleCard, VehiclePlaceholder } from "@/components/VehicleCard";
+import { BarraCompraMovil } from "@/components/comprar/BarraCompraMovil";
+import { GaleriaFicha, type FotoFicha } from "@/components/comprar/GaleriaFicha";
 import { Badge } from "@/components/ui/Badge";
 import { Icon, WhatsAppIcon, type IconName } from "@/components/ui/Icon";
-import { findBrandLogo } from "@/lib/brandLogos";
+import { LOGO_MODE_CLASS, findBrandLogo } from "@/lib/brandLogos";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { OG_DEFAULTS, OG_IMAGE, twitterCard } from "@/lib/seo";
 import { CATEGORY_LABEL, STATUS_LABEL, getStock, getStockUnitForIsr, type StockVehicle } from "@/lib/stock";
@@ -85,6 +87,8 @@ export default async function VehiculoPage({ params }: Params) {
 
   const related = (await getStock(4)).filter((r) => r.id !== v.id).slice(0, 3);
   const photos = fotosDeFicha(v);
+  // Solo fotos con URL llegan a la galería; sin ninguna, el marcador de marca.
+  const fotosGaleria: FotoFicha[] = photos.flatMap((p) => (p.url ? [{ id: p.id, url: p.url, alt: p.alt ?? "" }] : []));
   const logo = findBrandLogo(v.brand);
   const sold = v.status === "vendido";
   const consigned = isConsignment(v);
@@ -130,7 +134,7 @@ export default async function VehiculoPage({ params }: Params) {
           cerraría la etiqueta. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <Navbar />
-      <main id="contenido" className="w-full flex-1 pt-[var(--lux-nav-h)]">
+      <main id="contenido" className="w-full flex-1 pt-[var(--lux-nav-h)] pb-24 lg:pb-0">
         <div className="container-lux py-6 sm:py-8">
           <nav aria-label="Migas de pan" className="flex items-center gap-2 text-sm text-ink-4">
             <Link href="/comprar" className="hover:text-ink">Stock</Link>
@@ -141,37 +145,38 @@ export default async function VehiculoPage({ params }: Params) {
           <div className="mt-6 grid gap-8 lg:grid-cols-12 lg:gap-10">
             {/* Galería */}
             <div className="lg:col-span-7">
-              <div className="relative aspect-[4/3] overflow-hidden panel-lux-2">
-                {photos[0]?.url ? (
-                  <Image src={photos[0].url} alt={photos[0].alt ?? v.title} fill priority sizes="(min-width: 1024px) 60vw, 100vw" className="object-cover" />
-                ) : (
-                  <VehiclePlaceholder brand={v.brand} logo={logo} large />
-                )}
-                <div className="absolute left-4 right-4 top-4 flex flex-wrap gap-2">
+              {fotosGaleria.length ? (
+                <GaleriaFicha fotos={fotosGaleria} titulo={v.title}>
                   {/* Sobre la foto todas llevan fondo oscuro: el verde del estado
                       se perdía contra una foto clara (visto con el Bronco). */}
                   <Badge tone={STATUS_TONE[v.status]} dot onPhoto>{STATUS_LABEL[v.status]}</Badge>
                   {consigned ? <Badge tone="silver" onPhoto>{CONSIGNMENT_LABEL}</Badge> : null}
                   {v.isDemo ? <Badge tone="warn" onPhoto>Demostración</Badge> : null}
+                </GaleriaFicha>
+              ) : (
+                <div className="relative aspect-[4/3] overflow-hidden panel-lux">
+                  <VehiclePlaceholder brand={v.brand} logo={logo} large />
+                  <div className="absolute left-4 right-4 top-4 flex flex-wrap gap-2">
+                    <Badge tone={STATUS_TONE[v.status]} dot onPhoto>{STATUS_LABEL[v.status]}</Badge>
+                    {consigned ? <Badge tone="silver" onPhoto>{CONSIGNMENT_LABEL}</Badge> : null}
+                    {v.isDemo ? <Badge tone="warn" onPhoto>Demostración</Badge> : null}
+                  </div>
                 </div>
-              </div>
-              {photos.length > 1 ? (
-                <ul className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6">
-                  {photos.slice(1, 7).map((p) => (
-                    <li key={p.id} className="relative aspect-[4/3] overflow-hidden rounded-xl border border-line bg-surface-2">
-                      {p.url ? <Image src={p.url} alt={p.alt ?? ""} fill sizes="120px" className="object-cover" /> : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-
+              )}
             </div>
 
             {/* Ficha de compra (sticky en desktop) */}
             <aside className="lg:col-span-5 lg:row-span-2">
               <div className="panel-lux p-6 sm:p-7 lg:sticky lg:top-[calc(var(--lux-nav-h)+1.5rem)]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">{v.brand}</p>
-                <h1 className="mt-1 text-3xl font-semibold leading-tight tracking-tight text-ink">
+                <div className="flex items-center gap-3">
+                  {logo ? (
+                    <span className="icon-lux !h-10 !w-10 overflow-hidden">
+                      <Image src={logo.src} alt="" width={22} height={22} className={`h-5 w-5 object-contain ${LOGO_MODE_CLASS[logo.mode]}`} />
+                    </span>
+                  ) : null}
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-silver">{v.brand}</p>
+                </div>
+                <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-ink">
                   {v.model}{v.trim ? <span className="text-ink-3"> {v.trim}</span> : null}
                 </h1>
                 <p className="mt-1 text-sm text-ink-3">{v.year} · {formatNumber(v.mileageKm)} km · {CATEGORY_LABEL[v.category]}</p>
@@ -184,7 +189,7 @@ export default async function VehiculoPage({ params }: Params) {
                   {v.priceNegotiable ? <p className="mt-1 text-xs text-ink-4">Precio negociable</p> : null}
                 </div>
 
-                <div className="mt-6 grid gap-3">
+                <div id="cta-ficha" className="mt-6 grid gap-3">
                   {sold ? (
                     <Button variant="secondary" size="lg" disabled className="w-full">Unidad vendida</Button>
                   ) : (
@@ -238,9 +243,9 @@ export default async function VehiculoPage({ params }: Params) {
               {v.highlights.length ? (
                 <>
                   <h2 className="mt-10 text-xl font-semibold text-ink">Destacados</h2>
-                  <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <ul className="mt-4 grid gap-px overflow-hidden rounded-[22px] border border-white/[0.07] bg-line sm:grid-cols-2">
                     {v.highlights.map((h) => (
-                      <li key={h} className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink-2">
+                      <li key={h} className="flex items-center gap-3 bg-surface px-4 py-3.5 text-sm text-ink-2">
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ok/15 text-ok">
                           <Icon name="check" size={13} strokeWidth={2.5} />
                         </span>
@@ -273,6 +278,15 @@ export default async function VehiculoPage({ params }: Params) {
               </div>
             </div>
           </section>
+        ) : null}
+        {!sold ? (
+          <BarraCompraMovil
+            precio={v.price !== null ? formatCurrency(v.price, "en-US", v.currency) : "Precio a consultar"}
+            detalle={`${v.brand} ${v.model} ${v.year} · ${formatNumber(v.mileageKm)} km`}
+            href={wa}
+            etiqueta={v.status === "reservado" ? "Avisarme" : "WhatsApp"}
+            objetivoId="cta-ficha"
+          />
         ) : null}
       </main>
       <Footer />

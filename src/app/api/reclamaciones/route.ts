@@ -6,8 +6,9 @@
  * Nunca lanza: responde JSON en español en todos los casos.
  */
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 
+import { avisarNuevaReclamacion } from "@/lib/db/avisoReclamacion";
 import {
   TIPOS_BIEN,
   TIPOS_RECLAMACION,
@@ -78,5 +79,8 @@ export async function POST(request: Request) {
   if (!hoja) {
     return fallo(503, "No pudimos registrar la hoja en este momento. Escríbenos a info@luxcars.pe con el mismo contenido y la registramos por ti.");
   }
+  // El aviso interno sale después de responder: el consumidor no espera al
+  // correo, y si Resend falla la hoja ya está registrada.
+  after(() => avisarNuevaReclamacion(hoja, entrada));
   return NextResponse.json({ ok: true, numero: hoja.numero, fecha: hoja.createdAt }, { status: 201 });
 }

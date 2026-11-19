@@ -1,5 +1,4 @@
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { PaginaLegal, type SeccionLegal } from "@/components/legal/PaginaLegal";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 
@@ -27,119 +26,144 @@ export const metadata: Metadata = {
   twitter: twitterCard(OG_TITLE, DESCRIPTION),
 };
 
+const marca = LUXCARS_CONFIG.brandName;
+
+const SECCIONES: SeccionLegal[] = [
+  {
+    id: "aceptacion",
+    titulo: "1. Aceptación de los Términos",
+    contenido: (
+      <p>
+        Al acceder y utilizar los servicios de {marca}, usted acepta estar sujeto a estos Términos y Condiciones. Si no está de acuerdo con alguna parte de estos términos, no debe utilizar nuestros servicios.
+      </p>
+    ),
+  },
+  {
+    id: "servicio",
+    titulo: "2. Descripción del Servicio",
+    contenido: (
+      <>
+        <p>
+          {marca} actúa como broker e intermediario en la importación de vehículos de lujo desde Estados Unidos (principalmente Miami) a Perú. Nuestros servicios incluyen:
+        </p>
+        <ul>
+          <li>Búsqueda y selección de vehículos</li>
+          <li>Negociación con vendedores</li>
+          <li>Inspección técnica y verificación de documentos</li>
+          <li>Coordinación de logística internacional</li>
+          <li>Gestión de trámites aduaneros y de nacionalización</li>
+          <li>Entrega del vehículo en Lima, Perú</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "cliente",
+    titulo: "3. Responsabilidades del Cliente",
+    contenido: (
+      <>
+        <p>El cliente se compromete a:</p>
+        <ul>
+          <li>Proporcionar información veraz y completa sobre sus requerimientos</li>
+          <li>Realizar los pagos acordados en los plazos establecidos</li>
+          <li>Revisar y aprobar la información del vehículo seleccionado</li>
+          <li>Cumplir con la normativa peruana aplicable a la importación de vehículos</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "precios",
+    titulo: "4. Precios y Pagos",
+    contenido: (
+      <>
+        <p>
+          Los precios estimados en nuestra calculadora son referenciales y pueden variar según las condiciones del mercado, tipo de cambio, y determinación final de SUNAT. Todos los costos se detallarán claramente antes de proceder con la importación.
+        </p>
+        <p>Los pagos se realizarán de acuerdo al cronograma establecido en el contrato específico de servicio.</p>
+      </>
+    ),
+  },
+  {
+    id: "cancelaciones",
+    titulo: "5. Cancelaciones y Reembolsos",
+    contenido: (
+      <p>
+        Las políticas de cancelación y reembolso se establecerán en el contrato específico de cada servicio. En general, los honorarios por servicios ya prestados no son reembolsables.
+      </p>
+    ),
+  },
+  {
+    id: "responsabilidad",
+    titulo: "6. Limitación de Responsabilidad",
+    contenido: (
+      <>
+        <p>{marca} actúa como intermediario y no asume responsabilidad por:</p>
+        <ul>
+          <li>Defectos ocultos no detectables en la inspección</li>
+          <li>Cambios en regulaciones aduaneras o tributarias</li>
+          <li>Retrasos causados por terceros (navieras, aduanas, etc.)</li>
+          <li>Variaciones en tipo de cambio</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "propiedad-intelectual",
+    titulo: "7. Propiedad Intelectual",
+    contenido: (
+      <p>
+        Todo el contenido de este sitio web, incluyendo textos, gráficos, logos y software, es propiedad de {marca} y está protegido por las leyes de propiedad intelectual.
+      </p>
+    ),
+  },
+  {
+    id: "modificaciones",
+    titulo: "8. Modificaciones",
+    contenido: (
+      <p>
+        Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios entrarán en vigencia inmediatamente después de su publicación en el sitio web.
+      </p>
+    ),
+  },
+  {
+    id: "ley",
+    titulo: "9. Ley Aplicable y Jurisdicción",
+    contenido: (
+      <p>
+        Estos términos se rigen por las leyes de la República del Perú. Cualquier disputa será resuelta en los tribunales de Lima, Perú.
+      </p>
+    ),
+  },
+];
+
 export default function TerminosPage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-      <main id="contenido" className="w-full flex-1 pt-[calc(var(--lux-nav-h)+3rem)] pb-20">
-        <div className="container-lux max-w-3xl space-y-10">
-        <div>
-          <h1 className="text-balance text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-            Términos y Condiciones
-          </h1>
-          <p className="mt-3 text-sm text-ink-4">Última actualización: 15 de septiembre de 2026</p>
-        </div>
-
-        <div className="space-y-10 text-[15px] leading-relaxed text-ink-2">
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">1. Aceptación de los Términos</h2>
-            <p>
-              Al acceder y utilizar los servicios de {LUXCARS_CONFIG.brandName}, usted acepta estar sujeto a estos Términos y Condiciones. Si no está de acuerdo con alguna parte de estos términos, no debe utilizar nuestros servicios.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">2. Descripción del Servicio</h2>
-            <p>
-              {LUXCARS_CONFIG.brandName} actúa como broker e intermediario en la importación de vehículos de lujo desde Estados Unidos (principalmente Miami) a Perú. Nuestros servicios incluyen:
-            </p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li>Búsqueda y selección de vehículos</li>
-              <li>Negociación con vendedores</li>
-              <li>Inspección técnica y verificación de documentos</li>
-              <li>Coordinación de logística internacional</li>
-              <li>Gestión de trámites aduaneros y de nacionalización</li>
-              <li>Entrega del vehículo en Lima, Perú</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">3. Responsabilidades del Cliente</h2>
-            <p>El cliente se compromete a:</p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li>Proporcionar información veraz y completa sobre sus requerimientos</li>
-              <li>Realizar los pagos acordados en los plazos establecidos</li>
-              <li>Revisar y aprobar la información del vehículo seleccionado</li>
-              <li>Cumplir con la normativa peruana aplicable a la importación de vehículos</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">4. Precios y Pagos</h2>
-            <p>
-              Los precios estimados en nuestra calculadora son referenciales y pueden variar según las condiciones del mercado, tipo de cambio, y determinación final de SUNAT. Todos los costos se detallarán claramente antes de proceder con la importación.
-            </p>
-            <p>
-              Los pagos se realizarán de acuerdo al cronograma establecido en el contrato específico de servicio.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">5. Cancelaciones y Reembolsos</h2>
-            <p>
-              Las políticas de cancelación y reembolso se establecerán en el contrato específico de cada servicio. En general, los honorarios por servicios ya prestados no son reembolsables.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">6. Limitación de Responsabilidad</h2>
-            <p>
-              {LUXCARS_CONFIG.brandName} actúa como intermediario y no asume responsabilidad por:
-            </p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li>Defectos ocultos no detectables en la inspección</li>
-              <li>Cambios en regulaciones aduaneras o tributarias</li>
-              <li>Retrasos causados por terceros (navieras, aduanas, etc.)</li>
-              <li>Variaciones en tipo de cambio</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">7. Propiedad Intelectual</h2>
-            <p>
-              Todo el contenido de este sitio web, incluyendo textos, gráficos, logos y software, es propiedad de {LUXCARS_CONFIG.brandName} y está protegido por las leyes de propiedad intelectual.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">8. Modificaciones</h2>
-            <p>
-              Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios entrarán en vigencia inmediatamente después de su publicación en el sitio web.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">9. Ley Aplicable y Jurisdicción</h2>
-            <p>
-              Estos términos se rigen por las leyes de la República del Perú. Cualquier disputa será resuelta en los tribunales de Lima, Perú.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-ink">10. Contacto</h2>
-            <p>
-              Para cualquier consulta sobre estos términos, puede contactarnos en:
-            </p>
-            <ul className="space-y-2">
-              <li>Email: {LUXCARS_CONFIG.contact.email}</li>
-              <li>WhatsApp: +{LUXCARS_CONFIG.contact.whatsappNumber}</li>
-            </ul>
-          </section>
-        </div>
-        </div>
-      </main>
-      <Footer />
-    </div>
+    <PaginaLegal
+      eyebrow="Legal · Condiciones del servicio"
+      titulo="Términos y Condiciones"
+      actualizada="15 de septiembre de 2026"
+      intro="Lo que puedes esperar de Luxcars y lo que Luxcars espera de ti al importar, comprar, vender o consignar un vehículo con nosotros."
+      resumen={[
+        {
+          icon: "handshake",
+          titulo: "Somos intermediarios",
+          texto: "Buscamos, inspeccionamos, embarcamos y nacionalizamos el auto por encargo tuyo.",
+        },
+        {
+          icon: "calculator",
+          titulo: "Estimados referenciales",
+          texto: "La calculadora orienta; el costo final se detalla por escrito antes de empezar.",
+        },
+        {
+          icon: "fileCheck",
+          titulo: "Ley peruana",
+          texto: "Estos términos se rigen por las leyes del Perú y los tribunales de Lima.",
+        },
+      ]}
+      secciones={SECCIONES}
+      contactoTitulo="10. Contacto"
+      contactoTexto="Para cualquier consulta sobre estos términos, puede contactarnos en:"
+    />
   );
 }
-

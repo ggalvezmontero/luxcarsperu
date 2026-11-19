@@ -318,3 +318,25 @@ select:not([multiple]) optgroup {
   to   { opacity: 1; scale: 1; }
 }
 
+
+/* Prosa de las páginas legales: párrafos, listas con filete y negritas en
+   tinta, sin que cada página repita las clases. */
+@utility prosa-legal {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-ink-2);
+  text-wrap: pretty;
+  & p + p, & p + ul, & ul + p { margin-top: 0.75rem; }
+  & ul { display: grid; gap: 0.5rem; }
+  & li { position: relative; padding-left: 1.25rem; }
+  & li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.85em;
+    width: 0.625rem;
+    height: 1px;
+    background: var(--color-silver-dim);
+  }
+  & strong { color: var(--color-ink); font-weight: 600; }
+}
