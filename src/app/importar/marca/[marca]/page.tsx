@@ -213,7 +213,7 @@ export default async function MarcaPage({ params }: Props) {
             title={`Qué modelos de ${m.nombre} pagan ad valorem`}
             description="El 0% no se gana por comprar en Miami: exige que el vehículo sea nuevo, originario de Estados Unidos y que llegue con certificado de origen."
           />
-          <div className="mt-10 overflow-x-auto rounded-[22px] border border-line bg-surface">
+          <div className="mt-10 overflow-x-auto panel-lux">
             <table className="w-full min-w-[34rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-ink-4">
@@ -258,7 +258,7 @@ export default async function MarcaPage({ params }: Props) {
                 <li key={v.id}>
                   <Link
                     href={rutaModelo(v.id)}
-                    className="group flex h-full flex-col justify-between gap-5 rounded-[22px] border border-line bg-surface p-6 transition-colors hover:border-line-strong"
+                    className="group flex h-full flex-col justify-between gap-5 panel-lux p-6 transition-colors hover:border-line-strong"
                   >
                     <span>
                       <span className="block text-base font-semibold leading-snug text-ink">{v.name}</span>
@@ -318,7 +318,7 @@ export default async function MarcaPage({ params }: Props) {
               <SectionHeader eyebrow="Dudas comunes" title={`Preguntas sobre importar ${m.nombre}`} />
             </div>
             <div className="lg:col-span-8">
-              <div className="divide-y divide-line rounded-[22px] border border-line bg-surface">
+              <div className="divide-y divide-line panel-lux">
                 {preguntas.map((item, i) => (
                   <details key={item.pregunta} className="group px-5 sm:px-6" open={i === 0}>
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-left text-base font-medium text-ink [&::-webkit-details-marker]:hidden">

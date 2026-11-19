@@ -43,7 +43,7 @@ export function VehicleCard({
       data-ga-vehicle-brand={vehicle.brand}
       data-ga-vehicle-model={vehicle.model}
       data-ga-vehicle-status={vehicle.status}
-      className={`group relative flex flex-col overflow-hidden rounded-[22px] border border-line bg-surface transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-line-strong hover:shadow-[var(--lux-shadow)] ${
+      className={`group relative flex flex-col overflow-hidden panel-lux transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-line-strong hover:shadow-[var(--lux-shadow)] ${
         sold ? "opacity-60" : ""
       }`}
     >

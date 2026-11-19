@@ -15,7 +15,7 @@ type SectionProps = {
 };
 
 const TONES = {
-  void: "bg-void",
+  void: "bg-void lux-glow-top",
   bg: "bg-bg",
   surface: "bg-surface border-y border-line",
 };

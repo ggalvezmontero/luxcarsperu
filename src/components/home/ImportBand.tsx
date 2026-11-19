@@ -53,7 +53,7 @@ export function ImportBand() {
       />
       <ol className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {PASOS.map((p) => (
-          <li key={p.n} className="group overflow-hidden rounded-[22px] border border-line bg-surface">
+          <li key={p.n} className="group overflow-hidden panel-lux">
             <div className="relative aspect-[4/3] w-full">
               <Image
                 src={p.foto.src}

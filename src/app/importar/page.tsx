@@ -210,7 +210,7 @@ export default function ImportarPage() {
             <h1>
               <span className="eyebrow">{TITULO_SEO}</span>{" "}
               <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-                El auto exacto que quieres, puesto en Lima
+                El auto exacto que quieres, <span className="display-accent">puesto en Lima</span>
               </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
@@ -232,8 +232,8 @@ export default function ImportarPage() {
                 ["150", "puntos de inspección"],
               ].map(([n, l]) => (
                 <li key={l} className="rounded-2xl border border-line/80 bg-void/60 p-3 backdrop-blur sm:p-4">
-                  <p className="text-xl font-semibold tabular-nums text-ink sm:text-2xl">{n}</p>
-                  <p className="text-xs text-ink-3">{l}</p>
+                  <p className="whitespace-nowrap text-lg font-semibold tabular-nums text-ink sm:text-2xl">{n}</p>
+                  <p className="text-[11px] text-ink-3 sm:text-xs">{l}</p>
                 </li>
               ))}
             </ul>
@@ -253,7 +253,7 @@ export default function ImportarPage() {
           <ul className="mt-10 grid gap-px overflow-hidden rounded-[22px] border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
             {REGLAS.map((r) => (
               <li key={r.title} className="flex items-start gap-4 bg-surface p-6">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
+                <span className="icon-lux">
                   <Icon name={r.icon} size={22} />
                 </span>
                 <span>
@@ -295,7 +295,7 @@ export default function ImportarPage() {
             title="Lo que más nos preguntan sobre importar a pedido"
             description="Respuestas cortas; el detalle está en las guías y en la calculadora."
           />
-          <div className="mt-10 divide-y divide-line rounded-[22px] border border-line bg-surface">
+          <div className="mt-10 divide-y divide-line panel-lux">
             {PREGUNTAS.map((item) => (
               <details key={item.pregunta} className="group px-5 sm:px-6">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-left text-base font-medium text-ink [&::-webkit-details-marker]:hidden">

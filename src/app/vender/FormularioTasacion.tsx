@@ -110,7 +110,7 @@ export function FormularioTasacion() {
   };
 
   return (
-    <form onSubmit={onSubmit} className="rounded-[22px] border border-line bg-surface p-6 sm:p-8">
+    <form onSubmit={onSubmit} className="panel-lux p-6 sm:p-8">
       <div className="grid gap-4 sm:grid-cols-2">
         <BrandModelPicker
           idPrefix="tasacion"

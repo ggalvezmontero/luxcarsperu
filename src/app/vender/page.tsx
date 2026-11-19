@@ -89,7 +89,7 @@ export default function VenderPage() {
             <h1>
               <span className="eyebrow">Consignación y tasación de autos en Lima</span>{" "}
               <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-                Vende tu auto sin dejar de usarlo
+                Vende tu auto <span className="display-accent">sin dejar de usarlo</span>
               </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
@@ -107,10 +107,10 @@ export default function VenderPage() {
         </section>
 
         <Section tone="bg" padding="tight">
-          <ul className="grid gap-4 sm:grid-cols-3">
+          <ul className="grid gap-px overflow-hidden rounded-[22px] border border-white/[0.07] bg-line sm:grid-cols-3">
             {PROMESAS.map((p) => (
-              <li key={p.title} className="flex gap-4 rounded-[22px] border border-line bg-surface p-5">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-silver-bright">
+              <li key={p.title} className="flex gap-4 bg-surface p-5 sm:p-6">
+                <span className="icon-lux">
                   <Icon name={p.icon} size={22} />
                 </span>
                 <span>
@@ -143,9 +143,9 @@ export default function VenderPage() {
           <SectionHeader eyebrow="Cómo funciona" title="De la tasación a la transferencia" />
           <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {PASOS.map((s, i) => (
-              <li key={s.title} className="rounded-[22px] border border-line bg-surface p-6">
+              <li key={s.title} className="panel-lux p-6">
                 <div className="flex items-center justify-between">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
+                  <span className="icon-lux">
                     <Icon name={s.icon} size={24} />
                   </span>
                   <span className="text-sm font-semibold tabular-nums text-ink-4">{String(i + 1).padStart(2, "0")}</span>
@@ -159,7 +159,7 @@ export default function VenderPage() {
 
         <Section tone="void">
           <SectionHeader eyebrow="Comparativa" title="Consignar, vender solo o ir al concesionario" description="Ninguna opción gana en todo. Esta es la comparación sin adornos." />
-          <div className="mt-10 overflow-x-auto rounded-[22px] border border-line bg-surface">
+          <div className="mt-10 overflow-x-auto panel-lux">
             <table className="w-full min-w-[40rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">

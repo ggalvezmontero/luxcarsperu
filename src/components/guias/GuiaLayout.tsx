@@ -130,7 +130,7 @@ export function GuiaLayout({
               <li key={g.slug}>
                 <Link
                   href={rutaGuia(g.slug)}
-                  className="group flex h-full flex-col justify-between gap-4 rounded-[22px] border border-line bg-surface p-5 transition-colors hover:border-line-strong"
+                  className="group flex h-full flex-col justify-between gap-4 panel-lux p-5 transition-colors hover:border-line-strong"
                 >
                   <span>
                     <span className="block text-base font-semibold leading-snug text-ink">{g.corto}</span>
@@ -210,7 +210,7 @@ export function Tabla({
 }) {
   return (
     <figure className="mt-6">
-      <div className="overflow-x-auto rounded-[22px] border border-line bg-surface">
+      <div className="overflow-x-auto panel-lux">
         <table className="w-full min-w-[30rem] text-left text-sm">
           <thead>
             <tr className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-ink-4">
@@ -242,7 +242,7 @@ export function Tabla({
 /** Aviso destacado dentro del cuerpo. */
 export function Aviso({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <div className="mt-6 flex gap-4 rounded-[22px] border border-line bg-surface p-5 sm:p-6">
+    <div className="mt-6 flex gap-4 panel-lux p-5 sm:p-6">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-warn/10 text-warn">
         <Icon name="alert" size={20} />
       </span>
@@ -269,7 +269,7 @@ export function IrACalculadora({ texto = "Calcular mi importación" }: { texto?:
 /** Preguntas con respuesta, visibles. `h3` para que cuenten como subtítulos. */
 export function Preguntas({ items }: { items: { pregunta: string; respuesta: ReactNode }[] }) {
   return (
-    <div className="mt-6 divide-y divide-line rounded-[22px] border border-line bg-surface">
+    <div className="mt-6 divide-y divide-line panel-lux">
       {items.map((item) => (
         <div key={item.pregunta} className="px-5 py-5 sm:px-6">
           <h3 className="text-base font-semibold text-ink">{item.pregunta}</h3>

@@ -271,7 +271,7 @@ export default async function ModeloPage({ params }: Props) {
                 Precio en Estados Unidos, tributos SUNAT y costo final puesto en Lima con placas. {v.detail}
               </p>
 
-              <div className="relative mt-8 aspect-[4/3] overflow-hidden rounded-[22px] border border-line bg-surface-2">
+              <div className="relative mt-8 aspect-[4/3] overflow-hidden panel-lux-2">
                 {v.imageSrc ? (
                   <Image
                     src={v.imageSrc}
@@ -420,7 +420,7 @@ export default async function ModeloPage({ params }: Props) {
               </div>
 
               <div className="lg:col-span-7">
-                <div className="rounded-[22px] border border-line bg-surface p-6 sm:p-8">
+                <div className="panel-lux p-6 sm:p-8">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-base font-semibold text-ink">Desglose</h3>
                     <span className="text-xs text-ink-4">Montos en dólares</span>
@@ -455,7 +455,7 @@ export default async function ModeloPage({ params }: Props) {
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-3">
                   El precio en Estados Unidos cambia con la versión y el equipamiento. Así se mueve el costo final.
                 </p>
-                <div className="mt-5 overflow-x-auto rounded-[22px] border border-line bg-surface">
+                <div className="mt-5 overflow-x-auto panel-lux">
                   <table className="w-full min-w-[32rem] text-left text-sm">
                     <thead>
                       <tr className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-ink-4">
@@ -489,8 +489,8 @@ export default async function ModeloPage({ params }: Props) {
             description="El 0% de ad valorem no se gana por comprar en Miami: exige que el vehículo sea nuevo, originario de Estados Unidos y que llegue con certificado de origen."
           />
           <div className="mt-10 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-[22px] border border-line bg-surface p-6">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
+            <div className="panel-lux p-6">
+              <span className="icon-lux">
                 <Icon name="building" size={24} />
               </span>
               <h3 className="mt-5 text-lg font-semibold text-ink">Ensamblado en {v.assemblyCountry}</h3>
@@ -498,8 +498,8 @@ export default async function ModeloPage({ params }: Props) {
                 {v.assemblyPlant ? `Planta: ${v.assemblyPlant}.` : "La planta depende de la unidad concreta."}
               </p>
             </div>
-            <div className="rounded-[22px] border border-line bg-surface p-6 lg:col-span-2">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
+            <div className="panel-lux p-6 lg:col-span-2">
+              <span className="icon-lux">
                 <Icon name="percent" size={24} />
               </span>
               <h3 className="mt-5 text-lg font-semibold text-ink">
@@ -525,7 +525,7 @@ export default async function ModeloPage({ params }: Props) {
               </h3>
               <ul className="mt-5 grid gap-4 lg:grid-cols-2">
                 {v.warnings.map((w) => (
-                  <li key={w.title} className="flex gap-4 rounded-[22px] border border-line bg-surface p-6">
+                  <li key={w.title} className="flex gap-4 panel-lux p-6">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-warn/10 text-warn">
                       <Icon name={AVISO_ICONO[w.kind] ?? "info"} size={20} />
                     </span>
@@ -553,7 +553,7 @@ export default async function ModeloPage({ params }: Props) {
               </Button>
             </div>
             <div className="lg:col-span-8">
-              <div className="divide-y divide-line rounded-[22px] border border-line bg-surface">
+              <div className="divide-y divide-line panel-lux">
                 {preguntas.map((item, i) => (
                   <details key={item.pregunta} className="group px-5 sm:px-6" open={i === 0}>
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-left text-base font-medium text-ink [&::-webkit-details-marker]:hidden">
@@ -590,7 +590,7 @@ export default async function ModeloPage({ params }: Props) {
                 <li key={o.id}>
                   <Link
                     href={rutaModelo(o.id)}
-                    className="group flex h-full items-center justify-between gap-4 rounded-[22px] border border-line bg-surface p-5 transition-colors hover:border-line-strong"
+                    className="group flex h-full items-center justify-between gap-4 panel-lux p-5 transition-colors hover:border-line-strong"
                   >
                     <span>
                       <span className="block text-base font-semibold leading-snug text-ink">{o.name}</span>

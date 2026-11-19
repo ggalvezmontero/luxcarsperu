@@ -214,7 +214,7 @@ export function FormularioReclamacion() {
 
 function Bloque({ n, titulo, children }: { n: string; titulo: string; children: React.ReactNode }) {
   return (
-    <fieldset className="rounded-[22px] border border-line bg-surface p-6">
+    <fieldset className="panel-lux p-6">
       <legend className="flex items-center gap-3 px-2 text-sm font-semibold text-ink">
         <span className="font-mono text-xs text-silver">{n.padStart(2, "0")}</span>
         {titulo}

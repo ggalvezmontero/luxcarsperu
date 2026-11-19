@@ -54,7 +54,7 @@ export function BusquedaLocalSection() {
           <ol className="mt-8 space-y-5">
             {PASOS.map((paso, i) => (
               <li key={paso.title} className="flex gap-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
+                <span className="icon-lux">
                   <Icon name={paso.icon} size={22} />
                 </span>
                 <span>
@@ -68,7 +68,7 @@ export function BusquedaLocalSection() {
           </ol>
         </div>
 
-        <div className="rounded-[22px] border border-line bg-surface p-6 sm:p-8">
+        <div className="panel-lux p-6 sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-wide text-ink-3">Honorario</p>
           <p className="mt-2 text-3xl font-semibold text-ink">
             {usd(localSearch.feeFromUsd)} a {usd(localSearch.feeToUsd)}

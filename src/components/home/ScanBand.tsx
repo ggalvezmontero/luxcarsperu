@@ -13,10 +13,10 @@ export function ScanBand() {
       <Link
         href="/escaneo"
         data-ga-cta="portada_banda_escaneo"
-        className="group flex flex-col gap-5 rounded-[22px] border border-line bg-surface p-6 transition-colors hover:border-line-strong sm:flex-row sm:items-center sm:justify-between sm:p-8"
+        className="group flex flex-col gap-5 panel-lux p-6 transition-colors hover:border-line-strong sm:flex-row sm:items-center sm:justify-between sm:p-8"
       >
         <span className="flex items-start gap-4 sm:items-center">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
+          <span className="icon-lux">
             <Icon name="scan" size={24} />
           </span>
           <span>

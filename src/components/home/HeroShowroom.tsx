@@ -56,7 +56,7 @@ export function HeroShowroom() {
             </span>{" "}
             <span className="mt-4 block text-balance text-[2.75rem] font-semibold leading-[1.02] tracking-tight text-ink sm:text-6xl lg:text-7xl">
               Tu próximo auto premium,{" "}
-              <span className="block text-silver">sin sorpresas.</span>
+              <span className="block display-accent">sin sorpresas.</span>
             </span>
           </h1>
           <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-ink-2 sm:text-lg">
@@ -77,24 +77,29 @@ export function HeroShowroom() {
         </div>
 
         {/* Selector de camino: tres accesos, una fila. */}
-        <nav aria-label="Qué quieres hacer" className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Selector de camino: un solo panel con cuatro celdas separadas por
+            filetes, no cuatro tarjetas sueltas. En móvil, dos por fila. */}
+        <nav
+          aria-label="Qué quieres hacer"
+          className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border border-white/10 bg-white/10 backdrop-blur-md lg:grid-cols-4"
+        >
           {PATHS.map((p) => (
             <Link
               key={p.href}
               href={p.href}
-              className="group flex items-center gap-4 rounded-2xl border border-line/80 bg-void/60 p-4 backdrop-blur-md transition-colors hover:border-silver hover:bg-surface/80"
+              className="group flex items-center gap-3 bg-void/70 p-4 transition-colors hover:bg-surface/90 sm:gap-4 sm:p-5"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-silver-bright">
-                <Icon name={p.icon} size={22} />
+              <span className="icon-lux !h-10 !w-10">
+                <Icon name={p.icon} size={20} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-base font-semibold text-ink">{p.label}</span>
-                <span className="block text-sm text-ink-3">{p.hint}</span>
+                <span className="block text-sm font-semibold text-ink sm:text-base">{p.label}</span>
+                <span className="hidden text-sm text-ink-3 sm:block">{p.hint}</span>
               </span>
               <Icon
                 name="arrowRight"
-                size={18}
-                className="text-ink-4 transition-transform group-hover:translate-x-1 group-hover:text-ink"
+                size={16}
+                className="hidden text-ink-4 transition-transform group-hover:translate-x-1 group-hover:text-ink sm:block"
               />
             </Link>
           ))}

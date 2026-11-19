@@ -158,7 +158,7 @@ export function FiltroRetorno({ anio, aniosFuera }: { anio: number; aniosFuera: 
   const whatsapp = `https://wa.me/${LUXCARS_CONFIG.contact.whatsappNumber}?text=${encodeURIComponent(mensaje)}`;
 
   return (
-    <div className="mt-6 rounded-[22px] border border-line bg-surface p-5 sm:p-7">
+    <div className="mt-6 panel-lux p-5 sm:p-7">
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo etiqueta="Año modelo" htmlFor="fr-anio">
           <select

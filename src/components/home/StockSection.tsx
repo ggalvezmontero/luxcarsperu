@@ -1,6 +1,7 @@
 import { getStockForIsr } from "@/lib/stock";
 import { Button } from "../Button";
 import { VehicleCard } from "../VehicleCard";
+import { BusquedaCard } from "./BusquedaCard";
 import { Icon } from "../ui/Icon";
 import { Section, SectionHeader } from "../ui/Section";
 import { Badge } from "../ui/Badge";
@@ -37,6 +38,9 @@ export async function StockSection() {
           {stock.map((v, i) => (
             <VehicleCard key={v.id} vehicle={v} priority={i < 3} />
           ))}
+          {/* Con menos de tres unidades la rejilla quedaba vacía: la tarjeta
+              de búsqueda completa la fila con la promesa del negocio. */}
+          {stock.length < 3 ? <BusquedaCard className={stock.length === 1 ? "sm:col-span-1 lg:col-span-2" : ""} /> : null}
         </div>
       ) : (
         <div className="mt-8 rounded-[22px] border border-dashed border-line-strong p-10 text-center">

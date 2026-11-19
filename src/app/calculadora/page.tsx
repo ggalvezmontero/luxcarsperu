@@ -252,7 +252,7 @@ export default async function CalculadoraPage() {
 
             {ejemplo ? (
               <div className="lg:col-span-7">
-                <ol className="divide-y divide-line rounded-[22px] border border-line bg-surface">
+                <ol className="divide-y divide-line panel-lux">
                   {pasos.map((p) => (
                     <li key={p.n} className="flex gap-4 p-5 sm:p-6">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line text-sm font-semibold tabular-nums text-ink-3">
@@ -288,7 +288,7 @@ export default async function CalculadoraPage() {
             description="El costo puesto en Lima define el tramo, y la tasa de ese tramo se aplica sobre todo el costo. Cuanto más caro el auto, menor el porcentaje."
           />
           <div className="mt-10 grid gap-6 lg:grid-cols-12 lg:gap-10">
-            <div className="overflow-x-auto rounded-[22px] border border-line bg-surface lg:col-span-7">
+            <div className="overflow-x-auto panel-lux lg:col-span-7">
               <table className="w-full min-w-[22rem] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-ink-4">
@@ -328,7 +328,7 @@ export default async function CalculadoraPage() {
             title="El motor decide el impuesto más variable"
             description="El Impuesto Selectivo al Consumo va de 0% a 40% según la propulsión y la condición del vehículo. Es lo que más mueve el resultado."
           />
-          <div className="mt-10 overflow-x-auto rounded-[22px] border border-line bg-surface">
+          <div className="mt-10 overflow-x-auto panel-lux">
             <table className="w-full min-w-[34rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-ink-4">
@@ -363,7 +363,7 @@ export default async function CalculadoraPage() {
               </Button>
             </div>
             <div className="lg:col-span-8">
-              <div className="divide-y divide-line rounded-[22px] border border-line bg-surface">
+              <div className="divide-y divide-line panel-lux">
                 {preguntas.map((item, i) => (
                   <details key={item.pregunta} className="group px-5 sm:px-6" open={i === 0}>
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-left text-base font-medium text-ink [&::-webkit-details-marker]:hidden">
@@ -392,7 +392,7 @@ export default async function CalculadoraPage() {
                 <li key={o.id}>
                   <Link
                     href={rutaModelo(o.id)}
-                    className="group flex h-full items-center justify-between gap-4 rounded-[22px] border border-line bg-surface p-5 transition-colors hover:border-line-strong"
+                    className="group flex h-full items-center justify-between gap-4 panel-lux p-5 transition-colors hover:border-line-strong"
                   >
                     <span>
                       <span className="block text-base font-semibold leading-snug text-ink">{o.name}</span>

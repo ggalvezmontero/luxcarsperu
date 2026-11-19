@@ -229,7 +229,7 @@ export default function EscaneoPage() {
               <h1>
                 <span className="eyebrow">Escaneo pre-compra de autos usados en Lima</span>{" "}
                 <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-                  Escanea el auto usado antes de comprarlo
+                  Escanea el auto usado <span className="display-accent">antes de comprarlo</span>
                 </span>
               </h1>
               <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
@@ -263,14 +263,16 @@ export default function EscaneoPage() {
             title="Lo que el escáner ve y tú no"
             description="Un auto puede verse impecable y guardar fallas en su memoria. Esto es lo que leemos y probamos en cada visita."
           />
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="mt-10 grid gap-px overflow-hidden rounded-[22px] border border-white/[0.07] bg-line sm:grid-cols-2">
             {REVISION.map((r) => (
-              <li key={r.title} className="rounded-[22px] border border-line bg-surface p-6">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
-                  <Icon name={r.icon} size={24} />
+              <li key={r.title} className="flex items-start gap-4 bg-surface p-5 sm:p-6">
+                <span className="icon-lux !h-10 !w-10">
+                  <Icon name={r.icon} size={20} />
                 </span>
-                <h3 className="mt-5 text-lg font-semibold leading-snug text-ink">{r.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-3">{r.text}</p>
+                <span>
+                  <h3 className="text-base font-semibold leading-snug text-ink">{r.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-ink-3">{r.text}</p>
+                </span>
               </li>
             ))}
           </ul>
@@ -280,9 +282,9 @@ export default function EscaneoPage() {
           <SectionHeader eyebrow="Cómo funciona" title="Del aviso al informe, el mismo día" />
           <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {PASOS.map((s, i) => (
-              <li key={s.title} className="rounded-[22px] border border-line bg-surface p-6">
+              <li key={s.title} className="panel-lux p-6">
                 <div className="flex items-center justify-between">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
+                  <span className="icon-lux">
                     <Icon name={s.icon} size={24} />
                   </span>
                   <span className="text-sm font-semibold tabular-nums text-ink-4">{String(i + 1).padStart(2, "0")}</span>
@@ -308,7 +310,7 @@ export default function EscaneoPage() {
                   <dd className="mt-2 text-4xl font-semibold tabular-nums tracking-tight text-ink">{soles(PRECIO.limaModerna)}</dd>
                   <dd className="mt-2 text-xs leading-relaxed text-ink-4">San Isidro, Miraflores, Surco, San Borja, La Molina y distritos vecinos.</dd>
                 </div>
-                <div className="rounded-[22px] border border-line bg-surface p-6">
+                <div className="panel-lux p-6">
                   <dt className="text-sm text-ink-3">Resto de Lima</dt>
                   <dd className="mt-2 text-4xl font-semibold tabular-nums tracking-tight text-ink">{soles(PRECIO.restoDeLima)}</dd>
                   <dd className="mt-2 text-xs leading-relaxed text-ink-4">Lima Norte, Este, Sur y Callao.</dd>
@@ -317,7 +319,7 @@ export default function EscaneoPage() {
             </div>
 
             <div className="lg:col-span-7">
-              <div className="rounded-[22px] border border-line bg-surface p-6 sm:p-8">
+              <div className="panel-lux p-6 sm:p-8">
                 <h3 className="text-xl font-semibold text-ink">Gratis en tres casos</h3>
                 <ol className="mt-6 space-y-5">
                   {GRATIS.map((g, i) => (
@@ -343,8 +345,8 @@ export default function EscaneoPage() {
         </Section>
 
         <Section tone="void" padding="tight">
-          <div className="flex flex-col gap-4 rounded-[22px] border border-line bg-surface p-6 sm:flex-row sm:items-start sm:gap-5 sm:p-8">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-silver-bright">
+          <div className="flex flex-col gap-4 panel-lux p-6 sm:flex-row sm:items-start sm:gap-5 sm:p-8">
+            <span className="icon-lux">
               <Icon name="info" size={22} />
             </span>
             <div>
@@ -367,7 +369,7 @@ export default function EscaneoPage() {
               />
             </div>
             <div className="lg:col-span-8">
-              <div className="divide-y divide-line rounded-[22px] border border-line bg-surface">
+              <div className="divide-y divide-line panel-lux">
                 {PREGUNTAS.map((item) => (
                   <details key={item.question} className="group px-5 sm:px-6">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-left text-base font-medium text-ink [&::-webkit-details-marker]:hidden">

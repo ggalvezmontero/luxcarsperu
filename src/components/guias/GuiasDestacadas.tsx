@@ -27,7 +27,7 @@ export function GuiasDestacadas({
           <li key={g.slug}>
             <Link
               href={rutaGuia(g.slug)}
-              className="group flex h-full items-start justify-between gap-4 rounded-[22px] border border-line bg-surface p-5 transition-colors hover:border-line-strong sm:p-6"
+              className="group flex h-full items-start justify-between gap-4 panel-lux p-5 transition-colors hover:border-line-strong sm:p-6"
             >
               <span>
                 <span className="block text-base font-semibold leading-snug text-ink">{g.corto}</span>

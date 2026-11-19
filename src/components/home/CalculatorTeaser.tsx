@@ -58,7 +58,7 @@ export function CalculatorTeaser({
 
         {caso && e ? (
           <div className="flex flex-col">
-            <div className="overflow-hidden rounded-[22px] border border-line bg-surface">
+            <div className="overflow-hidden panel-lux">
               <div className="relative aspect-[16/9] w-full bg-surface-2">
                 {caso.v.imageSrc ? (
                   <Image src={caso.v.imageSrc} alt={caso.v.imageAlt} fill sizes="(min-width: 1024px) 40vw, 100vw" className="object-cover" />

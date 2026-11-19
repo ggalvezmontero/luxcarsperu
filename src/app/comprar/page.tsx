@@ -83,7 +83,7 @@ export default async function ComprarPage() {
             <h1>
               <span className="eyebrow">Comprar autos de lujo en Lima</span>{" "}
               <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-                Autos de alta gama disponibles hoy en Lima
+                Autos de alta gama disponibles <span className="display-accent">hoy en Lima</span>
               </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">

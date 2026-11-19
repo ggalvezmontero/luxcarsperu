@@ -187,7 +187,7 @@ export function ContactSection() {
                 data-ga-cta="contacto_correo"
                 className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-line-strong"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-silver-bright">
+                <span className="icon-lux">
                   <Icon name="mail" size={22} />
                 </span>
                 <span>
@@ -197,7 +197,7 @@ export function ContactSection() {
               </a>
             </li>
             <li className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-silver-bright">
+              <span className="icon-lux">
                 <Icon name="mapPin" size={22} />
               </span>
               <span>
@@ -211,7 +211,7 @@ export function ContactSection() {
         <form
           onSubmit={handleSubmit}
           noValidate
-          className="rounded-[22px] border border-line bg-surface p-6 sm:p-8 lg:col-span-7"
+          className="panel-lux p-6 sm:p-8 lg:col-span-7"
         >
           {latestEstimate ? (
             <p className="mb-6 flex items-start gap-3 rounded-2xl border border-line-strong bg-surface-2 px-4 py-3 text-sm text-ink-2">

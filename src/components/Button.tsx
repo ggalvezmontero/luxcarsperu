@@ -22,9 +22,10 @@ const baseStyles =
   "inline-flex max-w-full shrink-0 items-center justify-center gap-2 rounded-full text-center font-semibold leading-none tracking-[0.01em] transition-all duration-200 ease-out disabled:pointer-events-none disabled:opacity-45 active:scale-[0.98]";
 
 const variants = {
-  primary: "bg-ink text-void hover:bg-silver-bright shadow-[0_8px_24px_rgba(255,255,255,0.08)]",
+  primary:
+    "bg-[linear-gradient(180deg,#FFFFFF_0%,#E6E6EA_100%)] text-void ring-1 ring-white/70 ring-inset shadow-[0_8px_24px_rgba(255,255,255,0.08)] hover:bg-[linear-gradient(180deg,#FFFFFF_0%,#F4F4F6_100%)]",
   secondary:
-    "border border-line-strong bg-transparent text-ink hover:border-silver hover:bg-surface-2",
+    "border border-white/15 bg-white/[0.03] text-ink backdrop-blur-sm hover:border-white/30 hover:bg-white/[0.07]",
   ghost: "text-ink-2 hover:bg-surface-2 hover:text-ink",
   /* Cromado: degradado plateado metálico. Es el CTA principal del sitio. */
   accent:

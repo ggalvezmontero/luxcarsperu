@@ -49,7 +49,7 @@ export default function LibroDeReclamacionesPage() {
             </p>
           </div>
 
-          <dl className="grid gap-4 rounded-[22px] border border-line bg-surface p-6 text-sm sm:grid-cols-3">
+          <dl className="grid gap-4 panel-lux p-6 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-[11px] font-medium uppercase tracking-[0.2em] text-ink-4">Razón social</dt>
               <dd className="mt-1 font-semibold text-ink">{legalName}</dd>

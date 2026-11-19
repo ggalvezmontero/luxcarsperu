@@ -90,7 +90,7 @@ export default function ComoFuncionaPage() {
             <h1>
               <span className="eyebrow">Cómo importar un auto a Perú</span>{" "}
               <span className="mt-3 block max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-                De Miami a tu cochera en seis pasos
+                De Miami a tu cochera <span className="display-accent">en seis pasos</span>
               </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
@@ -102,7 +102,7 @@ export default function ComoFuncionaPage() {
         <Section tone="bg">
           <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {PASOS.map((p, i) => (
-              <li key={p.title} className="group flex flex-col overflow-hidden rounded-[22px] border border-line bg-surface">
+              <li key={p.title} className="group flex flex-col overflow-hidden panel-lux">
                 <div className="relative aspect-[16/10] w-full bg-surface-2">
                   {p.foto ? (
                     <Image src={p.foto.src} alt={p.foto.alt} fill sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.03]" />

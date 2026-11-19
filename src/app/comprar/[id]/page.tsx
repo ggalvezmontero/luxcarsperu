@@ -141,7 +141,7 @@ export default async function VehiculoPage({ params }: Params) {
           <div className="mt-6 grid gap-8 lg:grid-cols-12 lg:gap-10">
             {/* Galería */}
             <div className="lg:col-span-7">
-              <div className="relative aspect-[4/3] overflow-hidden rounded-[22px] border border-line bg-surface-2">
+              <div className="relative aspect-[4/3] overflow-hidden panel-lux-2">
                 {photos[0]?.url ? (
                   <Image src={photos[0].url} alt={photos[0].alt ?? v.title} fill priority sizes="(min-width: 1024px) 60vw, 100vw" className="object-cover" />
                 ) : (
@@ -169,7 +169,7 @@ export default async function VehiculoPage({ params }: Params) {
 
             {/* Ficha de compra (sticky en desktop) */}
             <aside className="lg:col-span-5 lg:row-span-2">
-              <div className="rounded-[22px] border border-line bg-surface p-6 sm:p-7 lg:sticky lg:top-[calc(var(--lux-nav-h)+1.5rem)]">
+              <div className="panel-lux p-6 sm:p-7 lg:sticky lg:top-[calc(var(--lux-nav-h)+1.5rem)]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">{v.brand}</p>
                 <h1 className="mt-1 text-3xl font-semibold leading-tight tracking-tight text-ink">
                   {v.model}{v.trim ? <span className="text-ink-3"> {v.trim}</span> : null}
@@ -223,9 +223,9 @@ export default async function VehiculoPage({ params }: Params) {
             <div className="lg:col-span-7">
               {/* Especificaciones */}
               <h2 className="mt-10 text-xl font-semibold text-ink">Especificaciones</h2>
-              <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border border-white/[0.07] bg-line sm:grid-cols-4">
                 {specs.map((s) => (
-                  <div key={s.label} className="rounded-2xl border border-line bg-surface p-4">
+                  <div key={s.label} className="bg-surface p-4">
                     <dt className="flex items-center gap-1.5 text-xs text-ink-4">
                       <Icon name={s.icon} size={14} />
                       {s.label}

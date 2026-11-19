@@ -17,10 +17,10 @@ export function StepsRow({ steps }: { steps: Step[] }) {
       {steps.map((s, i) => (
         <li
           key={s.title}
-          className="relative rounded-[22px] border border-line bg-surface p-6"
+          className="relative panel-lux p-6"
         >
           <div className="flex items-center justify-between">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-silver-bright">
+            <span className="icon-lux">
               <Icon name={s.icon} size={24} />
             </span>
             <span className="text-sm font-semibold tabular-nums text-ink-4">

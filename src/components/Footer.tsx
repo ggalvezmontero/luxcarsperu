@@ -61,7 +61,7 @@ const REDES: { id: keyof typeof LUXCARS_CONFIG.social; nombre: string; path: str
 export function Footer() {
   const { contact, legalName, ruc, social } = LUXCARS_CONFIG;
   return (
-    <footer className="w-full border-t border-line bg-void">
+    <footer className="lux-glow-top w-full border-t border-white/[0.06] bg-void">
       <div className="container-lux py-14 lg:py-20">
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-4">
@@ -70,7 +70,7 @@ export function Footer() {
               alt={LUXCARS_CONFIG.brandName}
               width={1010}
               height={590}
-              className="h-20 w-auto"
+              className="h-14 w-auto"
             />
             <p className="mt-5 max-w-xs text-sm leading-relaxed text-ink-3">
               Autos premium en Lima: stock propio, importación a pedido desde

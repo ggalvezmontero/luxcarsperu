@@ -65,7 +65,7 @@ export default function GuiasPage() {
               <li key={g.slug}>
                 <Link
                   href={rutaGuia(g.slug)}
-                  className="group flex h-full flex-col justify-between gap-6 rounded-[22px] border border-line bg-surface p-6 transition-colors hover:border-line-strong sm:p-7"
+                  className="group flex h-full flex-col justify-between gap-6 panel-lux p-6 transition-colors hover:border-line-strong sm:p-7"
                 >
                   <span>
                     <h2 className="text-xl font-semibold leading-snug tracking-tight text-ink">{tituloGuia(g, anio)}</h2>

@@ -57,7 +57,11 @@ export async function MostSoughtVehiclesSection({
   destino = "calculadora",
 }: Props = {}) {
   const { vehiculos: todos } = await getImportExamplesForIsr();
-  const vehiculos = limite ? todos.slice(0, limite) : todos;
+  // Con límite (portada), primero los que tienen foto: una tarjeta gris con
+  // "Foto por WhatsApp" no puede ser lo primero que se ve del catálogo.
+  const vehiculos = limite
+    ? [...todos].sort((a, b) => Number(Boolean(b.imageSrc)) - Number(Boolean(a.imageSrc))).slice(0, limite)
+    : todos;
   const aPagina = destino === "pagina";
   const conPagina = todos.filter(tienePaginaPropia);
   const textoDescripcion =
@@ -96,7 +100,7 @@ export async function MostSoughtVehiclesSection({
               <Link
                 href={vaAPagina ? rutaModelo(v.id) : rutaCalculadora(v.id)}
                 scroll={vaAPagina ? undefined : false}
-                className="group relative flex flex-1 flex-col overflow-hidden rounded-[22px] border border-line bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-line-strong hover:shadow-[var(--lux-shadow)]"
+                className="group relative flex flex-1 flex-col overflow-hidden panel-lux transition-all duration-300 hover:-translate-y-1 hover:border-line-strong hover:shadow-[var(--lux-shadow)]"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-2">
                   {v.imageSrc ? (

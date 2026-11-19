@@ -53,7 +53,7 @@ export function FAQSection({
         </div>
 
         <div className="lg:col-span-8">
-          <div className="divide-y divide-line rounded-[22px] border border-line bg-surface">
+          <div className="divide-y divide-line panel-lux">
             {items.map((item) => (
               <details key={item.question} className="group px-5 sm:px-6">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-left text-base font-medium text-ink [&::-webkit-details-marker]:hidden">

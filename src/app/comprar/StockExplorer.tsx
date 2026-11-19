@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { VehicleCard } from "@/components/VehicleCard";
+import { BusquedaCard } from "@/components/home/BusquedaCard";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { LUXCARS_CONFIG } from "@/lib/config";
@@ -118,7 +119,7 @@ export function StockExplorer({ stock }: { stock: StockVehicle[] }) {
     <section id="unidades" className="w-full bg-bg py-10 sm:py-14">
       <div className="container-lux">
         {/* Barra de filtros */}
-        <div className="rounded-[22px] border border-line bg-surface p-4 sm:p-5">
+        <div className="panel-lux p-4 sm:p-5">
           <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
             <label className="relative block">
               <span className="sr-only">Buscar</span>
@@ -196,6 +197,7 @@ export function StockExplorer({ stock }: { stock: StockVehicle[] }) {
         {results.length > 0 ? (
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {results.map((v, i) => <VehicleCard key={v.id} vehicle={v} priority={i < 3} />)}
+            {results.length < 3 ? <BusquedaCard className={results.length === 1 ? "sm:col-span-1 lg:col-span-2" : ""} /> : null}
           </div>
         ) : (
           <div className="mt-6 rounded-[22px] border border-dashed border-line-strong px-6 py-16 text-center">
