@@ -114,7 +114,7 @@
   {
     "id": "ram-1500-trx",
     "brand": "RAM",
-    "model": "1500 TRX",
+    "model": "1500 SRT TRX",
     "vehicleType": "gasolina",
     "priceUsd": 105000,
     "preferredPlan": "fast"

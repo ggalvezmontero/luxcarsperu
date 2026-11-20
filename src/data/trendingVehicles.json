@@ -389,8 +389,8 @@
   },
   {
     "id": "ram-1500-trx",
-    "name": "RAM 1500 TRX 2026",
-    "detail": "La pickup con el V8 sobrealimentado de más de 700 hp que vuelve a la gama 1500 tras la RHO. Rival directa de la Raptor R. No se vende en Perú.",
+    "name": "RAM 1500 SRT TRX 2026",
+    "detail": "La pickup con el V8 sobrealimentado de más de 700 hp desarrollado por SRT, que vuelve a la gama 1500 tras la RHO. Rival directa de la Raptor R. No se vende en Perú.",
     "segment": "Pickup · gasolina",
     "priceMinUsd": 100000,
     "priceMaxUsd": 120000,
@@ -410,6 +410,6 @@
       }
     ],
     "imageSrc": null,
-    "imageAlt": "RAM 1500 TRX 2026"
+    "imageAlt": "RAM 1500 SRT TRX 2026"
   }
 ]
