@@ -107,10 +107,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const v = datos.vehiculo;
   const evaluacion = cotizarEjemplo(v, currentYearInLima());
   const ruta = rutaModelo(v.id);
-  const title = `Importar ${v.name} a Perú: precio puesto en Lima`;
+  /* Search Console (nov 2026): la gente busca "<modelo> precio perú" y la
+     ficha salía en posición 4-6 con 1-2 % de clics porque el título no
+     llevaba el número y se cortaba en móvil. El precio puesto en Lima va
+     primero y corto, para que se vea entero en el celular. */
+  const title =
+    evaluacion.kind === "ready"
+      ? `${v.name} en Perú: ${formatCurrency(evaluacion.estimate.finalEstimate)} puesto en Lima`
+      : `Importar ${v.name} a Perú: precio y requisitos`;
   const description =
     evaluacion.kind === "ready"
-      ? `¿Cuánto cuesta importar ${conArticulo(v)} a Perú? ${formatCurrency(v.calculator.priceUsd)} en Estados Unidos y cerca de ${formatCurrency(evaluacion.estimate.finalEstimate)} puesto en Lima con placas. Desglose de flete, tributos SUNAT y servicio.`
+      ? `${formatCurrency(v.calculator.priceUsd)} en Estados Unidos, cerca de ${formatCurrency(evaluacion.estimate.finalEstimate)} en Lima con placas. Cuánto paga ${conArticulo(v)} de flete, SUNAT y servicio, y cómo te lo importamos a pedido.`
       : `Qué hace falta para importar ${conArticulo(v)} desde Estados Unidos a Perú: precio de referencia, tributos SUNAT y condiciones.`;
   const ogTitle = `${title} | ${brandName}`;
   const imagen = v.imageSrc ? { url: v.imageSrc, alt: v.imageAlt } : OG_IMAGE;

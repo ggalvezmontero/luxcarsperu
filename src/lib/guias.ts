@@ -31,8 +31,10 @@ export type Guia = {
 export const GUIAS: readonly Guia[] = [
   {
     slug: "cuanto-cuesta-importar-un-auto-a-peru",
-    titulo: "Cuánto cuesta importar un auto a Perú en {anio}",
+    titulo: "Cuánto cuesta importar y nacionalizar un auto a Perú en {anio}",
     corto: "Cuánto cuesta importar un auto",
+    // La página calcula una descripción con el rango real (ver su generateMetadata);
+    // esta es el respaldo si no hay ejemplos cotizados.
     descripcion:
       "El costo real de importar y nacionalizar un auto de Estados Unidos a Perú, con ejemplos en cifras: flete, seguro, ad valorem, ISC, IGV y servicio.",
     publicada: "2026-11-10",

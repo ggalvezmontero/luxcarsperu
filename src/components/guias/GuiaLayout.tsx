@@ -26,24 +26,25 @@ import { currentYearInLima } from "@/core/pricing/pricingConfig";
 const { contact, brandName } = LUXCARS_CONFIG;
 
 /** `metadata` de una guía. El año del título es el de la última regeneración. */
-export function metadataDeGuia(slug: string): Metadata {
+export function metadataDeGuia(slug: string, extra: { description?: string } = {}): Metadata {
   const guia = guiaPorSlug(slug);
   const title = tituloGuia(guia, currentYearInLima());
   const ogTitle = `${title} | ${brandName}`;
+  const description = extra.description ?? guia.descripcion;
   return {
     title,
-    description: guia.descripcion,
+    description,
     alternates: { canonical: rutaGuia(slug) },
     openGraph: {
       ...OG_DEFAULTS,
       type: "article",
       url: `${contact.website}${rutaGuia(slug)}`,
       title: ogTitle,
-      description: guia.descripcion,
+      description,
       publishedTime: guia.publicada,
       modifiedTime: guia.actualizada,
     },
-    twitter: twitterCard(ogTitle, guia.descripcion),
+    twitter: twitterCard(ogTitle, description),
   };
 }
 

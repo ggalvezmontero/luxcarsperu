@@ -22,7 +22,19 @@ import { formatCurrency, formatPercentage, formatRate } from "@/lib/utils";
 const SLUG = "cuanto-cuesta-importar-un-auto-a-peru";
 
 export const revalidate = 86400;
-export const generateMetadata = () => metadataDeGuia(SLUG);
+/* La metadescripción lleva el rango real (p. ej. "entre 37 % y 68 % más"):
+   en Search Console la guía salía en posición 5 con 1 % de clics; la cifra
+   es lo que la búsqueda "cuánto cuesta importar / nacionalizar" quiere ver. */
+export async function generateMetadata() {
+  const ejemplos = await ejemplosCotizados(currentYearInLima());
+  const tasas = ejemplos.map(({ e }) => sobrecosto(e));
+  if (tasas.length === 0) return metadataDeGuia(SLUG);
+  const menor = formatPercentage(Math.min(...tasas));
+  const mayor = formatPercentage(Math.max(...tasas));
+  return metadataDeGuia(SLUG, {
+    description: `Entre ${menor} y ${mayor} más que el precio en Estados Unidos, puesto en Lima con placas. Flete, ad valorem, ISC, IGV y servicio con ejemplos reales por modelo, nuevo y usado.`,
+  });
+}
 
 export default async function Page() {
   const anio = currentYearInLima();
