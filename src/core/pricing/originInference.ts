@@ -124,6 +124,7 @@ export type BrandKey =
   | "ford"
   | "chevrolet"
   | "cadillac"
+  | "gmc"
   | "chrysler"
   | "dodge"
   | "ram"
@@ -152,6 +153,7 @@ const BRAND_ALIASES: readonly { key: BrandKey; aliases: readonly string[] }[] = 
   { key: "ford", aliases: ["ford"] },
   { key: "chevrolet", aliases: ["chevrolet", "chevy", "chev"] },
   { key: "cadillac", aliases: ["cadillac", "caddy"] },
+  { key: "gmc", aliases: ["gmc", "gmc hummer", "hummer"] },
   { key: "chrysler", aliases: ["chrysler"] },
   { key: "dodge", aliases: ["dodge", "dodge srt", "srt"] },
   { key: "ram", aliases: ["ram", "ram trucks", "dodge ram"] },
@@ -636,6 +638,32 @@ const CADILLAC_RULES: readonly OriginRule[] = [
 ];
 
 /* --------------------------------------------------------------------------
+ * GMC
+ * ------------------------------------------------------------------------ */
+const GMC_RULES: readonly OriginRule[] = [
+  {
+    id: "gmc-hummer-ev",
+    patterns: [/\bhummer\b/],
+    country: "Estados Unidos",
+    plant: "Factory ZERO, Detroit-Hamtramck, Michigan",
+    usOrigin: true,
+    confidence: "alta",
+    reason:
+      "El Hummer EV (pickup y SUV) se produce únicamente en Factory ZERO, Detroit-Hamtramck, la misma planta del Escalade IQ. Candidato a 0% con certificado de origen.",
+  },
+  {
+    id: "gmc-yukon",
+    patterns: [/\byukon\b/],
+    country: "Estados Unidos",
+    plant: "Arlington Assembly, Texas",
+    usOrigin: true,
+    confidence: "alta",
+    reason:
+      "El Yukon y el Yukon XL salen de Arlington, Texas, la planta exclusiva de los SUV full-size de GM, igual que el Tahoe y el Escalade. Candidato a 0% con certificado.",
+  },
+];
+
+/* --------------------------------------------------------------------------
  * CHRYSLER — LA TRAMPA MÁS GRANDE DEL CATÁLOGO
  * La marca entera es canadiense. No existe hoy un Chrysler que califique al 0%.
  * ------------------------------------------------------------------------ */
@@ -711,6 +739,17 @@ const RAM_RULES: readonly OriginRule[] = [
     confidence: "media",
     reason:
       "La ProMaster se ensambla en Saltillo, México. No verificado contra comunicado primario, pero en ningún escenario es estadounidense: 6%.",
+  },
+  {
+    // La TRX (y la RHO) solo existen sobre la DT: nunca hubo TRX Classic ni mexicana.
+    id: "ram-1500-trx",
+    patterns: [/\btrx\b/, /\brho\b/],
+    country: "Estados Unidos",
+    plant: "Sterling Heights Assembly, Michigan",
+    usOrigin: true,
+    confidence: "alta",
+    reason:
+      "La RAM 1500 TRX (y la RHO que la sucedió) se arma solo en Sterling Heights, Michigan, sobre la generación DT; no existe versión Classic ni de Saltillo. Candidato a 0% con certificado de origen (VIN 1C6).",
   },
   {
     // OJO CON LA CONFUSIÓN 1500 vs 3500: un dígito cambia el país.
@@ -1481,6 +1520,18 @@ const BRAND_DEFAULTS: Record<BrandKey, OriginRule> = {
     reason:
       "No reconocimos este modelo de Cadillac. La mayoría de la gama es estadounidense, pero el Optiq es mexicano: cotizamos 6% y confirmamos con el VIN.",
   },
+  gmc: {
+    id: "gmc-default",
+    patterns: [],
+    country: "Desconocido",
+    plant: null,
+    usOrigin: false,
+    confidence: "baja",
+    requiresVin: true,
+    mayQualifyWithCertificate: true,
+    reason:
+      "No reconocimos este modelo de GMC. Yukon y Hummer EV son estadounidenses, pero la Sierra y la Terrain se arman también en Canadá y México: cotizamos 6% y confirmamos con el VIN.",
+  },
   chrysler: {
     // LA TRAMPA MÁS GRANDE DEL CATÁLOGO: la marca entera es canadiense.
     id: "chrysler-todos",
@@ -1680,6 +1731,7 @@ const RULES_BY_BRAND: Record<BrandKey, readonly OriginRule[]> = {
   ford: FORD_RULES,
   chevrolet: CHEVROLET_RULES,
   cadillac: CADILLAC_RULES,
+  gmc: GMC_RULES,
   chrysler: CHRYSLER_RULES,
   dodge: DODGE_RULES,
   ram: RAM_RULES,

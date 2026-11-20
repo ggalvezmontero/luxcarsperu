@@ -18,9 +18,9 @@
   {
     "id": "toyota-tacoma-trd",
     "brand": "Toyota",
-    "model": "Tacoma TRD Off-Road",
-    "vehicleType": "gasolina",
-    "priceUsd": 56000,
+    "model": "Tacoma TRD Pro",
+    "vehicleType": "hev",
+    "priceUsd": 65000,
     "preferredPlan": "fast"
   },
   {
@@ -44,7 +44,7 @@
     "brand": "Toyota",
     "model": "Tundra TRD Pro",
     "vehicleType": "hev",
-    "priceUsd": 65000,
+    "priceUsd": 74000,
     "preferredPlan": "fast"
   },
   {
@@ -69,6 +69,54 @@
     "model": "Cybertruck",
     "vehicleType": "ev",
     "priceUsd": 85000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "toyota-sequoia-capstone",
+    "brand": "Toyota",
+    "model": "Sequoia Capstone",
+    "vehicleType": "hev",
+    "priceUsd": 82000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "ford-f150-raptor-r",
+    "brand": "Ford",
+    "model": "F-150 Raptor R",
+    "vehicleType": "gasolina",
+    "priceUsd": 115000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "cadillac-escalade-luxury",
+    "brand": "Cadillac",
+    "model": "Escalade Luxury",
+    "vehicleType": "gasolina",
+    "priceUsd": 92000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "gmc-hummer-ev",
+    "brand": "GMC",
+    "model": "Hummer EV",
+    "vehicleType": "ev",
+    "priceUsd": 100000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "toyota-4runner-trd-pro",
+    "brand": "Toyota",
+    "model": "4Runner TRD Pro",
+    "vehicleType": "hev",
+    "priceUsd": 67000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "ram-1500-trx",
+    "brand": "RAM",
+    "model": "1500 TRX",
+    "vehicleType": "gasolina",
+    "priceUsd": 105000,
     "preferredPlan": "fast"
   }
 ]

@@ -59,13 +59,13 @@
   },
   {
     "id": "toyota-tacoma-trd",
-    "name": "Toyota Tacoma TRD 2026",
-    "detail": "Pickup mediana en acabados TRD Sport, TRD Off-Road y TRD Pro. Alta demanda y reventa sólida en Lima.",
-    "segment": "Pickup · gasolina / HEV",
-    "priceMinUsd": 46000,
-    "priceMaxUsd": 66000,
+    "name": "Toyota Tacoma TRD Pro 2026",
+    "detail": "Pickup mediana en su versión más capaz: i-FORCE MAX híbrido, suspensión Fox QS3 y asientos IsoDynamic. No se vende en Perú.",
+    "segment": "Pickup · HEV",
+    "priceMinUsd": 64000,
+    "priceMaxUsd": 70000,
     "priceBasis": "referencial-miami",
-    "priceNote": "Rango referencial de mercado entre TRD Sport y TRD Pro i-FORCE MAX. Sin MSRP verificado por acabado: confirmar la cifra exacta con el dealer antes de cerrar con el cliente.",
+    "priceNote": "Rango referencial de mercado para la TRD Pro i-FORCE MAX 2026. Sin MSRP verificado para MY2026: confirmar con el dealer.",
     "assemblyCountry": "México",
     "assemblyPlant": "Tijuana y Guanajuato",
     "adValorem": "no-califica",
@@ -153,13 +153,13 @@
   },
   {
     "id": "toyota-tundra-trd",
-    "name": "Toyota Tundra TRD 2026",
-    "detail": "Pickup full-size con i-FORCE MAX híbrido en TRD Pro. Cabina amplia y la fiabilidad que pide el comprador peruano.",
+    "name": "Toyota Tundra TRD Pro 2026",
+    "detail": "Pickup full-size con i-FORCE MAX híbrido de 437 hp y suspensión Fox. No se vende en Perú: solo llega importada.",
     "segment": "Pickup · HEV",
-    "priceMinUsd": 55000,
-    "priceMaxUsd": 75000,
+    "priceMinUsd": 72000,
+    "priceMaxUsd": 80000,
     "priceBasis": "referencial-miami",
-    "priceNote": "Rango referencial entre TRD Off-Road y TRD Pro i-FORCE MAX. Sin MSRP verificado por acabado.",
+    "priceNote": "Rango referencial de mercado para la TRD Pro i-FORCE MAX 2026 según equipamiento. Sin MSRP verificado para MY2026: confirmar con el dealer.",
     "assemblyCountry": "Estados Unidos",
     "assemblyPlant": "Toyota Motor Manufacturing Texas, San Antonio",
     "adValorem": "candidato-0",
@@ -261,5 +261,155 @@
     "imageCredit": "Cutlass",
     "imageLicense": "CC0 1.0",
     "imageSourceUrl": "https://commons.wikimedia.org/wiki/File:2024_Tesla_Cybertruck,_front_left,_07-27-2024.jpg"
+  },
+  {
+    "id": "toyota-sequoia-capstone",
+    "name": "Toyota Sequoia Capstone 2026",
+    "detail": "SUV full-size de tres filas, tope de gama Capstone con i-FORCE MAX híbrido de 437 hp, cuero semianilina y madera. No se vende en Perú.",
+    "segment": "SUV · HEV",
+    "priceMinUsd": 80000,
+    "priceMaxUsd": 88000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para la Capstone 2026 según equipamiento. Sin MSRP verificado para MY2026: confirmar con el dealer.",
+    "assemblyCountry": "Estados Unidos",
+    "assemblyPlant": "Toyota Motor Manufacturing Texas, San Antonio",
+    "adValorem": "candidato-0",
+    "adValoremNote": "La Sequoia comparte línea con la Tundra en San Antonio, Texas, sin planta alternativa. Candidato sólido a 0% con certificado de origen si la unidad es nueva.",
+    "availableInUsDealers": true,
+    "importViability": "importable",
+    "warnings": [
+      {
+        "kind": "precio",
+        "title": "Híbrido full, sin ISC si es nueva",
+        "detail": "El i-FORCE MAX es híbrido full (HEV): nuevo no tributa ISC. Confirmar que la unidad sea nueva y no un demo con placas."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Toyota Sequoia Capstone 2026"
+  },
+  {
+    "id": "ford-f150-raptor-r",
+    "name": "Ford F-150 Raptor R 2026",
+    "detail": "La pickup más potente de Ford: V8 5.2L sobrealimentado de 720 hp, suspensión Fox Live Valve y 37 pulgadas de serie. No se vende en Perú.",
+    "segment": "Pickup · gasolina",
+    "priceMinUsd": 112000,
+    "priceMaxUsd": 125000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para la Raptor R 2026 según paquetes. Sin MSRP verificado para MY2026: confirmar con el dealer.",
+    "assemblyCountry": "Estados Unidos",
+    "assemblyPlant": "Dearborn Truck Plant, Michigan",
+    "adValorem": "candidato-0",
+    "adValoremNote": "Toda la F-150, Raptor y Raptor R incluidas, se arma en Michigan o Missouri. Candidato sólido a 0% con certificado de origen si la unidad es nueva.",
+    "availableInUsDealers": true,
+    "importViability": "importable",
+    "warnings": [
+      {
+        "kind": "disponibilidad",
+        "title": "Se consigue por asignación",
+        "detail": "Los dealers reciben pocas Raptor R y suelen cobrar sobreprecio. El plazo real lo confirma el dealer antes de comprometer fecha al cliente."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Ford F-150 Raptor R 2026"
+  },
+  {
+    "id": "cadillac-escalade-luxury",
+    "name": "Cadillac Escalade Luxury 2026",
+    "detail": "SUV full-size de lujo con pantalla curva de 55 pulgadas, V8 6.2L y la versión Luxury como puerta de entrada a la gama. En Perú no hay representación oficial de Cadillac.",
+    "segment": "SUV · gasolina",
+    "priceMinUsd": 90000,
+    "priceMaxUsd": 100000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para la Escalade Luxury 2026 (batalla corta) según equipamiento. Sin MSRP verificado para MY2026: confirmar con el dealer.",
+    "assemblyCountry": "Estados Unidos",
+    "assemblyPlant": "Arlington Assembly, Texas",
+    "adValorem": "candidato-0",
+    "adValoremNote": "El Escalade sale de Arlington, Texas, planta exclusiva a nivel mundial de los SUV full-size de GM. Candidato sólido a 0% con certificado de origen si la unidad es nueva.",
+    "availableInUsDealers": true,
+    "importViability": "importable",
+    "warnings": [
+      {
+        "kind": "disponibilidad",
+        "title": "Sin servicio oficial en Perú",
+        "detail": "No hay concesionario Cadillac en el país: repuestos y garantía se gestionan con talleres de GM y por importación. El cliente lo tiene que saber antes de comprar."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Cadillac Escalade Luxury 2026"
+  },
+  {
+    "id": "gmc-hummer-ev",
+    "name": "GMC Hummer EV 2026",
+    "detail": "Pickup o SUV eléctrica de hasta 1,000 hp, modo CrabWalk y techo desmontable. Pesa más de 4 toneladas. No se vende en Perú.",
+    "segment": "Pickup · eléctrico",
+    "priceMinUsd": 98000,
+    "priceMaxUsd": 115000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado entre la 2X y la 3X 2026, pickup o SUV. Sin MSRP verificado para MY2026: confirmar con el dealer.",
+    "assemblyCountry": "Estados Unidos",
+    "assemblyPlant": "Factory ZERO, Detroit-Hamtramck, Michigan",
+    "adValorem": "candidato-0",
+    "adValoremNote": "El Hummer EV se produce únicamente en Factory ZERO, Detroit. Candidato sólido a 0% con certificado de origen si la unidad es nueva.",
+    "availableInUsDealers": true,
+    "importViability": "importable-con-advertencia",
+    "warnings": [
+      {
+        "kind": "homologacion",
+        "title": "Peso y carga",
+        "detail": "Supera las 4 toneladas: el flete, la grúa en Lima y la categoría de licencia se revisan antes de cotizar. La batería de 200 kWh pide cargador propio en casa."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "GMC Hummer EV 2026"
+  },
+  {
+    "id": "toyota-4runner-trd-pro",
+    "name": "Toyota 4Runner TRD Pro 2026",
+    "detail": "Sexta generación del 4Runner, versión más capaz: i-FORCE MAX híbrido de 326 hp, suspensión Fox QS3 y barra de luces. No se vende en Perú.",
+    "segment": "SUV · HEV",
+    "priceMinUsd": 66000,
+    "priceMaxUsd": 72000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para la TRD Pro 2026 según equipamiento. Sin MSRP verificado para MY2026: confirmar con el dealer.",
+    "assemblyCountry": "Japón",
+    "assemblyPlant": "Tahara, Aichi",
+    "adValorem": "no-califica",
+    "adValoremNote": "El 4Runner nunca se ha ensamblado en Estados Unidos: la sexta generación es de Tahara, Japón. Comprarlo en Miami no lo vuelve originario: paga 6% de ad valorem.",
+    "availableInUsDealers": true,
+    "importViability": "importable-con-advertencia",
+    "warnings": [
+      {
+        "kind": "origen",
+        "title": "Japonés, no estadounidense",
+        "detail": "El VIN empieza en JT. No prometer 0% de ad valorem: la calculadora aplica 6%."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Toyota 4Runner TRD Pro 2026"
+  },
+  {
+    "id": "ram-1500-trx",
+    "name": "RAM 1500 TRX 2026",
+    "detail": "La pickup con el V8 sobrealimentado de más de 700 hp que vuelve a la gama 1500 tras la RHO. Rival directa de la Raptor R. No se vende en Perú.",
+    "segment": "Pickup · gasolina",
+    "priceMinUsd": 100000,
+    "priceMaxUsd": 120000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para la TRX 2026 según paquetes. Sin MSRP verificado para MY2026: confirmar cifra y disponibilidad con el dealer.",
+    "assemblyCountry": "Estados Unidos",
+    "assemblyPlant": "Sterling Heights Assembly, Michigan",
+    "adValorem": "candidato-0",
+    "adValoremNote": "La TRX se arma solo en Sterling Heights, Michigan, sobre la generación DT; no existe versión mexicana. Candidato sólido a 0% con certificado de origen si la unidad es nueva.",
+    "availableInUsDealers": true,
+    "importViability": "importable-con-advertencia",
+    "warnings": [
+      {
+        "kind": "disponibilidad",
+        "title": "Producción por asignación",
+        "detail": "Las TRX llegan a los dealers en pocas unidades y con sobreprecio. Fecha y precio se confirman con el dealer antes de comprometer nada al cliente."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "RAM 1500 TRX 2026"
   }
 ]
