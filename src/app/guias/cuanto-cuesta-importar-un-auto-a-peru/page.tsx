@@ -185,7 +185,12 @@ export default async function Page() {
         items={[
           {
             pregunta: "¿Cuánto cuesta nacionalizar un auto en Perú?",
-            respuesta: `Nacionalizar es pagar los tributos de importación: ad valorem (0% o ${general}), ISC (según motor y condición) e IGV más IPM (${igvTotal}), en cascada. El monto exacto depende del valor CIF del vehículo; la calculadora lo resuelve con tus datos.`,
+            respuesta: (
+              <>
+                Nacionalizar es pagar los tributos de importación: ad valorem (0% o {general}), ISC (según motor y condición) e IGV más IPM ({igvTotal}), en cascada, más los costos de aduana. El monto exacto depende del valor CIF del vehículo; la guía de{" "}
+                <Enlace href={rutaGuia("cuanto-cuesta-nacionalizar-un-auto-en-peru")}>cuánto cuesta nacionalizar un auto</Enlace> lo desglosa con un ejemplo.
+              </>
+            ),
           },
           {
             pregunta: "¿Cuánto cobran por traer un carro de Estados Unidos?",

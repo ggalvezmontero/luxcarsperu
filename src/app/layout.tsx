@@ -78,7 +78,7 @@ export const metadata: Metadata = {
     template: `%s | ${LUXCARS_CONFIG.brandName}`,
   },
   description:
-    "Autos de lujo en Lima, Perú: stock de alta gama en San Isidro, importación a pedido desde Estados Unidos y venta en consignación sin exclusividad. Calcula impuestos SUNAT, flete y honorarios al instante.",
+    "Autos de lujo en Lima, Perú: stock de alta gama en San Isidro, importación de autos a pedido desde Estados Unidos y otros orígenes, y venta en consignación sin exclusividad. Calcula impuestos SUNAT, flete y honorarios al instante.",
   applicationName: LUXCARS_CONFIG.brandName,
   authors: [{ name: LUXCARS_CONFIG.legalName }],
   creator: LUXCARS_CONFIG.legalName,

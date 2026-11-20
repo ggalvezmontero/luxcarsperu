@@ -161,6 +161,31 @@ const PREGUNTAS: { pregunta: string; respuesta: React.ReactNode }[] = [
       </>
     ),
   },
+  {
+    // Búsquedas "importar auto de Europa/Japón/Canadá a Perú": se responden
+    // sin diluir el foco en EE.UU., que es donde el servicio es más fuerte.
+    pregunta: "¿Solo importan autos desde Estados Unidos?",
+    respuesta: (
+      <>
+        Es el origen habitual y el único que cotiza la calculadora: mayor oferta de modelos que no
+        llegan a Perú, salida directa al Callao y 0% de ad valorem en los nuevos originarios. Pero
+        si el auto que quieres está en Canadá, México, Europa, Japón o Corea, evaluamos el caso
+        aparte: cambian el flete, el tránsito y el arancel, y verificamos que la unidad cumpla las
+        normas peruanas antes de cotizar. Lo que se paga en SUNAT al llegar está en la guía de{" "}
+        <Link href={rutaGuia("cuanto-cuesta-nacionalizar-un-auto-en-peru")} className="font-medium text-ink underline underline-offset-4">
+          cuánto cuesta nacionalizar un auto
+        </Link>
+        .
+      </>
+    ),
+  },
+];
+
+/** Por qué Estados Unidos es el origen por defecto, y qué pasa con los demás. */
+const ORIGENES: { icon: IconName; title: string; text: string }[] = [
+  { icon: "mapPin", title: "Estados Unidos, el habitual", text: "Más oferta de modelos que no llegan a Perú, salida marítima directa al Callao y 0% de ad valorem en vehículos nuevos originarios. Es lo que cotiza la calculadora." },
+  { icon: "ship", title: "Canadá y México", text: "Mismo continente y modelos parecidos. El arancel depende de la planta y del acuerdo comercial; lo verificamos con el VIN antes de cotizar." },
+  { icon: "globe", title: "Europa, Japón y Corea", text: "Posible a pedido. Cambian el flete y el tiempo de tránsito, y hay que comprobar emisiones, timón y antigüedad. Te decimos si conviene antes de empezar." },
 ];
 
 const HONESTIDAD = [
@@ -259,6 +284,27 @@ export default function ImportarPage() {
                 <span>
                   <h3 className="text-base font-semibold text-ink">{r.title}</h3>
                   <p className="mt-1 text-sm leading-relaxed text-ink-3">{r.text}</p>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+
+        <Section tone="bg">
+          <SectionHeader
+            eyebrow="Desde dónde importamos"
+            title="Estados Unidos primero, cualquier origen a pedido"
+            description="Importamos autos a Perú desde el país donde esté el modelo que quieres. Estados Unidos es el origen que más conviene en precio, oferta y arancel; los demás se evalúan caso por caso."
+          />
+          <ul className="mt-10 grid gap-4 lg:grid-cols-3">
+            {ORIGENES.map((o) => (
+              <li key={o.title} className="panel-lux flex items-start gap-4 p-6">
+                <span className="icon-lux">
+                  <Icon name={o.icon} size={22} />
+                </span>
+                <span>
+                  <h3 className="text-base font-semibold text-ink">{o.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-ink-3">{o.text}</p>
                 </span>
               </li>
             ))}

@@ -78,6 +78,19 @@ export const GUIAS: readonly Guia[] = [
     publicada: "2026-11-18",
     actualizada: "2026-11-18",
   },
+  {
+    // "Nacionalizar" es la palabra que usa la gente y que el sitio casi no
+    // decía (estudio del 2026-11-10, sección 10.4). Responde SOLO al costo de
+    // nacionalizar: tributos y trámites, sin flete ni servicio, para no
+    // estorbar a la guía de cuánto cuesta importar.
+    slug: "cuanto-cuesta-nacionalizar-un-auto-en-peru",
+    titulo: "Cuánto cuesta nacionalizar un auto en Perú en {anio}",
+    corto: "Cuánto cuesta nacionalizar un auto",
+    descripcion:
+      "Qué se paga en SUNAT para nacionalizar un vehículo importado: ad valorem, ISC, IGV e IPM en cascada, percepción, costos de aduana y los trámites hasta las placas. Con ejemplo en cifras.",
+    publicada: "2026-11-20",
+    actualizada: "2026-11-20",
+  },
 ];
 
 export function rutaGuia(slug: string): string {

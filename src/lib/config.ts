@@ -240,6 +240,11 @@ export const LUXCARS_CONFIG = {
         "Sí. La gestión documentaria es una línea independiente: nacionalización, homologación ante el MTC, revisión técnica, inscripción registral, placas y transferencia de propiedad. No exigimos que el vehículo haya salido de nuestro stock.",
     },
     {
+      question: "¿Solo importan autos desde Estados Unidos?",
+      answer:
+        "Estados Unidos es el origen habitual y el único que cotiza la calculadora: tiene la mayor oferta de modelos que no llegan a Perú, salida marítima directa al Callao y el acuerdo comercial que deja en 0% el ad valorem de los vehículos nuevos originarios. Pero la importación a pedido no está cerrada a un país: si el auto que quieres está en Canadá, México, Europa, Japón o Corea, evaluamos el caso por separado. Cambian el flete, el tiempo de tránsito y el arancel, y hay que verificar que la unidad cumpla las normas peruanas (timón izquierdo, emisiones, antigüedad). Te decimos si conviene antes de cotizar.",
+    },
+    {
       question: "¿Puedo traer a Perú el auto que ya tengo en Estados Unidos?",
       answer:
         `Sí, si es modelo ${OLDEST_IMPORTABLE_MODEL_YEAR} o más nuevo, no es diésel y no supera el tope de kilometraje: son los mismos requisitos de cualquier usado. Si eres peruano y viviste fuera ${LEY_RETORNO.aniosMinimosFuera} años o más, la Ley del Retorno te libera de los tributos de importación de un vehículo de hasta US$ ${usd(LEY_RETORNO.valorMaximoUsd)}. Nos encargamos del embarque, la aduana y las placas. La guía "Traer tu auto de Estados Unidos a Perú" tiene un filtro que te dice si el tuyo puede entrar.`,

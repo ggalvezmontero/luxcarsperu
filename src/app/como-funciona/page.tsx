@@ -17,7 +17,7 @@ import { BreadcrumbJsonLd } from "@/components/BreadcrumbJsonLd";
 // El <title> sale de la plantilla del layout ("%s | marca"); Open Graph y
 // Twitter repiten exactamente ese texto y la misma descripción. Sin `openGraph`
 // propio la página heredaba og:url y og:title de la home.
-const TITLE = "Cómo funciona la importación paso a paso";
+const TITLE = "Cómo importar un auto a Perú paso a paso";
 const DESCRIPTION =
   "De la búsqueda en EE.UU. a la entrega en Lima: inspección, embarque, nacionalización SUNAT, homologación y placas. El proceso completo.";
 const OG_TITLE = `${TITLE} | ${LUXCARS_CONFIG.brandName}`;
