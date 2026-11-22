@@ -41,8 +41,8 @@ type Props = { params: Promise<{ marca: string }> };
 
 const { contact, brandName } = LUXCARS_CONFIG;
 
-/** Como /comprar: muestra stock, que cambia cuando el dueño publica un auto. */
-export const revalidate = 300;
+/** Como /comprar: muestra stock; el portal regenera estas páginas al publicar. */
+export const revalidate = 3600;
 
 /** Solo existen las marcas de la lista: cualquier otra URL es un 404. */
 export const dynamicParams = false;

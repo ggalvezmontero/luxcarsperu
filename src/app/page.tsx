@@ -16,11 +16,12 @@ import { cotizarEjemplo, tienePaginaPropia } from "@/lib/importExamples/modelo";
 import { getImportExamplesForIsr } from "@/lib/importExamples/servidor";
 
 /**
- * El bloque de stock sale de la base: se vuelve a generar cada cinco minutos
- * para que un auto recién publicado aparezca sin esperar al próximo despliegue.
- * Mismo criterio que /comprar.
+ * El bloque de stock sale de la base: se vuelve a generar cada hora para que
+ * no se congele hasta el próximo despliegue. Un auto recién publicado no espera
+ * esa hora: el portal pide regenerar la portada al guardar
+ * (/api/portal/vehiculos/revalidar). Mismo criterio que /comprar.
  */
-export const revalidate = 300;
+export const revalidate = 3600;
 
 /**
  * HOME — siete bloques, cada uno con una sola idea:

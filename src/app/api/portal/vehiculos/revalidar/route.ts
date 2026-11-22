@@ -4,8 +4,10 @@
  *
  * El portal lo llama tras guardar la ficha, publicar, despublicar, cambiar el
  * estado o el precio. La escritura ya ocurrió (desde el navegador, con RLS);
- * esto solo le avisa a Next que la portada, /comprar, la ficha del auto y el
- * sitemap quedaron viejos. Sin esto, un auto recién publicado tardaba hasta
+ * esto solo le avisa a Next que la portada, /comprar, las páginas de marca, la
+ * ficha del auto y el sitemap quedaron viejos (desde el 2026-11-22 esas páginas
+ * se regeneran solas cada hora, no cada cinco minutos, para gastar menos
+ * compute en Neon). Sin esto, un auto recién publicado tardaba hasta
  * cinco minutos en aparecer en el listado (y la portada, hasta que venciera su
  * caché): pasó el 2026-11-11 con el primer auto en consignación.
  *
@@ -23,6 +25,8 @@ import { verificarSesionPortal } from "@/lib/portal/authServer";
 
 /** Todo lo que lista el stock. */
 const RUTAS = ["/", "/comprar", "/sitemap.xml"] as const;
+/** Las páginas de marca también muestran stock: se regeneran todas de una vez. */
+const RUTA_MARCAS = "/importar/marca/[marca]";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG_RE = /^[a-z0-9-]{1,120}$/;
@@ -44,6 +48,7 @@ export async function POST(request: Request) {
 
   try {
     for (const ruta of RUTAS) revalidatePath(ruta);
+    revalidatePath(RUTA_MARCAS, "page");
     // La ficha se sirve por slug o por id (`/comprar/<slug o id>`): las dos.
     if (slug) revalidatePath(`/comprar/${slug}`);
     if (id) revalidatePath(`/comprar/${id}`);

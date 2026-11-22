@@ -43,14 +43,16 @@ export const metadata: Metadata = {
 /**
  * El stock sale de la base. Sin esto la página se congela con lo que había al
  * momento del build y un auto recién publicado no aparece hasta el siguiente
- * despliegue. Cinco minutos: lo publicado se ve casi enseguida y la base no
- * recibe una consulta por visita.
+ * despliegue. Una hora: la base no recibe una consulta por visita y el compute
+ * de Neon (que se apaga a los 5 min sin uso) no se despierta cada rato. Lo
+ * publicado se ve enseguida porque el portal pide regenerar esta página al
+ * guardar (/api/portal/vehiculos/revalidar); el intervalo es solo el respaldo.
  *
  * Por eso el stock se lee con `getStockForIsr()`: si la base falla durante una
  * revalidación, la página LANZA y Next sigue sirviendo la última versión buena
  * en vez de cachear un listado vacío (ver lib/stock.ts).
  */
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const PROMESAS: { icon: IconName; title: string; text: string }[] = [
   { icon: "mapPin", title: "Está en Lima", text: "Lo ves y lo manejas con cita, sin esperar un barco." },
