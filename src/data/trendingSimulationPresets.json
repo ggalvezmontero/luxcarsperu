@@ -118,5 +118,45 @@
     "vehicleType": "gasolina",
     "priceUsd": 105000,
     "preferredPlan": "fast"
+  },
+  {
+    "id": "tesla-model-y",
+    "brand": "Tesla",
+    "model": "Model Y",
+    "vehicleType": "ev",
+    "priceUsd": 50000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "tesla-model-3",
+    "brand": "Tesla",
+    "model": "Model 3",
+    "vehicleType": "ev",
+    "priceUsd": 47000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "rolls-royce-cullinan",
+    "brand": "Rolls-Royce",
+    "model": "Cullinan",
+    "vehicleType": "gasolina",
+    "priceUsd": 450000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "dodge-charger-daytona",
+    "brand": "Dodge",
+    "model": "Charger Daytona",
+    "vehicleType": "ev",
+    "priceUsd": 68000,
+    "preferredPlan": "fast"
+  },
+  {
+    "id": "aston-martin-vantage",
+    "brand": "Aston Martin",
+    "model": "Vantage",
+    "vehicleType": "gasolina",
+    "priceUsd": 210000,
+    "preferredPlan": "fast"
   }
 ]

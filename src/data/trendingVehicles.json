@@ -411,5 +411,135 @@
     ],
     "imageSrc": null,
     "imageAlt": "RAM 1500 SRT TRX 2026"
+  },
+  {
+    "id": "tesla-model-y",
+    "name": "Tesla Model Y 2026",
+    "detail": "El SUV eléctrico más vendido del mundo, renovado (Juniper). Tesla no tiene representación oficial en Perú: la garantía y el servicio se gestionan fuera del país.",
+    "segment": "SUV · eléctrico",
+    "priceMinUsd": 45000,
+    "priceMaxUsd": 58000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para Model Y 2026 según versión (RWD, Long Range AWD, Performance). Confirmar precio y disponibilidad con el inventario de Tesla.",
+    "assemblyCountry": "Estados Unidos",
+    "assemblyPlant": "Tesla Factory, Fremont, California · Gigafactory Texas, Austin",
+    "adValorem": "candidato-0",
+    "adValoremNote": "Las unidades para el mercado estadounidense salen de Fremont o de Austin. Candidato a 0% con certificado de origen si la unidad es nueva; se confirma por VIN.",
+    "availableInUsDealers": true,
+    "importViability": "importable-con-advertencia",
+    "warnings": [
+      {
+        "kind": "disponibilidad",
+        "title": "Sin servicio oficial en Perú",
+        "detail": "Tesla no opera en Perú. Mantenimiento y garantía dependen de talleres independientes y de repuestos importados. Lo decimos antes de cotizar."
+      },
+      {
+        "kind": "homologacion",
+        "title": "Carga y homologación",
+        "detail": "Se homologa como eléctrico ante el MTC sin ISC. El cargador doméstico y el conector se adaptan a la red peruana; lo incluimos en la cotización."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Tesla Model Y 2026"
+  },
+  {
+    "id": "tesla-model-3",
+    "name": "Tesla Model 3 2026",
+    "detail": "El sedán eléctrico de Tesla renovado (Highland). Entra como eléctrico nuevo: 0% de ISC. Sin representación oficial en Perú.",
+    "segment": "Sedán · eléctrico",
+    "priceMinUsd": 42000,
+    "priceMaxUsd": 56000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para Model 3 2026 según versión (RWD, Long Range, Performance). Confirmar con el inventario de Tesla.",
+    "assemblyCountry": "Estados Unidos",
+    "assemblyPlant": "Tesla Factory, Fremont, California",
+    "adValorem": "candidato-0",
+    "adValoremNote": "El Model 3 para Estados Unidos se ensambla en Fremont. Candidato a 0% con certificado de origen si la unidad es nueva; se confirma por VIN.",
+    "availableInUsDealers": true,
+    "importViability": "importable-con-advertencia",
+    "warnings": [
+      {
+        "kind": "disponibilidad",
+        "title": "Sin servicio oficial en Perú",
+        "detail": "Tesla no opera en Perú. Mantenimiento y garantía dependen de talleres independientes y de repuestos importados."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Tesla Model 3 2026"
+  },
+  {
+    "id": "rolls-royce-cullinan",
+    "name": "Rolls-Royce Cullinan Series II 2026",
+    "detail": "El SUV de Rolls-Royce en su segunda serie. Se fabrica en Goodwood, Reino Unido: paga 6% de ad valorem aunque se compre en Estados Unidos.",
+    "segment": "SUV · gasolina",
+    "priceMinUsd": 420000,
+    "priceMaxUsd": 500000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para Cullinan Series II según equipamiento y bespoke. Cada unidad se cotiza con su configuración real.",
+    "assemblyCountry": "Reino Unido",
+    "assemblyPlant": "Goodwood, West Sussex",
+    "adValorem": "no-califica",
+    "adValoremNote": "Toda la producción de Rolls-Royce sale de Goodwood. No es originario de Estados Unidos: 6% de ad valorem sobre el CIF, sin excepción.",
+    "availableInUsDealers": true,
+    "importViability": "importable-con-advertencia",
+    "warnings": [
+      {
+        "kind": "precio",
+        "title": "Los tributos pesan más que el flete",
+        "detail": "Con 6% de ad valorem, 10% de ISC y 18% de IGV más IPM en cascada, los tributos superan el tercio del precio. La cotización se hace con la unidad exacta."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Rolls-Royce Cullinan Series II 2026"
+  },
+  {
+    "id": "dodge-charger-daytona",
+    "name": "Dodge Charger Daytona 2026",
+    "detail": "El muscle car eléctrico de Dodge, con el Scat Pack de 670 hp. Se ensambla en Windsor, Canadá: no califica al 0%. No se vende en Perú.",
+    "segment": "Coupé · eléctrico",
+    "priceMinUsd": 60000,
+    "priceMaxUsd": 78000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para Charger Daytona R/T y Scat Pack 2026. Confirmar con el dealer.",
+    "assemblyCountry": "Canadá",
+    "assemblyPlant": "Windsor Assembly, Ontario",
+    "adValorem": "no-califica",
+    "adValoremNote": "El Charger de nueva generación se arma solo en Windsor, Ontario. Al ser canadiense paga 6% de ad valorem aunque se compre en un dealer de Estados Unidos.",
+    "availableInUsDealers": true,
+    "importViability": "importable-con-advertencia",
+    "warnings": [
+      {
+        "kind": "origen",
+        "title": "Canadiense, 6% de ad valorem",
+        "detail": "No aplica el acuerdo Perú–EE.UU. Como eléctrico nuevo no paga ISC, lo que compensa en parte."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Dodge Charger Daytona 2026"
+  },
+  {
+    "id": "aston-martin-vantage",
+    "name": "Aston Martin Vantage 2026",
+    "detail": "El deportivo de entrada de Aston Martin con V8 biturbo de 656 hp. Fabricado en Gaydon, Reino Unido: 6% de ad valorem.",
+    "segment": "Deportivo · gasolina",
+    "priceMinUsd": 195000,
+    "priceMaxUsd": 240000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial de mercado para Vantage 2026 coupé y roadster según opciones. Cada unidad se cotiza con su configuración real.",
+    "assemblyCountry": "Reino Unido",
+    "assemblyPlant": "Gaydon, Warwickshire",
+    "adValorem": "no-califica",
+    "adValoremNote": "Aston Martin fabrica el Vantage en Gaydon. No es originario de Estados Unidos: 6% de ad valorem sobre el CIF.",
+    "availableInUsDealers": true,
+    "importViability": "importable-con-advertencia",
+    "warnings": [
+      {
+        "kind": "precio",
+        "title": "Deportivo de alta cilindrada",
+        "detail": "El V8 de 4.0 litros paga el tramo más alto de ISC para gasolina nuevo. La cotización lo refleja; no hay forma de bajarlo."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Aston Martin Vantage 2026"
   }
 ]

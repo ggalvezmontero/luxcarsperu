@@ -59,6 +59,17 @@ const nextConfig: NextConfig = {
         destination: "/calculadora?c=:c",
         permanent: true,
       },
+      /**
+       * Las unidades de demostración (comprar/demo-01…06) se borraron del
+       * stock pero Google las sigue mostrando (Search Console, nov 2026:
+       * impresiones y clics a un 404). Van al catálogo con 308 permanente
+       * para que el índice las reemplace y nadie aterrice en un error.
+       */
+      {
+        source: "/comprar/demo-:resto",
+        destination: "/comprar",
+        permanent: true,
+      },
     ];
   },
   // Permite mover el directorio de build cuando `.next` no es escribible.

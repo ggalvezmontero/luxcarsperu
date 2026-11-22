@@ -38,6 +38,7 @@ import {
   quoteTaxes,
 } from "@/components/cotizacion/QuoteBreakdown";
 import { Badge } from "@/components/ui/Badge";
+import { enSoles, tipoDeCambioUsdPen } from "@/lib/tipoDeCambio";
 import { Icon, WhatsAppIcon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { PRICING_CONFIG, currentYearInLima, oldestImportableModelYear } from "@/core/pricing/pricingConfig";
@@ -148,7 +149,7 @@ const AVISO_ICONO = {
 
 export default async function ModeloPage({ params }: Props) {
   const { modelo } = await params;
-  const datos = await leerModelo(modelo);
+  const [datos, tc] = await Promise.all([leerModelo(modelo), tipoDeCambioUsdPen()]);
   if (!datos) notFound();
 
   const { vehiculo: v, otros } = datos;
@@ -418,6 +419,11 @@ export default async function ModeloPage({ params }: Props) {
                 <div className="mt-6 space-y-4 text-pretty text-base leading-relaxed text-ink-2">
                   <p>
                     Con un precio de compra de <strong className="font-semibold text-ink">{formatCurrency(evaluacion.estimate.input.priceMiami)}</strong> en Estados Unidos, queda en alrededor de <strong className="font-semibold text-ink">{formatCurrency(evaluacion.estimate.finalEstimate)}</strong> puesto en Lima, nacionalizado y con placas.
+                    {tc ? (
+                      <>
+                        {" "}Son unos <strong className="font-semibold text-ink">{enSoles(evaluacion.estimate.finalEstimate, tc)}</strong> al tipo de cambio de hoy ({tc.pen.toFixed(2)} soles por dólar); el estimado se cotiza y se paga en dólares.
+                      </>
+                    ) : null}
                   </p>
                   <p>
                     De ese total, {formatCurrency(quoteTaxes(evaluacion.estimate))} son tributos SUNAT ({formatPercentage(quoteTaxes(evaluacion.estimate) / evaluacion.estimate.finalEstimate)} del costo), {formatCurrency(evaluacion.estimate.freight + evaluacion.estimate.insurance)} son flete marítimo y seguro de Miami al Callao, {formatCurrency(evaluacion.estimate.customsFee)} son costos de aduana, y el resto es el servicio: inspección de la unidad, compra, logística y trámite hasta la entrega.
