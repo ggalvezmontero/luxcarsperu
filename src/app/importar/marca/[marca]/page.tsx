@@ -79,8 +79,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const m = marcaPorSlug(marca);
   if (!m) return { title: "Marca no disponible", robots: { index: false, follow: true } };
 
-  const title = `Importar ${m.nombre} de Estados Unidos a Perú: modelos y arancel`;
-  const description = `${resumen(m)} Mira el detalle por modelo y calcula el costo puesto en Lima.`;
+  // SEO (2026-11-23): en Search Console la gente busca "[marca] perú" y
+  // "[marca] precio perú", no "importar [marca] de Estados Unidos". La frase
+  // va al frente del título y del h1; el origen queda en la descripción.
+  const title = `${m.nombre} en Perú: precio puesto en Lima de cada modelo importado`;
+  const description = `${resumen(m)} Precio en EE.UU. y costo puesto en Lima con placas, modelo por modelo, y la calculadora para el tuyo.`;
   const ogTitle = `${title} | ${brandName}`;
   return {
     title,
@@ -134,8 +137,8 @@ export default async function MarcaPage({ params }: Props) {
     ...(calculados[0]
       ? [
           {
-            pregunta: `¿Cuánto cuesta importar un ${m.nombre} a Perú?`,
-            respuesta: `Depende del modelo y de su precio. Como referencia, ${calculados[0].v.name} con un precio de compra de ${formatCurrency(calculados[0].e.input.priceMiami)} queda en alrededor de ${formatCurrency(calculados[0].e.finalEstimate)} puesto en Lima con placas, con flete, seguro, tributos, aduana y servicio incluidos.`,
+            pregunta: `¿Cuánto cuesta un ${m.nombre} en Perú?`,
+            respuesta: `Depende del modelo y de su precio en Estados Unidos. Como referencia, ${calculados[0].v.name} con un precio de compra de ${formatCurrency(calculados[0].e.input.priceMiami)} queda en alrededor de ${formatCurrency(calculados[0].e.finalEstimate)} puesto en Lima con placas, con flete, seguro, tributos, aduana y servicio incluidos.`,
           },
         ]
       : [
@@ -189,9 +192,11 @@ export default async function MarcaPage({ params }: Props) {
           </nav>
           <div className="mt-6 max-w-3xl">
             <h1>
-              <span className="eyebrow">Importación a pedido por marca</span>{" "}
+              <span className="eyebrow">
+                <Link href="/importar" className="transition-colors hover:text-ink">Importación de autos a pedido</Link>
+              </span>{" "}
               <span className="mt-3 block text-balance text-3xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-4xl lg:text-5xl">
-                Importar {m.nombre} de Estados Unidos a Perú
+                {m.nombre} en Perú: cuánto cuesta cada modelo puesto en Lima
               </span>
             </h1>
             <p className="mt-4 text-pretty text-base leading-relaxed text-ink-2 sm:text-lg">{textoResumen}</p>
@@ -245,7 +250,7 @@ export default async function MarcaPage({ params }: Props) {
         <Section tone="bg">
           <SectionHeader
             eyebrow="Costo puesto en Lima"
-            title={`Cuánto cuesta importar un ${m.nombre}`}
+            title={`Precio de un ${m.nombre} en Perú, puesto en Lima`}
             description={
               calculados.length > 0
                 ? "Modelos ya calculados, con flete, seguro, tributos, aduana y servicio. Toca uno para ver su desglose."
@@ -336,7 +341,7 @@ export default async function MarcaPage({ params }: Props) {
         </Section>
 
         <Section tone="void">
-          <SectionHeader eyebrow="Otras marcas" title="Importar otras marcas a Perú" />
+          <SectionHeader eyebrow="Otras marcas" title="Precios de otras marcas en Perú" />
           <ul className="mt-8 flex flex-wrap gap-2">
             {otras.map((o) => (
               <li key={o.slug}>
@@ -344,7 +349,7 @@ export default async function MarcaPage({ params }: Props) {
                   href={rutaMarca(o.nombre)}
                   className="inline-flex rounded-full border border-line bg-surface px-4 py-2 text-sm text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
                 >
-                  {o.nombre}
+                  {o.nombre} en Perú
                 </Link>
               </li>
             ))}

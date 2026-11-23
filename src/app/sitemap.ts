@@ -84,7 +84,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  // Una página por marca: "importar [marca] de Estados Unidos a Perú".
+  // Una página por marca: "[marca] en Perú" / "[marca] precio Perú".
   const marcas: MetadataRoute.Sitemap = MARCAS_IMPORTABLES.map((m) => ({
     url: `${BASE}${rutaMarca(m.nombre)}`,
     lastModified: ahora,

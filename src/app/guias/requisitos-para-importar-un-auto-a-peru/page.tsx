@@ -132,6 +132,10 @@ export default function Page() {
             respuesta: `Cuatro, todos obligatorios: máximo ${maxVehicleAgeYears} años desde el año modelo, timón izquierdo de fábrica, no superar ${kmM1} km en autos y SUV o ${kmN1} km en camionetas y pickups, y no ser diésel.`,
           },
           {
+            pregunta: "¿Con cuántos años de antigüedad se puede importar un vehículo a Perú?",
+            respuesta: `Un usado entra con máximo ${maxVehicleAgeYears} años contados desde el año modelo: en ${anio}, modelo ${masAntiguo} en adelante. Un vehículo nuevo no tiene límite de antigüedad porque es del año en curso o del anterior.`,
+          },
+          {
             pregunta: "¿Se puede importar una camioneta diésel usada?",
             respuesta: `No, y no hay trámite que lo levante. Diésel nuevo sí: paga ${iscDieselNuevo} de ISC.`,
           },

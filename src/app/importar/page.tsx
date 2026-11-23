@@ -395,8 +395,8 @@ export default function ImportarPage() {
         <Section tone="void" padding="tight">
           <SectionHeader
             eyebrow="Por marca"
-            title="Importar por marca"
-            description="Qué modelos de cada marca se ensamblan en Estados Unidos y cuáles pagan ad valorem."
+            title="Precios por marca en Perú"
+            description="Cuánto cuesta cada modelo puesto en Lima, qué se ensambla en Estados Unidos y cuáles pagan ad valorem."
           />
           <ul className="mt-8 flex flex-wrap gap-2">
             {MARCAS_IMPORTABLES.map((m) => (
@@ -405,7 +405,7 @@ export default function ImportarPage() {
                   href={rutaMarca(m.nombre)}
                   className="inline-flex rounded-full border border-line bg-surface px-4 py-2 text-sm text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
                 >
-                  {m.nombre}
+                  {m.nombre} en Perú
                 </Link>
               </li>
             ))}
