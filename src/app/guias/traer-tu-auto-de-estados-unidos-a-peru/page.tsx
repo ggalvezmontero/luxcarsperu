@@ -16,7 +16,7 @@ import { PRICING_CONFIG, currentYearInLima, oldestImportableModelYear } from "@/
 import { USED_ISC_RATE } from "@/core/pricing/vehicleCategories";
 import { rutaGuia } from "@/lib/guias";
 import { cotizarEscenario, tributos } from "@/lib/guiasDatos";
-import { LEY_RETORNO, topeRecorridoKm } from "@/lib/retorno";
+import { ENLACES_RETORNO, LEY_RETORNO, topeRecorridoKm } from "@/lib/retorno";
 import { formatCurrency, formatNumber, formatPercentage, formatRate } from "@/lib/utils";
 
 const SLUG = "traer-tu-auto-de-estados-unidos-a-peru";
@@ -105,14 +105,52 @@ export default function Page() {
       <Lista
         items={[
           <><Fuerte>Ser peruano</Fuerte> y haber vivido fuera al menos {LEY_RETORNO.aniosMinimosFuera} años seguidos. Las visitas al Perú no cortan el plazo si no pasan de {LEY_RETORNO.diasVisitaPorAnio} días por año.</>,
-          <><Fuerte>Tener la Tarjeta del Migrante Retornado.</Fuerte> La emite el Ministerio de Relaciones Exteriores: en el consulado antes de volver, o en el Perú después de llegar. Es un trámite personal.</>,
-          <><Fuerte>Pedir el beneficio a tiempo.</Fuerte> Hay {LEY_RETORNO.mesesParaSolicitar} meses, contados desde tu ingreso al país si sacaste la tarjeta afuera, o desde su emisión si la sacaste en el Perú.</>,
-          <><Fuerte>Un solo vehículo, de hasta {tope}.</Fuerte> El valor lo determina SUNAT. Si lo valoriza por encima del tope, no hay beneficio parcial: paga como importación regular.</>,
-          <><Fuerte>No transferirlo en {LEY_RETORNO.aniosSinTransferir} años.</Fuerte> Si lo vendes antes, se pagan los tributos que no se pagaron, con intereses.</>,
+          <><Fuerte>Tener la Tarjeta del Migrante Retornado.</Fuerte> La emite el Ministerio de Relaciones Exteriores. Se pide en línea hasta {LEY_RETORNO.diasParaPedirTarjeta} días calendario antes o después de tu ingreso al Perú, y sale en unos {LEY_RETORNO.diasHabilesTarjeta} días hábiles. Es un trámite personal.</>,
+          <><Fuerte>Pedir el beneficio a tiempo.</Fuerte> El beneficio se pide al numerar la declaración de importación, con el auto ya en el Callao, dentro de los {LEY_RETORNO.mesesParaSolicitar} meses desde tu ingreso al país si sacaste la tarjeta afuera, o desde su emisión si la sacaste en el Perú. No hay una aprobación previa: todo se resuelve en aduana.</>,
+          <><Fuerte>Un solo vehículo, de hasta {tope}.</Fuerte> El valor lo determina SUNAT con su tabla de valores referenciales, no la factura. Si lo valoriza por encima del tope, no hay beneficio parcial: paga como importación regular.</>,
+          <><Fuerte>Quedarte en el Perú {LEY_RETORNO.aniosSinTransferir} años y no transferir el auto en ese plazo.</Fuerte> Firmas una declaración jurada de residencia; las salidas de más de {LEY_RETORNO.diasFueraPorAnio} días al año cuentan como incumplimiento. Si vendes el auto antes, se pagan los tributos que no se pagaron, con intereses.</>,
         ]}
       />
       <P>
         El beneficio se usa una sola vez y está vigente hasta el {vigencia}.
+      </P>
+
+      <H2>Cómo sacar la Tarjeta del Migrante Retornado</H2>
+      <P>
+        El trámite es gratuito y se hace en el <Enlace href={ENLACES_RETORNO.portalCancilleria}>Portal de Servicios al Ciudadano</Enlace> de Cancillería: creas tu usuario, eliges &ldquo;Tarjeta de Migrante Retornado&rdquo; y &ldquo;Solicitud TMR&rdquo;, llenas el Formulario R-1 y marcas el beneficio del vehículo. La tarjeta llega a tu correo.
+      </P>
+      <Lista
+        items={[
+          <>Copia simple del DNI vigente.</>,
+          <><Enlace href={ENLACES_RETORNO.declaracionJuradaTarjeta}>Declaración jurada</Enlace> de Cancillería, firmada.</>,
+          <>Formulario R-1, que se llena dentro del portal.</>,
+          <>Una foto reciente tamaño pasaporte, a colores y con fondo blanco, en JPG.</>,
+          <>Si los sellos del pasaporte no bastan para probar los {LEY_RETORNO.aniosMinimosFuera} años fuera: contratos de alquiler, declaraciones de impuestos o planillas del país donde viviste.</>,
+        ]}
+      />
+      <P>
+        Cancillería verifica el tiempo fuera en los registros de Migraciones. Las fichas oficiales son la de <Enlace href={ENLACES_RETORNO.tarjetaExtranjero}>quien todavía está en el extranjero</Enlace> y la de <Enlace href={ENLACES_RETORNO.tarjetaPeru}>quien ya volvió al Perú</Enlace>. Conviene pedirla antes de viajar: así el auto puede zarpar mientras tú cierras tus cosas allá.
+      </P>
+
+      <H2>Documentos adicionales del migrante retornado</H2>
+      <P>
+        Son los papeles que el agente de aduana presenta junto con la declaración de importación, además de los de cualquier usado. Con ellos SUNAT decide en el mismo despacho si el auto sale sin tributos.
+      </P>
+      <Lista
+        items={[
+          <>Copia de la <Fuerte>Tarjeta del Migrante Retornado</Fuerte>.</>,
+          <>Certificado de <Enlace href={ENLACES_RETORNO.movimientoMigratorio}>movimiento migratorio</Enlace> de Migraciones con tu fecha de ingreso, si la tarjeta la emitió un consulado. Se descarga en línea al instante.</>,
+          <>Declaración jurada del <Enlace href={ENLACES_RETORNO.anexo1}>Anexo 1</Enlace>: propiedad del auto, residencia en el Perú por {LEY_RETORNO.aniosSinTransferir} años y compromiso de no transferirlo.</>,
+          <>Lista valorizada del <Enlace href={ENLACES_RETORNO.anexo2}>Anexo 2</Enlace>, donde va el vehículo con marca, modelo, año, VIN y valor, con la factura o contrato de compra como sustento.</>,
+          <>Título de propiedad del auto.</>,
+          <>Todos los documentos a nombre del migrante retornado: tarjeta, título, factura y conocimiento de embarque.</>,
+        ]}
+      />
+      <Aviso titulo="El beneficio se decide con el auto en el puerto">
+        SUNAT no emite una aprobación antes del embarque: revisa la tarjeta, el plazo y el valor cuando el agente numera la declaración, y tú ya tienes que haber ingresado al Perú. Por eso, antes de mover el auto, confirmamos tres cosas: que tienes la tarjeta, que el auto está dentro de los {tope} en la tabla de SUNAT y que el título está a tu nombre. Con eso cerrado, el riesgo en aduana es mínimo.
+      </Aviso>
+      <P>
+        La página oficial del beneficio es la de <Enlace href={ENLACES_RETORNO.sunatRetorno}>SUNAT para quien retorna al Perú</Enlace>.
       </P>
 
       <H2>Si no calificas a la ley: importación regular</H2>
@@ -144,17 +182,21 @@ export default function Page() {
       </P>
       <H3>2. Sacas la Tarjeta del Migrante Retornado</H3>
       <P>
-        Solo si vas por la Ley del Retorno. La tramitas tú; nosotros te decimos qué documentos del auto vas a necesitar.
+        Solo si vas por la Ley del Retorno. La tramitas tú en el portal de Cancillería, hasta {LEY_RETORNO.diasParaPedirTarjeta} días antes o después de volver; nosotros revisamos que el auto esté dentro del tope en la tabla de SUNAT y armamos la lista de documentos.
       </P>
-      <H3>3. Recojo y embarque en Estados Unidos</H3>
+      <H3>3. Inspección de la entidad verificadora</H3>
       <P>
-        El auto viaja al puerto con su título de propiedad a tu nombre, se presenta a la aduana de Estados Unidos y se embarca al Callao.
+        Antes de embarcar, una entidad autorizada por el MTC revisa el auto en Estados Unidos y emite el reporte de inspección que exige todo usado: requisitos técnicos y límites de emisiones. Sin ese reporte la aduana no numera la declaración. Los requisitos están en la página de <Enlace href={ENLACES_RETORNO.sunatUsados}>SUNAT para vehículos usados</Enlace>.
       </P>
-      <H3>4. Nacionalización ante SUNAT</H3>
+      <H3>4. Recojo y embarque en Estados Unidos</H3>
       <P>
-        Un agente de aduana presenta la declaración. Con la Ley del Retorno se acompaña tu tarjeta, la declaración jurada y el documento de propiedad; sin ella, se pagan los tributos.
+        El auto viaja al puerto con su título de propiedad a tu nombre, se presenta a la aduana de Estados Unidos y se embarca al Callao. El conocimiento de embarque sale a tu nombre. Coordinamos el zarpe para que el auto llegue unos días después de tu ingreso al Perú.
       </P>
-      <H3>5. Homologación, inscripción y placas</H3>
+      <H3>5. Nacionalización ante SUNAT</H3>
+      <P>
+        Ya en el Perú, descargas tu certificado de movimiento migratorio. Un agente de aduana numera la declaración con tu tarjeta, los Anexos 1 y 2, el título, el reporte de la verificadora y la ficha técnica de importación firmada por un ingeniero. Con la Ley del Retorno el auto sale sin tributos; sin ella, se pagan.
+      </P>
+      <H3>6. Homologación, inscripción y placas</H3>
       <P>
         Igual que cualquier importado: se acredita ante el MTC que cumple el reglamento peruano, se inscribe en el registro vehicular y recibe sus placas.
       </P>
@@ -191,7 +233,7 @@ export default function Page() {
         ]}
       />
       <P className="text-sm text-ink-4">
-        Requisitos de la Ley del Retorno revisados contra SUNAT el {fechaLarga(LEY_RETORNO.verificada)}. El valor del vehículo y la procedencia del beneficio los determina SUNAT en cada caso.
+        Requisitos de la Ley del Retorno revisados contra SUNAT y Cancillería el {fechaLarga(LEY_RETORNO.verificada)}. El valor del vehículo y la procedencia del beneficio los determina SUNAT en cada caso.
       </P>
     </GuiaLayout>
   );

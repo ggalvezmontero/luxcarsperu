@@ -186,8 +186,17 @@ export function Fuerte({ children }: { children: ReactNode }) {
 }
 
 export function Enlace({ href, children }: { href: string; children: ReactNode }) {
+  const className = "font-semibold text-ink underline underline-offset-4 hover:text-silver-bright";
+  // Los enlaces a gob.pe y SUNAT abren aparte: el lector vuelve a la guía.
+  if (/^https?:\/\//.test(href)) {
+    return (
+      <a href={href} className={className} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    );
+  }
   return (
-    <Link href={href} className="font-semibold text-ink underline underline-offset-4 hover:text-silver-bright">
+    <Link href={href} className={className}>
       {children}
     </Link>
   );

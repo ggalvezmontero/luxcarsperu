@@ -76,7 +76,7 @@ export const GUIAS: readonly Guia[] = [
     descripcion:
       "Si vuelves a Perú después de vivir en Estados Unidos, puedes traer tu auto sin tributos de importación. Quién califica, qué exige el vehículo y cuánto cuesta el envío.",
     publicada: "2026-11-18",
-    actualizada: "2026-11-18",
+    actualizada: "2026-11-23",
   },
   {
     // "Nacionalizar" es la palabra que usa la gente y que el sitio casi no
