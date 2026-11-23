@@ -271,7 +271,9 @@ export default async function ModeloPage({ params }: Props) {
 
           <div className="mt-6 grid gap-8 lg:grid-cols-12 lg:gap-10">
             <div className="lg:col-span-7">
-              <p className="eyebrow">Importación a pedido</p>
+              <p className="eyebrow">
+                <Link href="/importar" className="transition-colors hover:text-ink">Importación de autos a pedido</Link>
+              </p>
               <h1 className="mt-3 text-balance text-3xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-4xl lg:text-5xl">
                 Importar {nombreConArticulo} a Perú
               </h1>
@@ -593,7 +595,7 @@ export default async function ModeloPage({ params }: Props) {
               description="Cada uno con su precio en Estados Unidos y el costo final puesto en Lima."
               action={
                 <Button href="/importar" variant="secondary">
-                  Cómo importamos
+                  Importación de autos a pedido
                   <Icon name="arrowRight" size={16} />
                 </Button>
               }

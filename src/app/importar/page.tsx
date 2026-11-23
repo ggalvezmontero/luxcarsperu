@@ -13,6 +13,7 @@ import { Section, SectionHeader } from "@/components/ui/Section";
 import Link from "next/link";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { rutaGuia } from "@/lib/guias";
+import { casoDePortada } from "@/lib/importExamples/casoPortada";
 import { MARCAS_IMPORTABLES, rutaMarca } from "@/lib/importExamples/marca";
 import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
 import { ORGANIZATION_ID } from "@/lib/structuredData";
@@ -49,20 +50,42 @@ const OG_DESCRIPTION =
  */
 export const revalidate = 86400;
 
-export const metadata: Metadata = {
-  title: TITULO_SEO,
-  description:
-    "Importación de autos a pedido desde Estados Unidos a Perú: elige el auto o camioneta, lo compramos, inspeccionamos, nacionalizamos y entregamos en Lima con placas.",
-  alternates: { canonical: "/importar" },
-  openGraph: {
-    ...OG_DEFAULTS,
-    type: "article",
-    url: `${contact.website}/importar`,
-    title: OG_TITLE,
-    description: OG_DESCRIPTION,
-  },
-  twitter: twitterCard(OG_TITLE, OG_DESCRIPTION),
-};
+/**
+ * Última revisión del contenido de esta página. Se escribe a mano al cambiar
+ * el texto, igual que `actualizada` en las guías: Google muestra la fecha en
+ * el resultado y, en una búsqueda con poca competencia, la página con fecha
+ * reciente y una cifra en el fragmento gana a la que no las tiene.
+ */
+const ACTUALIZADA = "2026-11-23";
+
+const DESCRIPCION_BASE =
+  "Importación de autos a pedido desde Estados Unidos a Perú: elige el auto o camioneta, lo compramos, inspeccionamos, nacionalizamos y entregamos en Lima con placas.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  // La cifra del caso real va al fragmento de Google: la gente busca un número.
+  const caso = await casoDePortada();
+  const description = caso
+    ? `${DESCRIPCION_BASE} Ejemplo real: ${caso.v.name} de ${formatCurrency(caso.e.input.priceMiami)} en EE.UU. sale ${formatCurrency(caso.e.finalEstimate)} puesto en Lima.`
+    : DESCRIPCION_BASE;
+  return {
+    title: TITULO_SEO,
+    description,
+    alternates: { canonical: "/importar" },
+    openGraph: {
+      ...OG_DEFAULTS,
+      type: "article",
+      url: `${contact.website}/importar`,
+      title: OG_TITLE,
+      description: OG_DESCRIPTION,
+      modifiedTime: ACTUALIZADA,
+    },
+    twitter: twitterCard(OG_TITLE, OG_DESCRIPTION),
+  };
+}
+
+function fechaLarga(iso: string): string {
+  return new Date(`${iso}T12:00:00-05:00`).toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
+}
 
 const REGLAS: { icon: IconName; title: string; text: string }[] = [
   {
@@ -207,10 +230,20 @@ export default function ImportarPage() {
     // dos AutoDealer con datos distintos confunden a Google sobre cuál vale.
     provider: { "@id": ORGANIZATION_ID },
   };
+  const paginaLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${contact.website}/importar#pagina`,
+    url: `${contact.website}/importar`,
+    name: TITULO_SEO,
+    inLanguage: "es-PE",
+    dateModified: ACTUALIZADA,
+    about: { "@id": ORGANIZATION_ID },
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify([jsonLd, paginaLd]) }} />
       <BreadcrumbJsonLd items={[{ nombre: "Importar", ruta: "/importar" }]} />
       <Navbar />
       <main id="contenido" className="w-full flex-1">
@@ -240,6 +273,9 @@ export default function ImportarPage() {
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
               Elige el auto o la camioneta, nuevo o seminuevo, en cualquier estado de EE.UU. Lo inspeccionamos antes de pagar y te lo entregamos en Lima con placas.
+            </p>
+            <p className="mt-3 text-xs text-ink-4">
+              Actualizada el {fechaLarga(ACTUALIZADA)} · Tasas y costos vigentes, los mismos que aplica la calculadora
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button href="/calculadora" variant="accent" size="lg" data-ga-cta="importar_portada_calculadora">

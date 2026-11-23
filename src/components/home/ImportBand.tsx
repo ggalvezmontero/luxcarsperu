@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { FOTOS_PROCESO, type FotoProceso } from "@/lib/fotosProceso";
 import { Button } from "../Button";
 import { CreditoFoto } from "../CreditoFoto";
@@ -81,6 +82,13 @@ export function ImportBand() {
           </li>
         ))}
       </ol>
+      <p className="mt-8 max-w-3xl text-sm leading-relaxed text-ink-3 sm:text-base">
+        Este es nuestro servicio de{" "}
+        <Link href="/importar" className="font-medium text-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-silver">
+          importación de autos a pedido
+        </Link>
+        : tú eliges el modelo, nosotros lo compramos, lo traemos y te lo entregamos con placas.
+      </p>
     </Section>
   );
 }

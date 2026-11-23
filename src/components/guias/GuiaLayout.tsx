@@ -120,6 +120,13 @@ export function GuiaLayout({
               </div>
 
               <div className="mt-4">{children}</div>
+              <p className="mt-10 border-t border-line pt-6 text-sm leading-relaxed text-ink-3">
+                Si prefieres que lo hagamos por ti, mira cómo funciona nuestra{" "}
+                <Link href="/importar" className="font-medium text-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-silver">
+                  importación de autos a pedido
+                </Link>
+                : elegimos el auto contigo, lo compramos en Estados Unidos y lo entregamos en Lima con placas.
+              </p>
             </div>
           </div>
         </article>

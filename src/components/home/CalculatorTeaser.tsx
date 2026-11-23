@@ -51,7 +51,7 @@ export function CalculatorTeaser({
               Abrir la calculadora
             </Button>
             <Button href="/importar" variant="secondary" size="lg" data-ga-cta="portada_calculadora_importar">
-              Cómo importamos
+              Importación de autos a pedido
             </Button>
           </div>
         </div>

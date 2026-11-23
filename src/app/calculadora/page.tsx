@@ -382,7 +382,7 @@ export default async function CalculadoraPage() {
             <div className="lg:col-span-4">
               <SectionHeader eyebrow="Dudas comunes" title="Preguntas sobre la calculadora" />
               <Button href="/importar" variant="secondary" className="mt-6">
-                Cómo importamos
+                Importación de autos a pedido
                 <Icon name="arrowRight" size={16} />
               </Button>
             </div>

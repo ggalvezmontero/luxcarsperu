@@ -1,8 +1,7 @@
 import Image from "next/image";
 
-import { currentYearInLima } from "@/core/pricing/pricingConfig";
-import { cotizarEjemplo, rutaModelo, tienePaginaPropia } from "@/lib/importExamples/modelo";
-import { getImportExamplesForIsr } from "@/lib/importExamples/servidor";
+import { casoDePortada } from "@/lib/importExamples/casoPortada";
+import { rutaModelo } from "@/lib/importExamples/modelo";
 import { formatCurrency, formatRate } from "@/lib/utils";
 
 import { Button } from "../Button";
@@ -16,19 +15,11 @@ import { Section, SectionHeader } from "../ui/Section";
  * con un auto concreto y no con cuatro porcentajes: de qué se compone el
  * costo puesto en Lima, en una barra, con los montos al lado.
  *
- * El auto es el primer ejemplo cotizable de la lista del dueño (la misma que
- * pinta "los más pedidos"); si no hay ninguno, el bloque no se pinta.
+ * El auto lo elige `casoDePortada` (el mismo que va en la descripción de la
+ * página para Google); si no hay ninguno, el bloque no se pinta.
  */
 export async function EjemploReal() {
-  const { vehiculos } = await getImportExamplesForIsr();
-  const anio = currentYearInLima();
-  // Primero un ejemplo sin advertencias y con foto: el caso de portada no
-  // puede ser un auto "con aviso". Si no hay ninguno, el primero cotizable.
-  const cotizables = vehiculos
-    .filter(tienePaginaPropia)
-    .map((v) => ({ v, r: cotizarEjemplo(v, anio) }))
-    .flatMap(({ v, r }) => (r.kind === "ready" ? [{ v, e: r.estimate }] : []));
-  const caso = cotizables.find(({ v }) => v.importViability === "importable" && v.imageSrc) ?? cotizables[0];
+  const caso = await casoDePortada();
   if (!caso) return null;
   const { v, e } = caso;
 
