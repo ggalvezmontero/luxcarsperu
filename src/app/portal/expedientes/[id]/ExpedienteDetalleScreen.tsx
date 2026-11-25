@@ -10,6 +10,7 @@
  * falta, qué tareas nacen, qué alertas hay) las calcula el core al leer.
  */
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { Notice, PortalPanel } from "@/components/portal/CrmUI";
@@ -20,7 +21,7 @@ import { alertas as calcularAlertas } from "@/core/expedientes/alertas";
 import { siguienteTarea } from "@/core/expedientes/avance";
 import { esEtapaTerminal } from "@/core/expedientes/etapas";
 import type { ContextoExpediente, Evento, NotificacionRegistrada } from "@/core/expedientes/tipos";
-import { cargarExpediente, listarEventos, listarNotificaciones } from "@/lib/expedientes/consultas";
+import { cargarExpediente, cargarSolicitudOrigen, listarEventos, listarNotificaciones, type SolicitudOrigen } from "@/lib/expedientes/consultas";
 import { RESPONSABLE_LABEL, autoDe, diasDesde, fecha } from "@/lib/expedientes/formato";
 import { AvanzarPanel } from "./AvanzarPanel";
 import { AvisarPanel } from "./AvisarPanel";
@@ -53,6 +54,7 @@ export function ExpedienteDetalleScreen({ id }: { id: string }) {
   const [ctx, setCtx] = useState<ContextoExpediente | null>(null);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [notificaciones, setNotificaciones] = useState<NotificacionRegistrada[]>([]);
+  const [origen, setOrigen] = useState<SolicitudOrigen | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<Flash>(null);
@@ -70,6 +72,7 @@ export function ExpedienteDetalleScreen({ id }: { id: string }) {
     setCtx(r.ctx);
     setEventos(ev.eventos);
     setNotificaciones(nt.notificaciones);
+    setOrigen(r.ctx?.expediente.origenSolicitudId ? await cargarSolicitudOrigen(client, r.ctx.expediente.origenSolicitudId) : null);
     setError(r.error ?? ev.error);
     setLoading(false);
   }, [client, canQuery, id]);
@@ -126,6 +129,16 @@ export function ExpedienteDetalleScreen({ id }: { id: string }) {
             {ctx.cliente?.razonSocial ?? "Sin cliente"}
             {e.vehiculo.vin ? <span className="font-mono text-ink-4"> · VIN {e.vehiculo.vin}</span> : null}
           </p>
+          {e.origenSolicitudId ? (
+            <p className="mt-1 text-xs text-ink-4">
+              Origen:{" "}
+              <Link href="/portal/solicitudes" className="text-ink-3 underline-offset-4 hover:text-ink hover:underline">
+                solicitud de compra{origen ? ` del ${fecha(origen.createdAt)}` : ""}
+              </Link>
+              {origen?.nombre ? ` · ${origen.nombre}` : ""}
+              {origen ? ` · ${origen.marca} ${origen.modelo}` : ""}
+            </p>
+          ) : null}
           {siguiente ? (
             <p className="mt-3 text-sm text-ink-2">
               <span className="text-[11px] uppercase tracking-[0.12em] text-ink-4">Siguiente paso · {RESPONSABLE_LABEL[siguiente.responsable]}</span>

@@ -41,6 +41,7 @@ import { CATEGORY_LABEL } from "@/lib/stockLabels";
 import { listarFotosDeSolicitud, type FotoDeSolicitud } from "@/lib/cuenta/fotosSolicitud";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { normalizePhoneForWhatsapp } from "@/lib/whatsappPortal";
+import { listarExpedientesPorSolicitud, type ExpedienteDeSolicitud } from "@/lib/expedientes/consultas";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -110,6 +111,7 @@ export function SolicitudesScreen() {
   const { status: sessionStatus, client } = usePortalSession();
   const [sales, setSales] = useState<AdminSaleRequest[]>([]);
   const [purchases, setPurchases] = useState<AdminPurchaseRequest[]>([]);
+  const [expedientes, setExpedientes] = useState<Map<string, ExpedienteDeSolicitud>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ ok: boolean; text: string } | null>(null);
@@ -125,9 +127,10 @@ export function SolicitudesScreen() {
       return;
     }
     setLoading(true);
-    const [s, p] = await Promise.all([fetchSaleRequests(client), fetchPurchaseRequests(client)]);
+    const [s, p, ex] = await Promise.all([fetchSaleRequests(client), fetchPurchaseRequests(client), listarExpedientesPorSolicitud(client)]);
     setSales(s.requests);
     setPurchases(p.requests);
+    setExpedientes(ex);
     setError(s.error ?? p.error);
     setLoading(false);
   }, [client, canQuery]);
@@ -232,7 +235,7 @@ export function SolicitudesScreen() {
           )}
         </PortalPanel>
       ) : (
-        <PortalPanel title="Pedidos de búsqueda" description="La respuesta que escribas la ve el cliente en su cuenta. Lo demás, por WhatsApp.">
+        <PortalPanel title="Pedidos de búsqueda" description="La respuesta que escribas la ve el cliente en su cuenta. «Crear expediente» abre la importación a pedido con el auto y el cliente precargados; al crearla, el pedido queda cerrado con la respuesta puesta.">
           {loading ? (
             <p className="px-5 py-10 text-sm text-ink-3">Cargando…</p>
           ) : purchases.length === 0 ? (
@@ -255,7 +258,7 @@ export function SolicitudesScreen() {
                 </thead>
                 <tbody className="divide-y divide-line">
                   {purchases.map((p) => (
-                    <PurchaseRow key={p.id} request={p} onUpdate={(input) => client && updatePurchaseRequest(client, input).then(notify)} />
+                    <PurchaseRow key={p.id} request={p} expediente={expedientes.get(p.id) ?? null} onUpdate={(input) => client && updatePurchaseRequest(client, input).then(notify)} />
                   ))}
                 </tbody>
               </table>
@@ -492,11 +495,17 @@ function SaleRow({
   );
 }
 
+/** Estados desde los que todavía tiene sentido abrir un expediente. */
+const ABIERTAS: readonly PurchaseRequestStatus[] = ["nueva", "en_busqueda", "propuesta_enviada"];
+
 function PurchaseRow({
   request: p,
+  expediente,
   onUpdate,
 }: {
   request: AdminPurchaseRequest;
+  /** Expediente que ya salió de esta solicitud, si existe. */
+  expediente: ExpedienteDeSolicitud | null;
   onUpdate: (input: { id: string; status: PurchaseRequestStatus; reply: string | null }) => void;
 }) {
   const [status, setStatus] = useState<PurchaseRequestStatus>(p.status);
@@ -530,8 +539,18 @@ function PurchaseRow({
       </Td>
       <Td>
         <Badge tone={PURCHASE_TONE[p.status]}>{PURCHASE_STATUS_LABEL[p.status]}</Badge>
+        {expediente ? (
+          <Link href={`/portal/expedientes/${expediente.id}`} className="mt-2 block font-mono text-xs text-silver underline-offset-4 hover:underline">
+            Expediente {expediente.codigo}
+          </Link>
+        ) : null}
       </Td>
       <Td>
+        {!expediente && ABIERTAS.includes(p.status) ? (
+          <div className="mb-3">
+            <Button size="sm" href={`/portal/expedientes/nuevo?solicitud=${encodeURIComponent(p.id)}`}>Crear expediente</Button>
+          </div>
+        ) : null}
         <form
           className="flex w-64 flex-col gap-2"
           onSubmit={async (e) => {

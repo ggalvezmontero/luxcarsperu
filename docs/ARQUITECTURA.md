@@ -458,6 +458,97 @@ todo admin ve todo. Si hiciera falta un rol intermedio, se agrega al enum y a
 
 ---
 
+## 6b. Módulo de expedientes de importación (`/portal/expedientes`, `/cuenta/importaciones`)
+
+Cada importación a pedido es un **expediente**: un cliente, un auto, un mandato
+y once etapas (`prospecto` → `contrato` → `busqueda` → `compra` → `embarque` →
+`transito` → `aduana` → `placas` → `entrega` → `cerrado`, más `cancelado`
+terminal desde cualquiera). Las reglas (compuertas de cada etapa, tareas
+plantilla, hitos H1–H4, libro, alertas, métricas, registro UIF) viven SOLO en
+`src/core/expedientes/` (TypeScript puro, con vitest); las funciones SQL hacen
+la transacción y la UI pinta. Diseño completo en
+`docs/operaciones/portal-expedientes-diseno-2026-11-24.md` (carpeta ignorada
+por git; el repo es público).
+
+**Tablas** (migraciones `20261125090000` a `20261125210000`): `clientes`
+(KYC, vínculo `user_id` con la cuenta por correo), `contrapartes` (vendedores,
+forwarders, agentes; `datos_bancarios` + verificación telefónica), `embarques`
+(contenedor compartido, reparto de flete), `expedientes` + `expedientes_reservado`
+(precio tope, TC, contrapartes y notas: solo equipo), `expediente_etapas`
+(historial), `expediente_tareas`, `expediente_hitos`, `expediente_movimientos`
+(el libro: depósito/pago/devolución/ajuste × fondos_clientes/operaciones/
+detracciones × por_confirmar/confirmado/anulado), `expediente_documentos`
+(versionados; la ruta del objeto, nunca una URL), `expediente_eventos`,
+`expediente_aprobaciones` (acciones del cliente) y `notificaciones`.
+
+**Seguridad.** RLS en todo. El equipo lee y escribe desde el navegador con su
+sesión: políticas `(select es_admin())` (el sub-select importa: sin él Postgres
+evalúa la función por fila; medido en la fase 5, 12,5 ms → 0,4 ms sobre el
+historial de etapas). El cliente **no lee ninguna tabla base**: solo las vistas
+`expediente_cliente`, `expediente_etapa_cliente`, `expediente_tarea_cliente`,
+`expediente_hito_cliente`, `expediente_evento_cliente`,
+`expediente_documento_cliente`, `expediente_movimiento_cliente`,
+`expediente_aprobacion_cliente` y `embarque_cliente`, que filtran por
+`cliente_id in (select … from clientes where user_id = auth.uid())`, ocultan
+prospectos, notas internas, rutas de archivo y anulados. Las vistas corren como
+su dueño, por eso la sub-consulta a `clientes` no pasa por RLS (misma garantía
+que daba `es_dueno_expediente()`, que sigue existiendo para las RPC).
+
+**RPC** (Data API): `crear_expediente(p_datos jsonb)`, `avanzar_expediente`
+(fija `cerrado_en` al cerrar o cancelar), `completar_tarea`,
+`vincular_cliente_cuenta`, `registrar_movimiento`, `registrar_documento`,
+`marcar_documento_firmado`, `registrar_zarpe_arribo`, `fijar_reparto_flete`,
+`verificar_banco_contraparte` (SECURITY INVOKER con `uid_sesion()`: aceptan al
+admin por la Data API o al servidor), y `cliente_accion_expediente` (DEFINER,
+valida propiedad; aprobar inspección, elegir consolidado, declarar depósito con
+comprobante, conformidad de la rendición). Trigger
+`expedientes_cerrar_solicitud`: al abrir un expediente desde una
+`solicitudes_compra`, la solicitud queda `cerrada` con la respuesta visible al
+cliente apuntando al código.
+
+**Archivos**: bucket privado `expedientes` (ver arriba), URLs firmadas de cinco
+minutos, descargas por `/api/portal/expedientes/archivos` (equipo) y
+`/api/cuenta/expedientes/archivos` (cliente). Generación de PDF/DOCX en
+`POST /api/portal/expedientes/[id]/documentos`; libro en
+`POST /api/portal/expedientes/[id]/movimientos` (confirmar un depósito emite
+la constancia); avisos en `POST /api/portal/expedientes/[id]/notificaciones`
+(correo por Resend o enlace de WhatsApp; cada envío queda en `notificaciones`).
+
+**Pantallas del equipo**: `/portal/expedientes` (tablero por etapa; filtros por
+etapa, año y cliente; búsqueda por código, VIN o cliente; "Ver archivo" lee los
+cerrados y cancelados por año de cierre), `/nuevo` (asistente; `?solicitud=`
+precarga marca, modelo, años, condición, presupuesto, notas y cliente desde
+`/portal/solicitudes`), `/[id]` (pestañas Resumen, Cliente, Vehículo, Dinero,
+Documentos, Embarque, Etapas y tareas, Actividad), `/cumplimiento` (Registro
+de Operaciones para la UIF: individuales ≥ USD 10,000 y acumulado mensual por
+cliente ≥ USD 50,000, umbrales parametrizados en `core/expedientes/uif.ts`;
+CSV con BOM y `;` desde `GET /api/portal/expedientes/uif`), `/metricas`
+(expedientes por mes y etapa, días por etapa, dinero en custodia, hitos
+vencidos, próximos arribos; `core/expedientes/metricas.ts`), `/portal/embarques`,
+`/portal/contrapartes`, `/portal/clientes`. Del cliente: tarjeta en `/cuenta` y
+`/cuenta/importaciones/[codigo]`.
+
+**Cron**: `GET /api/cron/expedientes` con `Authorization: Bearer $CRON_SECRET`
+(`vercel.json`, una vez al día): alertas del core + depósitos por confirmar +
+embarques incompletos, un correo al equipo. Nunca escribe a clientes.
+
+**Variables de servidor**: `LUXCARS_DOCUMENTOS_JSON` (datos fijos de la
+empresa que van en los documentos: RUC, partida, cuentas; no están en el repo),
+`RESEND_API_KEY` (sin ella los correos quedan `fallida` con el motivo),
+`CRON_SECRET`, `NEON_STORAGE_*` (alcanza los dos buckets), opcional
+`AVISOS_EMAIL`. Ver `.env.example`.
+
+**Índices que se midieron** (migración `20261125210000_expedientes_cierre.sql`,
+comentarios con cifras): `expedientes_activos_idx` (parcial, tablero y cron),
+`expedientes_cerrado_en_idx` (archivo y cierres por mes),
+`expedientes_origen_solicitud_idx`, `expediente_movimientos_fecha_idx` (rango
+de fechas para la UIF). Las lecturas de métricas van por la Data API con la
+sesión (cuatro consultas planas; con miles de filas siguen bajo el milisegundo):
+no hay vista agregada a propósito, para que "días por etapa" tenga una sola
+implementación probada.
+
+---
+
 ## 7. Sistema de diseño
 
 Tokens en `src/app/globals.css`: `bg-bg` `bg-surface` `bg-surface-2`

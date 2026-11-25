@@ -19,10 +19,14 @@ import type {
   Embarque,
   EtapaExpediente,
   Evento,
+  Hito,
   Movimiento,
   NotificacionRegistrada,
   TareaNueva,
+  TramoEtapa,
 } from "@/core/expedientes/tipos";
+import type { ExpedienteMetrica } from "@/core/expedientes/metricas";
+import type { FilaRegistroUif, UmbralesUif } from "@/core/expedientes/uif";
 import type { DatosNotificacion, PlantillaNotificacion } from "@/core/expedientes/notificaciones";
 import type { LineaReparto } from "@/core/expedientes/embarques";
 import type {
@@ -1114,4 +1118,164 @@ export async function enviarNotificacion(input: { expedienteId: string; plantill
   } catch {
     return { ok: false, message: MSG_RED };
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Fase 5: archivo, solicitudes, métricas y cumplimiento                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Expedientes cerrados o cancelados, del cierre más reciente al más antiguo.
+ * `anio` filtra por el año de `cerrado_en` (índice parcial
+ * `expedientes_cerrado_en_idx`). Misma forma que `listarExpedientes` para que
+ * el tablero pinte las dos listas con el mismo componente.
+ */
+export async function listarExpedientesArchivo(
+  client: PortalClient,
+  opciones: { anio?: number | null } = {},
+): Promise<{ expedientes: ContextoExpediente[]; error: string | null }> {
+  try {
+    let query = client
+      .from("expedientes")
+      .select(EMBED_TABLERO)
+      .in("etapa", ["cerrado", "cancelado"])
+      .order("cerrado_en", { ascending: false, nullsFirst: false })
+      .limit(200);
+    if (opciones.anio) {
+      query = query.gte("cerrado_en", `${opciones.anio}-01-01`).lt("cerrado_en", `${opciones.anio + 1}-01-01`);
+    }
+    const { data, error } = await query;
+    if (error) return { expedientes: [], error: `No se pudo leer el archivo. ${MSG_MIGRACION} (${error.message})` };
+    return { expedientes: ((data ?? []) as unknown as Embebido[]).map(aContexto), error: null };
+  } catch {
+    return { expedientes: [], error: "No se pudo leer el archivo. Revisa tu conexión." };
+  }
+}
+
+export type ExpedienteDeSolicitud = { id: string; codigo: string; etapa: EtapaExpediente };
+
+/** Qué expediente salió de cada solicitud de compra (índice `expedientes_origen_solicitud_idx`). */
+export async function listarExpedientesPorSolicitud(client: PortalClient): Promise<Map<string, ExpedienteDeSolicitud>> {
+  try {
+    const { data, error } = await client
+      .from("expedientes")
+      .select("id, codigo, etapa, origen_solicitud_id")
+      .not("origen_solicitud_id", "is", null)
+      .limit(500);
+    if (error) return new Map();
+    const mapa = new Map<string, ExpedienteDeSolicitud>();
+    for (const r of (data ?? []) as unknown as Pick<ExpedienteRow, "id" | "codigo" | "etapa" | "origen_solicitud_id">[]) {
+      if (r.origen_solicitud_id) mapa.set(r.origen_solicitud_id, { id: r.id, codigo: r.codigo, etapa: r.etapa as EtapaExpediente });
+    }
+    return mapa;
+  } catch {
+    return new Map();
+  }
+}
+
+export type SolicitudOrigen = { id: string; createdAt: string; marca: string; modelo: string; estado: string; nombre: string | null };
+
+/** La solicitud de compra que dio origen a un expediente (para "Origen: solicitud del …"). */
+export async function cargarSolicitudOrigen(client: PortalClient, id: string): Promise<SolicitudOrigen | null> {
+  try {
+    const { data, error } = await client
+      .from("solicitudes_compra")
+      .select("id, created_at, marca, modelo, estado, profiles:user_id ( nombre, email )")
+      .eq("id", id)
+      .maybeSingle();
+    if (error || !data) return null;
+    const r = data as unknown as { id: string; created_at: string; marca: string; modelo: string; estado: string; profiles?: { nombre: string | null; email: string | null } | { nombre: string | null; email: string | null }[] | null };
+    const p = uno(r.profiles);
+    return { id: r.id, createdAt: r.created_at, marca: r.marca, modelo: r.modelo, estado: r.estado, nombre: p?.nombre?.trim() || p?.email || null };
+  } catch {
+    return null;
+  }
+}
+
+/* --- Métricas ---------------------------------------------------------------- */
+
+export type DatosMetricas = {
+  expedientes: ExpedienteMetrica[];
+  etapas: TramoEtapa[];
+  hitosPorExpediente: Map<string, Hito[]>;
+  movimientosPorExpediente: Map<string, Movimiento[]>;
+};
+
+type FilaExpedienteMetrica = Pick<ExpedienteRow, "id" | "codigo" | "etapa" | "etapa_desde" | "created_at" | "cerrado_en" | "fecha_est_arribo" | "veh_marca" | "veh_modelo" | "veh_anio"> & {
+  clientes?: { razon_social: string } | { razon_social: string }[] | null;
+};
+
+/**
+ * Lee lo justo para `src/core/expedientes/metricas.ts`: cuatro consultas
+ * planas por la Data API con la sesión del administrador (RLS). Se decidió NO
+ * crear una vista agregada: con decenas de expedientes al año el historial
+ * completo son unos miles de filas (medido: 2.400 tramos en 0,4 ms con la
+ * política corregida de la migración de cierre), y agregar en el core deja
+ * una sola implementación de "días por etapa" probada con vitest. Si algún
+ * día las lecturas pasan de ~10.000 filas, el camino es una vista
+ * `expediente_metricas` con los mismos campos, no otro cálculo.
+ */
+export async function cargarDatosMetricas(client: PortalClient): Promise<{ datos: DatosMetricas | null; error: string | null }> {
+  try {
+    const [exp, et, hi, mo] = await Promise.all([
+      client
+        .from("expedientes")
+        .select("id, codigo, etapa, etapa_desde, created_at, cerrado_en, fecha_est_arribo, veh_marca, veh_modelo, veh_anio, clientes:cliente_id ( razon_social )")
+        .order("created_at", { ascending: false })
+        .limit(2000),
+      client.from("expediente_etapas").select("expediente_id, etapa, desde, hasta").limit(10000),
+      client.from("expediente_hitos").select(COLUMNAS.hito + ", expediente_id").limit(10000),
+      client.from("expediente_movimientos").select("id, expediente_id, tipo, cuenta, hito, estado, fecha, moneda, monto, tipo_cambio, monto_usd, concepto, contraparte_id, documento_ref, declarado_por_cliente, created_at").limit(10000),
+    ]);
+    const fallo = exp.error ?? et.error ?? hi.error ?? mo.error;
+    if (fallo) return { datos: null, error: `No se pudieron leer las métricas. ${MSG_MIGRACION} (${fallo.message})` };
+
+    const expedientes: ExpedienteMetrica[] = ((exp.data ?? []) as unknown as FilaExpedienteMetrica[]).map((r) => ({
+      id: r.id,
+      codigo: r.codigo,
+      etapa: r.etapa as EtapaExpediente,
+      etapaDesde: r.etapa_desde,
+      createdAt: r.created_at,
+      cerradoEn: r.cerrado_en,
+      fechaEstArribo: r.fecha_est_arribo,
+      clienteNombre: uno(r.clientes)?.razon_social ?? null,
+      auto: `${r.veh_marca} ${r.veh_modelo} ${r.veh_anio}`,
+    }));
+    const etapas = ((et.data ?? []) as unknown as ExpedienteEtapaRow[]).map(mapTramo);
+    const hitosPorExpediente = new Map<string, Hito[]>();
+    for (const row of (hi.data ?? []) as unknown as (ExpedienteHitoRow & { expediente_id: string })[]) {
+      const lista = hitosPorExpediente.get(row.expediente_id) ?? [];
+      lista.push(mapHito(row));
+      hitosPorExpediente.set(row.expediente_id, lista);
+    }
+    const movimientosPorExpediente = new Map<string, Movimiento[]>();
+    for (const row of (mo.data ?? []) as unknown as ExpedienteMovimientoRow[]) {
+      const lista = movimientosPorExpediente.get(row.expediente_id) ?? [];
+      lista.push(mapMovimiento(row));
+      movimientosPorExpediente.set(row.expediente_id, lista);
+    }
+    return { datos: { expedientes, etapas, hitosPorExpediente, movimientosPorExpediente }, error: null };
+  } catch {
+    return { datos: null, error: "No se pudieron leer las métricas. Revisa tu conexión." };
+  }
+}
+
+/* --- Cumplimiento (UIF) -------------------------------------------------------- */
+
+export type PreviaUif = { filas: FilaRegistroUif[]; total: number; umbrales: UmbralesUif; desde: string; hasta: string };
+
+/** Vista previa de las operaciones reportables; el archivo se baja con `urlDescargaUif`. */
+export async function cargarPreviaUif(desde: string, hasta: string): Promise<{ previa: PreviaUif | null; error: string | null }> {
+  try {
+    const res = await fetch(`/api/portal/expedientes/uif?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&formato=json`, { credentials: "include" });
+    const json = (await res.json().catch(() => null)) as (PreviaUif & { ok: boolean; mensaje?: string }) | null;
+    if (!res.ok || !json?.ok) return { previa: null, error: json?.mensaje ?? `No se pudo leer el registro (HTTP ${res.status}).` };
+    return { previa: json, error: null };
+  } catch {
+    return { previa: null, error: "No se pudo leer el registro. Revisa tu conexión." };
+  }
+}
+
+export function urlDescargaUif(desde: string, hasta: string): string {
+  return `/api/portal/expedientes/uif?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&formato=csv`;
 }

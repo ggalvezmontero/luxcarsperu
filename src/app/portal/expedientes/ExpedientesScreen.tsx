@@ -2,7 +2,9 @@
 
 /**
  * Tablero de expedientes: tarjetas agrupadas por etapa, con alertas del core,
- * filtro por etapa y búsqueda por código, VIN o cliente.
+ * filtro por etapa, año y cliente, y búsqueda por código, VIN o cliente.
+ * Los cerrados y cancelados viven en el archivo ("Ver archivo"), que se lee
+ * aparte y por año de cierre (fase 5).
  *
  * Lee desde el navegador con la sesión del administrador (ver
  * `src/lib/expedientes/consultas.ts`). Las alertas se calculan acá con el
@@ -21,8 +23,9 @@ import { siguienteTarea } from "@/core/expedientes/avance";
 import { nombreEtapaEquipo } from "@/core/expedientes/etapas";
 import type { ContextoExpediente, EtapaExpediente } from "@/core/expedientes/tipos";
 import { ETAPAS_ORDEN } from "@/core/expedientes/tipos";
-import { listarExpedientes } from "@/lib/expedientes/consultas";
+import { listarExpedientes, listarExpedientesArchivo } from "@/lib/expedientes/consultas";
 import { RESPONSABLE_LABEL, autoDe, diasDesde, fecha } from "@/lib/expedientes/formato";
+import { SubNavExpedientes } from "./SubNav";
 
 const SETUP_STEPS = [
   "Aplica la migración 20261125090000_expedientes.sql (node scripts/aplicar-migracion.mjs …).",
@@ -38,7 +41,9 @@ export function ExpedientesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [etapa, setEtapa] = useState<EtapaExpediente | "todas">("todas");
-  const [incluirCerrados, setIncluirCerrados] = useState(false);
+  const [archivo, setArchivo] = useState(false);
+  const [anio, setAnio] = useState<string>("");
+  const [clienteId, setClienteId] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
 
   const canQuery = sessionStatus === "autenticado" && Boolean(client);
@@ -50,12 +55,12 @@ export function ExpedientesScreen() {
       return;
     }
     setLoading(true);
-    const r = await listarExpedientes(client, { incluirCerrados });
+    const r = archivo ? await listarExpedientesArchivo(client, { anio: anio ? Number(anio) : null }) : await listarExpedientes(client);
     const hoy = new Date();
-    setFilas(r.expedientes.map((ctx) => ({ ctx, alertas: calcularAlertas(ctx, hoy) })));
+    setFilas(r.expedientes.map((ctx) => ({ ctx, alertas: archivo ? [] : calcularAlertas(ctx, hoy) })));
     setError(r.error);
     setLoading(false);
-  }, [client, canQuery, incluirCerrados]);
+  }, [client, canQuery, archivo, anio]);
 
   useEffect(() => {
     if (sessionStatus === "verificando") return;
@@ -68,16 +73,36 @@ export function ExpedientesScreen() {
     };
   }, [load, sessionStatus]);
 
+  const clientes = useMemo(() => {
+    const mapa = new Map<string, string>();
+    for (const f of filas) if (f.ctx.cliente) mapa.set(f.ctx.cliente.id, f.ctx.cliente.razonSocial);
+    return [...mapa.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [filas]);
+
+  const anios = useMemo(() => {
+    const hoy = new Date().getFullYear();
+    const lista = new Set<number>([hoy]);
+    for (const f of filas) {
+      const c = f.ctx.expediente.cerradoEn ?? f.ctx.expediente.createdAt;
+      lista.add(Number(c.slice(0, 4)));
+    }
+    return [...lista].sort((a, b) => b - a);
+  }, [filas]);
+
+  const etapasDisponibles: EtapaExpediente[] = archivo ? ["cerrado", "cancelado"] : ETAPAS_ORDEN.filter((e) => e !== "cerrado");
+
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return filas.filter(({ ctx }) => {
       if (etapa !== "todas" && ctx.expediente.etapa !== etapa) return false;
+      if (clienteId && ctx.cliente?.id !== clienteId) return false;
+      if (!archivo && anio && !ctx.expediente.createdAt.startsWith(anio)) return false;
       if (!q) return true;
       const e = ctx.expediente;
       const texto = [e.codigo, e.vehiculo.vin ?? "", autoDe(e.vehiculo), ctx.cliente?.razonSocial ?? "", ctx.cliente?.ruc ?? ""].join(" ").toLowerCase();
       return texto.includes(q);
     });
-  }, [filas, etapa, busqueda]);
+  }, [filas, etapa, busqueda, clienteId, archivo, anio]);
 
   const activos = filas.filter((f) => f.ctx.expediente.etapa !== "cerrado" && f.ctx.expediente.etapa !== "cancelado").length;
   const conAlertas = filas.filter((f) => f.alertas.some((a) => a.nivel === "alta")).length;
@@ -105,18 +130,28 @@ export function ExpedientesScreen() {
         actions={<Button href="/portal/expedientes/nuevo" size="sm">Nuevo expediente</Button>}
       />
 
-      <StatGrid>
-        <StatCard label="Activos" value={activos} hint="Sin contar cerrados ni cancelados." />
-        <StatCard label="Con alerta" value={conAlertas} tone={conAlertas > 0 ? "danger" : "default"} hint="Hitos vencidos, año modelo, LOA, tareas vencidas." />
-        <StatCard label="Esperando al cliente" value={esperandoCliente} tone={esperandoCliente > 0 ? "warn" : "default"} hint="Con una tarea del cliente pendiente en la etapa actual." />
-        <StatCard label="Listados" value={visibles.length} />
-      </StatGrid>
+      <SubNavExpedientes />
+
+      {archivo ? (
+        <StatGrid>
+          <StatCard label="Cerrados" value={filas.filter((f) => f.ctx.expediente.etapa === "cerrado").length} hint={anio ? `Con cierre en ${anio}.` : "Todos los años (últimos 200)."} />
+          <StatCard label="Cancelados" value={filas.filter((f) => f.ctx.expediente.etapa === "cancelado").length} />
+          <StatCard label="Listados" value={visibles.length} />
+        </StatGrid>
+      ) : (
+        <StatGrid>
+          <StatCard label="Activos" value={activos} hint="Sin contar cerrados ni cancelados." />
+          <StatCard label="Con alerta" value={conAlertas} tone={conAlertas > 0 ? "danger" : "default"} hint="Hitos vencidos, año modelo, LOA, tareas vencidas." />
+          <StatCard label="Esperando al cliente" value={esperandoCliente} tone={esperandoCliente > 0 ? "warn" : "default"} hint="Con una tarea del cliente pendiente en la etapa actual." />
+          <StatCard label="Listados" value={visibles.length} />
+        </StatGrid>
+      )}
 
       {error ? (
         <Notice tone="warn" label="No se pudo leer">{error}</Notice>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
         <div className="flex-1">
           <Entrada
             value={busqueda}
@@ -125,22 +160,49 @@ export function ExpedientesScreen() {
             aria-label="Buscar expediente"
           />
         </div>
-        <div className="sm:w-64">
+        <div className="lg:w-52">
           <Selector value={etapa} onChange={(e) => setEtapa(e.target.value as EtapaExpediente | "todas")} aria-label="Filtrar por etapa">
             <option value="todas">Todas las etapas</option>
-            {[...ETAPAS_ORDEN, "cancelado" as const].map((e) => (
+            {etapasDisponibles.map((e) => (
               <option key={e} value={e}>{nombreEtapaEquipo(e)}</option>
             ))}
           </Selector>
         </div>
+        <div className="lg:w-32">
+          <Selector value={anio} onChange={(e) => setAnio(e.target.value)} aria-label={archivo ? "Año de cierre" : "Año de apertura"}>
+            <option value="">{archivo ? "Todo cierre" : "Todo año"}</option>
+            {anios.map((a) => (
+              <option key={a} value={String(a)}>{a}</option>
+            ))}
+          </Selector>
+        </div>
+        <div className="lg:w-56">
+          <Selector value={clienteId} onChange={(e) => setClienteId(e.target.value)} aria-label="Filtrar por cliente">
+            <option value="">Todos los clientes</option>
+            {clientes.map(([id, nombre]) => (
+              <option key={id} value={id}>{nombre}</option>
+            ))}
+          </Selector>
+        </div>
         <label className="flex min-h-10 items-center gap-2 text-xs text-ink-2">
-          <input type="checkbox" checked={incluirCerrados} onChange={(e) => setIncluirCerrados(e.target.checked)} className="h-4 w-4 accent-silver" />
-          Incluir cerrados y cancelados
+          <input
+            type="checkbox"
+            checked={archivo}
+            onChange={(e) => {
+              setArchivo(e.target.checked);
+              setEtapa("todas");
+              setClienteId("");
+            }}
+            className="h-4 w-4 accent-silver"
+          />
+          Ver archivo
         </label>
       </div>
 
       {loading ? (
         <p className="py-10 text-sm text-ink-3">Cargando…</p>
+      ) : filas.length === 0 && archivo ? (
+        <p className="py-10 text-center text-sm text-ink-3">El archivo está vacío{anio ? ` para ${anio}` : ""}: ningún expediente cerrado ni cancelado.</p>
       ) : filas.length === 0 ? (
         <div className="rounded-lux-lg border border-line bg-surface">
           <EmptyState
@@ -176,6 +238,7 @@ function TarjetaExpediente({ fila }: { fila: Fila }) {
   const { ctx, alertas } = fila;
   const e = ctx.expediente;
   const siguiente = siguienteTarea(ctx);
+  const terminal = e.etapa === "cerrado" || e.etapa === "cancelado";
   const dias = diasDesde(e.etapaDesde);
   const proximaFecha = ctx.hitos
     .map((h) => h.fechaLimite)
@@ -195,10 +258,17 @@ function TarjetaExpediente({ fila }: { fila: Fila }) {
             <p className="mt-1 font-semibold text-ink">{autoDe(e.vehiculo)}</p>
             <p className="mt-0.5 truncate text-xs text-ink-3">{ctx.cliente?.razonSocial ?? "Sin cliente"}</p>
           </div>
-          <span className="shrink-0 text-right text-[11px] uppercase tracking-[0.12em] text-ink-4">
-            {dias} {dias === 1 ? "día" : "días"}
-            <span className="block normal-case tracking-normal">en la etapa</span>
-          </span>
+          {terminal ? (
+            <span className="shrink-0 text-right text-[11px] uppercase tracking-[0.12em] text-ink-4">
+              {e.etapa === "cerrado" ? "Cerrado" : "Cancelado"}
+              <span className="block normal-case tracking-normal">{fecha(e.cerradoEn ?? e.etapaDesde)}</span>
+            </span>
+          ) : (
+            <span className="shrink-0 text-right text-[11px] uppercase tracking-[0.12em] text-ink-4">
+              {dias} {dias === 1 ? "día" : "días"}
+              <span className="block normal-case tracking-normal">en la etapa</span>
+            </span>
+          )}
         </div>
         {alertas.length > 0 ? (
           <div className="mt-3">
@@ -206,7 +276,9 @@ function TarjetaExpediente({ fila }: { fila: Fila }) {
           </div>
         ) : null}
         <div className="mt-4 border-t border-line pt-3 text-xs text-ink-2">
-          {siguiente ? (
+          {terminal ? (
+            <p className="text-ink-4">{e.etapa === "cancelado" && e.canceladoMotivo ? `Motivo: ${e.canceladoMotivo}` : `Abierto el ${fecha(e.createdAt)}.`}</p>
+          ) : siguiente ? (
             <p>
               <span className="text-ink-4">Siguiente ({RESPONSABLE_LABEL[siguiente.responsable]}):</span> {siguiente.titulo}
             </p>

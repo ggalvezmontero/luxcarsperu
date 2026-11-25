@@ -81,6 +81,18 @@ export function PasoCliente({
         anio: previo.vehiculo.anio || String(s.yearMax ?? s.yearMin ?? ""),
         condicion: s.condition === "usado" ? "usado" : "nuevo",
       },
+      compra: {
+        ...previo.compra,
+        precio_tope: previo.compra.precio_tope || (s.budgetMaxUsd ? String(Math.round(s.budgetMaxUsd)) : ""),
+        notas_internas:
+          previo.compra.notas_internas ||
+          [
+            `Desde la solicitud de compra del ${new Date(s.createdAt).toLocaleDateString("es-PE")}: ${s.brand} ${s.model}${s.yearMin || s.yearMax ? ` ${s.yearMin ?? "…"}–${s.yearMax ?? "…"}` : ""}.`,
+            s.notes ? `Notas del cliente: ${s.notes}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+      },
     }));
     const email = s.requester.email?.toLowerCase() ?? "";
     if (email) {
