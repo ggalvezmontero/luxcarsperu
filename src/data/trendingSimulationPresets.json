@@ -80,6 +80,14 @@
     "preferredPlan": "fast"
   },
   {
+    "id": "toyota-sequoia-trd-pro",
+    "brand": "Toyota",
+    "model": "Sequoia TRD Pro",
+    "vehicleType": "hev",
+    "priceUsd": 91000,
+    "preferredPlan": "fast"
+  },
+  {
     "id": "ford-f150-raptor-r",
     "brand": "Ford",
     "model": "F-150 Raptor R",

@@ -288,6 +288,31 @@
     "imageAlt": "Toyota Sequoia Capstone 2026"
   },
   {
+    "id": "toyota-sequoia-trd-pro",
+    "name": "Toyota Sequoia TRD Pro 2026",
+    "detail": "SUV full-size de tres filas en su versión todoterreno: i-FORCE MAX híbrido de 437 hp, suspensión Fox, diferencial trasero bloqueable y parrilla heritage. No se vende en Perú.",
+    "segment": "SUV · HEV",
+    "priceMinUsd": 80000,
+    "priceMaxUsd": 91000,
+    "priceBasis": "referencial-miami",
+    "priceNote": "Rango referencial para la TRD Pro 2026 según equipamiento; el tope es el precio de una unidad nueva en dealer de EE.UU. (consulta del 24 de noviembre de 2026). Confirmar con el dealer.",
+    "assemblyCountry": "Estados Unidos",
+    "assemblyPlant": "Toyota Motor Manufacturing Texas, San Antonio",
+    "adValorem": "candidato-0",
+    "adValoremNote": "La Sequoia comparte línea con la Tundra en San Antonio, Texas, sin planta alternativa. Candidato sólido a 0% con certificado de origen si la unidad es nueva.",
+    "availableInUsDealers": true,
+    "importViability": "importable",
+    "warnings": [
+      {
+        "kind": "precio",
+        "title": "Híbrido full, sin ISC si es nueva",
+        "detail": "El i-FORCE MAX es híbrido full (HEV): nuevo no tributa ISC. Confirmar que la unidad sea nueva y no un demo con placas."
+      }
+    ],
+    "imageSrc": null,
+    "imageAlt": "Toyota Sequoia TRD Pro 2026"
+  },
+  {
     "id": "ford-f150-raptor-r",
     "name": "Ford F-150 Raptor R 2026",
     "detail": "La pickup más potente de Ford: V8 5.2L sobrealimentado de 720 hp, suspensión Fox Live Valve y 37 pulgadas de serie. No se vende en Perú.",
