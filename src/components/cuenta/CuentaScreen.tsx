@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { useCuentaSession } from "@/components/cuenta/cuentaSession";
+import { MisImportaciones } from "@/components/cuenta/MisImportaciones";
 import { SinCuentas } from "@/components/cuenta/SinCuentas";
 import { CATEGORY_LABEL } from "@/lib/stockLabels";
 import {
@@ -266,6 +267,8 @@ export function CuentaScreen() {
       )}
 
       <ConfirmacionEnvio />
+
+      {client ? <MisImportaciones client={client} /> : null}
 
       {flash ? (
         <p role="status" className="mt-6 rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink-2">

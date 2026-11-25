@@ -83,6 +83,20 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/portal/expedientes",
+    label: "Expedientes",
+    hint: "Importaciones a pedido, etapa por etapa",
+    ready: true,
+    icon: <Icon path="M4 4h10l4 4v12H4V4Zm10 0v4h4M8 12h8M8 16h5" />,
+  },
+  {
+    href: "/portal/clientes",
+    label: "Clientes",
+    hint: "Clientes del mandato y su cuenta",
+    ready: true,
+    icon: <Icon path="M4 20a6 6 0 0 1 12 0M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8 3v6m-3-3h6" />,
+  },
+  {
     href: "/portal/ejemplos",
     label: "Ejemplos de importación",
     hint: "Autos de referencia de la home y /importar",

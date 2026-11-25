@@ -67,6 +67,11 @@ escribir una migración y justificarlo. **Esa fricción es intencional.**
 | `solicitudes_venta` | Autos que un cliente ofrece en consignación; un admin aprueba o rechaza |
 | `ejemplos_importacion` | Autos de referencia de "importación a pedido" (home y `/importar`); se editan en `/portal/ejemplos` |
 | `cotizaciones_envio` | Cotizaciones del cotizador interno de envíos (`/admin/cotizador-envios`): traer al Perú el auto propio desde EE.UU., por Ley del Retorno o importación regular; entrada y resultado en JSON, estado borrador/enviada/aceptada |
+| `clientes` | Clientes del mandato de importación (empresa o persona), con KYC y vínculo opcional a su cuenta de `/cuenta` (`user_id`, cruzado por correo verificado) |
+| `contrapartes` | Terceros reutilizables: vendedor, forwarder, agente de aduana, aseguradora, inspector, notaría, depósito |
+| `embarques` | Contenedor o Ro-Ro compartido por uno o varios expedientes: puertos, fechas, nave, master BL |
+| `expedientes` | Importación a pedido (`LC-AAAA-NNN`): vehículo, compra, presupuesto (JSON del core), fechas, aduana y placas, etapa actual. Lo reservado va en `expedientes_reservado` (solo admin) |
+| `expediente_etapas` · `expediente_tareas` · `expediente_hitos` · `expediente_eventos` · `expediente_aprobaciones` | Historial de etapas, lista de tareas, hitos de pago, actividad y decisiones del cliente. El cliente lee por las vistas `*_cliente` y actúa solo por `cliente_accion_expediente()` |
 | `reclamaciones` | Libro de Reclamaciones virtual: una fila por hoja (número LR-AAAA-0001, consumidor, bien, detalle, pedido, respuesta). Inserta el servidor desde `/api/reclamaciones`; leen y responden los admins. |
 
 ### Reglas de negocio que viven en el esquema
@@ -179,6 +184,11 @@ for f in db/migrations/*.sql; do
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"
 done
 ```
+
+Si el puerto 5432 está bloqueado en tu red (`psql` se queda colgado), el
+mismo trabajo lo hace `node scripts/aplicar-migracion.mjs db/migrations/<archivo>.sql`,
+que entra por WebSocket con el driver serverless y también aplica todo en una
+transacción.
 
 **Después de cualquier cambio de esquema** (tabla, columna o función nueva) hay
 que refrescar la caché de esquema de la Data API, o las consultas del sitio y

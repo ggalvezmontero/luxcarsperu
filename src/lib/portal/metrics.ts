@@ -19,6 +19,7 @@ import type { PortalClient } from "@/lib/portal/portalClient";
 
 import type {
   ConsignmentStatus,
+  EtapaExpediente,
   LeadStatus,
   PurchaseRequestStatus,
   SaleRequestStatus,
@@ -42,6 +43,7 @@ const LEAD_NUEVO: LeadStatus = "nuevo";
 const CONSIGNACION_ACTIVA: ConsignmentStatus = "activa";
 const VENTA_PENDIENTE: SaleRequestStatus = "pendiente";
 const COMPRA_NUEVA: PurchaseRequestStatus = "nueva";
+const EXPEDIENTES_TERMINALES: readonly EtapaExpediente[] = ["cerrado", "cancelado"];
 
 /** Lo que el dueño mira todos los días, en el orden en que le importa. */
 export type PortalMetrics = {
@@ -63,6 +65,8 @@ export type PortalMetrics = {
   ventasPorAprobar: number;
   /** `solicitudes_compra.estado = 'nueva'`: pedidos de búsqueda sin tomar. */
   busquedasNuevas: number;
+  /** `expedientes.etapa` fuera de cerrado y cancelado: importaciones a pedido en curso. */
+  expedientesActivos: number;
 };
 
 export const EMPTY_METRICS: PortalMetrics = {
@@ -75,6 +79,7 @@ export const EMPTY_METRICS: PortalMetrics = {
   sinPublicar: 0,
   ventasPorAprobar: 0,
   busquedasNuevas: 0,
+  expedientesActivos: 0,
 };
 
 export type PortalMetricsResult = {
@@ -199,6 +204,15 @@ const COUNT_SPECS: CountSpec[] = [
         .from("solicitudes_compra")
         .select("id", { count: "exact", head: true })
         .eq("estado", COMPRA_NUEVA),
+  },
+  {
+    key: "expedientesActivos",
+    label: "expedientes activos",
+    run: (c) =>
+      c
+        .from("expedientes")
+        .select("id", { count: "exact", head: true })
+        .not("etapa", "in", `(${EXPEDIENTES_TERMINALES.join(",")})`),
   },
 ];
 

@@ -579,3 +579,254 @@ export const IMPORT_COMPLIANCE_REFERENCE = {
   /** Tope de kilometraje: M1 (autos y SUV) / N1 (camionetas y pickups). */
   maxMileageKm: { M1: 32000, N1: 36000 },
 } as const;
+
+/* ========================================================================== */
+/* Expedientes de importación — espejo de la migración 0016                   */
+/* ========================================================================== */
+
+/**
+ * Los enums del módulo viven en el core (`src/core/expedientes/tipos.ts`),
+ * que es TypeScript puro y los necesita para las reglas; acá se reexportan
+ * para que la UI siga consumiendo un solo módulo de tipos.
+ */
+export type {
+  CuentaMovimiento,
+  EstadoTarea,
+  EtapaExpediente,
+  ModalidadEmbarque,
+  ResponsableTarea,
+  TipoAprobacion,
+  TipoCliente,
+  TipoContenedor,
+  TipoContraparte,
+  TipoEvento,
+  TipoHito,
+} from "@/core/expedientes/tipos";
+export {
+  ETAPAS_EXPEDIENTE,
+  MODALIDADES_EMBARQUE,
+  RESPONSABLES_TAREA,
+  TIPOS_CLIENTE,
+  TIPOS_CONTENEDOR,
+  TIPOS_CONTRAPARTE,
+  TIPOS_HITO,
+} from "@/core/expedientes/tipos";
+
+/** Fila de `public.clientes`. Solo la lee el equipo. */
+export type ClienteRow = {
+  id: string;
+  tipo: string;
+  razon_social: string;
+  ruc: string | null;
+  dni: string | null;
+  domicilio: string | null;
+  partida: string | null;
+  representante: string | null;
+  representante_dni: string | null;
+  representante_cargo: string | null;
+  email: string | null;
+  telefono: string | null;
+  actividad: string | null;
+  banco_origen: string | null;
+  beneficiario_final: string | null;
+  origen_fondos: string | null;
+  es_pep: boolean | null;
+  kyc_ficha_ruc_en: string | null;
+  kyc_vigencia_en: string | null;
+  kyc_listas_en: string | null;
+  kyc_listas_resultado: string | null;
+  kyc_completo: boolean | null;
+  user_id: string | null;
+  notas_internas: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Fila de `public.contrapartes`. */
+export type ContraparteRow = {
+  id: string;
+  tipo: string;
+  nombre: string;
+  pais: string | null;
+  contacto: string | null;
+  email: string | null;
+  telefono: string | null;
+  banco_verificado_en: string | null;
+};
+
+/** Fila de `public.embarques`. */
+export type EmbarqueRow = {
+  id: string;
+  codigo: string;
+  modalidad: string;
+  contenedor: string | null;
+  forwarder_id: string | null;
+  aseguradora_id: string | null;
+  almacen_consolidacion: string | null;
+  puerto_origen: string | null;
+  puerto_destino: string;
+  fecha_release_est: string | null;
+  fecha_release_real: string | null;
+  fecha_carga: string | null;
+  fecha_zarpe_est: string | null;
+  fecha_zarpe_real: string | null;
+  fecha_arribo_est: string | null;
+  fecha_arribo_real: string | null;
+  nave: string | null;
+  master_bl: string | null;
+  precinto: string | null;
+  flete_total_usd: number | string | null;
+  gastos_contenedor_usd: number | string | null;
+  declaracion_exportacion: string | null;
+  estado: string;
+  notas_internas: string | null;
+};
+
+/** Fila de `public.expedientes` (y de la vista `expediente_cliente`, que es un subconjunto). */
+export type ExpedienteRow = {
+  id: string;
+  codigo: string;
+  cliente_id: string;
+  etapa: string;
+  etapa_desde: string;
+  origen_solicitud_id?: string | null;
+  embarque_id: string | null;
+  proporcion_flete?: number | string | null;
+  veh_marca: string;
+  veh_modelo: string;
+  veh_version: string | null;
+  veh_anio: number;
+  veh_vin: string | null;
+  veh_color: string | null;
+  veh_km: number | null;
+  veh_combustible: string | null;
+  veh_cilindrada_cc: number | null;
+  veh_transmision: string | null;
+  veh_condicion: string;
+  veh_categoria: string;
+  veh_origen?: string | null;
+  veh_pais_ensamblaje: string | null;
+  veh_doc_propiedad?: string | null;
+  veh_peso_kg?: number | null;
+  veh_medidas?: string | null;
+  moneda_compra: string;
+  precio_compra: number | string | null;
+  precio_compra_usd: number | string | null;
+  fecha_limite_compra?: string | null;
+  fecha_inspeccion: string | null;
+  historial_ref?: string | null;
+  fecha_release?: string | null;
+  pais_origen: string | null;
+  puerto_origen: string | null;
+  presupuesto?: unknown;
+  honorarios_usd: number | string | null;
+  honorarios_base_usd: number | string | null;
+  honorarios_igv_usd: number | string | null;
+  porcentaje_detraccion?: number | string | null;
+  margen_h3?: number | string | null;
+  fecha_firma: string | null;
+  fecha_limite_h2: string | null;
+  fecha_est_embarque: string | null;
+  fecha_est_arribo: string | null;
+  fecha_est_entrega: string | null;
+  semanas_estimadas: string | null;
+  loa_vence?: string | null;
+  dam_numero: string | null;
+  dam_fecha: string | null;
+  dam_canal?: string | null;
+  levante_en: string | null;
+  placa: string | null;
+  tive_numero: string | null;
+  km_entrega?: number | null;
+  fecha_entrega: string | null;
+  cancelado_motivo: string | null;
+  cerrado_en: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Fila de `public.expedientes_reservado`. Solo admin. */
+export type ExpedienteReservadoRow = {
+  expediente_id?: string;
+  precio_tope: number | string | null;
+  tc_compra_ref: number | string | null;
+  vendedor_id: string | null;
+  inspector_id: string | null;
+  agente_aduana_id: string | null;
+  notas_internas: string | null;
+};
+
+export type ExpedienteEtapaRow = {
+  id: string;
+  expediente_id: string;
+  etapa: string;
+  desde: string;
+  hasta: string | null;
+  forzado?: boolean | null;
+  motivo?: string | null;
+};
+
+export type ExpedienteTareaRow = {
+  id: string;
+  expediente_id: string;
+  etapa: string;
+  clave: string;
+  titulo: string;
+  descripcion: string | null;
+  responsable: string;
+  estado: string;
+  vence_el: string | null;
+  hecha_en: string | null;
+  visible_cliente?: boolean | null;
+  orden: number | null;
+};
+
+export type ExpedienteHitoRow = {
+  id?: string;
+  expediente_id?: string;
+  tipo: string;
+  monto_estimado_usd: number | string;
+  fecha_limite: string | null;
+  cuenta?: string | null;
+  nota: string | null;
+};
+
+export type ExpedienteEventoRow = {
+  id: string;
+  expediente_id: string;
+  tipo: string;
+  titulo: string;
+  detalle: string | null;
+  visible_cliente?: boolean | null;
+  actor_tipo: string;
+  etapa: string | null;
+  created_at: string;
+};
+
+export type ExpedienteAprobacionRow = {
+  id: string;
+  expediente_id: string;
+  tipo: string;
+  payload: unknown;
+  created_at: string;
+};
+
+/** Fila de la vista `embarque_cliente`: lo que el cliente ve de su embarque. */
+export type EmbarqueClienteRow = {
+  expediente_id: string;
+  id: string;
+  codigo: string;
+  modalidad: string;
+  contenedor: string | null;
+  puerto_origen: string | null;
+  puerto_destino: string;
+  fecha_release_est: string | null;
+  fecha_release_real: string | null;
+  fecha_carga: string | null;
+  fecha_zarpe_est: string | null;
+  fecha_zarpe_real: string | null;
+  fecha_arribo_est: string | null;
+  fecha_arribo_real: string | null;
+  nave: string | null;
+  master_bl: string | null;
+};

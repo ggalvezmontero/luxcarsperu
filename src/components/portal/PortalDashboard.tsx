@@ -337,6 +337,12 @@ export function PortalDashboard({ dbStatus }: { dbStatus: DbStatus }) {
             loading={loading}
           />
           <MetricCard
+            label="Expedientes activos"
+            value={metrics.expedientesActivos}
+            caption="Importaciones a pedido en curso, de prospecto a entrega."
+            loading={loading}
+          />
+          <MetricCard
             label="Búsquedas nuevas"
             value={metrics.busquedasNuevas}
             caption="Pedidos de autos que no tenemos. Nadie los tomó todavía."
