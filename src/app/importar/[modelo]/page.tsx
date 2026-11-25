@@ -169,15 +169,19 @@ export default async function ModeloPage({ params }: Props) {
 
   // Los tres precios de compra del rango referencial, cada uno con su total.
   // Un extremo que no se puede cotizar (por debajo del mínimo) no se muestra.
+  // Desde el 2026-11-24 el precio de referencia es el tope del rango (precio
+  // de unidad nueva en EE.UU.), así que un precio repetido se pinta una vez.
   const escenarios = esRango
     ? [
         { etiqueta: "Precio bajo del rango", precio: v.priceMinUsd },
         { etiqueta: "Precio de referencia", precio: v.calculator.priceUsd },
         { etiqueta: "Precio alto del rango", precio: v.priceMaxUsd },
-      ].flatMap((e) => {
-        const r = cotizarEjemplo(v, anioActual, e.precio);
-        return r.kind === "ready" ? [{ ...e, estimate: r.estimate }] : [];
-      })
+      ]
+        .filter((e, i, todos) => todos.findIndex((o) => o.precio === e.precio) === i)
+        .flatMap((e) => {
+          const r = cotizarEjemplo(v, anioActual, e.precio);
+          return r.kind === "ready" ? [{ ...e, estimate: r.estimate }] : [];
+        })
     : [];
 
   const planes = PRICING_CONFIG.planConfigs;
