@@ -15,9 +15,11 @@
  * (`verificarSesionPortal`) y recién entonces escribe con `DATABASE_URL`,
  * pasando el usuario verificado como `p_actor`.
  *
- * Responde { ok, movimientoId, constancia?: { documentoId, version, urls } }.
+ * Responde { ok, movimientoId, constancia?: { documentoId, version, urls }, aviso? }.
  * Si la constancia falla, el movimiento ya quedó registrado y se avisa en
- * `constanciaError` para emitirla después desde la pestaña Dinero.
+ * `constanciaError` para emitirla después desde la pestaña Dinero. Al
+ * confirmar un depósito se manda al cliente el correo "depósito confirmado"
+ * si tiene correo (fase 4); `aviso` dice si salió. Nunca frena la respuesta.
  *
  * Nunca lanza: todo error sale como JSON con `ok: false` y un mensaje en español.
  */
@@ -29,6 +31,7 @@ import { getSql } from "@/lib/db/client";
 import { cargarContextoServidor, esUuid } from "@/lib/expedientes/servidor/contexto";
 import { camposFijosLuxcars } from "@/lib/expedientes/servidor/datosFijos";
 import { emitirDocumento } from "@/lib/expedientes/servidor/emitirDocumento";
+import { avisarPorCorreoSiHayCorreo } from "@/lib/expedientes/servidor/notificar";
 import { verificarSesionPortal } from "@/lib/portal/authServer";
 import { isStorageWriteConfigured } from "@/lib/portal/objectStorage";
 
@@ -109,27 +112,43 @@ export async function POST(request: Request, { params }: Contexto) {
   }
 
   // Constancia: al confirmar o registrar un DEPÓSITO con hito, si hay almacenamiento.
+  // Y el aviso al cliente por correo (fase 4), si tiene correo: nunca frena la respuesta.
   const esDeposito = accion === "confirmar" || (accion === "registrar" && datos.tipo === "deposito");
-  const quiereConstancia = cuerpo.constancia !== false;
-  if (!esDeposito || !quiereConstancia) return NextResponse.json({ ok: true, movimientoId: resultadoId });
-  if (!isStorageWriteConfigured()) {
-    return NextResponse.json({ ok: true, movimientoId: resultadoId, constanciaError: "El almacenamiento no está configurado: la constancia no se emitió." });
-  }
+  if (!esDeposito) return NextResponse.json({ ok: true, movimientoId: resultadoId });
+  const quiereConstancia = cuerpo.constancia !== false && isStorageWriteConfigured();
+  const constanciaError = cuerpo.constancia !== false && !isStorageWriteConfigured() ? "El almacenamiento no está configurado: la constancia no se emitió." : undefined;
 
   try {
     const ctx = await cargarContextoServidor(id);
     const movimiento = ctx?.movimientos.find((m) => m.id === resultadoId) ?? null;
     if (!ctx || !movimiento || movimiento.tipo !== "deposito" || movimiento.estado !== "confirmado") {
-      return NextResponse.json({ ok: true, movimientoId: resultadoId });
+      return NextResponse.json({ ok: true, movimientoId: resultadoId, constanciaError });
     }
-    const r = await emitirDocumento(plantillaDe("constancia_fondos")!, ctx, {
-      actorId: sesion.userId,
-      extra: { ...camposFijosLuxcars() },
-      visibleCliente: true,
-      movimiento,
+    let constancia: { documentoId: string; version: number; urls: { pdf: string | null; docx: string | null } } | undefined;
+    let errorConstancia = constanciaError;
+    if (quiereConstancia) {
+      const r = await emitirDocumento(plantillaDe("constancia_fondos")!, ctx, {
+        actorId: sesion.userId,
+        extra: { ...camposFijosLuxcars() },
+        visibleCliente: true,
+        movimiento,
+      });
+      if (r.ok) constancia = { documentoId: r.documentoId, version: r.version, urls: r.urls };
+      else errorConstancia = r.mensaje;
+    }
+    const aviso = await avisarPorCorreoSiHayCorreo(
+      ctx,
+      "deposito_confirmado",
+      { montoUsd: movimiento.montoUsd, hito: movimiento.hito, fecha: movimiento.fecha, conConstancia: Boolean(constancia) },
+      sesion.userId,
+    );
+    return NextResponse.json({
+      ok: true,
+      movimientoId: resultadoId,
+      constancia,
+      constanciaError: errorConstancia,
+      aviso: aviso ? { estado: aviso.estado, destinatario: aviso.destinatario, error: aviso.error } : null,
     });
-    if (!r.ok) return NextResponse.json({ ok: true, movimientoId: resultadoId, constanciaError: r.mensaje });
-    return NextResponse.json({ ok: true, movimientoId: resultadoId, constancia: { documentoId: r.documentoId, version: r.version, urls: r.urls } });
   } catch (error) {
     console.error("[expedientes/movimientos] constancia", error);
     return NextResponse.json({ ok: true, movimientoId: resultadoId, constanciaError: "El depósito quedó registrado pero la constancia no se pudo emitir." });

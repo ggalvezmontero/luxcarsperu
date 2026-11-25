@@ -14,13 +14,17 @@ import type {
   Cliente,
   Contraparte,
   ContextoExpediente,
+  DatosBancarios,
   Documento,
   Embarque,
   EtapaExpediente,
   Evento,
   Movimiento,
+  NotificacionRegistrada,
   TareaNueva,
 } from "@/core/expedientes/tipos";
+import type { DatosNotificacion, PlantillaNotificacion } from "@/core/expedientes/notificaciones";
+import type { LineaReparto } from "@/core/expedientes/embarques";
 import type {
   ClienteRow,
   ContraparteRow,
@@ -34,6 +38,7 @@ import type {
   ExpedienteReservadoRow,
   ExpedienteRow,
   ExpedienteTareaRow,
+  NotificacionRow,
   ProfileRow,
 } from "@/lib/db/types";
 import { PROFILE_COLUMNS, mapProfile, type Profile } from "@/lib/auth/perfil";
@@ -49,6 +54,7 @@ import {
   mapExpediente,
   mapHito,
   mapMovimiento,
+  mapNotificacion,
   mapTarea,
   mapTramo,
 } from "./mapeo";
@@ -166,7 +172,7 @@ export async function cargarExpediente(
       ),
     ];
     if (ids.length > 0) {
-      const terceros = await client.from("contrapartes").select(COLUMNAS.contraparte).in("id", ids);
+      const terceros = await client.from("contrapartes").select(COLUMNAS.contraparteCompleta).in("id", ids);
       ctx.contrapartes = ((terceros.data ?? []) as unknown as ContraparteRow[]).map(mapContraparte);
     } else {
       ctx.contrapartes = [];
@@ -847,6 +853,263 @@ export async function emitirDocumentoDelLibro(input: { expedienteId: string; tip
       documentoId: String(datos.documentoId),
       version: Number(datos.version),
       urls: { pdf: typeof urls.pdf === "string" ? urls.pdf : null, docx: typeof urls.docx === "string" ? urls.docx : null },
+    };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Embarques, contrapartes y notificaciones (fase 4)                          */
+/* -------------------------------------------------------------------------- */
+
+/** Lo que una lista o un embarque necesita saber de cada expediente del grupo. */
+export type ExpedienteDelEmbarque = {
+  id: string;
+  codigo: string;
+  etapa: EtapaExpediente;
+  auto: string;
+  vin: string | null;
+  cliente: string;
+  clienteId: string;
+  proporcionFlete: number;
+  embarqueId: string | null;
+};
+
+type FilaResumen = Pick<ExpedienteRow, "id" | "codigo" | "etapa" | "veh_marca" | "veh_modelo" | "veh_version" | "veh_anio" | "veh_vin" | "proporcion_flete" | "cliente_id" | "embarque_id"> & {
+  clientes?: { razon_social: string } | { razon_social: string }[] | null;
+};
+
+const COLUMNAS_RESUMEN = "id, codigo, etapa, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, proporcion_flete, cliente_id, embarque_id, clientes ( razon_social )";
+
+function aResumen(r: FilaResumen): ExpedienteDelEmbarque {
+  const c = Array.isArray(r.clientes) ? r.clientes[0] : r.clientes;
+  const prop = typeof r.proporcion_flete === "number" ? r.proporcion_flete : Number(r.proporcion_flete ?? 1);
+  return {
+    id: r.id,
+    codigo: r.codigo,
+    etapa: r.etapa as EtapaExpediente,
+    auto: [r.veh_marca, r.veh_modelo, r.veh_version ?? "", String(r.veh_anio)].filter(Boolean).join(" "),
+    vin: r.veh_vin,
+    cliente: c?.razon_social ?? "Sin cliente",
+    clienteId: r.cliente_id,
+    proporcionFlete: Number.isFinite(prop) ? prop : 1,
+    embarqueId: r.embarque_id,
+  };
+}
+
+/** Embarques con cuántos expedientes activos lleva cada uno. */
+export async function listarEmbarquesConExpedientes(client: PortalClient): Promise<{ embarques: Embarque[]; porEmbarque: Map<string, ExpedienteDelEmbarque[]>; error: string | null }> {
+  const porEmbarque = new Map<string, ExpedienteDelEmbarque[]>();
+  try {
+    const [b, x] = await Promise.all([
+      client.from("embarques").select(COLUMNAS.embarque).order("created_at", { ascending: false }).limit(200),
+      client.from("expedientes").select(COLUMNAS_RESUMEN).not("embarque_id", "is", null).not("etapa", "in", "(cancelado)").limit(1000),
+    ]);
+    if (b.error) return { embarques: [], porEmbarque, error: describirError(b.error.message) };
+    for (const fila of (x.data ?? []) as unknown as FilaResumen[]) {
+      const r = aResumen(fila);
+      if (!r.embarqueId) continue;
+      const lista = porEmbarque.get(r.embarqueId) ?? [];
+      lista.push(r);
+      porEmbarque.set(r.embarqueId, lista);
+    }
+    return { embarques: ((b.data ?? []) as unknown as EmbarqueRow[]).map(mapEmbarque), porEmbarque, error: null };
+  } catch {
+    return { embarques: [], porEmbarque, error: MSG_RED };
+  }
+}
+
+export async function cargarEmbarque(client: PortalClient, id: string): Promise<{ embarque: Embarque | null; expedientes: ExpedienteDelEmbarque[]; error: string | null }> {
+  try {
+    const [b, x] = await Promise.all([
+      client.from("embarques").select(COLUMNAS.embarque).eq("id", id).maybeSingle(),
+      client.from("expedientes").select(COLUMNAS_RESUMEN).eq("embarque_id", id).order("codigo"),
+    ]);
+    if (b.error) return { embarque: null, expedientes: [], error: describirError(b.error.message) };
+    if (!b.data) return { embarque: null, expedientes: [], error: null };
+    return { embarque: mapEmbarque(b.data as unknown as EmbarqueRow), expedientes: ((x.data ?? []) as unknown as FilaResumen[]).map(aResumen), error: x.error ? describirError(x.error.message) : null };
+  } catch {
+    return { embarque: null, expedientes: [], error: MSG_RED };
+  }
+}
+
+/** Expedientes que se pueden subir a un contenedor: sin embarque, en compra o embarque (o búsqueda, si ya se planifica). */
+export async function listarExpedientesSinEmbarque(client: PortalClient): Promise<ExpedienteDelEmbarque[]> {
+  try {
+    const { data, error } = await client
+      .from("expedientes")
+      .select(COLUMNAS_RESUMEN)
+      .is("embarque_id", null)
+      .in("etapa", ["busqueda", "compra", "embarque"])
+      .order("codigo");
+    if (error) return [];
+    return ((data ?? []) as unknown as FilaResumen[]).map(aResumen);
+  } catch {
+    return [];
+  }
+}
+
+export type DatosEmbarque = Partial<Omit<EmbarqueRow, "id" | "codigo">>;
+
+export async function crearEmbarque(client: PortalClient, datos: DatosEmbarque): Promise<ResultadoId> {
+  try {
+    const { data, error } = await client.from("embarques").insert(limpiar(datos as Record<string, unknown>)).select("id").single();
+    if (error) return { ok: false, message: describirError(error.message) };
+    return { ok: true, message: "Embarque creado.", id: (data as { id?: string } | null)?.id };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/**
+ * Asigna un expediente a un embarque (o lo saca, con `null`). Al sacarlo la
+ * proporción vuelve a 1; al meterlo en uno consolidado el reparto se fija
+ * después con `fijarRepartoFlete`.
+ */
+export async function asignarEmbarque(client: PortalClient, expedienteId: string, embarqueId: string | null, proporcion?: number): Promise<Resultado> {
+  try {
+    const cambios: Partial<ExpedienteRow> = { embarque_id: embarqueId };
+    if (embarqueId === null) cambios.proporcion_flete = 1;
+    else if (typeof proporcion === "number" && proporcion > 0 && proporcion <= 1) cambios.proporcion_flete = proporcion;
+    const { error } = await client.from("expedientes").update(cambios).eq("id", expedienteId);
+    if (error) return { ok: false, message: describirError(error.message) };
+    return { ok: true, message: embarqueId ? "Expediente asignado al embarque." : "Expediente quitado del embarque." };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+export async function fijarRepartoFlete(client: PortalClient, embarqueId: string, lineas: readonly LineaReparto[]): Promise<Resultado> {
+  try {
+    const { data, error } = await client.rpc("fijar_reparto_flete", {
+      p_embarque: embarqueId,
+      p_reparto: lineas.map((l) => ({ expediente_id: l.expedienteId, proporcion: l.proporcion })),
+    });
+    if (error) return { ok: false, message: describirError(error.message) };
+    return { ok: true, message: `Reparto fijado en ${String(data)} expedientes.` };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+export type DatosZarpeArribo = {
+  fecha_zarpe_est?: string | null;
+  fecha_zarpe_real?: string | null;
+  fecha_arribo_est?: string | null;
+  fecha_arribo_real?: string | null;
+  fecha_carga?: string | null;
+  nave?: string | null;
+  master_bl?: string | null;
+  precinto?: string | null;
+};
+
+/** Fechas, nave y BL del embarque; evento visible y fechas estimadas en cada expediente del grupo. */
+export async function registrarZarpeArribo(client: PortalClient, embarqueId: string, datos: DatosZarpeArribo): Promise<Resultado> {
+  try {
+    const { data, error } = await client.rpc("registrar_zarpe_arribo", { p_embarque: embarqueId, p_datos: limpiar(datos as Record<string, unknown>), p_actor: null });
+    if (error) return { ok: false, message: describirError(error.message) };
+    const n = Number(data);
+    return { ok: true, message: n > 0 ? `Embarque actualizado; ${n} expediente${n === 1 ? "" : "s"} del grupo ${n === 1 ? "recibió" : "recibieron"} el aviso en su cuenta.` : "Embarque actualizado (sin expedientes activos en el grupo)." };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/** Contrapartes con datos bancarios y verificación. Opcionalmente por tipo. */
+export async function listarContrapartesCompletas(client: PortalClient, tipo?: string | null): Promise<{ contrapartes: Contraparte[]; error: string | null }> {
+  try {
+    let query = client.from("contrapartes").select(COLUMNAS.contraparteCompleta).order("tipo").order("nombre").limit(500);
+    if (tipo) query = query.eq("tipo", tipo);
+    const { data, error } = await query;
+    if (error) return { contrapartes: [], error: describirError(error.message) };
+    return { contrapartes: ((data ?? []) as unknown as ContraparteRow[]).map(mapContraparte), error: null };
+  } catch {
+    return { contrapartes: [], error: MSG_RED };
+  }
+}
+
+export type DatosContraparteCompleta = DatosContraparte & {
+  datos_bancarios?: DatosBancarios | null;
+  notas?: string | null;
+};
+
+/** Al cambiar `datos_bancarios` la base borra la verificación anterior (trigger). */
+export async function actualizarContraparte(client: PortalClient, id: string, datos: Partial<DatosContraparteCompleta>): Promise<Resultado> {
+  try {
+    const { error } = await client.from("contrapartes").update(limpiar(datos as Record<string, unknown>)).eq("id", id);
+    if (error) return { ok: false, message: describirError(error.message) };
+    return { ok: true, message: "Contraparte actualizada." };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+export async function crearContraparteCompleta(client: PortalClient, datos: DatosContraparteCompleta): Promise<ResultadoId> {
+  if (datos.nombre.trim().length < 2) return { ok: false, message: "Escribe el nombre de la contraparte." };
+  try {
+    const { data, error } = await client.from("contrapartes").insert(limpiar(datos as Record<string, unknown>)).select("id").single();
+    if (error) return { ok: false, message: describirError(error.message) };
+    return { ok: true, message: "Contraparte creada.", id: (data as { id?: string } | null)?.id };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+export async function verificarBancoContraparte(client: PortalClient, id: string, verificado = true): Promise<Resultado> {
+  try {
+    const { error } = await client.rpc("verificar_banco_contraparte", { p_id: id, p_verificado: verificado });
+    if (error) return { ok: false, message: describirError(error.message) };
+    return { ok: true, message: verificado ? "Cuenta bancaria marcada como verificada por teléfono." : "Verificación retirada." };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+export async function listarNotificaciones(client: PortalClient, expedienteId: string): Promise<{ notificaciones: NotificacionRegistrada[]; error: string | null }> {
+  try {
+    const { data, error } = await client
+      .from("notificaciones")
+      .select(COLUMNAS.notificacion)
+      .eq("expediente_id", expedienteId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) return { notificaciones: [], error: describirError(error.message) };
+    return { notificaciones: ((data ?? []) as unknown as NotificacionRow[]).map(mapNotificacion), error: null };
+  } catch {
+    return { notificaciones: [], error: MSG_RED };
+  }
+}
+
+export type ResultadoNotificar = Resultado & {
+  estado?: "enviada" | "fallida" | "preparada";
+  destinatario?: string | null;
+  enlaceWhatsApp?: string | null;
+  texto?: string;
+};
+
+/** Manda (correo) o prepara (WhatsApp) un aviso al cliente por la ruta de servidor, que lo registra. */
+export async function enviarNotificacion(input: { expedienteId: string; plantilla: PlantillaNotificacion; canal: "email" | "whatsapp"; datos: DatosNotificacion }): Promise<ResultadoNotificar> {
+  try {
+    const respuesta = await fetch(`/api/portal/expedientes/${encodeURIComponent(input.expedienteId)}/notificaciones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ plantilla: input.plantilla, canal: input.canal, datos: input.datos }),
+    });
+    const datos = (await respuesta.json().catch(() => ({}))) as Record<string, unknown>;
+    const estado = datos.estado as ResultadoNotificar["estado"];
+    const enlace = typeof datos.enlaceWhatsApp === "string" ? datos.enlaceWhatsApp : null;
+    if (!respuesta.ok || datos.ok !== true) {
+      return { ok: false, message: typeof datos.mensaje === "string" ? datos.mensaje : "No se pudo enviar el aviso.", estado, enlaceWhatsApp: enlace, texto: typeof datos.texto === "string" ? datos.texto : undefined };
+    }
+    return {
+      ok: true,
+      message: estado === "enviada" ? `Correo enviado a ${String(datos.destinatario ?? "el cliente")}.` : "Mensaje preparado: se abre WhatsApp con el texto.",
+      estado,
+      destinatario: typeof datos.destinatario === "string" ? datos.destinatario : null,
+      enlaceWhatsApp: enlace,
+      texto: typeof datos.texto === "string" ? datos.texto : undefined,
     };
   } catch {
     return { ok: false, message: MSG_RED };

@@ -2,9 +2,9 @@
 
 /**
  * Detalle del expediente: cabecera con etapa, alertas y siguiente paso;
- * pestañas Resumen, Cliente, Vehículo y compra, Dinero, Documentos, Etapas y
- * tareas, Actividad;
- * avanzar con la lista de compuertas (forzar con motivo) y cancelar.
+ * pestañas Resumen, Cliente, Vehículo y compra, Dinero, Documentos, Embarque,
+ * Etapas y tareas, Actividad; avanzar con la lista de compuertas (forzar con
+ * motivo), avisar al cliente (correo o WhatsApp) y cancelar.
  *
  * Todo desde el navegador con la sesión del administrador. Las reglas (qué
  * falta, qué tareas nacen, qué alertas hay) las calcula el core al leer.
@@ -19,19 +19,21 @@ import { usePortalSession } from "@/components/portal/portalSession";
 import { alertas as calcularAlertas } from "@/core/expedientes/alertas";
 import { siguienteTarea } from "@/core/expedientes/avance";
 import { esEtapaTerminal } from "@/core/expedientes/etapas";
-import type { ContextoExpediente, Evento } from "@/core/expedientes/tipos";
-import { cargarExpediente, listarEventos } from "@/lib/expedientes/consultas";
+import type { ContextoExpediente, Evento, NotificacionRegistrada } from "@/core/expedientes/tipos";
+import { cargarExpediente, listarEventos, listarNotificaciones } from "@/lib/expedientes/consultas";
 import { RESPONSABLE_LABEL, autoDe, diasDesde, fecha } from "@/lib/expedientes/formato";
 import { AvanzarPanel } from "./AvanzarPanel";
+import { AvisarPanel } from "./AvisarPanel";
 import { PestanaActividad } from "./PestanaActividad";
 import { PestanaCliente } from "./PestanaCliente";
 import { PestanaDinero } from "./PestanaDinero";
 import { PestanaDocumentos } from "./PestanaDocumentos";
+import { PestanaEmbarque } from "./PestanaEmbarque";
 import { PestanaResumen } from "./PestanaResumen";
 import { PestanaTareas } from "./PestanaTareas";
 import { PestanaVehiculo } from "./PestanaVehiculo";
 
-type Pestana = "resumen" | "cliente" | "vehiculo" | "dinero" | "documentos" | "tareas" | "actividad";
+type Pestana = "resumen" | "cliente" | "vehiculo" | "dinero" | "documentos" | "embarque" | "tareas" | "actividad";
 
 const PESTANAS: { id: Pestana; label: string }[] = [
   { id: "resumen", label: "Resumen" },
@@ -39,6 +41,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
   { id: "vehiculo", label: "Vehículo y compra" },
   { id: "dinero", label: "Dinero" },
   { id: "documentos", label: "Documentos" },
+  { id: "embarque", label: "Embarque" },
   { id: "tareas", label: "Etapas y tareas" },
   { id: "actividad", label: "Actividad" },
 ];
@@ -49,11 +52,12 @@ export function ExpedienteDetalleScreen({ id }: { id: string }) {
   const { status: sessionStatus, client } = usePortalSession();
   const [ctx, setCtx] = useState<ContextoExpediente | null>(null);
   const [eventos, setEventos] = useState<Evento[]>([]);
+  const [notificaciones, setNotificaciones] = useState<NotificacionRegistrada[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<Flash>(null);
   const [pestana, setPestana] = useState<Pestana>("resumen");
-  const [panel, setPanel] = useState<"ninguno" | "avanzar" | "cancelar">("ninguno");
+  const [panel, setPanel] = useState<"ninguno" | "avanzar" | "cancelar" | "avisar">("ninguno");
 
   const canQuery = sessionStatus === "autenticado" && Boolean(client);
 
@@ -62,9 +66,10 @@ export function ExpedienteDetalleScreen({ id }: { id: string }) {
       setLoading(false);
       return;
     }
-    const [r, ev] = await Promise.all([cargarExpediente(client, id), listarEventos(client, id)]);
+    const [r, ev, nt] = await Promise.all([cargarExpediente(client, id), listarEventos(client, id), listarNotificaciones(client, id)]);
     setCtx(r.ctx);
     setEventos(ev.eventos);
+    setNotificaciones(nt.notificaciones);
     setError(r.error ?? ev.error);
     setLoading(false);
   }, [client, canQuery, id]);
@@ -132,6 +137,9 @@ export function ExpedienteDetalleScreen({ id }: { id: string }) {
         {!terminal ? (
           <div className="flex shrink-0 flex-wrap gap-2">
             <Button size="sm" onClick={() => setPanel(panel === "avanzar" ? "ninguno" : "avanzar")}>Avanzar etapa</Button>
+            {e.etapa !== "prospecto" ? (
+              <Button size="sm" variant="secondary" onClick={() => setPanel(panel === "avisar" ? "ninguno" : "avisar")}>Avisar al cliente</Button>
+            ) : null}
             <Button size="sm" variant="ghost" className="border border-line" onClick={() => setPanel(panel === "cancelar" ? "ninguno" : "cancelar")}>Cancelar expediente</Button>
           </div>
         ) : null}
@@ -143,8 +151,11 @@ export function ExpedienteDetalleScreen({ id }: { id: string }) {
         <Notice tone={flash.ok ? "info" : "danger"} label={flash.ok ? "Listo" : "No se pudo"}>{flash.text}</Notice>
       ) : null}
 
-      {panel !== "ninguno" && client ? (
+      {(panel === "avanzar" || panel === "cancelar") && client ? (
         <AvanzarPanel client={client} ctx={ctx} modo={panel} onCerrar={() => setPanel("ninguno")} onHecho={(r) => { setPanel("ninguno"); notify(r); }} />
+      ) : null}
+      {panel === "avisar" ? (
+        <AvisarPanel ctx={ctx} onCerrar={() => setPanel("ninguno")} onHecho={(r) => { if (r.ok) void load(); }} />
       ) : null}
 
       {alertas.length > 0 ? (
@@ -164,8 +175,9 @@ export function ExpedienteDetalleScreen({ id }: { id: string }) {
           {pestana === "vehiculo" ? <PestanaVehiculo client={client} ctx={ctx} onResultado={notify} /> : null}
           {pestana === "dinero" ? <PestanaDinero client={client} ctx={ctx} onResultado={notify} /> : null}
           {pestana === "documentos" ? <PestanaDocumentos client={client} ctx={ctx} onResultado={notify} /> : null}
+          {pestana === "embarque" ? <PestanaEmbarque client={client} ctx={ctx} onResultado={notify} /> : null}
           {pestana === "tareas" ? <PestanaTareas client={client} ctx={ctx} onResultado={notify} /> : null}
-          {pestana === "actividad" ? <PestanaActividad client={client} ctx={ctx} eventos={eventos} onResultado={notify} /> : null}
+          {pestana === "actividad" ? <PestanaActividad client={client} ctx={ctx} eventos={eventos} notificaciones={notificaciones} onResultado={notify} /> : null}
         </>
       ) : null}
     </div>

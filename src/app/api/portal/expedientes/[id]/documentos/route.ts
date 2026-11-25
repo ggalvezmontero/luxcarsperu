@@ -2,7 +2,7 @@
  * /api/portal/expedientes/[id]/documentos — generar documentos del expediente.
  *
  *   GET                         → { fijos }: datos fijos de Luxcars para la vista previa
- *   POST { tipo, extra?, visibleCliente?, movimientoId? }
+ *   POST { tipo, extra?, visibleCliente?, movimientoId?, avisar? }
  *                               → construye el documento desde su plantilla,
  *                                 renderiza PDF y DOCX, los sube al bucket PRIVADO
  *                                 `expedientes`, registra la versión y responde
@@ -33,6 +33,7 @@ import { getSql } from "@/lib/db/client";
 import { cargarContextoServidor, esUuid } from "@/lib/expedientes/servidor/contexto";
 import { camposFijosLuxcars } from "@/lib/expedientes/servidor/datosFijos";
 import { emitirDocumento } from "@/lib/expedientes/servidor/emitirDocumento";
+import { avisarPorCorreoSiHayCorreo } from "@/lib/expedientes/servidor/notificar";
 import { verificarSesionPortal } from "@/lib/portal/authServer";
 import { getStorageWriteMissingEnv, isStorageWriteConfigured } from "@/lib/portal/objectStorage";
 
@@ -98,6 +99,30 @@ export async function POST(request: Request, { params }: Contexto) {
   const r = await emitirDocumento(plantilla, ctx, { actorId: sesion.userId, extra, visibleCliente, movimiento });
   if (!r.ok) return fallo(r.status, r.mensaje, r.faltantes ? { faltantes: r.faltantes } : {});
 
+  // Aviso al cliente por correo cuando el documento le queda visible (fase 4).
+  // Los tipos del libro fuerzan su visibilidad en `camposDelLibro`; se consulta
+  // la fila para no repetir esa regla acá. Nunca frena la respuesta.
+  let aviso: { estado: string; destinatario: string | null; error: string | null } | null = null;
+  try {
+    const sql = getSql();
+    const filas = sql ? ((await sql`select visible_cliente, titulo from public.expediente_documentos where id = ${r.documentoId}::uuid`) as unknown as { visible_cliente: boolean; titulo: string }[]) : [];
+    if (filas[0]?.visible_cliente && cuerpo.avisar !== false) {
+      const plantillaAviso = tipo === "aviso_h3" ? "aviso_h3" : tipo === "liquidacion_definitiva" ? "diferencia_h3" : "documento_disponible";
+      const h3 = ctx.hitos.find((h) => h.tipo === "H3");
+      const a = await avisarPorCorreoSiHayCorreo(
+        ctx,
+        plantillaAviso,
+        plantillaAviso === "aviso_h3"
+          ? { montoUsd: h3?.montoEstimadoUsd ?? null, fechaLimite: h3?.fechaLimite ?? null, documento: filas[0].titulo }
+          : { documento: filas[0].titulo },
+        sesion.userId,
+      );
+      if (a) aviso = { estado: a.estado, destinatario: a.destinatario, error: a.error };
+    }
+  } catch (error) {
+    console.error("[expedientes/documentos] aviso", error);
+  }
+
   return NextResponse.json({
     ok: true,
     documentoId: r.documentoId,
@@ -105,5 +130,6 @@ export async function POST(request: Request, { params }: Contexto) {
     manualesVacios: r.manualesVacios,
     bytes: r.bytes,
     urls: r.urls,
+    aviso,
   });
 }

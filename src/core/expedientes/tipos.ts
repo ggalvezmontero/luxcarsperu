@@ -232,6 +232,18 @@ export type Embarque = {
   notasInternas: string | null;
 };
 
+/** Datos bancarios de una contraparte, como campos sueltos (nunca texto libre). */
+export type DatosBancarios = {
+  banco?: string;
+  titular?: string;
+  cuenta?: string;
+  swift?: string;
+  iban?: string;
+  aba?: string;
+  moneda?: string;
+  direccionBanco?: string;
+};
+
 export type Contraparte = {
   id: string;
   tipo: TipoContraparte;
@@ -242,7 +254,29 @@ export type Contraparte = {
   email: string | null;
   telefono: string | null;
   rucOTaxId: string | null;
+  /** Solo lo trae el equipo cuando pide la columna; `null` si no hay. */
+  datosBancarios: DatosBancarios | null;
   bancoVerificadoEn: string | null;
+  bancoVerificadoPor: string | null;
+  notas: string | null;
+};
+
+export type CanalNotificacion = "email" | "whatsapp";
+export type EstadoNotificacion = "enviada" | "fallida" | "preparada";
+
+/** Aviso preparado o enviado a un cliente (`notificaciones`). */
+export type NotificacionRegistrada = {
+  id: string;
+  expedienteId: string | null;
+  canal: CanalNotificacion;
+  plantilla: string;
+  destinatario: string | null;
+  asunto: string | null;
+  cuerpoTexto: string | null;
+  estado: EstadoNotificacion;
+  enviadoEn: string | null;
+  error: string | null;
+  createdAt: string;
 };
 
 export type Vehiculo = {

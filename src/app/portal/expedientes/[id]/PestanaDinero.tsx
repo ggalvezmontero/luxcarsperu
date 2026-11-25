@@ -47,6 +47,7 @@ import {
   leerNumero,
   usd,
 } from "@/lib/expedientes/formato";
+import { bancoSinVerificar } from "@/lib/expedientes/mapeo";
 import type { PortalClient } from "@/lib/portal/portalClient";
 
 type Resultado = { ok: boolean; message: string };
@@ -308,6 +309,7 @@ function Libro({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r:
                       </p>
                       <p className="mt-0.5 text-xs text-ink-4">
                         {[m.concepto, tercero?.nombre, m.documentoRef].filter(Boolean).join(" · ") || (m.declaradoPorCliente ? "Declarado por el cliente" : "—")}
+                        {m.tipo === "pago" && bancoSinVerificar(tercero) ? <Badge tone="warn" className="ml-2">Cuenta sin verificar</Badge> : null}
                       </p>
                       {m.notaInterna ? <p className="mt-0.5 text-xs italic text-ink-4">{m.notaInterna}</p> : null}
                     </Td>
@@ -485,9 +487,16 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
             <Campo label="Beneficiario (contraparte)">
               <Selector value={contraparte} onChange={(e) => setContraparte(e.target.value)}>
                 <option value="">— SUNAT u otro sin ficha —</option>
-                {terceros.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                {terceros.map((t) => <option key={t.id} value={t.id}>{t.nombre}{bancoSinVerificar(t) ? " · cuenta sin verificar" : ""}</option>)}
               </Selector>
             </Campo>
+            {bancoSinVerificar(terceros.find((t) => t.id === contraparte)) ? (
+              <div className="sm:col-span-2">
+                <Notice tone="warn" label="Cuenta bancaria sin verificar">
+                  Nadie confirmó por teléfono la cuenta de esta contraparte. Antes de girar, verifícala en Contrapartes; el pago se puede registrar igual.
+                </Notice>
+              </div>
+            ) : null}
             {conceptoClave === "otro" ? (
               <Campo label="Detalle del concepto" className="sm:col-span-2"><Entrada value={conceptoLibre} onChange={(e) => setConceptoLibre(e.target.value)} maxLength={200} /></Campo>
             ) : null}

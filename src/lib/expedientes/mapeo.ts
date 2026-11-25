@@ -19,6 +19,7 @@ import {
   type Aprobacion,
   type Cliente,
   type Contraparte,
+  type DatosBancarios,
   type Documento,
   type Embarque,
   type EstadoTarea,
@@ -28,6 +29,7 @@ import {
   type ExpedienteReservado,
   type Hito,
   type Movimiento,
+  type NotificacionRegistrada,
   type Presupuesto,
   type Tarea,
   type TipoAprobacion,
@@ -50,6 +52,7 @@ import {
   type ExpedienteReservadoRow,
   type ExpedienteRow,
   type ExpedienteTareaRow,
+  type NotificacionRow,
 } from "@/lib/db/types";
 
 export function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
@@ -112,7 +115,44 @@ export function mapContraparte(row: ContraparteRow): Contraparte {
     email: row.email,
     telefono: row.telefono,
     rucOTaxId: row.ruc_o_tax_id ?? null,
+    datosBancarios: mapDatosBancarios(row.datos_bancarios),
     bancoVerificadoEn: row.banco_verificado_en,
+    bancoVerificadoPor: row.banco_verificado_por ?? null,
+    notas: row.notas ?? null,
+  };
+}
+
+const LLAVES_BANCO: (keyof DatosBancarios)[] = ["banco", "titular", "cuenta", "swift", "iban", "aba", "moneda", "direccionBanco"];
+
+/** Solo las llaves conocidas y con texto; `null` si no queda nada. */
+export function mapDatosBancarios(value: unknown): DatosBancarios | null {
+  if (!value || typeof value !== "object") return null;
+  const salida: DatosBancarios = {};
+  for (const k of LLAVES_BANCO) {
+    const v = (value as Record<string, unknown>)[k];
+    if (typeof v === "string" && v.trim()) salida[k] = v.trim();
+  }
+  return Object.keys(salida).length > 0 ? salida : null;
+}
+
+/** La contraparte tiene cuenta y nadie la verificó por teléfono. */
+export function bancoSinVerificar(c: Contraparte | null | undefined): boolean {
+  return Boolean(c && c.datosBancarios && !c.bancoVerificadoEn);
+}
+
+export function mapNotificacion(row: NotificacionRow): NotificacionRegistrada {
+  return {
+    id: row.id,
+    expedienteId: row.expediente_id,
+    canal: row.canal === "whatsapp" ? "whatsapp" : "email",
+    plantilla: row.plantilla,
+    destinatario: row.destinatario,
+    asunto: row.asunto,
+    cuerpoTexto: row.cuerpo_texto,
+    estado: pick(row.estado, ["enviada", "fallida", "preparada"] as const, "fallida"),
+    enviadoEn: row.enviado_en,
+    error: row.error,
+    createdAt: row.created_at,
   };
 }
 
@@ -369,6 +409,9 @@ export const COLUMNAS = {
   cliente:
     "id, tipo, razon_social, ruc, dni, domicilio, partida, representante, representante_dni, representante_cargo, email, telefono, actividad, banco_origen, beneficiario_final, origen_fondos, es_pep, kyc_ficha_ruc_en, kyc_vigencia_en, kyc_listas_en, kyc_listas_resultado, kyc_completo, user_id, notas_internas, created_at, updated_at",
   contraparte: "id, tipo, nombre, pais, direccion, contacto, email, telefono, ruc_o_tax_id, banco_verificado_en",
+  /** Con datos bancarios, verificador y notas: para /portal/contrapartes y las advertencias de pago. */
+  contraparteCompleta: "id, tipo, nombre, pais, direccion, contacto, email, telefono, ruc_o_tax_id, datos_bancarios, banco_verificado_en, banco_verificado_por, notas",
+  notificacion: "id, expediente_id, canal, plantilla, destinatario, asunto, cuerpo_texto, estado, enviado_en, error, created_at",
   embarque:
     "id, codigo, modalidad, contenedor, forwarder_id, aseguradora_id, almacen_consolidacion, puerto_origen, puerto_destino, fecha_release_est, fecha_release_real, fecha_carga, fecha_zarpe_est, fecha_zarpe_real, fecha_arribo_est, fecha_arribo_real, nave, master_bl, precinto, flete_total_usd, gastos_contenedor_usd, declaracion_exportacion, estado, notas_internas",
   expediente:

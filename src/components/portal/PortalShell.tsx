@@ -97,6 +97,20 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Icon path="M4 20a6 6 0 0 1 12 0M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8 3v6m-3-3h6" />,
   },
   {
+    href: "/portal/embarques",
+    label: "Embarques",
+    hint: "Contenedores compartidos, fechas y BL",
+    ready: true,
+    icon: <Icon path="M3 18h18l-2 3H5l-2-3Zm1-5h16v5H4v-5Zm3-6h4v6H7V7Zm6 2h4v4h-4V9Z" />,
+  },
+  {
+    href: "/portal/contrapartes",
+    label: "Contrapartes",
+    hint: "Vendedores, forwarders, agentes y sus cuentas",
+    ready: true,
+    icon: <Icon path="M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6M9 11h.01M15 11h.01" />,
+  },
+  {
     href: "/portal/ejemplos",
     label: "Ejemplos de importación",
     hint: "Autos de referencia de la home y /importar",

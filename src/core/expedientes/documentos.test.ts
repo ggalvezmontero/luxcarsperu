@@ -100,10 +100,10 @@ function expediente(cambios: Partial<Expediente> = {}): Expediente {
 }
 
 const CONTRAPARTES: Contraparte[] = [
-  { id: "v1", tipo: "vendedor", nombre: "Example Motors Ltd.", pais: "Canadá", direccion: "1234 Kingsway, Vancouver, BC V5R 5J4, Canada", contacto: "Mark Lee", email: "sales@example.ca", telefono: "+1 604 000 0000", rucOTaxId: null, bancoVerificadoEn: null },
-  { id: "f1", tipo: "forwarder", nombre: "Example Logistics Inc.", pais: "Canadá", direccion: null, contacto: null, email: "ops@example-logistics.com", telefono: null, rucOTaxId: null, bancoVerificadoEn: null },
-  { id: "a1", tipo: "agente_aduana", nombre: "Agencia Prueba S.A.", pais: "Perú", direccion: null, contacto: "Sectorista", email: "aduana@prueba.test", telefono: null, rucOTaxId: "20999999999", bancoVerificadoEn: null },
-  { id: "i1", tipo: "inspector", nombre: "Inspector Prueba", pais: "Canadá", direccion: null, contacto: null, email: null, telefono: null, rucOTaxId: null, bancoVerificadoEn: null },
+  { id: "v1", tipo: "vendedor", nombre: "Example Motors Ltd.", pais: "Canadá", direccion: "1234 Kingsway, Vancouver, BC V5R 5J4, Canada", contacto: "Mark Lee", email: "sales@example.ca", telefono: "+1 604 000 0000", rucOTaxId: null, datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
+  { id: "f1", tipo: "forwarder", nombre: "Example Logistics Inc.", pais: "Canadá", direccion: null, contacto: null, email: "ops@example-logistics.com", telefono: null, rucOTaxId: null, datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
+  { id: "a1", tipo: "agente_aduana", nombre: "Agencia Prueba S.A.", pais: "Perú", direccion: null, contacto: "Sectorista", email: "aduana@prueba.test", telefono: null, rucOTaxId: "20999999999", datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
+  { id: "i1", tipo: "inspector", nombre: "Inspector Prueba", pais: "Canadá", direccion: null, contacto: null, email: null, telefono: null, rucOTaxId: null, datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
 ];
 
 const FIJOS = {

@@ -653,7 +653,26 @@ export type ContraparteRow = {
   email: string | null;
   telefono: string | null;
   ruc_o_tax_id: string | null;
+  /** Banco, titular, cuenta, SWIFT/IBAN/ABA, moneda. Solo el equipo lo pide. */
+  datos_bancarios?: Record<string, unknown> | null;
   banco_verificado_en: string | null;
+  banco_verificado_por?: string | null;
+  notas?: string | null;
+};
+
+/** Fila de `public.notificaciones` (fase 4). */
+export type NotificacionRow = {
+  id: string;
+  expediente_id: string | null;
+  canal: string;
+  plantilla: string;
+  destinatario: string | null;
+  asunto: string | null;
+  cuerpo_texto: string | null;
+  estado: string;
+  enviado_en: string | null;
+  error: string | null;
+  created_at: string;
 };
 
 /** Fila de `public.embarques`. */
