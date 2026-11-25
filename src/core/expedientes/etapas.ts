@@ -8,10 +8,11 @@
  * avanzar se decide acá y se muestra en pantalla.
  *
  * Evidencia con dos fuentes. Varias compuertas hablan de documentos firmados o
- * de dinero acreditado, que llegan en las fases 2 y 3. Mientras esas tablas no
- * existan, la misma condición se cumple con la TAREA correspondiente marcada
- * como hecha (p. ej. "contrato y LOA firmados" ← `cliente.firmar_contrato_loa`).
- * Cuando el documento o el movimiento existan, cuentan ellos primero.
+ * de dinero acreditado. Los documentos existen desde la fase 2 (el contrato y
+ * la LOA archivados como `firmado` cumplen la compuerta de búsqueda); el libro
+ * llega en la fase 3. Mientras la evidencia formal no esté, la misma condición
+ * se cumple con la TAREA correspondiente marcada como hecha (p. ej. "contrato y
+ * LOA firmados" ← `cliente.firmar_contrato_loa`). Las dos vías valen.
  */
 
 import { oldestImportableModelYear } from "../pricing/pricingConfig";
@@ -67,16 +68,20 @@ function documentoEn(ctx: ContextoExpediente, tipo: TipoDocumento, estados: read
   return ctx.documentos.some((d) => d.tipo === tipo && estados.includes(d.estado));
 }
 
-/** Documento firmado, o la tarea que lo representa mientras no hay documentos. */
-function docFirmado(tipo: TipoDocumento, tareaClave: string) {
+/**
+ * Documento(s) firmados, o la tarea que los representa mientras no se hayan
+ * archivado. Con varios tipos, TODOS deben estar firmados (contrato y LOA).
+ */
+function docFirmado(tipos: TipoDocumento | TipoDocumento[], tareaClave: string) {
+  const lista = Array.isArray(tipos) ? tipos : [tipos];
   return (ctx: ContextoExpediente) =>
-    documentoEn(ctx, tipo, ["firmado"]) || tareaHecha(ctx, tareaClave);
+    lista.every((tipo) => documentoEn(ctx, tipo, ["firmado"])) || tareaHecha(ctx, tareaClave);
 }
 
-/** Documento subido o generado (no exige firma). */
+/** Documento subido o emitido (no exige firma). */
 function docPresente(tipo: TipoDocumento, tareaClave: string) {
   return (ctx: ContextoExpediente) =>
-    documentoEn(ctx, tipo, ["generado", "firmado"]) || tareaHecha(ctx, tareaClave);
+    documentoEn(ctx, tipo, ["emitido", "firmado"]) || tareaHecha(ctx, tareaClave);
 }
 
 /** Hito acreditado en el libro, o la tarea de confirmación hecha mientras no hay libro. */
@@ -203,7 +208,7 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
       "Buscamos unidades que cumplan lo acordado, revisamos historial y gravámenes e inspeccionamos la que elijas.",
     queNecesitamos: "Aprobar la inspección y el precio, y pagar el primer hito",
     compuerta: [
-      C("contrato_firmado", "Contrato y LOA firmados", docFirmado("contrato", "cliente.firmar_contrato_loa")),
+      C("contrato_firmado", "Contrato y LOA firmados", docFirmado(["contrato", "loa"], "cliente.firmar_contrato_loa")),
       C("kyc_completo", "KYC completo (ficha RUC, vigencia y listas con fecha)", (ctx) => Boolean(ctx.cliente?.kycCompleto) || tareaHecha(ctx, "luxcars.kyc")),
     ],
     tareas: [

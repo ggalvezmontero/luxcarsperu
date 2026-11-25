@@ -648,9 +648,11 @@ export type ContraparteRow = {
   tipo: string;
   nombre: string;
   pais: string | null;
+  direccion: string | null;
   contacto: string | null;
   email: string | null;
   telefono: string | null;
+  ruc_o_tax_id: string | null;
   banco_verificado_en: string | null;
 };
 
@@ -724,6 +726,8 @@ export type ExpedienteRow = {
   honorarios_igv_usd: number | string | null;
   porcentaje_detraccion?: number | string | null;
   margen_h3?: number | string | null;
+  tarifa_custodia_usd?: number | string | null;
+  costo_inspeccion_usd?: number | string | null;
   fecha_firma: string | null;
   fecha_limite_h2: string | null;
   fecha_est_embarque: string | null;
@@ -808,6 +812,32 @@ export type ExpedienteAprobacionRow = {
   expediente_id: string;
   tipo: string;
   payload: unknown;
+  created_at: string;
+};
+
+/**
+ * Fila de `public.expediente_documentos` (equipo) o de la vista
+ * `expediente_documento_cliente` (cliente, sin rutas ni campos: `tiene_*`).
+ * Las rutas de objeto no se piden desde el navegador ni en el portal: el
+ * archivo siempre se baja por la ruta de servidor que firma la URL.
+ */
+export type ExpedienteDocumentoRow = {
+  id: string;
+  expediente_id: string;
+  tipo: string;
+  version: number;
+  estado: string;
+  origen?: string | null;
+  titulo: string;
+  plantilla_version?: string | null;
+  ruta_pdf?: string | null;
+  ruta_docx?: string | null;
+  ruta_firmado?: string | null;
+  tiene_pdf?: boolean | null;
+  tiene_firmado?: boolean | null;
+  visible_cliente?: boolean | null;
+  emitido_en: string | null;
+  firmado_en: string | null;
   created_at: string;
 };
 

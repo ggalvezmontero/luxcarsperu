@@ -49,4 +49,32 @@ export {
   parsearCodigo,
   parsearCodigoEmbarque,
 } from "./codigo";
+export {
+  CAMPOS,
+  FICHA,
+  LINEA_EN_BLANCO,
+  camposParaImprimir,
+  camposPlantilla,
+  esCampo,
+  esManual,
+  espiarCampos,
+  fechaEnLetras,
+  monto,
+  porcentaje,
+  type Campo,
+  type Campos,
+  type CamposExtra,
+  type DefinicionCampo,
+  type GrupoCampo,
+  type ResultadoCampos,
+} from "./campos";
+export {
+  PLANTILLAS,
+  construirDocumento,
+  nombreArchivo,
+  plantillaDe,
+  renderHtml,
+  type DocumentoConstruido,
+  type Plantilla,
+} from "./documentos";
 export * from "./tipos";

@@ -8,7 +8,7 @@ import { formatoCodigo, normalizarCodigo, parsearCodigo } from "./codigo";
 import { ETAPAS, accionDeTarea, definicionEtapa } from "./etapas";
 import { estadoHito, hitosDesde } from "./hitos";
 import { IGV_HONORARIOS, entradaPorDefecto, presupuestar } from "./presupuesto";
-import type { ContextoExpediente, Expediente, Movimiento, Tarea } from "./tipos";
+import type { ContextoExpediente, Documento, Expediente, Movimiento, Tarea } from "./tipos";
 import { ETAPAS_CLIENTE, ETAPAS_ORDEN } from "./tipos";
 
 /** 24 de noviembre de 2026 en Lima. */
@@ -58,6 +58,8 @@ function expedienteBase(cambios: Partial<Expediente> = {}): Expediente {
     honorariosIgvUsd: null,
     porcentajeDetraccion: null,
     margenH3: 0,
+    tarifaCustodiaUsd: null,
+    costoInspeccionUsd: null,
     fechaFirma: null,
     fechaLimiteH2: null,
     fechaEstEmbarque: null,
@@ -334,11 +336,11 @@ describe("avance", () => {
     expect(sin.faltantes.map((f) => f.clave)).toEqual(["contrato_firmado"]);
     const con = evaluarAvance(contexto({ tareas: [tarea("cliente.firmar_contrato_loa")] }, { etapa: "contrato" }), "busqueda", HOY);
     expect(con.permitido).toBe(true);
-    const doc = evaluarAvance(
-      contexto({ documentos: [{ id: "d", tipo: "contrato", version: 1, estado: "firmado", visibleCliente: true, createdAt: "2026-11-20T00:00:00Z", firmadoEn: "2026-11-21" }] }, { etapa: "contrato" }),
-      "busqueda",
-      HOY,
-    );
+    const firmado = (tipo: "contrato" | "loa"): Documento => ({
+      id: tipo, expedienteId: "e1", tipo, version: 1, estado: "firmado", origen: "generado", titulo: tipo, plantillaVersion: null,
+      tienePdf: true, tieneDocx: true, tieneFirmado: true, visibleCliente: true, emitidoEn: "2026-11-20T00:00:00Z", firmadoEn: "2026-11-21", createdAt: "2026-11-20T00:00:00Z",
+    });
+    const doc = evaluarAvance(contexto({ documentos: [firmado("contrato"), firmado("loa")] }, { etapa: "contrato" }), "busqueda", HOY);
     expect(doc.permitido).toBe(true);
   });
 

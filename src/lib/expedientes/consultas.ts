@@ -14,6 +14,7 @@ import type {
   Cliente,
   Contraparte,
   ContextoExpediente,
+  Documento,
   Embarque,
   EtapaExpediente,
   Evento,
@@ -24,6 +25,7 @@ import type {
   ContraparteRow,
   EmbarqueRow,
   ExpedienteAprobacionRow,
+  ExpedienteDocumentoRow,
   ExpedienteEtapaRow,
   ExpedienteEventoRow,
   ExpedienteHitoRow,
@@ -39,6 +41,7 @@ import {
   mapAprobacion,
   mapCliente,
   mapContraparte,
+  mapDocumento,
   mapEmbarque,
   mapEvento,
   mapExpediente,
@@ -71,6 +74,7 @@ type Embebido = ExpedienteRow & {
   expediente_etapas?: ExpedienteEtapaRow[] | null;
   expediente_eventos?: ExpedienteEventoRow[] | null;
   expediente_aprobaciones?: ExpedienteAprobacionRow[] | null;
+  expediente_documentos?: ExpedienteDocumentoRow[] | null;
 };
 
 function uno<T>(v: T | T[] | null | undefined): T | null {
@@ -90,7 +94,9 @@ function aContexto(row: Embebido): ContextoExpediente {
     etapas: (row.expediente_etapas ?? []).map(mapTramo).sort((a, b) => a.desde.localeCompare(b.desde)),
     aprobaciones: (row.expediente_aprobaciones ?? []).map(mapAprobacion),
     movimientos: [],
-    documentos: [],
+    documentos: (row.expediente_documentos ?? [])
+      .map(mapDocumento)
+      .sort((a, b) => a.tipo.localeCompare(b.tipo) || b.version - a.version),
   };
 }
 
@@ -107,6 +113,7 @@ const EMBED_DETALLE = [
   `expedientes_reservado ( ${COLUMNAS.reservado} )`,
   `expediente_etapas ( ${COLUMNAS.etapaHist} )`,
   `expediente_aprobaciones ( ${COLUMNAS.aprobacion} )`,
+  `expediente_documentos ( ${COLUMNAS.documento} )`,
 ].join(", ");
 
 /* -------------------------------------------------------------------------- */
@@ -136,7 +143,23 @@ export async function cargarExpediente(
     const { data, error } = await client.from("expedientes").select(EMBED_DETALLE).eq("id", id).maybeSingle();
     if (error) return { ctx: null, error: `No se pudo leer el expediente. ${MSG_MIGRACION} (${error.message})` };
     if (!data) return { ctx: null, error: null };
-    return { ctx: aContexto(data as unknown as Embebido), error: null };
+    const ctx = aContexto(data as unknown as Embebido);
+    // Los terceros del expediente (vendedor, inspector, agente, forwarder):
+    // los nombran los documentos. Una sola consulta por sus ids.
+    const ids = [
+      ctx.expediente.reservado?.vendedorId,
+      ctx.expediente.reservado?.inspectorId,
+      ctx.expediente.reservado?.agenteAduanaId,
+      ctx.embarque?.forwarderId,
+      ctx.embarque?.aseguradoraId,
+    ].filter((x): x is string => Boolean(x));
+    if (ids.length > 0) {
+      const terceros = await client.from("contrapartes").select(COLUMNAS.contraparte).in("id", ids);
+      ctx.contrapartes = ((terceros.data ?? []) as unknown as ContraparteRow[]).map(mapContraparte);
+    } else {
+      ctx.contrapartes = [];
+    }
+    return { ctx, error: null };
   } catch {
     return { ctx: null, error: "No se pudo leer el expediente. Revisa tu conexión." };
   }
@@ -228,6 +251,29 @@ export async function listarContrapartes(client: PortalClient): Promise<Contrapa
     return ((data ?? []) as unknown as ContraparteRow[]).map(mapContraparte);
   } catch {
     return [];
+  }
+}
+
+/** Datos mínimos de una contraparte nueva (la gestión completa llega en la fase 4). */
+export type DatosContraparte = {
+  tipo: string;
+  nombre: string;
+  pais?: string | null;
+  direccion?: string | null;
+  contacto?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+  ruc_o_tax_id?: string | null;
+};
+
+export async function crearContraparte(client: PortalClient, datos: DatosContraparte): Promise<ResultadoId> {
+  if (datos.nombre.trim().length < 2) return { ok: false, message: "Escribe el nombre de la contraparte." };
+  try {
+    const { data, error } = await client.from("contrapartes").insert(limpiar(datos)).select("id").single();
+    if (error) return { ok: false, message: describirError(error.message) };
+    return { ok: true, message: "Contraparte creada.", id: (data as { id?: string } | null)?.id };
+  } catch {
+    return { ok: false, message: MSG_RED };
   }
 }
 
@@ -498,4 +544,143 @@ function limpiar<T extends Record<string, unknown>>(obj: T): T {
     salida[k] = typeof v === "string" ? v.trim() || null : v;
   }
   return salida as T;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Documentos (fase 2)                                                        */
+/* -------------------------------------------------------------------------- */
+
+/** Documentos de un expediente, todas las versiones, por tipo y versión descendente. */
+export async function listarDocumentos(client: PortalClient, expedienteId: string): Promise<{ documentos: Documento[]; error: string | null }> {
+  try {
+    const { data, error } = await client
+      .from("expediente_documentos")
+      .select(COLUMNAS.documento)
+      .eq("expediente_id", expedienteId)
+      .order("tipo")
+      .order("version", { ascending: false });
+    if (error) return { documentos: [], error: describirError(error.message) };
+    return { documentos: ((data ?? []) as unknown as ExpedienteDocumentoRow[]).map(mapDocumento), error: null };
+  } catch {
+    return { documentos: [], error: MSG_RED };
+  }
+}
+
+/** Mostrar u ocultar un documento en la cuenta del cliente. El archivo sigue saliendo solo por URL firmada. */
+export async function cambiarVisibilidadDocumento(
+  client: PortalClient,
+  input: { documentoId: string; visibleCliente: boolean },
+): Promise<Resultado> {
+  try {
+    const { error } = await client
+      .from("expediente_documentos")
+      .update({ visible_cliente: input.visibleCliente })
+      .eq("id", input.documentoId);
+    if (error) return { ok: false, message: describirError(error.message) };
+    return { ok: true, message: input.visibleCliente ? "El cliente ya ve este documento en su cuenta." : "Documento oculto para el cliente." };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/**
+ * Lo que devuelve `/api/portal/expedientes/[id]/documentos` al generar. Las URL
+ * firmadas duran cinco minutos: son para abrir el archivo recién generado.
+ */
+export type DocumentoGenerado = { documentoId: string; version: number; urls: { pdf: string | null; docx: string | null } };
+
+export type ResultadoGenerar =
+  | ({ ok: true; message: string } & DocumentoGenerado)
+  | { ok: false; message: string; faltantes?: string[] };
+
+/** Genera (o regenera) un documento desde su plantilla: PDF y DOCX al bucket privado y la fila con el snapshot. */
+export async function generarDocumento(
+  input: { expedienteId: string; tipo: string; extra: Record<string, string>; visibleCliente: boolean },
+): Promise<ResultadoGenerar> {
+  try {
+    const respuesta = await fetch(`/api/portal/expedientes/${encodeURIComponent(input.expedienteId)}/documentos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ tipo: input.tipo, extra: input.extra, visibleCliente: input.visibleCliente }),
+    });
+    const datos = (await respuesta.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!respuesta.ok || datos.ok !== true) {
+      return {
+        ok: false,
+        message: typeof datos.mensaje === "string" ? datos.mensaje : "No se pudo generar el documento.",
+        faltantes: Array.isArray(datos.faltantes) ? (datos.faltantes as string[]) : undefined,
+      };
+    }
+    const urls = (datos.urls ?? {}) as { pdf?: unknown; docx?: unknown };
+    return {
+      ok: true,
+      message: `Documento generado (versión ${String(datos.version)}).`,
+      documentoId: String(datos.documentoId),
+      version: Number(datos.version),
+      urls: { pdf: typeof urls.pdf === "string" ? urls.pdf : null, docx: typeof urls.docx === "string" ? urls.docx : null },
+    };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/** Datos fijos de Luxcars y sus cuentas (variable de entorno del servidor), para la vista previa. */
+export async function cargarCamposFijos(expedienteId: string): Promise<Record<string, string>> {
+  try {
+    const respuesta = await fetch(`/api/portal/expedientes/${encodeURIComponent(expedienteId)}/documentos`, { credentials: "same-origin", cache: "no-store" });
+    const datos = (await respuesta.json().catch(() => ({}))) as { fijos?: unknown };
+    return datos.fijos && typeof datos.fijos === "object" ? (datos.fijos as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Tope del PDF firmado que acepta `/api/portal/expedientes/[id]/archivos`. */
+export const BYTES_MAXIMOS_FIRMADO = 15 * 1024 * 1024;
+
+/**
+ * Sube el PDF firmado de un documento: pide la URL firmada al servidor, sube
+ * directo al bucket privado y pide que se registre (`estado = firmado`).
+ */
+export async function subirDocumentoFirmado(
+  input: { expedienteId: string; documentoId: string; archivo: File; firmadoEn: string | null },
+): Promise<Resultado> {
+  if (input.archivo.type !== "application/pdf") return { ok: false, message: "El firmado tiene que ser un PDF." };
+  if (input.archivo.size === 0) return { ok: false, message: "El archivo está vacío." };
+  if (input.archivo.size > BYTES_MAXIMOS_FIRMADO) return { ok: false, message: "El PDF supera los 15 MB permitidos." };
+  const ruta = `/api/portal/expedientes/${encodeURIComponent(input.expedienteId)}/archivos`;
+  try {
+    const permiso = await fetch(ruta, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ documentoId: input.documentoId, contentType: "application/pdf", bytes: input.archivo.size }),
+    });
+    const datos = (await permiso.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!permiso.ok || datos.ok !== true || typeof datos.url !== "string") {
+      return { ok: false, message: typeof datos.mensaje === "string" ? datos.mensaje : "No se pudo preparar la subida." };
+    }
+    const subida = await fetch(datos.url, { method: "PUT", headers: { "Content-Type": "application/pdf" }, body: input.archivo });
+    if (!subida.ok) return { ok: false, message: "El almacenamiento rechazó el archivo. Vuelve a intentarlo." };
+
+    const registro = await fetch(ruta, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ documentoId: input.documentoId, firmadoEn: input.firmadoEn }),
+    });
+    const r = (await registro.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!registro.ok || r.ok !== true) {
+      return { ok: false, message: typeof r.mensaje === "string" ? r.mensaje : "El archivo subió pero no se pudo registrar." };
+    }
+    return { ok: true, message: "Firmado archivado: el documento pasó a estado firmado." };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/** URL de descarga (redirige a una URL firmada de cinco minutos). */
+export function urlDescargaDocumento(documentoId: string, formato: "pdf" | "docx" | "firmado"): string {
+  return `/api/portal/expedientes/archivos?documento=${encodeURIComponent(documentoId)}&formato=${formato}`;
 }

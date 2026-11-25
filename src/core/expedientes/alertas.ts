@@ -6,12 +6,14 @@
 import { oldestImportableModelYear } from "../pricing/pricingConfig";
 import { anioDeNumeracion, definicionEtapa, esEtapaTerminal } from "./etapas";
 import { estadoHito } from "./hitos";
-import type { Alerta, ContextoExpediente, TipoHito } from "./tipos";
+import type { Alerta, ContextoExpediente, TipoDocumento, TipoHito } from "./tipos";
 
 /** Días desde que se generó un documento sin marcarse firmado antes de avisar. */
 export const DIAS_DOCUMENTO_SIN_FIRMA = 10;
 /** Días antes del vencimiento de la LOA en que empieza el aviso. */
 export const DIAS_AVISO_LOA = 30;
+/** Los documentos que vuelven firmados; las instrucciones y el Anexo B no. */
+const DOCUMENTOS_QUE_SE_FIRMAN = new Set<TipoDocumento>(["contrato", "anexo_a", "anexo_c", "anexo_d", "loa", "acta_entrega"]);
 
 function ordenEtapaDe(etapa: ContextoExpediente["expediente"]["etapa"]): number {
   return definicionEtapa(etapa).orden;
@@ -119,15 +121,15 @@ export function alertas(ctx: ContextoExpediente, hoy: Date = new Date()): Alerta
     }
   }
 
-  // Documento generado hace más de N días sin marcar como firmado (fase 2).
+  // Documento de firma emitido hace más de N días sin archivarse firmado.
   for (const d of ctx.documentos) {
-    if (d.estado !== "generado") continue;
-    const dias = diasEntre(d.createdAt.slice(0, 10), hoyIso);
+    if (d.estado !== "emitido" || !DOCUMENTOS_QUE_SE_FIRMAN.has(d.tipo)) continue;
+    const dias = diasEntre((d.emitidoEn ?? d.createdAt).slice(0, 10), hoyIso);
     if (dias > DIAS_DOCUMENTO_SIN_FIRMA) {
       salida.push({
         clave: `documento_sin_firma_${d.tipo}`,
         nivel: "media",
-        titulo: `Documento sin firmar: ${d.tipo}`,
+        titulo: `Documento sin firmar: ${d.titulo}`,
         detalle: `Se generó hace ${dias} días y no está marcado como firmado.`,
       });
     }

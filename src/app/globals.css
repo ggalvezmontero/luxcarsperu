@@ -340,3 +340,44 @@ select:not([multiple]) optgroup {
   }
   & strong { color: var(--color-ink); font-weight: 600; }
 }
+
+/* ----------------------------------------------------------------------------
+   Vista previa de documentos del expediente (renderHtml del core). Papel claro
+   dentro del portal oscuro: así se lee como el PDF que va a salir. Solo tokens
+   del sistema; el "papel" usa el blanco de `--color-ink` como fondo y el negro
+   de `--color-void` como tinta, a propósito invertidos respecto de la interfaz.
+   ---------------------------------------------------------------------------- */
+@utility papel-doc {
+  background: var(--color-ink);
+  color: var(--color-void);
+  border-radius: var(--radius-lux);
+  padding: 2rem 2.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+  & .doc-cabecera { border-bottom: 1px solid var(--color-line-strong); padding-bottom: 0.75rem; margin-bottom: 1rem; }
+  & .doc-titulo { font-size: 1.25rem; font-weight: 700; line-height: 1.25; }
+  & .doc-subtitulo { margin-top: 0.25rem; color: var(--color-silver-dim); }
+  & .doc-h1 { font-size: 1.05rem; font-weight: 700; margin-top: 1.1rem; margin-bottom: 0.3rem; }
+  & .doc-h2 { font-size: 0.95rem; font-weight: 700; margin-top: 1rem; margin-bottom: 0.3rem; }
+  & .doc-h3 { font-size: 0.875rem; font-weight: 700; margin-top: 0.75rem; margin-bottom: 0.25rem; }
+  & .doc-p { margin-bottom: 0.45rem; }
+  & .doc-centro { text-align: center; }
+  & .doc-nota { font-size: 0.72rem; color: var(--color-silver-dim); margin-top: 0.5rem; }
+  & .doc-salto { border: 0; border-top: 1px solid var(--color-line-strong); margin: 0.75rem 0; }
+  & .doc-ol { list-style: decimal; padding-left: 1.4rem; margin-bottom: 0.4rem; }
+  & .doc-ol li, & .doc-ul li { margin-bottom: 0.2rem; }
+  & .doc-ul { padding-left: 1.4rem; margin-bottom: 0.4rem; }
+  & .doc-ul-vinetas { list-style: disc; }
+  & .doc-ul-simple { list-style: none; padding-left: 0.5rem; }
+  & .doc-ul-casillas { list-style: none; padding-left: 0; }
+  & .doc-casilla { display: inline-block; width: 0.65em; height: 0.65em; border: 1px solid var(--color-void); margin-right: 0.5em; vertical-align: -0.05em; }
+  & .doc-tabla { width: 100%; border-collapse: collapse; margin: 0.3rem 0 0.7rem; font-size: 0.75rem; }
+  & .doc-tabla th, & .doc-tabla td { border: 1px solid var(--color-line-strong); padding: 0.25rem 0.4rem; text-align: left; vertical-align: top; }
+  & .doc-tabla th { background: var(--color-silver-bright); font-weight: 700; }
+  & .doc-firmas { display: flex; gap: 1.5rem; margin-top: 2.5rem; }
+  & .doc-firma { flex: 1; text-align: center; font-size: 0.75rem; }
+  & .doc-firma-raya { border-top: 1px solid var(--color-void); margin-bottom: 0.3rem; }
+  & .doc-firma-nombre { font-weight: 700; }
+  & strong { font-weight: 700; }
+}

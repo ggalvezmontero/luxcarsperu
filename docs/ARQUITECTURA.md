@@ -407,7 +407,44 @@ todo admin ve todo. Si hiciera falta un rol intermedio, se agrega al enum y a
 - **El bucket `vehiculos` es de lectura pública.** Necesario para mostrar el
   stock, pero implica que cualquiera con la URL ve el archivo aunque el vehículo
   esté sin publicar. **No subas ahí tarjetas de propiedad, DNIs ni documentos**:
-  eso necesita un bucket privado con URLs firmadas.
+  eso va al bucket privado `expedientes` (abajo).
+- **Bucket privado `expedientes`** (desde la fase 2 del módulo de expedientes,
+  migración 0017 `20261125120000_expedientes_documentos.sql`): contratos,
+  anexos, cartas y firmados de las importaciones a pedido. Sin lectura pública;
+  la misma credencial `NEON_STORAGE_*` escribe en los dos buckets (alcance de
+  rama). Nadie lee un objeto sin una **URL firmada de cinco minutos**
+  (`firmarDescarga` en `src/lib/portal/objectStorage.ts`), y esa URL solo la
+  emiten dos rutas que antes comprueban sesión y propiedad con `DATABASE_URL`:
+  `/api/portal/expedientes/archivos` (equipo: `verificarSesionPortal`) y
+  `/api/cuenta/expedientes/archivos` (cliente: `verificarSesionCliente` +
+  `clientes.user_id` + `visible_cliente`). La tabla `expediente_documentos`
+  guarda la ruta del objeto, nunca una URL; la vista del cliente
+  `expediente_documento_cliente` ni siquiera expone la ruta. Rutas de objeto:
+  `expedientes/{expedienteId}/documentos/{documentoId}-v{n}.pdf|.docx` y
+  `expedientes/{expedienteId}/firmados/{documentoId}.pdf`.
+- **Generar un documento es trabajo del servidor**:
+  `POST /api/portal/expedientes/[id]/documentos` carga el contexto con
+  `DATABASE_URL` (ya verificado el rol admin), construye la `Estructura` con el
+  core (`src/core/expedientes/documentos/`: plantillas que transcriben el
+  paquete de Claude Docs; campos `{{CAMPO}}` en `campos.ts`), renderiza PDF
+  (`@react-pdf/renderer`) y DOCX (`docx`), sube al bucket privado y registra la
+  versión con `registrar_documento` (versión siguiente, anterior `reemplazado`,
+  evento, tarea). La vista previa HTML (`renderHtml`) corre en el navegador con
+  el mismo árbol. Solo esa ruta importa las dos librerías: su función traza
+  ≈ 6,8 MB (pdfkit 2 MB, react-pdf 1,4 MB) contra ≈ 2,5 MB de una ruta normal.
+  El firmado sube directo del navegador con una URL de PUT **exacta** (tipo y
+  tamaño firmados) emitida por `/api/portal/expedientes/[id]/archivos`, y el
+  `PATCH` de la misma ruta comprueba con un `HEAD` que el objeto exista antes
+  de marcar `firmado`.
+- **`registrar_documento` y `marcar_documento_firmado` son SECURITY INVOKER**,
+  al revés que las funciones de la fase 1: aceptan al administrador por la
+  Data API (`es_admin()`) o al servidor (rol dueño), y esa distinción por
+  `current_user` solo es real en una función INVOKER (en una DEFINER
+  `current_user` es el dueño siempre; lo probó la prueba de punta a punta).
+  El usuario de la sesión se lee por `uid_sesion()` (DEFINER) porque el rol
+  `authenticated` no tiene USAGE sobre el esquema `auth`. Los datos fijos de la
+  empresa que van en el contrato (RUC, partida, cuentas) salen de la variable
+  de servidor `LUXCARS_DOCUMENTOS_JSON`, no del repositorio público.
 - **Consignación sin exclusividad, en serio**: `sin_exclusividad` tiene un `CHECK`
   que solo admite `TRUE`. Y `vendido_por_dueno` está modelado como **desenlace
   previsto, con comisión cero** — no como fuga a penalizar. No hay campo de

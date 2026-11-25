@@ -266,6 +266,8 @@ export function contextoPrevio(estado: EstadoAlta, embarqueElegido: Embarque | n
     honorariosIgvUsd: null,
     porcentajeDetraccion: null,
     margenH3: (leerNumero(estado.presupuesto.margen_h3) ?? 0) / 100,
+    tarifaCustodiaUsd: null,
+    costoInspeccionUsd: null,
     fechaFirma: null,
     fechaLimiteH2: c.fecha_limite_h2 || null,
     fechaEstEmbarque: c.fecha_est_embarque || null,

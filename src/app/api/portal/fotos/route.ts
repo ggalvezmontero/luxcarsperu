@@ -160,7 +160,7 @@ export async function DELETE(request: Request) {
     return fallo(400, "Alguna ruta no pertenece al bucket de fotos.");
   }
 
-  const resultados = await Promise.all(paths.map(borrarObjeto));
+  const resultados = await Promise.all(paths.map((path) => borrarObjeto(path)));
   if (resultados.includes(false)) {
     return fallo(502, "Algún archivo no se pudo quitar del almacenamiento.");
   }

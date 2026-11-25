@@ -4,16 +4,19 @@
  */
 
 import {
+  ESTADOS_DOCUMENTO,
   ETAPAS_EXPEDIENTE,
   MODALIDADES_EMBARQUE,
   RESPONSABLES_TAREA,
   TIPOS_CLIENTE,
   TIPOS_CONTENEDOR,
   TIPOS_CONTRAPARTE,
+  TIPOS_DOCUMENTO,
   TIPOS_HITO,
   type Aprobacion,
   type Cliente,
   type Contraparte,
+  type Documento,
   type Embarque,
   type EstadoTarea,
   type EtapaExpediente,
@@ -35,6 +38,7 @@ import {
   type EmbarqueClienteRow,
   type EmbarqueRow,
   type ExpedienteAprobacionRow,
+  type ExpedienteDocumentoRow,
   type ExpedienteEtapaRow,
   type ExpedienteEventoRow,
   type ExpedienteHitoRow,
@@ -99,10 +103,37 @@ export function mapContraparte(row: ContraparteRow): Contraparte {
     tipo: pick(row.tipo, TIPOS_CONTRAPARTE, "otro"),
     nombre: row.nombre,
     pais: row.pais,
+    direccion: row.direccion ?? null,
     contacto: row.contacto,
     email: row.email,
     telefono: row.telefono,
+    rucOTaxId: row.ruc_o_tax_id ?? null,
     bancoVerificadoEn: row.banco_verificado_en,
+  };
+}
+
+/**
+ * Documento del expediente. Sirve para la tabla base (equipo: trae `ruta_*`)
+ * y para la vista del cliente (trae `tiene_*`); en ambos casos al dominio solo
+ * llega si el archivo existe, nunca la ruta.
+ */
+export function mapDocumento(row: ExpedienteDocumentoRow): Documento {
+  return {
+    id: row.id,
+    expedienteId: row.expediente_id,
+    tipo: pick(row.tipo, TIPOS_DOCUMENTO, "otro"),
+    version: row.version ?? 1,
+    estado: pick(row.estado, ESTADOS_DOCUMENTO, "emitido"),
+    origen: row.origen === "subido" ? "subido" : "generado",
+    titulo: row.titulo,
+    plantillaVersion: row.plantilla_version ?? null,
+    tienePdf: row.tiene_pdf ?? Boolean(row.ruta_pdf),
+    tieneDocx: Boolean(row.ruta_docx),
+    tieneFirmado: row.tiene_firmado ?? Boolean(row.ruta_firmado),
+    visibleCliente: row.visible_cliente ?? true,
+    emitidoEn: row.emitido_en,
+    firmadoEn: row.firmado_en,
+    createdAt: row.created_at,
   };
 }
 
@@ -211,6 +242,8 @@ export function mapExpediente(row: ExpedienteRow, reservado: ExpedienteReservado
     honorariosIgvUsd: num(row.honorarios_igv_usd),
     porcentajeDetraccion: num(row.porcentaje_detraccion),
     margenH3: num(row.margen_h3) ?? 0,
+    tarifaCustodiaUsd: num(row.tarifa_custodia_usd),
+    costoInspeccionUsd: num(row.costo_inspeccion_usd),
     fechaFirma: row.fecha_firma,
     fechaLimiteH2: row.fecha_limite_h2,
     fechaEstEmbarque: row.fecha_est_embarque,
@@ -298,11 +331,11 @@ export function mapTramo(row: ExpedienteEtapaRow): TramoEtapa {
 export const COLUMNAS = {
   cliente:
     "id, tipo, razon_social, ruc, dni, domicilio, partida, representante, representante_dni, representante_cargo, email, telefono, actividad, banco_origen, beneficiario_final, origen_fondos, es_pep, kyc_ficha_ruc_en, kyc_vigencia_en, kyc_listas_en, kyc_listas_resultado, kyc_completo, user_id, notas_internas, created_at, updated_at",
-  contraparte: "id, tipo, nombre, pais, contacto, email, telefono, banco_verificado_en",
+  contraparte: "id, tipo, nombre, pais, direccion, contacto, email, telefono, ruc_o_tax_id, banco_verificado_en",
   embarque:
     "id, codigo, modalidad, contenedor, forwarder_id, aseguradora_id, almacen_consolidacion, puerto_origen, puerto_destino, fecha_release_est, fecha_release_real, fecha_carga, fecha_zarpe_est, fecha_zarpe_real, fecha_arribo_est, fecha_arribo_real, nave, master_bl, precinto, flete_total_usd, gastos_contenedor_usd, declaracion_exportacion, estado, notas_internas",
   expediente:
-    "id, codigo, cliente_id, etapa, etapa_desde, origen_solicitud_id, embarque_id, proporcion_flete, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_combustible, veh_cilindrada_cc, veh_transmision, veh_condicion, veh_categoria, veh_origen, veh_pais_ensamblaje, veh_doc_propiedad, veh_peso_kg, veh_medidas, moneda_compra, precio_compra, precio_compra_usd, fecha_limite_compra, fecha_inspeccion, historial_ref, fecha_release, pais_origen, puerto_origen, presupuesto, honorarios_usd, honorarios_base_usd, honorarios_igv_usd, porcentaje_detraccion, margen_h3, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, loa_vence, dam_numero, dam_fecha, dam_canal, levante_en, placa, tive_numero, km_entrega, fecha_entrega, cancelado_motivo, cerrado_en, created_at, updated_at",
+    "id, codigo, cliente_id, etapa, etapa_desde, origen_solicitud_id, embarque_id, proporcion_flete, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_combustible, veh_cilindrada_cc, veh_transmision, veh_condicion, veh_categoria, veh_origen, veh_pais_ensamblaje, veh_doc_propiedad, veh_peso_kg, veh_medidas, moneda_compra, precio_compra, precio_compra_usd, fecha_limite_compra, fecha_inspeccion, historial_ref, fecha_release, pais_origen, puerto_origen, presupuesto, honorarios_usd, honorarios_base_usd, honorarios_igv_usd, porcentaje_detraccion, margen_h3, tarifa_custodia_usd, costo_inspeccion_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, loa_vence, dam_numero, dam_fecha, dam_canal, levante_en, placa, tive_numero, km_entrega, fecha_entrega, cancelado_motivo, cerrado_en, created_at, updated_at",
   /** Columnas de la vista `expediente_cliente` (sin reservado ni margen). */
   expedienteCliente:
     "id, codigo, cliente_id, etapa, etapa_desde, embarque_id, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_combustible, veh_cilindrada_cc, veh_transmision, veh_condicion, veh_categoria, veh_pais_ensamblaje, moneda_compra, precio_compra, precio_compra_usd, fecha_inspeccion, pais_origen, puerto_origen, honorarios_usd, honorarios_base_usd, honorarios_igv_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, dam_numero, dam_fecha, levante_en, placa, tive_numero, fecha_entrega, cancelado_motivo, cerrado_en, created_at, updated_at",
@@ -316,6 +349,10 @@ export const COLUMNAS = {
   etapaHist: "id, expediente_id, etapa, desde, hasta, forzado, motivo",
   etapaHistCliente: "id, expediente_id, etapa, desde, hasta",
   aprobacion: "id, expediente_id, tipo, payload, created_at",
+  /** Tabla base (equipo). Las rutas se piden solo para saber si existe cada archivo. */
+  documento: "id, expediente_id, tipo, version, estado, origen, titulo, plantilla_version, ruta_pdf, ruta_docx, ruta_firmado, visible_cliente, emitido_en, firmado_en, created_at",
+  /** Vista `expediente_documento_cliente`. */
+  documentoCliente: "id, expediente_id, tipo, version, estado, titulo, tiene_firmado, tiene_pdf, emitido_en, firmado_en, created_at",
   embarqueCliente:
     "expediente_id, id, codigo, modalidad, contenedor, puerto_origen, puerto_destino, fecha_release_est, fecha_release_real, fecha_carga, fecha_zarpe_est, fecha_zarpe_real, fecha_arribo_est, fecha_arribo_real, nave, master_bl",
 } as const;

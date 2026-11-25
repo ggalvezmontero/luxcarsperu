@@ -3,8 +3,9 @@
 /**
  * Avance de la importación para el cliente: barra de nueve etapas, texto de
  * la etapa, "Qué necesitamos de ti" con botones para las acciones del portal
- * (van a `cliente_accion_expediente`), hitos, vehículo y embarque, actividad
- * visible y WhatsApp al asesor con el código del expediente.
+ * (van a `cliente_accion_expediente`), hitos, documentos visibles (se bajan por
+ * `/api/cuenta/expedientes/archivos`, que firma la URL), vehículo y embarque,
+ * actividad visible y WhatsApp al asesor con el código del expediente.
  */
 
 import Link from "next/link";
@@ -20,9 +21,9 @@ import { accionDeTarea, definicionEtapa, nombreEtapaCliente } from "@/core/exped
 import type { ContextoExpediente, EtapaExpediente, Evento, Tarea, TipoAprobacion } from "@/core/expedientes/tipos";
 import { ETAPAS_CLIENTE } from "@/core/expedientes/tipos";
 import { LUXCARS_CONFIG } from "@/lib/config";
-import { accionCliente, cargarMiImportacion } from "@/lib/cuenta/expedientes";
+import { accionCliente, cargarMiImportacion, urlDescargaDocumentoCliente } from "@/lib/cuenta/expedientes";
 import { normalizarCodigo } from "@/core/expedientes/codigo";
-import { CONTENEDOR_LABEL, HITO_LABEL, autoDe, fecha, fechaHora, hoyIso, usd } from "@/lib/expedientes/formato";
+import { CONTENEDOR_LABEL, HITO_LABEL, TIPO_DOCUMENTO_LABEL, autoDe, fecha, fechaHora, hoyIso, usd } from "@/lib/expedientes/formato";
 import { cn } from "@/lib/utils";
 
 export function ImportacionScreen({ codigo }: { codigo: string }) {
@@ -150,6 +151,36 @@ export function ImportacionScreen({ codigo }: { codigo: string }) {
                 ))}
               </ul>
             )}
+          </article>
+
+          <article className="rounded-[22px] border border-line bg-surface p-6">
+            <h2 className="text-lg font-semibold text-ink">Documentos</h2>
+            {ctx.documentos.length === 0 ? (
+              <p className="mt-3 text-sm text-ink-3">Cuando generemos tu contrato y sus anexos, los verás aquí para descargarlos.</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-line">
+                {ctx.documentos.map((d) => (
+                  <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink">{TIPO_DOCUMENTO_LABEL[d.tipo]}</p>
+                      <p className="text-xs text-ink-4">
+                        {d.estado === "firmado" && d.firmadoEn ? `Firmado el ${fecha(d.firmadoEn)}` : `Emitido el ${fecha(d.emitidoEn ?? d.createdAt)}`}
+                        {d.version > 1 ? ` · versión ${d.version}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge tone={d.estado === "firmado" ? "ok" : "info"} dot>{d.estado === "firmado" ? "Firmado" : "Emitido"}</Badge>
+                      {d.tienePdf || d.tieneFirmado ? (
+                        <Button href={urlDescargaDocumentoCliente(d.id)} variant="secondary" size="sm">
+                          <Icon name="download" size={14} /> Descargar
+                        </Button>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-xs text-ink-4">Los enlaces de descarga son personales y duran cinco minutos.</p>
           </article>
 
           <article className="rounded-[22px] border border-line bg-surface p-6">

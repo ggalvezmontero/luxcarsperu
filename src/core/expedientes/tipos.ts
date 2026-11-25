@@ -135,7 +135,38 @@ export type TipoDocumento =
   | "tive"
   | "otro";
 
-export type EstadoDocumento = "generado" | "firmado" | "reemplazado" | "anulado";
+export const TIPOS_DOCUMENTO: readonly TipoDocumento[] = [
+  "contrato",
+  "anexo_a",
+  "anexo_b",
+  "anexo_c",
+  "anexo_d",
+  "loa",
+  "instrucciones_vendedor",
+  "instrucciones_forwarder",
+  "constancia_fondos",
+  "aviso_h3",
+  "liquidacion_definitiva",
+  "acta_entrega",
+  "rendicion",
+  "factura_honorarios",
+  "bill_of_sale",
+  "documento_propiedad",
+  "informe_inspeccion",
+  "poliza",
+  "bl",
+  "acta_carga",
+  "dam",
+  "liquidacion_sunat",
+  "comprobante_pago",
+  "comprobante_cliente",
+  "tive",
+  "otro",
+];
+
+/** `public.documento_estado`. `emitido` es el generado vigente; al regenerar pasa a `reemplazado`. */
+export type EstadoDocumento = "borrador" | "emitido" | "firmado" | "reemplazado" | "anulado";
+export const ESTADOS_DOCUMENTO: readonly EstadoDocumento[] = ["borrador", "emitido", "firmado", "reemplazado", "anulado"];
 
 /* -------------------------------------------------------------------------- */
 /* Entidades (ya mapeadas a camelCase; las filas crudas viven en lib/db)      */
@@ -206,9 +237,11 @@ export type Contraparte = {
   tipo: TipoContraparte;
   nombre: string;
   pais: string | null;
+  direccion: string | null;
   contacto: string | null;
   email: string | null;
   telefono: string | null;
+  rucOTaxId: string | null;
   bancoVerificadoEn: string | null;
 };
 
@@ -267,6 +300,10 @@ export type Expediente = {
   honorariosIgvUsd: number | null;
   porcentajeDetraccion: number | null;
   margenH3: number;
+  /** USD por día de custodia si el cliente no recoge el auto (cláusula 13.d). */
+  tarifaCustodiaUsd: number | null;
+  /** Gasto de inspección que se retiene si el cliente desiste antes de la compra (cláusula 15.1). */
+  costoInspeccionUsd: number | null;
   fechaFirma: FechaIso | null;
   fechaLimiteH2: FechaIso | null;
   fechaEstEmbarque: FechaIso | null;
@@ -328,15 +365,27 @@ export type Movimiento = {
   contraparteId: string | null;
 };
 
-/** Documento del expediente (fase 2). Se declara ya porque las compuertas lo leen. */
+/**
+ * Documento del expediente (`expediente_documentos`). Las rutas de objeto no
+ * viajan al dominio: solo si existe cada archivo. La descarga pasa siempre por
+ * la ruta de servidor que firma la URL.
+ */
 export type Documento = {
   id: string;
+  expedienteId: string;
   tipo: TipoDocumento;
   version: number;
   estado: EstadoDocumento;
+  origen: "generado" | "subido";
+  titulo: string;
+  plantillaVersion: string | null;
+  tienePdf: boolean;
+  tieneDocx: boolean;
+  tieneFirmado: boolean;
   visibleCliente: boolean;
-  createdAt: string;
+  emitidoEn: string | null;
   firmadoEn: FechaIso | null;
+  createdAt: string;
 };
 
 export type Evento = {
@@ -381,6 +430,12 @@ export type ContextoExpediente = {
   etapas: TramoEtapa[];
   movimientos: Movimiento[];
   documentos: Documento[];
+  /**
+   * Terceros del expediente (vendedor, forwarder, agente, inspector), solo
+   * para el equipo: las plantillas de documentos los nombran. El cliente no
+   * los recibe (sus datos salen en el Anexo A ya generado).
+   */
+  contrapartes?: Contraparte[];
 };
 
 /* -------------------------------------------------------------------------- */

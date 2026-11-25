@@ -7,15 +7,16 @@
  * porque sin ellos no hay forma de que la compuerta se cumpla.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { PortalPanel } from "@/components/portal/CrmUI";
-import { AreaTexto, Campo, Dato, Entrada, Rejilla } from "@/components/portal/expedientes/Formulario";
+import { AreaTexto, Campo, Dato, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
 import { TablaPresupuesto } from "@/components/portal/expedientes/TablaPresupuesto";
-import type { ContextoExpediente } from "@/core/expedientes/tipos";
+import type { Contraparte, ContextoExpediente, TipoContraparte } from "@/core/expedientes/tipos";
+import { TIPOS_CONTRAPARTE } from "@/core/expedientes/tipos";
 import type { EmbarqueRow, ExpedienteRow } from "@/lib/db/types";
-import { actualizarEmbarque, actualizarExpediente, actualizarReservado } from "@/lib/expedientes/consultas";
-import { CONTENEDOR_LABEL, MODALIDAD_LABEL, fecha, leerNumero, usd } from "@/lib/expedientes/formato";
+import { actualizarEmbarque, actualizarExpediente, actualizarReservado, crearContraparte, listarContrapartes } from "@/lib/expedientes/consultas";
+import { CONTENEDOR_LABEL, CONTRAPARTE_LABEL, MODALIDAD_LABEL, fecha, leerNumero, usd } from "@/lib/expedientes/formato";
 import { CATEGORY_LABEL } from "@/lib/stockLabels";
 import type { PortalClient } from "@/lib/portal/portalClient";
 
@@ -77,6 +78,8 @@ export function PestanaVehiculo({
         <Embarque client={client} ctx={ctx} onResultado={onResultado} />
         <Reservado client={client} ctx={ctx} onResultado={onResultado} />
       </div>
+
+      <Contrapartes client={client} ctx={ctx} onResultado={onResultado} />
     </div>
   );
 }
@@ -248,6 +251,128 @@ function Reservado({ client, ctx, onResultado }: { client: PortalClient; ctx: Co
         >
           {busy ? "Guardando…" : "Guardar reservado"}
         </Button>
+      </div>
+    </PortalPanel>
+  );
+}
+
+/**
+ * Terceros del expediente: vendedor, inspector y agente de aduana (en la parte
+ * reservada) y el forwarder (en el embarque). Los documentos los nombran: sin
+ * vendedor no hay Anexo A ni instrucciones. La gestión completa de
+ * contrapartes (/portal/contrapartes, verificación bancaria) llega en la fase
+ * 4; acá se eligen entre las existentes o se crea una con lo mínimo.
+ */
+function Contrapartes({ client, ctx, onResultado }: { client: PortalClient; ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
+  const r = ctx.expediente.reservado;
+  const [todas, setTodas] = useState<Contraparte[]>([]);
+  const [f, setF] = useState({
+    vendedor_id: r?.vendedorId ?? "",
+    inspector_id: r?.inspectorId ?? "",
+    agente_aduana_id: r?.agenteAduanaId ?? "",
+    forwarder_id: ctx.embarque?.forwarderId ?? "",
+  });
+  const [nueva, setNueva] = useState({ tipo: "vendedor" as TipoContraparte, nombre: "", pais: "", direccion: "", contacto: "", email: "", telefono: "", ruc_o_tax_id: "" });
+  const [busy, setBusy] = useState(false);
+
+  const recargar = async () => setTodas(await listarContrapartes(client));
+  useEffect(() => {
+    let cancelado = false;
+    void listarContrapartes(client).then((lista) => {
+      if (!cancelado) setTodas(lista);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [client]);
+
+  const opciones = (tipo: TipoContraparte) => todas.filter((c) => c.tipo === tipo);
+  const selector = (label: string, clave: keyof typeof f, tipo: TipoContraparte) => (
+    <Campo label={label}>
+      <Selector value={f[clave]} onChange={(e) => setF((p) => ({ ...p, [clave]: e.target.value }))}>
+        <option value="">— Sin asignar —</option>
+        {opciones(tipo).map((c) => (
+          <option key={c.id} value={c.id}>{c.nombre}{c.pais ? ` · ${c.pais}` : ""}</option>
+        ))}
+      </Selector>
+    </Campo>
+  );
+
+  const guardar = async () => {
+    setBusy(true);
+    const r1 = await actualizarReservado(client, ctx.expediente.id, {
+      vendedor_id: f.vendedor_id || null,
+      inspector_id: f.inspector_id || null,
+      agente_aduana_id: f.agente_aduana_id || null,
+    });
+    if (!r1.ok) {
+      setBusy(false);
+      return onResultado(r1);
+    }
+    if (ctx.embarque && (ctx.embarque.forwarderId ?? "") !== f.forwarder_id) {
+      const r2 = await actualizarEmbarque(client, ctx.embarque.id, { forwarder_id: f.forwarder_id || null });
+      setBusy(false);
+      return onResultado(r2.ok ? { ok: true, message: "Contrapartes del expediente actualizadas." } : r2);
+    }
+    setBusy(false);
+    onResultado({ ok: true, message: "Contrapartes del expediente actualizadas." });
+  };
+
+  const crear = async () => {
+    setBusy(true);
+    const r = await crearContraparte(client, {
+      tipo: nueva.tipo,
+      nombre: nueva.nombre,
+      pais: nueva.pais,
+      direccion: nueva.direccion,
+      contacto: nueva.contacto,
+      email: nueva.email,
+      telefono: nueva.telefono,
+      ruc_o_tax_id: nueva.ruc_o_tax_id,
+    });
+    setBusy(false);
+    if (r.ok && r.id) {
+      await recargar();
+      const clave = nueva.tipo === "vendedor" ? "vendedor_id" : nueva.tipo === "inspector" ? "inspector_id" : nueva.tipo === "agente_aduana" ? "agente_aduana_id" : nueva.tipo === "forwarder" ? "forwarder_id" : null;
+      if (clave) setF((p) => ({ ...p, [clave]: r.id as string }));
+      setNueva({ tipo: nueva.tipo, nombre: "", pais: "", direccion: "", contacto: "", email: "", telefono: "", ruc_o_tax_id: "" });
+    }
+    onResultado(r.ok ? { ok: true, message: `${r.message} Elígela arriba y guarda.` } : r);
+  };
+
+  return (
+    <PortalPanel title="Contrapartes" description="Vendedor, inspector, agente de aduana y forwarder. Los documentos (Anexo A, LOA, instrucciones) toman de aquí nombre, dirección, contacto y RUC.">
+      <div className="space-y-5 px-5 py-4">
+        <Rejilla columnas={4}>
+          {selector("Vendedor", "vendedor_id", "vendedor")}
+          {selector("Inspector", "inspector_id", "inspector")}
+          {selector("Agente de aduana", "agente_aduana_id", "agente_aduana")}
+          {ctx.embarque ? selector("Forwarder (del embarque)", "forwarder_id", "forwarder") : <Dato label="Forwarder">Sin embarque asignado</Dato>}
+        </Rejilla>
+        <Button size="sm" disabled={busy} onClick={() => void guardar()}>{busy ? "Guardando…" : "Guardar contrapartes"}</Button>
+
+        <div className="border-t border-line pt-4">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-ink-4">Nueva contraparte</p>
+          <div className="mt-3 space-y-3">
+            <Rejilla columnas={4}>
+              <Campo label="Tipo">
+                <Selector value={nueva.tipo} onChange={(e) => setNueva((p) => ({ ...p, tipo: e.target.value as TipoContraparte }))}>
+                  {TIPOS_CONTRAPARTE.map((t) => (
+                    <option key={t} value={t}>{CONTRAPARTE_LABEL[t]}</option>
+                  ))}
+                </Selector>
+              </Campo>
+              <Campo label="Nombre o razón social" requerido><Entrada value={nueva.nombre} onChange={(e) => setNueva((p) => ({ ...p, nombre: e.target.value }))} maxLength={200} /></Campo>
+              <Campo label="País"><Entrada value={nueva.pais} onChange={(e) => setNueva((p) => ({ ...p, pais: e.target.value }))} maxLength={80} /></Campo>
+              <Campo label="RUC o tax ID"><Entrada value={nueva.ruc_o_tax_id} onChange={(e) => setNueva((p) => ({ ...p, ruc_o_tax_id: e.target.value }))} maxLength={40} /></Campo>
+              <Campo label="Dirección completa"><Entrada value={nueva.direccion} onChange={(e) => setNueva((p) => ({ ...p, direccion: e.target.value }))} maxLength={300} /></Campo>
+              <Campo label="Contacto"><Entrada value={nueva.contacto} onChange={(e) => setNueva((p) => ({ ...p, contacto: e.target.value }))} maxLength={160} /></Campo>
+              <Campo label="Correo"><Entrada type="email" value={nueva.email} onChange={(e) => setNueva((p) => ({ ...p, email: e.target.value }))} maxLength={160} /></Campo>
+              <Campo label="Teléfono público"><Entrada value={nueva.telefono} onChange={(e) => setNueva((p) => ({ ...p, telefono: e.target.value }))} maxLength={40} /></Campo>
+            </Rejilla>
+            <Button size="sm" variant="secondary" disabled={busy || nueva.nombre.trim().length < 2} onClick={() => void crear()}>Crear contraparte</Button>
+          </div>
+        </div>
       </div>
     </PortalPanel>
   );

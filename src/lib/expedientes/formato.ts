@@ -5,6 +5,7 @@
 
 import type { BadgeTone } from "@/components/portal/CrmUI";
 import type {
+  EstadoDocumento,
   EstadoTarea,
   EtapaExpediente,
   ModalidadEmbarque,
@@ -12,6 +13,7 @@ import type {
   TipoCliente,
   TipoContenedor,
   TipoContraparte,
+  TipoDocumento,
   TipoHito,
 } from "@/core/expedientes/tipos";
 
@@ -68,6 +70,52 @@ export const CONTRAPARTE_LABEL: Record<TipoContraparte, string> = {
   notaria: "Notaría",
   deposito: "Depósito",
   gestor: "Gestor",
+  otro: "Otro",
+};
+
+export const ESTADO_DOCUMENTO_LABEL: Record<EstadoDocumento, string> = {
+  borrador: "Borrador",
+  emitido: "Emitido",
+  firmado: "Firmado",
+  reemplazado: "Reemplazado",
+  anulado: "Anulado",
+};
+
+export const ESTADO_DOCUMENTO_TONE: Record<EstadoDocumento, BadgeTone> = {
+  borrador: "warn",
+  emitido: "info",
+  firmado: "ok",
+  reemplazado: "neutral",
+  anulado: "danger",
+};
+
+/** Nombre corto de cada tipo de documento, para listas y badges. */
+export const TIPO_DOCUMENTO_LABEL: Record<TipoDocumento, string> = {
+  contrato: "Contrato de mandato",
+  anexo_a: "Anexo A · Ficha del vehículo",
+  anexo_b: "Anexo B · Presupuesto",
+  anexo_c: "Anexo C · Origen de fondos",
+  anexo_d: "Anexo D · Instrucciones de pago",
+  loa: "Letter of Authorization",
+  instrucciones_vendedor: "Instrucciones al vendedor",
+  instrucciones_forwarder: "Instrucciones al forwarder",
+  constancia_fondos: "Constancia de fondos",
+  aviso_h3: "Aviso de pago H3",
+  liquidacion_definitiva: "Liquidación definitiva",
+  acta_entrega: "Acta de entrega",
+  rendicion: "Rendición de cuentas",
+  factura_honorarios: "Factura de honorarios",
+  bill_of_sale: "Bill of sale",
+  documento_propiedad: "Documento de propiedad",
+  informe_inspeccion: "Informe de inspección",
+  poliza: "Póliza",
+  bl: "Bill of lading",
+  acta_carga: "Acta de carga",
+  dam: "DAM",
+  liquidacion_sunat: "Liquidación de SUNAT",
+  comprobante_pago: "Comprobante de pago",
+  comprobante_cliente: "Comprobante del cliente",
+  tive: "TIVe",
   otro: "Otro",
 };
 

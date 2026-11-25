@@ -4,8 +4,10 @@
  * El cliente no lee las tablas base: lee las vistas `expediente_cliente`,
  * `expediente_tarea_cliente`, `expediente_evento_cliente`,
  * `expediente_hito_cliente`, `expediente_etapa_cliente`,
- * `expediente_aprobacion_cliente` y `embarque_cliente`, que filtran por
- * propiedad adentro y exponen solo lo que le corresponde (migración 0016).
+ * `expediente_aprobacion_cliente`, `embarque_cliente` y
+ * `expediente_documento_cliente`, que filtran por propiedad adentro y exponen
+ * solo lo que le corresponde (migraciones 0016 y 0017). Los archivos de los
+ * documentos se bajan por `/api/cuenta/expedientes/archivos`.
  * Sus acciones van por `cliente_accion_expediente`.
  *
  * NINGUNA FUNCIÓN LANZA.
@@ -22,6 +24,7 @@ import type {
 import type {
   EmbarqueClienteRow,
   ExpedienteAprobacionRow,
+  ExpedienteDocumentoRow,
   ExpedienteEtapaRow,
   ExpedienteEventoRow,
   ExpedienteHitoRow,
@@ -31,6 +34,7 @@ import type {
 import {
   COLUMNAS,
   mapAprobacion,
+  mapDocumento,
   mapEmbarqueCliente,
   mapEvento,
   mapExpediente,
@@ -91,7 +95,7 @@ export async function cargarMiImportacion(
     if (error) return { ctx: null, eventos: [], error: true };
     if (!data) return { ctx: null, eventos: [], error: false };
     const row = data as unknown as ExpedienteRow;
-    const [tareas, hitos, etapas, eventos, aprobaciones, embarque, cliente] = await Promise.all([
+    const [tareas, hitos, etapas, eventos, aprobaciones, embarque, cliente, documentos] = await Promise.all([
       client.from("expediente_tarea_cliente").select(COLUMNAS.tareaCliente).eq("expediente_id", row.id).order("orden"),
       client.from("expediente_hito_cliente").select(COLUMNAS.hitoCliente).eq("expediente_id", row.id),
       client.from("expediente_etapa_cliente").select(COLUMNAS.etapaHistCliente).eq("expediente_id", row.id).order("desde"),
@@ -99,6 +103,7 @@ export async function cargarMiImportacion(
       client.from("expediente_aprobacion_cliente").select(COLUMNAS.aprobacion).eq("expediente_id", row.id),
       client.from("embarque_cliente").select(COLUMNAS.embarqueCliente).eq("expediente_id", row.id).maybeSingle(),
       client.from("cliente_cuenta").select("id, tipo, razon_social, ruc, email, telefono, representante").eq("id", row.cliente_id).maybeSingle(),
+      client.from("expediente_documento_cliente").select(COLUMNAS.documentoCliente).eq("expediente_id", row.id).order("created_at", { ascending: false }),
     ]);
     const c = (cliente.data ?? null) as FilaClienteCuenta | null;
     const ctx: ContextoExpediente = {
@@ -110,7 +115,7 @@ export async function cargarMiImportacion(
       etapas: ((etapas.data ?? []) as unknown as ExpedienteEtapaRow[]).map(mapTramo),
       aprobaciones: ((aprobaciones.data ?? []) as unknown as ExpedienteAprobacionRow[]).map(mapAprobacion),
       movimientos: [],
-      documentos: [],
+      documentos: ((documentos.data ?? []) as unknown as ExpedienteDocumentoRow[]).map(mapDocumento),
     };
     return {
       ctx,
@@ -179,4 +184,9 @@ export async function accionCliente(
   } catch {
     return { ok: false, message: MSG_GENERICO };
   }
+}
+
+/** URL de descarga de un documento visible (redirige a una URL firmada de cinco minutos). */
+export function urlDescargaDocumentoCliente(documentoId: string): string {
+  return `/api/cuenta/expedientes/archivos?documento=${encodeURIComponent(documentoId)}`;
 }
