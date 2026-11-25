@@ -4,9 +4,10 @@
  * El cliente no lee las tablas base: lee las vistas `expediente_cliente`,
  * `expediente_tarea_cliente`, `expediente_evento_cliente`,
  * `expediente_hito_cliente`, `expediente_etapa_cliente`,
- * `expediente_aprobacion_cliente`, `embarque_cliente` y
- * `expediente_documento_cliente`, que filtran por propiedad adentro y exponen
- * solo lo que le corresponde (migraciones 0016 y 0017). Los archivos de los
+ * `expediente_aprobacion_cliente`, `embarque_cliente`,
+ * `expediente_documento_cliente` y `expediente_movimiento_cliente`, que
+ * filtran por propiedad adentro y exponen solo lo que le corresponde
+ * (migraciones 0016 a 0018). Los archivos de los
  * documentos se bajan por `/api/cuenta/expedientes/archivos`.
  * Sus acciones van por `cliente_accion_expediente`.
  *
@@ -28,6 +29,7 @@ import type {
   ExpedienteEtapaRow,
   ExpedienteEventoRow,
   ExpedienteHitoRow,
+  ExpedienteMovimientoRow,
   ExpedienteRow,
   ExpedienteTareaRow,
 } from "@/lib/db/types";
@@ -39,6 +41,7 @@ import {
   mapEvento,
   mapExpediente,
   mapHito,
+  mapMovimiento,
   mapTarea,
   mapTramo,
 } from "@/lib/expedientes/mapeo";
@@ -95,7 +98,7 @@ export async function cargarMiImportacion(
     if (error) return { ctx: null, eventos: [], error: true };
     if (!data) return { ctx: null, eventos: [], error: false };
     const row = data as unknown as ExpedienteRow;
-    const [tareas, hitos, etapas, eventos, aprobaciones, embarque, cliente, documentos] = await Promise.all([
+    const [tareas, hitos, etapas, eventos, aprobaciones, embarque, cliente, documentos, movimientos] = await Promise.all([
       client.from("expediente_tarea_cliente").select(COLUMNAS.tareaCliente).eq("expediente_id", row.id).order("orden"),
       client.from("expediente_hito_cliente").select(COLUMNAS.hitoCliente).eq("expediente_id", row.id),
       client.from("expediente_etapa_cliente").select(COLUMNAS.etapaHistCliente).eq("expediente_id", row.id).order("desde"),
@@ -104,6 +107,7 @@ export async function cargarMiImportacion(
       client.from("embarque_cliente").select(COLUMNAS.embarqueCliente).eq("expediente_id", row.id).maybeSingle(),
       client.from("cliente_cuenta").select("id, tipo, razon_social, ruc, email, telefono, representante").eq("id", row.cliente_id).maybeSingle(),
       client.from("expediente_documento_cliente").select(COLUMNAS.documentoCliente).eq("expediente_id", row.id).order("created_at", { ascending: false }),
+      client.from("expediente_movimiento_cliente").select(COLUMNAS.movimientoCliente).eq("expediente_id", row.id).order("fecha").order("created_at"),
     ]);
     const c = (cliente.data ?? null) as FilaClienteCuenta | null;
     const ctx: ContextoExpediente = {
@@ -114,7 +118,7 @@ export async function cargarMiImportacion(
       hitos: ((hitos.data ?? []) as unknown as ExpedienteHitoRow[]).map(mapHito),
       etapas: ((etapas.data ?? []) as unknown as ExpedienteEtapaRow[]).map(mapTramo),
       aprobaciones: ((aprobaciones.data ?? []) as unknown as ExpedienteAprobacionRow[]).map(mapAprobacion),
-      movimientos: [],
+      movimientos: ((movimientos.data ?? []) as unknown as ExpedienteMovimientoRow[]).map(mapMovimiento),
       documentos: ((documentos.data ?? []) as unknown as ExpedienteDocumentoRow[]).map(mapDocumento),
     };
     return {
@@ -189,4 +193,74 @@ export async function accionCliente(
 /** URL de descarga de un documento visible (redirige a una URL firmada de cinco minutos). */
 export function urlDescargaDocumentoCliente(documentoId: string): string {
   return `/api/cuenta/expedientes/archivos?documento=${encodeURIComponent(documentoId)}`;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dinero (fase 3): "Ya transferí"                                            */
+/* -------------------------------------------------------------------------- */
+
+export const BYTES_MAXIMOS_COMPROBANTE = 10 * 1024 * 1024;
+export const TIPOS_COMPROBANTE = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"];
+
+/**
+ * Sube el comprobante del depósito al bucket privado: pide la URL firmada a
+ * `/api/cuenta/expedientes/comprobantes` (que comprueba que el expediente sea
+ * suyo) y sube directo. Devuelve el `path` para `declarar_deposito`.
+ */
+export async function subirComprobanteCliente(input: { expedienteId: string; archivo: File }): Promise<{ ok: true; path: string } | { ok: false; message: string }> {
+  if (!TIPOS_COMPROBANTE.includes(input.archivo.type)) return { ok: false, message: "El comprobante tiene que ser un PDF o una imagen (JPEG, PNG, WebP o HEIC)." };
+  if (input.archivo.size === 0) return { ok: false, message: "El archivo está vacío." };
+  if (input.archivo.size > BYTES_MAXIMOS_COMPROBANTE) return { ok: false, message: "El comprobante supera los 10 MB permitidos." };
+  try {
+    const permiso = await fetch("/api/cuenta/expedientes/comprobantes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ expedienteId: input.expedienteId, contentType: input.archivo.type, bytes: input.archivo.size }),
+    });
+    const datos = (await permiso.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!permiso.ok || datos.ok !== true || typeof datos.url !== "string" || typeof datos.path !== "string") {
+      return { ok: false, message: typeof datos.mensaje === "string" ? datos.mensaje : "No se pudo preparar la subida del comprobante." };
+    }
+    const subida = await fetch(datos.url, { method: "PUT", headers: { "Content-Type": input.archivo.type }, body: input.archivo });
+    if (!subida.ok) return { ok: false, message: "No se pudo subir el comprobante. Inténtalo de nuevo o envíalo por WhatsApp." };
+    return { ok: true, path: datos.path };
+  } catch {
+    return { ok: false, message: "No se pudo subir el comprobante. Revisa tu conexión." };
+  }
+}
+
+export type DeclaracionDeposito = {
+  hito: "H1" | "H2" | "H3" | "H4";
+  monto: number;
+  fecha: string;
+  banco: string;
+  operacion?: string;
+  comprobante?: File | null;
+};
+
+/** "Ya transferí": sube el comprobante (si hay) y declara el depósito; queda por confirmar hasta que el equipo lo acredite. */
+export async function declararDeposito(client: PortalClient, input: { expedienteId: string; datos: DeclaracionDeposito }): Promise<{ ok: boolean; message: string }> {
+  const d = input.datos;
+  if (!(d.monto > 0)) return { ok: false, message: "Escribe el monto que transferiste." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.fecha)) return { ok: false, message: "Indica la fecha de la transferencia." };
+  if (d.banco.trim().length < 2) return { ok: false, message: "Indica el banco desde el que transferiste." };
+  let comprobantePath: string | undefined;
+  if (d.comprobante) {
+    const subida = await subirComprobanteCliente({ expedienteId: input.expedienteId, archivo: d.comprobante });
+    if (!subida.ok) return subida;
+    comprobantePath = subida.path;
+  }
+  const r = await accionCliente(client, {
+    expedienteId: input.expedienteId,
+    tipo: "declarar_deposito",
+    payload: { hito: d.hito, monto: d.monto, fecha: d.fecha, banco: d.banco.trim(), operacion: d.operacion?.trim() || undefined, comprobante_path: comprobantePath },
+  });
+  if (!r.ok) return r;
+  return { ok: true, message: "Gracias. Registramos tu depósito como pendiente de confirmar: en cuanto se acredite te enviamos la constancia." };
+}
+
+/** URL de descarga del comprobante de un movimiento suyo (redirige a una URL firmada de cinco minutos). */
+export function urlDescargaComprobanteCliente(movimientoId: string): string {
+  return `/api/cuenta/expedientes/archivos?movimiento=${encodeURIComponent(movimientoId)}`;
 }

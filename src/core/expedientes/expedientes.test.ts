@@ -70,6 +70,8 @@ function expedienteBase(cambios: Partial<Expediente> = {}): Expediente {
     damNumero: null,
     damFecha: null,
     damCanal: null,
+    damFactorConversion: null,
+    damTcSbs: null,
     levanteEn: null,
     placa: null,
     tiveNumero: null,
@@ -301,7 +303,9 @@ describe("etapas", () => {
 
   it("las acciones del portal apuntan a tareas del cliente", () => {
     expect(accionDeTarea("cliente.aprobar_inspeccion")).toBe("aprobar_inspeccion");
-    expect(accionDeTarea("cliente.depositar_h2")).toBeNull();
+    expect(accionDeTarea("cliente.depositar_h2")).toBe("declarar_deposito");
+    expect(accionDeTarea("cliente.pagar_h4")).toBe("declarar_deposito");
+    expect(accionDeTarea("luxcars.confirmar_h2")).toBeNull();
     expect(accionDeTarea("luxcars.kyc")).toBeNull();
   });
 });

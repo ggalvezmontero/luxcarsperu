@@ -314,6 +314,10 @@ export type Expediente = {
   damNumero: string | null;
   damFecha: FechaIso | null;
   damCanal: string | null;
+  /** Factor de conversión monetaria de SUNAT aplicado en la DAM (factura en otra moneda). */
+  damFactorConversion: number | null;
+  /** Tipo de cambio venta SBS del día en que se pagaron los tributos. */
+  damTcSbs: number | null;
   levanteEn: FechaIso | null;
   placa: string | null;
   tiveNumero: string | null;
@@ -352,17 +356,43 @@ export type Hito = {
 
 export type EstadoHito = "pendiente" | "parcial" | "acreditado";
 
-/** Asiento del libro (fase 3). Se declara ya porque hitos y compuertas lo leen. */
+export type TipoMovimiento = "deposito" | "pago" | "devolucion" | "ajuste";
+export const TIPOS_MOVIMIENTO: readonly TipoMovimiento[] = ["deposito", "pago", "devolucion", "ajuste"];
+
+export type EstadoMovimiento = "por_confirmar" | "confirmado" | "anulado";
+export const ESTADOS_MOVIMIENTO: readonly EstadoMovimiento[] = ["por_confirmar", "confirmado", "anulado"];
+
+export const CUENTAS_MOVIMIENTO: readonly CuentaMovimiento[] = ["fondos_clientes", "operaciones", "detracciones"];
+
+/**
+ * Asiento del libro (`expediente_movimientos`). Solo los `confirmado` cuentan
+ * para saldos e hitos; los `por_confirmar` (declarados por el cliente) se
+ * muestran aparte. `notaInterna` solo llega al equipo; la ruta del comprobante
+ * no viaja al dominio, solo si existe.
+ */
 export type Movimiento = {
   id: string;
-  tipo: "deposito" | "pago" | "devolucion" | "ajuste";
+  expedienteId?: string;
+  tipo: TipoMovimiento;
   cuenta: CuentaMovimiento;
   hito: TipoHito | null;
-  estado: "por_confirmar" | "confirmado" | "anulado";
+  estado: EstadoMovimiento;
   fecha: FechaIso;
+  /** Moneda del asiento (USD, CAD, PEN…). */
+  moneda?: string;
+  /** Monto en `moneda`. */
+  monto?: number;
+  /** USD por una unidad de `moneda`; con USD es 1. */
+  tipoCambio?: number;
   montoUsd: number;
   concepto: string | null;
   contraparteId: string | null;
+  /** Factura, SWIFT, DAM, número de operación o banco de origen. */
+  documentoRef?: string | null;
+  tieneComprobante?: boolean;
+  declaradoPorCliente?: boolean;
+  notaInterna?: string | null;
+  createdAt?: string;
 };
 
 /**
@@ -386,6 +416,10 @@ export type Documento = {
   emitidoEn: string | null;
   firmadoEn: FechaIso | null;
   createdAt: string;
+  /** Constancia de fondos: el depósito que la originó. */
+  movimientoId?: string | null;
+  /** Aviso H3: el hito al que se refiere. */
+  hito?: TipoHito | null;
 };
 
 export type Evento = {

@@ -1,5 +1,6 @@
 /**
  * /api/portal/expedientes/archivos?documento=…&formato=pdf|docx|firmado
+ * /api/portal/expedientes/archivos?movimiento=…   (comprobante del movimiento)
  *
  * Descarga de un archivo del bucket PRIVADO `expedientes` para el EQUIPO:
  * comprueba sesión y rol admin, lee la ruta del objeto con `DATABASE_URL` y
@@ -38,6 +39,8 @@ export async function GET(request: Request) {
   if (!sql) return fallo(503, "Falta DATABASE_URL en el servidor.");
 
   const url = new URL(request.url);
+  const movimientoId = url.searchParams.get("movimiento");
+  if (movimientoId !== null) return comprobante(sql, movimientoId);
   const documentoId = url.searchParams.get("documento") ?? "";
   const formato = url.searchParams.get("formato") ?? "pdf";
   if (!esUuid(documentoId)) return fallo(400, "Falta el documento.");
@@ -67,5 +70,30 @@ export async function GET(request: Request) {
   const firmada = await firmarDescarga(EXPEDIENTES_BUCKET, ruta, 300, nombre);
   if (!firmada) return fallo(503, "No se pudo firmar la descarga.");
 
+  return NextResponse.redirect(firmada, { status: 302, headers: { "Cache-Control": "no-store" } });
+}
+
+/** Comprobante de un movimiento del libro: cualquier expediente, es el equipo. */
+async function comprobante(sql: NonNullable<ReturnType<typeof getSql>>, movimientoId: string) {
+  if (!esUuid(movimientoId)) return fallo(400, "Falta el movimiento.");
+  let fila: { comprobante_path: string | null; codigo: string; fecha: string } | undefined;
+  try {
+    const filas = (await sql`
+      select m.comprobante_path, e.codigo, m.fecha::text as fecha
+      from public.expediente_movimientos m
+      join public.expedientes e on e.id = m.expediente_id
+      where m.id = ${movimientoId}::uuid
+      limit 1
+    `) as unknown as { comprobante_path: string | null; codigo: string; fecha: string }[];
+    fila = filas[0];
+  } catch {
+    return fallo(500, "No se pudo leer el movimiento.");
+  }
+  if (!fila) return fallo(404, "El movimiento no existe.");
+  if (!fila.comprobante_path) return fallo(404, "Este movimiento no tiene comprobante.");
+  const extension = fila.comprobante_path.split(".").pop() ?? "pdf";
+  const nombre = `${fila.codigo.replace(/[^A-Za-z0-9-]/g, "")}-comprobante-${fila.fecha}.${extension}`;
+  const firmada = await firmarDescarga(EXPEDIENTES_BUCKET, fila.comprobante_path, 300, nombre);
+  if (!firmada) return fallo(503, "No se pudo firmar la descarga.");
   return NextResponse.redirect(firmada, { status: 302, headers: { "Cache-Control": "no-store" } });
 }

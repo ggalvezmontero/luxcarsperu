@@ -1,0 +1,621 @@
+"use client";
+
+/**
+ * Dinero del expediente: hitos con su estado derivado del libro, depósitos
+ * declarados por el cliente (confirmar emite la constancia; anular exige
+ * motivo), el libro por fecha con filtro por cuenta, el formulario para
+ * registrar un movimiento (con comprobante) y los documentos que nacen del
+ * libro: aviso H3, liquidación definitiva, acta de entrega y rendición.
+ *
+ * Las reglas (saldo, estado de hitos, diferencia H3) las calcula el core al
+ * leer (`ledger.ts`). Las escrituras van por la ruta
+ * `/api/portal/expedientes/[id]/movimientos`, que llama a
+ * `registrar_movimiento` y emite la constancia; los documentos por
+ * `/api/portal/expedientes/[id]/documentos`.
+ */
+
+import { useMemo, useState } from "react";
+import { Button } from "@/components/Button";
+import { Badge, Notice, PortalPanel, StatCard, StatGrid, TableScroll, Td, Th } from "@/components/portal/CrmUI";
+import { AreaTexto, Campo, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
+import { FICHA, type Campo as NombreCampo } from "@/core/expedientes/campos";
+import { plantillaDe } from "@/core/expedientes/documentos";
+import { CONCEPTOS_PAGO, diferenciaH3, estadoHitos, ordenarLibro, saldoFondos } from "@/core/expedientes/ledger";
+import type { ContextoExpediente, CuentaMovimiento, Movimiento, TipoDocumento, TipoHito, TipoMovimiento } from "@/core/expedientes/tipos";
+import { CUENTAS_MOVIMIENTO, TIPOS_HITO, TIPOS_MOVIMIENTO } from "@/core/expedientes/tipos";
+import {
+  anularDeposito,
+  confirmarDeposito,
+  emitirDocumentoDelLibro,
+  registrarMovimiento,
+  subirComprobanteMovimiento,
+  urlDescargaComprobante,
+  type DatosMovimiento,
+} from "@/lib/expedientes/consultas";
+import {
+  CUENTA_LABEL,
+  ESTADO_HITO_LABEL,
+  ESTADO_HITO_TONE,
+  ESTADO_MOVIMIENTO_LABEL,
+  ESTADO_MOVIMIENTO_TONE,
+  HITO_LABEL,
+  TIPO_DOCUMENTO_LABEL,
+  TIPO_MOVIMIENTO_LABEL,
+  dinero,
+  fecha,
+  hoyIso,
+  leerNumero,
+  usd,
+} from "@/lib/expedientes/formato";
+import type { PortalClient } from "@/lib/portal/portalClient";
+
+type Resultado = { ok: boolean; message: string };
+
+export function PestanaDinero({ ctx, onResultado }: { client: PortalClient; ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
+  const declarados = ctx.movimientos.filter((m) => m.estado === "por_confirmar");
+  return (
+    <div className="space-y-6">
+      <Hitos ctx={ctx} />
+      {declarados.length > 0 ? <Declarados ctx={ctx} declarados={declarados} onResultado={onResultado} /> : null}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Libro ctx={ctx} onResultado={onResultado} />
+        </div>
+        <div className="space-y-6">
+          <RegistrarMovimiento ctx={ctx} onResultado={onResultado} />
+          <DocumentosDelLibro ctx={ctx} onResultado={onResultado} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Hitos y saldos                                                             */
+/* -------------------------------------------------------------------------- */
+
+function Hitos({ ctx }: { ctx: ContextoExpediente }) {
+  const hoy = hoyIso();
+  const derivados = useMemo(() => estadoHitos(ctx.hitos, ctx.movimientos, hoy), [ctx.hitos, ctx.movimientos, hoy]);
+  const saldo = useMemo(() => saldoFondos(ctx.movimientos), [ctx.movimientos]);
+  const h3 = useMemo(() => diferenciaH3(ctx.hitos.find((h) => h.tipo === "H3") ?? null, ctx.movimientos), [ctx.hitos, ctx.movimientos]);
+  const hayLiquidacion = ctx.documentos.some((d) => d.tipo === "liquidacion_definitiva" && d.estado !== "reemplazado" && d.estado !== "anulado");
+
+  return (
+    <div className="space-y-4">
+      <StatGrid>
+        <StatCard label="Fondos de clientes" value={usd(saldo.fondos_clientes, 2)} hint="Depósitos menos pagos y devoluciones" tone={saldo.fondos_clientes < -0.01 ? "danger" : "accent"} />
+        <StatCard label="Operaciones" value={usd(saldo.operaciones, 2)} hint="Honorarios acreditados (H1 y H4)" />
+        <StatCard label="Detracciones" value={usd(saldo.detracciones, 2)} hint="Banco de la Nación" />
+        <StatCard
+          label="Diferencia H3"
+          value={h3.depositado > 0 || h3.pagado > 0 ? `${h3.diferencia < 0 ? "−" : ""}${usd(Math.abs(h3.diferencia), 2)}` : "—"}
+          hint={h3.diferencia < 0 ? "A cargo del cliente" : hayLiquidacion ? "A favor del cliente: va en la rendición" : "Depositado menos tributos y gastos pagados"}
+          tone={h3.diferencia < -0.01 ? "warn" : "default"}
+        />
+      </StatGrid>
+
+      <PortalPanel title="Hitos de pago" description="Estado derivado de los depósitos confirmados del libro. La tarea del cliente queda hecha al confirmar.">
+        {derivados.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-ink-3">Sin presupuesto: el expediente se abrió sin hitos.</p>
+        ) : (
+          <TableScroll>
+            <table className="w-full min-w-[720px] border-collapse">
+              <thead className="border-b border-line">
+                <tr>
+                  <Th>Hito</Th>
+                  <Th>Cuenta</Th>
+                  <Th>Fecha límite</Th>
+                  <Th align="right">Estimado</Th>
+                  <Th align="right">Acreditado</Th>
+                  <Th align="right">Por confirmar</Th>
+                  <Th>Estado</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {derivados.map((d) => (
+                  <tr key={d.hito.tipo}>
+                    <Td>
+                      <p className="text-ink">{HITO_LABEL[d.hito.tipo]}</p>
+                      {d.hito.nota ? <p className="mt-0.5 text-xs text-ink-4">{d.hito.nota}</p> : null}
+                    </Td>
+                    <Td>{CUENTA_LABEL[d.hito.cuenta]}</Td>
+                    <Td>
+                      {d.hito.fechaLimite ? fecha(d.hito.fechaLimite) : "—"}
+                      {d.vencido ? <Badge tone="danger" className="ml-2">Vencido</Badge> : null}
+                    </Td>
+                    <Td align="right"><span className="tabular-nums">{usd(d.hito.montoEstimadoUsd, 2)}</span></Td>
+                    <Td align="right"><span className="tabular-nums text-ink">{usd(d.acreditado, 2)}</span></Td>
+                    <Td align="right"><span className="tabular-nums text-ink-3">{d.porConfirmar > 0 ? usd(d.porConfirmar, 2) : "—"}</span></Td>
+                    <Td>
+                      <Badge tone={ESTADO_HITO_TONE[d.estado]}>{ESTADO_HITO_LABEL[d.estado]}</Badge>
+                      {d.estado === "parcial" ? <p className="mt-1 text-xs text-ink-4">Faltan {usd(d.pendiente, 2)}</p> : null}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
+        )}
+      </PortalPanel>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Depósitos declarados por el cliente                                        */
+/* -------------------------------------------------------------------------- */
+
+function Declarados({ ctx, declarados, onResultado }: { ctx: ContextoExpediente; declarados: Movimiento[]; onResultado: (r: Resultado) => void }) {
+  return (
+    <PortalPanel
+      title={`Depósitos declarados por el cliente (${declarados.length})`}
+      description="El cliente los declaró desde su cuenta. Confirmar los acredita en el libro, cierra su tarea y emite la constancia de fondos visible para él. Anular exige un motivo que el cliente verá."
+    >
+      <ul className="divide-y divide-line">
+        {declarados.map((m) => (
+          <Declarado key={m.id} ctx={ctx} m={m} onResultado={onResultado} />
+        ))}
+      </ul>
+    </PortalPanel>
+  );
+}
+
+function Declarado({ ctx, m, onResultado }: { ctx: ContextoExpediente; m: Movimiento; onResultado: (r: Resultado) => void }) {
+  const [modo, setModo] = useState<"ninguno" | "confirmar" | "anular">("ninguno");
+  const [monto, setMonto] = useState(String(m.montoUsd));
+  const [fechaMov, setFechaMov] = useState(m.fecha);
+  const [hito, setHito] = useState<TipoHito | "">(m.hito ?? "");
+  const [motivo, setMotivo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const confirmar = async () => {
+    const n = leerNumero(monto);
+    if (n === null || n <= 0) return onResultado({ ok: false, message: "El monto debe ser mayor que cero." });
+    setBusy(true);
+    const r = await confirmarDeposito({ expedienteId: ctx.expediente.id, movimientoId: m.id, cambios: { monto: n, fecha: fechaMov, hito: hito || null } });
+    setBusy(false);
+    if (r.ok) setModo("ninguno");
+    onResultado(r);
+  };
+  const anular = async () => {
+    setBusy(true);
+    const r = await anularDeposito({ expedienteId: ctx.expediente.id, movimientoId: m.id, motivo });
+    setBusy(false);
+    if (r.ok) setModo("ninguno");
+    onResultado(r);
+  };
+
+  return (
+    <li className="px-5 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-ink">
+            {usd(m.montoUsd, 2)} · {m.hito ? HITO_LABEL[m.hito] : "Sin hito"}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-4">
+            Transferido el {fecha(m.fecha)}{m.documentoRef ? ` · ${m.documentoRef}` : ""} · declarado {fecha(m.createdAt)}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {m.tieneComprobante ? <Button size="sm" variant="ghost" className="border border-line" href={urlDescargaComprobante(m.id)}>Comprobante</Button> : <Badge tone="neutral">Sin comprobante</Badge>}
+          <Button size="sm" onClick={() => setModo(modo === "confirmar" ? "ninguno" : "confirmar")}>Confirmar</Button>
+          <Button size="sm" variant="ghost" className="border border-line" onClick={() => setModo(modo === "anular" ? "ninguno" : "anular")}>Anular</Button>
+        </div>
+      </div>
+      {modo === "confirmar" ? (
+        <div className="mt-3 rounded-lux border border-line bg-surface-2 p-4">
+          <p className="text-xs text-ink-3">Corrige el monto o la fecha con lo que realmente llegó a la cuenta. Al confirmar se emite la constancia.</p>
+          <div className="mt-3">
+            <Rejilla columnas={3}>
+              <Campo label="Monto acreditado (USD)"><Entrada inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} /></Campo>
+              <Campo label="Fecha de acreditación"><Entrada type="date" value={fechaMov} onChange={(e) => setFechaMov(e.target.value)} /></Campo>
+              <Campo label="Hito">
+                <Selector value={hito} onChange={(e) => setHito(e.target.value as TipoHito | "")}>
+                  <option value="">Sin hito</option>
+                  {TIPOS_HITO.map((h) => <option key={h} value={h}>{HITO_LABEL[h]}</option>)}
+                </Selector>
+              </Campo>
+            </Rejilla>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" disabled={busy} onClick={() => void confirmar()}>{busy ? "Confirmando…" : "Confirmar y emitir constancia"}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setModo("ninguno")}>Cancelar</Button>
+          </div>
+        </div>
+      ) : null}
+      {modo === "anular" ? (
+        <div className="mt-3 rounded-lux border border-line bg-surface-2 p-4">
+          <Campo label="Motivo (el cliente lo verá en su actividad)" requerido>
+            <AreaTexto value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="ej. El depósito no llegó a la cuenta de Fondos de Clientes; verifica el CCI y vuelve a declararlo." maxLength={2000} />
+          </Campo>
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" variant="secondary" disabled={busy || motivo.trim().length < 5} onClick={() => void anular()}>{busy ? "Anulando…" : "Anular depósito"}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setModo("ninguno")}>Cancelar</Button>
+          </div>
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Libro                                                                      */
+/* -------------------------------------------------------------------------- */
+
+function Libro({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
+  const [cuenta, setCuenta] = useState<CuentaMovimiento | "todas">("todas");
+  const [conAnulados, setConAnulados] = useState(false);
+  const terceros = ctx.contrapartes ?? [];
+  // Filas con el saldo acumulado de la cuenta filtrada (solo confirmados).
+  const filas = useMemo(() => {
+    const base = conAnulados ? [...ctx.movimientos].sort((a, b) => a.fecha.localeCompare(b.fecha)) : ordenarLibro(ctx.movimientos);
+    const salida: { m: Movimiento; saldo: number }[] = [];
+    let acumulado = 0;
+    for (const m of base) {
+      if (cuenta !== "todas" && m.cuenta !== cuenta) continue;
+      if (m.estado === "confirmado") acumulado += (m.tipo === "pago" || m.tipo === "devolucion" ? -1 : 1) * m.montoUsd;
+      salida.push({ m, saldo: acumulado });
+    }
+    return salida;
+  }, [ctx.movimientos, cuenta, conAnulados]);
+
+  return (
+    <PortalPanel
+      title="Libro del expediente"
+      description="Por fecha. Solo los confirmados mueven el saldo; los por confirmar se listan aparte y los anulados quedan ocultos."
+      toolbar={
+        <div className="flex flex-wrap items-center gap-3">
+          <Selector value={cuenta} onChange={(e) => setCuenta(e.target.value as CuentaMovimiento | "todas")} aria-label="Cuenta">
+            <option value="todas">Todas las cuentas</option>
+            {CUENTAS_MOVIMIENTO.map((c) => <option key={c} value={c}>{CUENTA_LABEL[c]}</option>)}
+          </Selector>
+          <label className="flex items-center gap-2 text-xs text-ink-2">
+            <input type="checkbox" checked={conAnulados} onChange={(e) => setConAnulados(e.target.checked)} className="h-4 w-4 accent-silver" />
+            Ver anulados
+          </label>
+        </div>
+      }
+    >
+      {filas.length === 0 ? (
+        <p className="px-5 py-6 text-sm text-ink-3">Todavía no hay movimientos. Registra el primer depósito o pago a la derecha.</p>
+      ) : (
+        <TableScroll>
+          <table className="w-full min-w-[860px] border-collapse">
+            <thead className="border-b border-line">
+              <tr>
+                <Th>Fecha</Th>
+                <Th>Movimiento</Th>
+                <Th>Cuenta</Th>
+                <Th align="right">Monto</Th>
+                <Th align="right">USD</Th>
+                {cuenta !== "todas" ? <Th align="right">Saldo</Th> : null}
+                <Th align="right">Comprobante</Th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {filas.map(({ m, saldo }) => {
+                const confirmado = m.estado === "confirmado";
+                const tercero = m.contraparteId ? terceros.find((t) => t.id === m.contraparteId) : null;
+                return (
+                  <tr key={m.id} className={m.estado === "anulado" ? "opacity-50" : ""}>
+                    <Td>{fecha(m.fecha)}</Td>
+                    <Td>
+                      <p className="text-ink">
+                        {TIPO_MOVIMIENTO_LABEL[m.tipo]}
+                        {m.hito ? <span className="ml-2 font-mono text-xs text-silver">{m.hito}</span> : null}
+                        {m.estado !== "confirmado" ? <Badge tone={ESTADO_MOVIMIENTO_TONE[m.estado]} className="ml-2">{ESTADO_MOVIMIENTO_LABEL[m.estado]}</Badge> : null}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink-4">
+                        {[m.concepto, tercero?.nombre, m.documentoRef].filter(Boolean).join(" · ") || (m.declaradoPorCliente ? "Declarado por el cliente" : "—")}
+                      </p>
+                      {m.notaInterna ? <p className="mt-0.5 text-xs italic text-ink-4">{m.notaInterna}</p> : null}
+                    </Td>
+                    <Td>{CUENTA_LABEL[m.cuenta]}</Td>
+                    <Td align="right">
+                      <span className="tabular-nums text-ink-3">{(m.moneda ?? "USD") !== "USD" ? `${dinero(m.moneda ?? "USD", m.monto)} × ${m.tipoCambio}` : "—"}</span>
+                    </Td>
+                    <Td align="right">
+                      <span className={`tabular-nums ${m.tipo === "pago" || m.tipo === "devolucion" ? "text-ink-2" : "text-ink"}`}>
+                        {m.tipo === "pago" || m.tipo === "devolucion" ? "−" : "+"}{usd(m.montoUsd, 2)}
+                      </span>
+                    </Td>
+                    {cuenta !== "todas" ? <Td align="right"><span className="tabular-nums text-ink-3">{confirmado ? usd(saldo, 2) : ""}</span></Td> : null}
+                    <Td align="right">
+                      <CeldaComprobante ctx={ctx} m={m} onResultado={onResultado} />
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableScroll>
+      )}
+    </PortalPanel>
+  );
+}
+
+function CeldaComprobante({ ctx, m, onResultado }: { ctx: ContextoExpediente; m: Movimiento; onResultado: (r: Resultado) => void }) {
+  const [subiendo, setSubiendo] = useState(false);
+  if (m.estado === "anulado") return <span className="text-xs text-ink-4">—</span>;
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {m.tieneComprobante ? <Button size="sm" variant="ghost" className="border border-line" href={urlDescargaComprobante(m.id)}>Ver</Button> : null}
+      <label className="cursor-pointer text-xs text-silver-bright underline">
+        {subiendo ? "Subiendo…" : m.tieneComprobante ? "Reemplazar" : "Subir"}
+        <input
+          type="file"
+          accept="application/pdf,image/*"
+          className="hidden"
+          disabled={subiendo}
+          onChange={async (e) => {
+            const archivo = e.target.files?.[0];
+            if (!archivo) return;
+            setSubiendo(true);
+            const r = await subirComprobanteMovimiento({ expedienteId: ctx.expediente.id, movimientoId: m.id, archivo });
+            setSubiendo(false);
+            onResultado(r);
+          }}
+        />
+      </label>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Registrar movimiento                                                       */
+/* -------------------------------------------------------------------------- */
+
+const HITO_POR_DEFECTO: Record<TipoMovimiento, TipoHito | ""> = { deposito: "H2", pago: "H2", devolucion: "", ajuste: "" };
+
+function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
+  const terceros = ctx.contrapartes ?? [];
+  const [tipo, setTipo] = useState<TipoMovimiento>("deposito");
+  const [cuenta, setCuenta] = useState<CuentaMovimiento>("fondos_clientes");
+  const [hito, setHito] = useState<TipoHito | "">("H2");
+  const [fechaMov, setFechaMov] = useState(hoyIso());
+  const [moneda, setMoneda] = useState("USD");
+  const [monto, setMonto] = useState("");
+  const [tc, setTc] = useState("");
+  const [contraparte, setContraparte] = useState("");
+  const [conceptoClave, setConceptoClave] = useState("precio_vehiculo");
+  const [conceptoLibre, setConceptoLibre] = useState("");
+  const [referencia, setReferencia] = useState("");
+  const [nota, setNota] = useState("");
+  const [archivo, setArchivo] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [emitido, setEmitido] = useState<{ pdf: string | null; version: number } | null>(null);
+
+  const cambiarTipo = (t: TipoMovimiento) => {
+    setTipo(t);
+    setHito(HITO_POR_DEFECTO[t]);
+    if (t === "deposito") setCuenta("fondos_clientes");
+    if (t === "pago") {
+      const c = CONCEPTOS_PAGO.find((x) => x.clave === conceptoClave);
+      setHito(c?.hito ?? "");
+    }
+  };
+  const cambiarHito = (h: TipoHito | "") => {
+    setHito(h);
+    if (tipo === "deposito") setCuenta(h === "H1" || h === "H4" ? "operaciones" : "fondos_clientes");
+  };
+  const cambiarConcepto = (clave: string) => {
+    setConceptoClave(clave);
+    const c = CONCEPTOS_PAGO.find((x) => x.clave === clave);
+    if (c && c.hito) setHito(c.hito);
+  };
+
+  const n = leerNumero(monto);
+  const tcN = moneda === "USD" ? 1 : leerNumero(tc);
+  const montoUsd = n !== null && tcN !== null ? n * tcN : null;
+
+  const registrar = async () => {
+    if (n === null || n <= 0) return onResultado({ ok: false, message: "Escribe un monto mayor que cero." });
+    if (moneda !== "USD" && (tcN === null || tcN <= 0)) return onResultado({ ok: false, message: `Falta el tipo de cambio ${moneda} → USD.` });
+    const concepto = tipo === "pago"
+      ? conceptoClave === "otro" ? conceptoLibre.trim() || "Otros autorizados por el Mandante" : CONCEPTOS_PAGO.find((c) => c.clave === conceptoClave)?.etiqueta ?? null
+      : conceptoLibre.trim() || null;
+    const datos: DatosMovimiento = {
+      tipo,
+      cuenta,
+      hito: hito || null,
+      fecha: fechaMov,
+      moneda: moneda.toUpperCase(),
+      monto: n,
+      tipo_cambio: tcN,
+      contraparte_id: tipo === "pago" && contraparte ? contraparte : null,
+      concepto,
+      documento_ref: referencia.trim() || null,
+      nota_interna: nota.trim() || null,
+    };
+    setBusy(true);
+    const r = await registrarMovimiento({ expedienteId: ctx.expediente.id, movimiento: datos });
+    if (r.ok && r.movimientoId && archivo) {
+      const s = await subirComprobanteMovimiento({ expedienteId: ctx.expediente.id, movimientoId: r.movimientoId, archivo });
+      if (!s.ok) r.message = `${r.message} ${s.message}`;
+    }
+    setBusy(false);
+    if (r.ok) {
+      setMonto("");
+      setReferencia("");
+      setNota("");
+      setArchivo(null);
+      setEmitido(r.constancia ? { pdf: r.constancia.urls.pdf, version: r.constancia.version } : null);
+    }
+    onResultado(r);
+  };
+
+  return (
+    <PortalPanel title="Registrar movimiento" description="Un depósito con hito emite la constancia de fondos y cierra la tarea del cliente. Los pagos a terceros salen en la liquidación y la rendición por su concepto.">
+      <div className="space-y-4 px-5 py-4">
+        <Rejilla columnas={2}>
+          <Campo label="Tipo">
+            <Selector value={tipo} onChange={(e) => cambiarTipo(e.target.value as TipoMovimiento)}>
+              {TIPOS_MOVIMIENTO.map((t) => <option key={t} value={t}>{TIPO_MOVIMIENTO_LABEL[t]}</option>)}
+            </Selector>
+          </Campo>
+          <Campo label="Cuenta">
+            <Selector value={cuenta} onChange={(e) => setCuenta(e.target.value as CuentaMovimiento)}>
+              {CUENTAS_MOVIMIENTO.map((c) => <option key={c} value={c}>{CUENTA_LABEL[c]}</option>)}
+            </Selector>
+          </Campo>
+          <Campo label="Hito" hint={tipo === "pago" ? "H2 compra y logística · H3 tributos y gastos" : undefined}>
+            <Selector value={hito} onChange={(e) => cambiarHito(e.target.value as TipoHito | "")}>
+              <option value="">Sin hito</option>
+              {TIPOS_HITO.map((h) => <option key={h} value={h}>{HITO_LABEL[h]}</option>)}
+            </Selector>
+          </Campo>
+          <Campo label="Fecha"><Entrada type="date" value={fechaMov} onChange={(e) => setFechaMov(e.target.value)} /></Campo>
+          <Campo label="Moneda"><Entrada value={moneda} maxLength={3} onChange={(e) => setMoneda(e.target.value.toUpperCase())} placeholder="USD" /></Campo>
+          <Campo label={`Monto en ${moneda || "USD"}`} requerido><Entrada inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0.00" /></Campo>
+          {moneda !== "USD" ? (
+            <Campo label={`Tipo de cambio (USD por 1 ${moneda})`} requerido hint={montoUsd !== null ? `= ${usd(montoUsd, 2)}` : undefined}>
+              <Entrada inputMode="decimal" value={tc} onChange={(e) => setTc(e.target.value)} placeholder="ej. 0.72" />
+            </Campo>
+          ) : null}
+        </Rejilla>
+
+        {tipo === "pago" ? (
+          <Rejilla columnas={2}>
+            <Campo label="Concepto">
+              <Selector value={conceptoClave} onChange={(e) => cambiarConcepto(e.target.value)}>
+                {CONCEPTOS_PAGO.map((c) => <option key={c.clave} value={c.clave}>{c.etiqueta}</option>)}
+              </Selector>
+            </Campo>
+            <Campo label="Beneficiario (contraparte)">
+              <Selector value={contraparte} onChange={(e) => setContraparte(e.target.value)}>
+                <option value="">— SUNAT u otro sin ficha —</option>
+                {terceros.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              </Selector>
+            </Campo>
+            {conceptoClave === "otro" ? (
+              <Campo label="Detalle del concepto" className="sm:col-span-2"><Entrada value={conceptoLibre} onChange={(e) => setConceptoLibre(e.target.value)} maxLength={200} /></Campo>
+            ) : null}
+          </Rejilla>
+        ) : (
+          <Campo label="Concepto (opcional)"><Entrada value={conceptoLibre} onChange={(e) => setConceptoLibre(e.target.value)} maxLength={200} placeholder={tipo === "deposito" ? "ej. Depósito H2 · BCP" : "ej. Devolución del saldo"} /></Campo>
+        )}
+
+        <Rejilla columnas={2}>
+          <Campo label="Referencia" hint="Factura, SWIFT, DAM, número de operación o banco de origen">
+            <Entrada value={referencia} onChange={(e) => setReferencia(e.target.value)} maxLength={200} placeholder={tipo === "deposito" ? "ej. BCP · op. 00123456" : "ej. Factura F001-123"} />
+          </Campo>
+          <Campo label="Comprobante (PDF o imagen, hasta 10 MB)">
+            <input
+              type="file"
+              accept="application/pdf,image/*"
+              className="block text-xs text-ink-2 file:mr-3 file:rounded-full file:border file:border-line file:bg-surface-2 file:px-3 file:py-1.5 file:text-xs file:text-ink"
+              onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+            />
+          </Campo>
+        </Rejilla>
+        <Campo label="Nota interna (el cliente no la ve)"><AreaTexto value={nota} onChange={(e) => setNota(e.target.value)} maxLength={2000} /></Campo>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button size="sm" disabled={busy || n === null} onClick={() => void registrar()}>
+            {busy ? "Registrando…" : tipo === "deposito" && hito ? "Registrar y emitir constancia" : "Registrar"}
+          </Button>
+          {montoUsd !== null ? <span className="text-xs text-ink-4">{usd(montoUsd, 2)} al libro</span> : null}
+        </div>
+        {emitido?.pdf ? (
+          <Notice tone="info" label={`Constancia emitida (versión ${emitido.version})`}>
+            Visible para el cliente. <a className="underline text-silver-bright" href={emitido.pdf} target="_blank" rel="noopener noreferrer">Abrir PDF</a> (el enlace dura cinco minutos; después, desde Documentos).
+          </Notice>
+        ) : null}
+      </div>
+    </PortalPanel>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Documentos que nacen del libro                                             */
+/* -------------------------------------------------------------------------- */
+
+const DOCUMENTOS_LIBRO: { tipo: TipoDocumento; etiqueta: string; manuales: NombreCampo[]; ayuda: string }[] = [
+  { tipo: "aviso_h3", etiqueta: "Emitir aviso H3", manuales: ["FECHA_AVISO", "TC_REFERENCIAL"], ayuda: "Recalcula el presupuesto con el precio, el flete y el transporte interno reales; el monto del hito H3 pasa a ser el del aviso." },
+  { tipo: "liquidacion_definitiva", etiqueta: "Emitir liquidación definitiva", manuales: [], ayuda: "Toma la DAM del expediente (número, fecha, canal, factor, TC SBS, levante) y los pagos de tributos y gastos del libro. Visible para el cliente." },
+  { tipo: "acta_entrega", etiqueta: "Emitir acta de entrega", manuales: [], ayuda: "Placa, TIVe, kilometraje y fecha de entrega del expediente; marca el H4 si está acreditado. Se firma en la entrega." },
+  { tipo: "rendicion", etiqueta: "Emitir rendición", manuales: ["FECHA_RENDICION"], ayuda: "Todo el libro: depósitos, pagos, devolución y honorarios. Visible para el cliente y abre su tarea de conformidad." },
+];
+
+function DocumentosDelLibro({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
+  const [abierto, setAbierto] = useState<TipoDocumento | null>(null);
+  const [extra, setExtra] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<TipoDocumento | null>(null);
+  const [faltantes, setFaltantes] = useState<string[]>([]);
+  const [emitido, setEmitido] = useState<{ tipo: TipoDocumento; pdf: string | null; version: number } | null>(null);
+
+  const emitir = async (tipo: TipoDocumento) => {
+    setBusy(tipo);
+    setFaltantes([]);
+    const r = await emitirDocumentoDelLibro({ expedienteId: ctx.expediente.id, tipo, extra });
+    setBusy(null);
+    if (r.ok) {
+      setEmitido({ tipo, pdf: r.urls.pdf, version: r.version });
+      setAbierto(null);
+    } else if (r.faltantes) {
+      setFaltantes(r.faltantes);
+      setAbierto(tipo);
+    }
+    onResultado(r);
+  };
+
+  return (
+    <PortalPanel title="Documentos del libro" description="Se arman con el libro y el expediente, no con un formulario. Regenerar crea una versión nueva.">
+      <ul className="divide-y divide-line">
+        {DOCUMENTOS_LIBRO.map((d) => {
+          const vigente = ctx.documentos.find((x) => x.tipo === d.tipo && x.estado !== "reemplazado" && x.estado !== "anulado");
+          const plantilla = plantillaDe(d.tipo);
+          const esteAbierto = abierto === d.tipo;
+          return (
+            <li key={d.tipo} className="px-5 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm text-ink">{TIPO_DOCUMENTO_LABEL[d.tipo]}</p>
+                  <p className="text-xs text-ink-4">{vigente ? `Versión ${vigente.version} · ${fecha(vigente.emitidoEn ?? vigente.createdAt)}` : "Sin emitir"}</p>
+                </div>
+                <Button size="sm" variant={vigente ? "ghost" : "secondary"} className={vigente ? "border border-line" : ""} onClick={() => setAbierto(esteAbierto ? null : d.tipo)}>
+                  {vigente ? "Nueva versión" : d.etiqueta}
+                </Button>
+              </div>
+              {esteAbierto ? (
+                <div className="mt-3 rounded-lux border border-line bg-surface-2 p-4">
+                  <p className="text-xs text-ink-3">{d.ayuda}</p>
+                  {faltantes.length > 0 ? (
+                    <Notice tone="warn" label={`Faltan ${faltantes.length} datos`}>
+                      Complétalos en el expediente o escríbelos aquí para este documento.
+                    </Notice>
+                  ) : null}
+                  {d.manuales.length > 0 || faltantes.length > 0 ? (
+                    <div className="mt-3">
+                      <Rejilla columnas={2}>
+                        {[...new Set([...d.manuales, ...faltantes])].map((k) => (
+                          <Campo key={k} label={k.replace(/_/g, " ").toLowerCase()} hint={FICHA[k as NombreCampo]?.descripcion} requerido={faltantes.includes(k)}>
+                            <Entrada value={extra[k] ?? ""} placeholder={`ej. ${FICHA[k as NombreCampo]?.ejemplo ?? ""}`} maxLength={500} onChange={(e) => setExtra((p) => ({ ...p, [k]: e.target.value }))} />
+                          </Campo>
+                        ))}
+                      </Rejilla>
+                    </div>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button size="sm" disabled={busy !== null} onClick={() => void emitir(d.tipo)}>
+                      {busy === d.tipo ? "Emitiendo…" : vigente ? `Emitir versión ${vigente.version + 1}` : "Emitir PDF y DOCX"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setAbierto(null)}>Cerrar</Button>
+                    {plantilla?.seFirma ? <span className="self-center text-xs text-ink-4">Se firma: súbelo firmado desde Documentos.</span> : null}
+                  </div>
+                </div>
+              ) : null}
+              {emitido?.tipo === d.tipo && emitido.pdf ? (
+                <p className="mt-2 text-xs text-ink-3">
+                  Versión {emitido.version} emitida. <a className="underline text-silver-bright" href={emitido.pdf} target="_blank" rel="noopener noreferrer">Abrir PDF</a> (cinco minutos).
+                </p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="px-5 pb-4 text-xs text-ink-4">Las constancias de fondos se emiten al confirmar o registrar un depósito con hito.</p>
+    </PortalPanel>
+  );
+}

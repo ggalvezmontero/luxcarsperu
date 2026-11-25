@@ -2,8 +2,8 @@
 
 /**
  * Detalle del expediente: cabecera con etapa, alertas y siguiente paso;
- * pestañas Resumen, Cliente, Vehículo y compra, Documentos, Etapas y tareas,
- * Actividad;
+ * pestañas Resumen, Cliente, Vehículo y compra, Dinero, Documentos, Etapas y
+ * tareas, Actividad;
  * avanzar con la lista de compuertas (forzar con motivo) y cancelar.
  *
  * Todo desde el navegador con la sesión del administrador. Las reglas (qué
@@ -25,17 +25,19 @@ import { RESPONSABLE_LABEL, autoDe, diasDesde, fecha } from "@/lib/expedientes/f
 import { AvanzarPanel } from "./AvanzarPanel";
 import { PestanaActividad } from "./PestanaActividad";
 import { PestanaCliente } from "./PestanaCliente";
+import { PestanaDinero } from "./PestanaDinero";
 import { PestanaDocumentos } from "./PestanaDocumentos";
 import { PestanaResumen } from "./PestanaResumen";
 import { PestanaTareas } from "./PestanaTareas";
 import { PestanaVehiculo } from "./PestanaVehiculo";
 
-type Pestana = "resumen" | "cliente" | "vehiculo" | "documentos" | "tareas" | "actividad";
+type Pestana = "resumen" | "cliente" | "vehiculo" | "dinero" | "documentos" | "tareas" | "actividad";
 
 const PESTANAS: { id: Pestana; label: string }[] = [
   { id: "resumen", label: "Resumen" },
   { id: "cliente", label: "Cliente" },
   { id: "vehiculo", label: "Vehículo y compra" },
+  { id: "dinero", label: "Dinero" },
   { id: "documentos", label: "Documentos" },
   { id: "tareas", label: "Etapas y tareas" },
   { id: "actividad", label: "Actividad" },
@@ -160,6 +162,7 @@ export function ExpedienteDetalleScreen({ id }: { id: string }) {
           {pestana === "resumen" ? <PestanaResumen client={client} ctx={ctx} onResultado={notify} /> : null}
           {pestana === "cliente" ? <PestanaCliente client={client} ctx={ctx} onResultado={notify} /> : null}
           {pestana === "vehiculo" ? <PestanaVehiculo client={client} ctx={ctx} onResultado={notify} /> : null}
+          {pestana === "dinero" ? <PestanaDinero client={client} ctx={ctx} onResultado={notify} /> : null}
           {pestana === "documentos" ? <PestanaDocumentos client={client} ctx={ctx} onResultado={notify} /> : null}
           {pestana === "tareas" ? <PestanaTareas client={client} ctx={ctx} onResultado={notify} /> : null}
           {pestana === "actividad" ? <PestanaActividad client={client} ctx={ctx} eventos={eventos} onResultado={notify} /> : null}

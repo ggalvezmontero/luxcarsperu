@@ -16,7 +16,7 @@ function contexto(): ContextoExpediente {
       monedaCompra: "USD", precioCompra: 60_000, precioCompraUsd: 60_000, fechaLimiteCompra: null, fechaInspeccion: null, historialRef: null, fechaRelease: null, paisOrigen: "Estados Unidos", puertoOrigen: "Miami",
       presupuesto, honorariosUsd: presupuesto.honorarios, honorariosBaseUsd: presupuesto.honorariosBase, honorariosIgvUsd: presupuesto.honorariosIgv, porcentajeDetraccion: 12, margenH3: 0.03, tarifaCustodiaUsd: 25, costoInspeccionUsd: 350,
       fechaFirma: "2026-11-28", fechaLimiteH2: "2026-12-12", fechaEstEmbarque: "2027-01-09", fechaEstArribo: "2027-02-10", fechaEstEntrega: "2027-03-05", semanasEstimadas: "10 a 14", loaVence: "2027-02-28",
-      damNumero: null, damFecha: null, damCanal: null, levanteEn: null, placa: null, tiveNumero: null, kmEntrega: null, fechaEntrega: null, canceladoMotivo: null, cerradoEn: null, createdAt: "2026-11-25T00:00:00Z", updatedAt: "2026-11-25T00:00:00Z",
+      damNumero: null, damFecha: null, damCanal: null, damFactorConversion: null, damTcSbs: null, levanteEn: null, placa: null, tiveNumero: null, kmEntrega: null, fechaEntrega: null, canceladoMotivo: null, cerradoEn: null, createdAt: "2026-11-25T00:00:00Z", updatedAt: "2026-11-25T00:00:00Z",
       reservado: { precioTope: 62_000, tcCompraRef: 1, vendedorId: null, inspectorId: null, agenteAduanaId: null, notasInternas: null },
     },
     cliente: {

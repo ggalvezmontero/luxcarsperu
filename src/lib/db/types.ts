@@ -738,6 +738,8 @@ export type ExpedienteRow = {
   dam_numero: string | null;
   dam_fecha: string | null;
   dam_canal?: string | null;
+  dam_factor_conversion?: number | string | null;
+  dam_tc_sbs?: number | string | null;
   levante_en: string | null;
   placa: string | null;
   tive_numero: string | null;
@@ -838,6 +840,36 @@ export type ExpedienteDocumentoRow = {
   visible_cliente?: boolean | null;
   emitido_en: string | null;
   firmado_en: string | null;
+  created_at: string;
+  movimiento_id?: string | null;
+  hito?: string | null;
+};
+
+/**
+ * Fila de `public.expediente_movimientos` (equipo: trae `comprobante_path` y
+ * `nota_interna`) o de la vista `expediente_movimiento_cliente` (cliente:
+ * `tiene_comprobante`, sin nota). La ruta del comprobante no se pide desde el
+ * navegador: el archivo se baja por la ruta de servidor que firma la URL.
+ */
+export type ExpedienteMovimientoRow = {
+  id: string;
+  expediente_id: string;
+  tipo: string;
+  cuenta: string;
+  hito: string | null;
+  estado: string;
+  fecha: string;
+  moneda: string;
+  monto: number | string;
+  tipo_cambio: number | string;
+  monto_usd: number | string;
+  contraparte_id?: string | null;
+  concepto: string | null;
+  documento_ref: string | null;
+  comprobante_path?: string | null;
+  tiene_comprobante?: boolean | null;
+  declarado_por_cliente: boolean | null;
+  nota_interna?: string | null;
   created_at: string;
 };
 

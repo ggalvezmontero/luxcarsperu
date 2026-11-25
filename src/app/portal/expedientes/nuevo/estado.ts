@@ -278,6 +278,8 @@ export function contextoPrevio(estado: EstadoAlta, embarqueElegido: Embarque | n
     damNumero: null,
     damFecha: null,
     damCanal: null,
+    damFactorConversion: null,
+    damTcSbs: null,
     levanteEn: null,
     placa: null,
     tiveNumero: null,

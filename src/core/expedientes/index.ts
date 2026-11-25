@@ -5,6 +5,7 @@
  */
 export {
   ETAPAS,
+  TAREA_CLIENTE_POR_HITO,
   accionDeTarea,
   anioDeNumeracion,
   anioModeloCumple,
@@ -12,6 +13,7 @@ export {
   definicionEtapa,
   esEtapaTerminal,
   evaluarCompuerta,
+  hitoDeTarea,
   nombreEtapaCliente,
   nombreEtapaEquipo,
   tareaHecha,
@@ -40,6 +42,39 @@ export {
   redondear,
   restarDias,
 } from "./hitos";
+export {
+  CONCEPTOS_PAGO,
+  camposDePresupuesto,
+  camposRendicion,
+  conceptoDe,
+  datosActa,
+  datosAvisoH3,
+  datosConstancia,
+  datosLiquidacion,
+  datosRendicion,
+  diferenciaH3,
+  entradaRealAvisoH3,
+  esConfirmado,
+  estadoHitos,
+  lineasDePagos,
+  numeroConstancia,
+  ordenarLibro,
+  pagadoPorConcepto,
+  porConfirmarDeHito,
+  presupuestoAvisoH3,
+  saldoCuenta,
+  saldoFondos,
+  signoDe,
+  totalPagado,
+  type ConceptoPago,
+  type DatosRendicion,
+  type DiferenciaH3,
+  type GrupoConcepto,
+  type HitoDerivado,
+  type LineaLiquidacion,
+  type PagoPorConcepto,
+  type SaldoPorCuenta,
+} from "./ledger";
 export { DIAS_AVISO_LOA, DIAS_DOCUMENTO_SIN_FIRMA, alertas, fechaIsoDe, resumenAlertas } from "./alertas";
 export {
   esCodigoExpediente,
@@ -70,7 +105,9 @@ export {
 } from "./campos";
 export {
   PLANTILLAS,
+  TIPOS_DESDE_LIBRO,
   construirDocumento,
+  esPlantillaDelLibro,
   nombreArchivo,
   plantillaDe,
   renderHtml,

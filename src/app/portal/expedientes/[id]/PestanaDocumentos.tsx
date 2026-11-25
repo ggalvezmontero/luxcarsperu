@@ -16,7 +16,7 @@ import { Button } from "@/components/Button";
 import { Badge, Notice, PortalPanel, TableScroll, Td, Th } from "@/components/portal/CrmUI";
 import { Campo, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
 import { FICHA, type Campo as NombreCampo } from "@/core/expedientes/campos";
-import { PLANTILLAS, construirDocumento, plantillaDe, renderHtml } from "@/core/expedientes/documentos";
+import { PLANTILLAS, construirDocumento, esPlantillaDelLibro, plantillaDe, renderHtml } from "@/core/expedientes/documentos";
 import type { ContextoExpediente, Documento, TipoDocumento } from "@/core/expedientes/tipos";
 import {
   cambiarVisibilidadDocumento,
@@ -104,10 +104,10 @@ function Generador({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado:
   return (
     <PortalPanel
       title="Generar documento"
-      description="Se construye con los datos del expediente, el cliente, el embarque, las contrapartes y el presupuesto. Regenerar crea una versión nueva y marca la anterior como reemplazada."
+      description="Se construye con los datos del expediente, el cliente, el embarque, las contrapartes y el presupuesto. Regenerar crea una versión nueva y marca la anterior como reemplazada. Las constancias, el aviso H3, la liquidación, el acta y la rendición se emiten desde la pestaña Dinero."
       toolbar={
         <Selector value={tipo} onChange={(e) => { setTipo(e.target.value as TipoDocumento); setGenerado(null); }} aria-label="Tipo de documento">
-          {PLANTILLAS.map((p) => (
+          {PLANTILLAS.filter((p) => !esPlantillaDelLibro(p.tipo)).map((p) => (
             <option key={p.tipo} value={p.tipo}>{p.nombre}</option>
           ))}
         </Selector>

@@ -18,6 +18,7 @@ import type {
   Embarque,
   EtapaExpediente,
   Evento,
+  Movimiento,
   TareaNueva,
 } from "@/core/expedientes/tipos";
 import type {
@@ -29,6 +30,7 @@ import type {
   ExpedienteEtapaRow,
   ExpedienteEventoRow,
   ExpedienteHitoRow,
+  ExpedienteMovimientoRow,
   ExpedienteReservadoRow,
   ExpedienteRow,
   ExpedienteTareaRow,
@@ -46,6 +48,7 @@ import {
   mapEvento,
   mapExpediente,
   mapHito,
+  mapMovimiento,
   mapTarea,
   mapTramo,
 } from "./mapeo";
@@ -75,6 +78,7 @@ type Embebido = ExpedienteRow & {
   expediente_eventos?: ExpedienteEventoRow[] | null;
   expediente_aprobaciones?: ExpedienteAprobacionRow[] | null;
   expediente_documentos?: ExpedienteDocumentoRow[] | null;
+  expediente_movimientos?: ExpedienteMovimientoRow[] | null;
 };
 
 function uno<T>(v: T | T[] | null | undefined): T | null {
@@ -93,7 +97,9 @@ function aContexto(row: Embebido): ContextoExpediente {
     hitos: (row.expediente_hitos ?? []).map(mapHito),
     etapas: (row.expediente_etapas ?? []).map(mapTramo).sort((a, b) => a.desde.localeCompare(b.desde)),
     aprobaciones: (row.expediente_aprobaciones ?? []).map(mapAprobacion),
-    movimientos: [],
+    movimientos: (row.expediente_movimientos ?? [])
+      .map(mapMovimiento)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.createdAt ?? "").localeCompare(b.createdAt ?? "")),
     documentos: (row.expediente_documentos ?? [])
       .map(mapDocumento)
       .sort((a, b) => a.tipo.localeCompare(b.tipo) || b.version - a.version),
@@ -106,6 +112,7 @@ const EMBED_TABLERO = [
   `embarques:embarque_id ( ${COLUMNAS.embarque} )`,
   `expediente_tareas ( ${COLUMNAS.tarea} )`,
   `expediente_hitos ( ${COLUMNAS.hito} )`,
+  `expediente_movimientos ( ${COLUMNAS.movimiento} )`,
 ].join(", ");
 
 const EMBED_DETALLE = [
@@ -147,12 +154,17 @@ export async function cargarExpediente(
     // Los terceros del expediente (vendedor, inspector, agente, forwarder):
     // los nombran los documentos. Una sola consulta por sus ids.
     const ids = [
-      ctx.expediente.reservado?.vendedorId,
-      ctx.expediente.reservado?.inspectorId,
-      ctx.expediente.reservado?.agenteAduanaId,
-      ctx.embarque?.forwarderId,
-      ctx.embarque?.aseguradoraId,
-    ].filter((x): x is string => Boolean(x));
+      ...new Set(
+        [
+          ctx.expediente.reservado?.vendedorId,
+          ctx.expediente.reservado?.inspectorId,
+          ctx.expediente.reservado?.agenteAduanaId,
+          ctx.embarque?.forwarderId,
+          ctx.embarque?.aseguradoraId,
+          ...ctx.movimientos.map((m) => m.contraparteId),
+        ].filter((x): x is string => Boolean(x)),
+      ),
+    ];
     if (ids.length > 0) {
       const terceros = await client.from("contrapartes").select(COLUMNAS.contraparte).in("id", ids);
       ctx.contrapartes = ((terceros.data ?? []) as unknown as ContraparteRow[]).map(mapContraparte);
@@ -683,4 +695,160 @@ export async function subirDocumentoFirmado(
 /** URL de descarga (redirige a una URL firmada de cinco minutos). */
 export function urlDescargaDocumento(documentoId: string, formato: "pdf" | "docx" | "firmado"): string {
   return `/api/portal/expedientes/archivos?documento=${encodeURIComponent(documentoId)}&formato=${formato}`;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dinero (fase 3)                                                            */
+/* -------------------------------------------------------------------------- */
+
+/** Movimientos de un expediente (todos los estados), por fecha. */
+export async function listarMovimientos(client: PortalClient, expedienteId: string): Promise<{ movimientos: Movimiento[]; error: string | null }> {
+  try {
+    const { data, error } = await client
+      .from("expediente_movimientos")
+      .select(COLUMNAS.movimiento)
+      .eq("expediente_id", expedienteId)
+      .order("fecha")
+      .order("created_at");
+    if (error) return { movimientos: [], error: describirError(error.message) };
+    return { movimientos: ((data ?? []) as unknown as ExpedienteMovimientoRow[]).map(mapMovimiento), error: null };
+  } catch {
+    return { movimientos: [], error: MSG_RED };
+  }
+}
+
+/** Lo que recibe `registrar_movimiento` para un asiento nuevo. Columnas en español, como el esquema. */
+export type DatosMovimiento = {
+  tipo: "deposito" | "pago" | "devolucion" | "ajuste";
+  cuenta: "fondos_clientes" | "operaciones" | "detracciones";
+  hito?: "H1" | "H2" | "H3" | "H4" | null;
+  fecha: string;
+  moneda: string;
+  monto: number;
+  tipo_cambio?: number | null;
+  contraparte_id?: string | null;
+  concepto?: string | null;
+  documento_ref?: string | null;
+  nota_interna?: string | null;
+};
+
+export type ConstanciaEmitida = { documentoId: string; version: number; urls: { pdf: string | null; docx: string | null } };
+export type ResultadoMovimiento = Resultado & { movimientoId?: string; constancia?: ConstanciaEmitida; constanciaError?: string };
+
+async function llamarMovimientos(expedienteId: string, cuerpo: Record<string, unknown>, mensajeOk: string): Promise<ResultadoMovimiento> {
+  try {
+    const respuesta = await fetch(`/api/portal/expedientes/${encodeURIComponent(expedienteId)}/movimientos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(cuerpo),
+    });
+    const datos = (await respuesta.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!respuesta.ok || datos.ok !== true) {
+      return { ok: false, message: typeof datos.mensaje === "string" ? datos.mensaje : "No se pudo registrar el movimiento." };
+    }
+    const constancia = datos.constancia as ConstanciaEmitida | undefined;
+    const constanciaError = typeof datos.constanciaError === "string" ? datos.constanciaError : undefined;
+    return {
+      ok: true,
+      message: constancia ? `${mensajeOk} Constancia emitida (versión ${constancia.version}), visible para el cliente.` : constanciaError ? `${mensajeOk} ${constanciaError}` : mensajeOk,
+      movimientoId: typeof datos.movimientoId === "string" ? datos.movimientoId : undefined,
+      constancia,
+      constanciaError,
+    };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/** Registra un asiento confirmado. Si es un depósito con hito, el servidor emite la constancia. */
+export async function registrarMovimiento(input: { expedienteId: string; movimiento: DatosMovimiento; constancia?: boolean }): Promise<ResultadoMovimiento> {
+  if (!(input.movimiento.monto > 0)) return { ok: false, message: "El monto debe ser mayor que cero." };
+  return llamarMovimientos(input.expedienteId, { accion: "registrar", movimiento: limpiar(input.movimiento as unknown as Record<string, unknown>), constancia: input.constancia ?? true }, "Movimiento registrado.");
+}
+
+/** Confirma un depósito declarado por el cliente (admite corregir monto, fecha y tipo de cambio) y emite la constancia. */
+export async function confirmarDeposito(input: { expedienteId: string; movimientoId: string; cambios?: Partial<DatosMovimiento> }): Promise<ResultadoMovimiento> {
+  return llamarMovimientos(input.expedienteId, { accion: "confirmar", movimientoId: input.movimientoId, movimiento: limpiar((input.cambios ?? {}) as Record<string, unknown>) }, "Depósito confirmado.");
+}
+
+export async function anularDeposito(input: { expedienteId: string; movimientoId: string; motivo: string }): Promise<ResultadoMovimiento> {
+  if (input.motivo.trim().length < 5) return { ok: false, message: "Escribe el motivo (mínimo cinco caracteres)." };
+  return llamarMovimientos(input.expedienteId, { accion: "anular", movimientoId: input.movimientoId, motivo: input.motivo.trim() }, "Depósito anulado; el cliente lo ve en su actividad.");
+}
+
+/** Tope del comprobante que acepta `/api/portal/expedientes/[id]/archivos` con `destino: "comprobante"`. */
+export const BYTES_MAXIMOS_COMPROBANTE = 10 * 1024 * 1024;
+export const TIPOS_COMPROBANTE = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"];
+
+/** Sube el comprobante de un movimiento: URL firmada → PUT directo al bucket privado → registrar la ruta. */
+export async function subirComprobanteMovimiento(input: { expedienteId: string; movimientoId: string; archivo: File }): Promise<Resultado> {
+  if (!TIPOS_COMPROBANTE.includes(input.archivo.type)) return { ok: false, message: "El comprobante tiene que ser un PDF o una imagen." };
+  if (input.archivo.size === 0) return { ok: false, message: "El archivo está vacío." };
+  if (input.archivo.size > BYTES_MAXIMOS_COMPROBANTE) return { ok: false, message: "El comprobante supera los 10 MB permitidos." };
+  const ruta = `/api/portal/expedientes/${encodeURIComponent(input.expedienteId)}/archivos`;
+  try {
+    const permiso = await fetch(ruta, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ destino: "comprobante", movimientoId: input.movimientoId, contentType: input.archivo.type, bytes: input.archivo.size }),
+    });
+    const datos = (await permiso.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!permiso.ok || datos.ok !== true || typeof datos.url !== "string") {
+      return { ok: false, message: typeof datos.mensaje === "string" ? datos.mensaje : "No se pudo preparar la subida." };
+    }
+    const subida = await fetch(datos.url, { method: "PUT", headers: { "Content-Type": input.archivo.type }, body: input.archivo });
+    if (!subida.ok) return { ok: false, message: "El almacenamiento rechazó el archivo. Vuelve a intentarlo." };
+    const registro = await fetch(ruta, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ destino: "comprobante", movimientoId: input.movimientoId, contentType: input.archivo.type }),
+    });
+    const r = (await registro.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!registro.ok || r.ok !== true) return { ok: false, message: typeof r.mensaje === "string" ? r.mensaje : "El archivo subió pero no se pudo registrar." };
+    return { ok: true, message: "Comprobante archivado." };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/** URL de descarga del comprobante de un movimiento (redirige a una URL firmada de cinco minutos). */
+export function urlDescargaComprobante(movimientoId: string): string {
+  return `/api/portal/expedientes/archivos?movimiento=${encodeURIComponent(movimientoId)}`;
+}
+
+/**
+ * Emite un documento del libro (aviso H3, liquidación definitiva, acta,
+ * rendición): mismos campos que `generarDocumento`, sin formulario. Lo escrito
+ * a mano (fecha del aviso, TC referencial, fecha de la rendición) va en `extra`.
+ */
+export async function emitirDocumentoDelLibro(input: { expedienteId: string; tipo: string; extra?: Record<string, string>; movimientoId?: string }): Promise<ResultadoGenerar> {
+  try {
+    const respuesta = await fetch(`/api/portal/expedientes/${encodeURIComponent(input.expedienteId)}/documentos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ tipo: input.tipo, extra: input.extra ?? {}, visibleCliente: true, movimientoId: input.movimientoId }),
+    });
+    const datos = (await respuesta.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!respuesta.ok || datos.ok !== true) {
+      return {
+        ok: false,
+        message: typeof datos.mensaje === "string" ? datos.mensaje : "No se pudo emitir el documento.",
+        faltantes: Array.isArray(datos.faltantes) ? (datos.faltantes as string[]) : undefined,
+      };
+    }
+    const urls = (datos.urls ?? {}) as { pdf?: unknown; docx?: unknown };
+    return {
+      ok: true,
+      message: `Documento emitido (versión ${String(datos.version)}).`,
+      documentoId: String(datos.documentoId),
+      version: Number(datos.version),
+      urls: { pdf: typeof urls.pdf === "string" ? urls.pdf : null, docx: typeof urls.docx === "string" ? urls.docx : null },
+    };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
 }

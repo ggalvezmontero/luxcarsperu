@@ -3,27 +3,30 @@
 /**
  * Avance de la importación para el cliente: barra de nueve etapas, texto de
  * la etapa, "Qué necesitamos de ti" con botones para las acciones del portal
- * (van a `cliente_accion_expediente`), hitos, documentos visibles (se bajan por
+ * (van a `cliente_accion_expediente`; "Ya transferí" sube el comprobante y
+ * declara el depósito), dinero (hitos con estado y estado de cuenta desde el
+ * libro), documentos visibles (se bajan por
  * `/api/cuenta/expedientes/archivos`, que firma la URL), vehículo y embarque,
  * actividad visible y WhatsApp al asesor con el código del expediente.
  */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { useCuentaSession } from "@/components/cuenta/cuentaSession";
 import { SinCuentas } from "@/components/cuenta/SinCuentas";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
-import { accionDeTarea, definicionEtapa, nombreEtapaCliente } from "@/core/expedientes/etapas";
-import type { ContextoExpediente, EtapaExpediente, Evento, Tarea, TipoAprobacion } from "@/core/expedientes/tipos";
+import { accionDeTarea, definicionEtapa, hitoDeTarea, nombreEtapaCliente } from "@/core/expedientes/etapas";
+import { diferenciaH3, estadoHitos, ordenarLibro, saldoCuenta } from "@/core/expedientes/ledger";
+import type { ContextoExpediente, EtapaExpediente, Evento, Movimiento, Tarea, TipoAprobacion, TipoHito } from "@/core/expedientes/tipos";
 import { ETAPAS_CLIENTE } from "@/core/expedientes/tipos";
 import { LUXCARS_CONFIG } from "@/lib/config";
-import { accionCliente, cargarMiImportacion, urlDescargaDocumentoCliente } from "@/lib/cuenta/expedientes";
+import { accionCliente, cargarMiImportacion, declararDeposito, urlDescargaComprobanteCliente, urlDescargaDocumentoCliente, type DeclaracionDeposito } from "@/lib/cuenta/expedientes";
 import { normalizarCodigo } from "@/core/expedientes/codigo";
-import { CONTENEDOR_LABEL, HITO_LABEL, TIPO_DOCUMENTO_LABEL, autoDe, fecha, fechaHora, hoyIso, usd } from "@/lib/expedientes/formato";
+import { CONTENEDOR_LABEL, ESTADO_HITO_LABEL, HITO_LABEL, TIPO_DOCUMENTO_LABEL, autoDe, fecha, fechaHora, hoyIso, leerNumero, usd } from "@/lib/expedientes/formato";
 import { cn } from "@/lib/utils";
 
 export function ImportacionScreen({ codigo }: { codigo: string }) {
@@ -147,7 +150,14 @@ export function ImportacionScreen({ codigo }: { codigo: string }) {
             ) : (
               <ul className="mt-4 space-y-3">
                 {pendientes.map((t) => (
-                  <TareaCliente key={t.id} tarea={t} hoy={hoy} onAccion={async (tipo, payload) => client ? notify(await accionCliente(client, { expedienteId: e.id, tipo, payload })) : undefined} />
+                  <TareaCliente
+                    key={t.id}
+                    tarea={t}
+                    hoy={hoy}
+                    ctx={ctx}
+                    onAccion={async (tipo, payload) => client ? notify(await accionCliente(client, { expedienteId: e.id, tipo, payload })) : undefined}
+                    onDeclarar={async (datos) => client ? notify(await declararDeposito(client, { expedienteId: e.id, datos })) : undefined}
+                  />
                 ))}
               </ul>
             )}
@@ -204,23 +214,7 @@ export function ImportacionScreen({ codigo }: { codigo: string }) {
         </div>
 
         <div className="space-y-6">
-          {ctx.hitos.length > 0 ? (
-            <article className="rounded-[22px] border border-line bg-surface p-6">
-              <h2 className="text-base font-semibold text-ink">Pagos previstos</h2>
-              <ul className="mt-3 divide-y divide-line">
-                {ctx.hitos.map((h) => (
-                  <li key={h.tipo} className="py-2.5">
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="text-ink">{HITO_LABEL[h.tipo]}</span>
-                      <span className="font-semibold tabular-nums text-ink">{usd(h.montoEstimadoUsd)}</span>
-                    </div>
-                    <p className="text-xs text-ink-4">{h.fechaLimite ? `Hasta el ${fecha(h.fechaLimite)}` : "Fecha por confirmar"}</p>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs text-ink-4">Montos estimados del Anexo B. Transfiere solo a las cuentas que confirmaste por teléfono.</p>
-            </article>
-          ) : null}
+          <Dinero ctx={ctx} hoy={hoy} />
 
           <article className="rounded-[22px] border border-line bg-surface p-6">
             <h2 className="text-base font-semibold text-ink">Tu vehículo</h2>
@@ -300,11 +294,15 @@ function BarraEtapasCliente({ actual }: { actual: EtapaExpediente }) {
 function TareaCliente({
   tarea: t,
   hoy,
+  ctx,
   onAccion,
+  onDeclarar,
 }: {
   tarea: Tarea;
   hoy: string;
+  ctx: ContextoExpediente;
   onAccion: (tipo: TipoAprobacion, payload?: Record<string, unknown>) => Promise<void>;
+  onDeclarar: (datos: DeclaracionDeposito) => Promise<void>;
 }) {
   const accion = accionDeTarea(t.clave);
   const [busy, setBusy] = useState(false);
@@ -329,7 +327,9 @@ function TareaCliente({
       </div>
       {t.descripcion ? <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{t.descripcion}</p> : null}
 
-      {accion === "elegir_consolidado" ? (
+      {accion === "declarar_deposito" ? (
+        <YaTransferi tarea={t} ctx={ctx} onDeclarar={onDeclarar} />
+      ) : accion === "elegir_consolidado" ? (
         <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" disabled={busy} onClick={() => void correr("elegir_consolidado", { eleccion: "esperar" })}>Esperar al consolidado</Button>
           <Button size="sm" variant="secondary" disabled={busy} onClick={() => void correr("elegir_consolidado", { eleccion: "embarcar_solo" })}>Embarcar solo</Button>
@@ -360,3 +360,173 @@ const ETIQUETA_ACCION: Record<TipoAprobacion, string> = {
   conformidad_rendicion: "Doy conformidad a la rendición",
   confirmar_cuentas: "Confirmo las cuentas",
 };
+
+/* -------------------------------------------------------------------------- */
+/* Dinero                                                                     */
+/* -------------------------------------------------------------------------- */
+
+const CAMPO = "field-lux min-h-10 w-full py-1.5 text-sm";
+
+function YaTransferi({ tarea: t, ctx, onDeclarar }: { tarea: Tarea; ctx: ContextoExpediente; onDeclarar: (datos: DeclaracionDeposito) => Promise<void> }) {
+  const hito = hitoDeTarea(t.clave) ?? "H2";
+  const estimado = ctx.hitos.find((h) => h.tipo === hito);
+  const derivado = useMemo(() => estadoHitos(ctx.hitos, ctx.movimientos).find((d) => d.hito.tipo === hito), [ctx.hitos, ctx.movimientos, hito]);
+  const [abierto, setAbierto] = useState(false);
+  const [monto, setMonto] = useState(derivado && derivado.pendiente > 0 ? String(derivado.pendiente) : estimado ? String(estimado.montoEstimadoUsd) : "");
+  const [fechaDep, setFechaDep] = useState(hoyIso());
+  const [banco, setBanco] = useState("");
+  const [operacion, setOperacion] = useState("");
+  const [archivo, setArchivo] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const porConfirmar = derivado?.porConfirmar ?? 0;
+
+  const enviar = async () => {
+    const n = leerNumero(monto);
+    if (n === null || n <= 0) return;
+    setBusy(true);
+    await onDeclarar({ hito: hito as TipoHito, monto: n, fecha: fechaDep, banco, operacion, comprobante: archivo });
+    setBusy(false);
+    setAbierto(false);
+  };
+
+  return (
+    <div className="mt-3">
+      {derivado && derivado.acreditado > 0 ? (
+        <p className="text-xs text-ink-3">Acreditado {usd(derivado.acreditado, 2)} de {usd(derivado.hito.montoEstimadoUsd, 2)}{derivado.pendiente > 0 ? ` · faltan ${usd(derivado.pendiente, 2)}` : ""}.</p>
+      ) : null}
+      {porConfirmar > 0 ? (
+        <p className="mt-1 rounded-2xl border border-warn/30 bg-warn/10 px-3 py-2 text-xs text-ink-2">
+          Ya declaraste {usd(porConfirmar, 2)}; lo confirmamos en cuanto se acredite en la cuenta.
+        </p>
+      ) : null}
+      {!abierto ? (
+        <Button size="sm" className="mt-2" onClick={() => setAbierto(true)}>Ya transferí</Button>
+      ) : (
+        <div className="mt-2 space-y-3 rounded-2xl border border-line bg-surface p-4">
+          <p className="text-sm text-ink-2">Cuéntanos qué transferiste y adjunta el comprobante. Quedará como pendiente hasta que lo veamos acreditado.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-[11px] uppercase tracking-[0.12em] text-ink-4">
+              Monto (USD)
+              <input className={`${CAMPO} mt-1`} inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} />
+            </label>
+            <label className="block text-[11px] uppercase tracking-[0.12em] text-ink-4">
+              Fecha de la transferencia
+              <input className={`${CAMPO} mt-1`} type="date" value={fechaDep} max={hoyIso()} onChange={(e) => setFechaDep(e.target.value)} />
+            </label>
+            <label className="block text-[11px] uppercase tracking-[0.12em] text-ink-4">
+              Banco desde el que transferiste
+              <input className={`${CAMPO} mt-1`} value={banco} maxLength={120} placeholder="ej. BCP" onChange={(e) => setBanco(e.target.value)} />
+            </label>
+            <label className="block text-[11px] uppercase tracking-[0.12em] text-ink-4">
+              Número de operación (opcional)
+              <input className={`${CAMPO} mt-1`} value={operacion} maxLength={60} onChange={(e) => setOperacion(e.target.value)} />
+            </label>
+          </div>
+          <label className="block text-[11px] uppercase tracking-[0.12em] text-ink-4">
+            Comprobante (PDF o imagen, hasta 10 MB)
+            <input
+              type="file"
+              accept="application/pdf,image/*"
+              className="mt-1 block text-xs normal-case tracking-normal text-ink-2 file:mr-3 file:rounded-full file:border file:border-line file:bg-surface-2 file:px-3 file:py-1.5 file:text-xs file:text-ink"
+              onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" disabled={busy || leerNumero(monto) === null || banco.trim().length < 2} onClick={() => void enviar()}>
+              {busy ? "Enviando…" : "Declarar mi depósito"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setAbierto(false)}>Cancelar</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Dinero({ ctx, hoy }: { ctx: ContextoExpediente; hoy: string }) {
+  const derivados = useMemo(() => estadoHitos(ctx.hitos, ctx.movimientos, hoy), [ctx.hitos, ctx.movimientos, hoy]);
+  const libro = useMemo(() => ordenarLibro(ctx.movimientos), [ctx.movimientos]);
+  const confirmados = libro.filter((m) => m.estado === "confirmado");
+  const depositos = confirmados.filter((m) => m.tipo === "deposito");
+  const porConfirmar = libro.filter((m) => m.estado === "por_confirmar");
+  const pagos = confirmados.filter((m) => m.tipo === "pago");
+  const devoluciones = confirmados.filter((m) => m.tipo === "devolucion");
+  const saldo = saldoCuenta(ctx.movimientos, "fondos_clientes");
+  const hayLiquidacion = ctx.documentos.some((d) => d.tipo === "liquidacion_definitiva");
+  const h3 = diferenciaH3(ctx.hitos.find((h) => h.tipo === "H3") ?? null, ctx.movimientos);
+  if (ctx.hitos.length === 0 && libro.length === 0) return null;
+
+  return (
+    <article className="rounded-[22px] border border-line bg-surface p-6">
+      <h2 className="text-base font-semibold text-ink">Dinero</h2>
+      {derivados.length > 0 ? (
+        <ul className="mt-3 divide-y divide-line">
+          {derivados.map((d) => (
+            <li key={d.hito.tipo} className="py-2.5">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-ink">{HITO_LABEL[d.hito.tipo]}</span>
+                <span className="font-semibold tabular-nums text-ink">{usd(d.hito.montoEstimadoUsd)}</span>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-4">
+                <span>{d.hito.fechaLimite ? `${d.vencido ? "Venció" : "Hasta"} el ${fecha(d.hito.fechaLimite)}` : "Fecha por confirmar"}</span>
+                <Badge tone={d.estado === "acreditado" ? "ok" : d.estado === "parcial" ? "warn" : d.vencido ? "danger" : "neutral"} dot>
+                  {ESTADO_HITO_LABEL[d.estado]}{d.estado === "parcial" ? ` · ${usd(d.acreditado)}` : ""}
+                </Badge>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="mt-3 text-xs text-ink-4">Montos estimados del Anexo B; el H3 se ajusta con el aviso de pago. Transfiere solo a las cuentas que confirmaste por teléfono.</p>
+
+      {libro.length > 0 ? (
+        <div className="mt-5 border-t border-line pt-4">
+          <h3 className="text-sm font-semibold text-ink">Estado de cuenta</h3>
+          <dl className="mt-2 grid gap-2 text-sm">
+            <Fila k="Depósitos confirmados" v={usd(depositos.reduce((s, m) => s + m.montoUsd, 0), 2)} />
+            {porConfirmar.length > 0 ? <Fila k="Depósitos por confirmar" v={<span className="text-warn">{usd(porConfirmar.reduce((s, m) => s + m.montoUsd, 0), 2)}</span>} /> : null}
+            <Fila k="Pagos hechos por tu cuenta" v={`− ${usd(pagos.reduce((s, m) => s + m.montoUsd, 0), 2)}`} />
+            {devoluciones.length > 0 ? <Fila k="Devuelto a tu cuenta" v={`− ${usd(devoluciones.reduce((s, m) => s + m.montoUsd, 0), 2)}`} /> : null}
+            <Fila k="Saldo en Fondos de Clientes" v={<span className={cn("font-semibold", saldo < -0.01 ? "text-danger" : "text-ink")}>{usd(saldo, 2)}</span>} />
+          </dl>
+          {hayLiquidacion && (h3.depositado > 0 || h3.pagado > 0) ? (
+            <p className={cn("mt-3 rounded-2xl border px-3 py-2 text-xs text-ink-2", h3.diferencia < -0.01 ? "border-warn/30 bg-warn/10" : "border-ok/30 bg-ok/10")}>
+              {h3.diferencia < -0.01
+                ? `Liquidación definitiva: los tributos y gastos superaron lo depositado en ${usd(Math.abs(h3.diferencia), 2)}. Te avisamos cómo cubrir la diferencia.`
+                : `Liquidación definitiva: sobraron ${usd(h3.diferencia, 2)} del H3; quedan en tu expediente y se devuelven con la rendición.`}
+            </p>
+          ) : null}
+          <ol className="mt-3 divide-y divide-line">
+            {[...libro].reverse().map((m) => <MovimientoCliente key={m.id} m={m} />)}
+          </ol>
+          <p className="mt-3 text-xs text-ink-4">Cada pago a terceros va con el documento a tu nombre; los comprobantes se descargan con un enlace personal de cinco minutos.</p>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function MovimientoCliente({ m }: { m: Movimiento }) {
+  const resta = m.tipo === "pago" || m.tipo === "devolucion";
+  const titulo =
+    m.tipo === "deposito" ? `Tu depósito${m.hito ? ` · ${m.hito}` : ""}` :
+    m.tipo === "pago" ? `Pago por tu cuenta${m.concepto ? `: ${m.concepto}` : ""}` :
+    m.tipo === "devolucion" ? "Devolución a tu cuenta" : `Ajuste${m.concepto ? `: ${m.concepto}` : ""}`;
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-2 py-2.5 text-sm">
+      <div className="min-w-0">
+        <p className="text-ink">
+          {titulo}
+          {m.estado === "por_confirmar" ? <Badge tone="warn" className="ml-2">Por confirmar</Badge> : null}
+        </p>
+        <p className="text-xs text-ink-4">
+          {fecha(m.fecha)}
+          {m.documentoRef ? ` · ${m.documentoRef}` : ""}
+          {(m.moneda ?? "USD") !== "USD" && m.monto ? ` · ${m.moneda} ${m.monto.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : ""}
+          {m.tieneComprobante ? <> · <a className="underline" href={urlDescargaComprobanteCliente(m.id)}>comprobante</a></> : null}
+        </p>
+      </div>
+      <span className={cn("tabular-nums", resta ? "text-ink-2" : "font-medium text-ink")}>{resta ? "−" : "+"}{usd(m.montoUsd, 2)}</span>
+    </li>
+  );
+}

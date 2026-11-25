@@ -15,21 +15,26 @@ import {
 } from "../campos";
 import type { ContextoExpediente, TipoDocumento } from "../tipos";
 import type { Estructura } from "./estructura";
+import { actaEntrega } from "./plantillas/actaEntrega";
 import { anexoA } from "./plantillas/anexoA";
 import { anexoB } from "./plantillas/anexoB";
 import { anexoC } from "./plantillas/anexoC";
 import { anexoD } from "./plantillas/anexoD";
+import { avisoH3 } from "./plantillas/avisoH3";
+import { constanciaFondos } from "./plantillas/constanciaFondos";
 import { contrato } from "./plantillas/contrato";
 import { instruccionesForwarder } from "./plantillas/instruccionesForwarder";
 import { instruccionesVendedor } from "./plantillas/instruccionesVendedor";
+import { liquidacionDefinitiva } from "./plantillas/liquidacionDefinitiva";
 import { loa } from "./plantillas/loa";
+import { rendicion } from "./plantillas/rendicion";
 import type { Plantilla } from "./plantillas/tipos";
 
 export type { Plantilla } from "./plantillas/tipos";
 export * from "./estructura";
 export { renderHtml, inlineHtml } from "./renderHtml";
 
-/** Las plantillas de esta fase, en el orden del paquete de firma. */
+/** Las plantillas, en el orden del paquete: las de firma (fase 2) y las que nacen del libro (fase 3). */
 export const PLANTILLAS: readonly Plantilla[] = [
   contrato,
   anexoA,
@@ -39,7 +44,23 @@ export const PLANTILLAS: readonly Plantilla[] = [
   loa,
   instruccionesVendedor,
   instruccionesForwarder,
+  constanciaFondos,
+  avisoH3,
+  liquidacionDefinitiva,
+  actaEntrega,
+  rendicion,
 ];
+
+/**
+ * Tipos cuyos campos los arma el LIBRO (src/core/expedientes/ledger.ts) y no
+ * el formulario. El generador de la pestaña Documentos no los ofrece; se
+ * emiten desde la pestaña Dinero.
+ */
+export const TIPOS_DESDE_LIBRO: readonly TipoDocumento[] = ["constancia_fondos", "aviso_h3", "liquidacion_definitiva", "acta_entrega", "rendicion"];
+
+export function esPlantillaDelLibro(tipo: TipoDocumento): boolean {
+  return TIPOS_DESDE_LIBRO.includes(tipo);
+}
 
 const POR_TIPO = new Map<TipoDocumento, Plantilla>(PLANTILLAS.map((p) => [p.tipo, p]));
 

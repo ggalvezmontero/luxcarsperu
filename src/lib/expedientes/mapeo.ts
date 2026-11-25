@@ -4,7 +4,9 @@
  */
 
 import {
+  CUENTAS_MOVIMIENTO,
   ESTADOS_DOCUMENTO,
+  ESTADOS_MOVIMIENTO,
   ETAPAS_EXPEDIENTE,
   MODALIDADES_EMBARQUE,
   RESPONSABLES_TAREA,
@@ -13,6 +15,7 @@ import {
   TIPOS_CONTRAPARTE,
   TIPOS_DOCUMENTO,
   TIPOS_HITO,
+  TIPOS_MOVIMIENTO,
   type Aprobacion,
   type Cliente,
   type Contraparte,
@@ -24,6 +27,7 @@ import {
   type Expediente,
   type ExpedienteReservado,
   type Hito,
+  type Movimiento,
   type Presupuesto,
   type Tarea,
   type TipoAprobacion,
@@ -42,6 +46,7 @@ import {
   type ExpedienteEtapaRow,
   type ExpedienteEventoRow,
   type ExpedienteHitoRow,
+  type ExpedienteMovimientoRow,
   type ExpedienteReservadoRow,
   type ExpedienteRow,
   type ExpedienteTareaRow,
@@ -60,7 +65,6 @@ export function num(value: number | string | null | undefined): number | null {
 const ESTADOS_TAREA: readonly EstadoTarea[] = ["pendiente", "hecha", "no_aplica"];
 const TIPOS_EVENTO: readonly TipoEvento[] = ["etapa", "tarea", "hito", "movimiento", "documento", "aprobacion", "nota", "notificacion", "alerta"];
 const TIPOS_APROBACION: readonly TipoAprobacion[] = ["aprobar_inspeccion", "elegir_consolidado", "declarar_deposito", "conformidad_rendicion", "confirmar_cuentas"];
-const CUENTAS = ["fondos_clientes", "operaciones", "detracciones"] as const;
 
 export function mapEtapa(value: unknown): EtapaExpediente {
   return pick(value, ETAPAS_EXPEDIENTE, "prospecto");
@@ -133,6 +137,37 @@ export function mapDocumento(row: ExpedienteDocumentoRow): Documento {
     visibleCliente: row.visible_cliente ?? true,
     emitidoEn: row.emitido_en,
     firmadoEn: row.firmado_en,
+    createdAt: row.created_at,
+    movimientoId: row.movimiento_id ?? null,
+    hito: row.hito ? pick(row.hito, TIPOS_HITO, "H1") : null,
+  };
+}
+
+/**
+ * Asiento del libro. Sirve para la tabla base (equipo: `comprobante_path`,
+ * `nota_interna`) y para la vista del cliente (`tiene_comprobante`); la ruta
+ * del comprobante nunca llega al dominio, solo si existe.
+ */
+export function mapMovimiento(row: ExpedienteMovimientoRow): Movimiento {
+  const montoUsd = num(row.monto_usd) ?? 0;
+  return {
+    id: row.id,
+    expedienteId: row.expediente_id,
+    tipo: pick(row.tipo, TIPOS_MOVIMIENTO, "ajuste"),
+    cuenta: pick(row.cuenta, CUENTAS_MOVIMIENTO, "fondos_clientes"),
+    hito: row.hito ? pick(row.hito, TIPOS_HITO, "H1") : null,
+    estado: pick(row.estado, ESTADOS_MOVIMIENTO, "confirmado"),
+    fecha: row.fecha,
+    moneda: row.moneda || "USD",
+    monto: num(row.monto) ?? montoUsd,
+    tipoCambio: num(row.tipo_cambio) ?? 1,
+    montoUsd,
+    concepto: row.concepto,
+    contraparteId: row.contraparte_id ?? null,
+    documentoRef: row.documento_ref,
+    tieneComprobante: row.tiene_comprobante ?? Boolean(row.comprobante_path),
+    declaradoPorCliente: row.declarado_por_cliente === true,
+    notaInterna: row.nota_interna ?? null,
     createdAt: row.created_at,
   };
 }
@@ -254,6 +289,8 @@ export function mapExpediente(row: ExpedienteRow, reservado: ExpedienteReservado
     damNumero: row.dam_numero,
     damFecha: row.dam_fecha,
     damCanal: row.dam_canal ?? null,
+    damFactorConversion: num(row.dam_factor_conversion),
+    damTcSbs: num(row.dam_tc_sbs),
     levanteEn: row.levante_en,
     placa: row.placa,
     tiveNumero: row.tive_numero,
@@ -289,7 +326,7 @@ export function mapHito(row: ExpedienteHitoRow): Hito {
     tipo: pick(row.tipo, TIPOS_HITO, "H1"),
     montoEstimadoUsd: num(row.monto_estimado_usd) ?? 0,
     fechaLimite: row.fecha_limite,
-    cuenta: pick(row.cuenta, CUENTAS, "fondos_clientes"),
+    cuenta: pick(row.cuenta, CUENTAS_MOVIMIENTO, "fondos_clientes"),
     nota: row.nota,
   };
 }
@@ -335,7 +372,7 @@ export const COLUMNAS = {
   embarque:
     "id, codigo, modalidad, contenedor, forwarder_id, aseguradora_id, almacen_consolidacion, puerto_origen, puerto_destino, fecha_release_est, fecha_release_real, fecha_carga, fecha_zarpe_est, fecha_zarpe_real, fecha_arribo_est, fecha_arribo_real, nave, master_bl, precinto, flete_total_usd, gastos_contenedor_usd, declaracion_exportacion, estado, notas_internas",
   expediente:
-    "id, codigo, cliente_id, etapa, etapa_desde, origen_solicitud_id, embarque_id, proporcion_flete, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_combustible, veh_cilindrada_cc, veh_transmision, veh_condicion, veh_categoria, veh_origen, veh_pais_ensamblaje, veh_doc_propiedad, veh_peso_kg, veh_medidas, moneda_compra, precio_compra, precio_compra_usd, fecha_limite_compra, fecha_inspeccion, historial_ref, fecha_release, pais_origen, puerto_origen, presupuesto, honorarios_usd, honorarios_base_usd, honorarios_igv_usd, porcentaje_detraccion, margen_h3, tarifa_custodia_usd, costo_inspeccion_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, loa_vence, dam_numero, dam_fecha, dam_canal, levante_en, placa, tive_numero, km_entrega, fecha_entrega, cancelado_motivo, cerrado_en, created_at, updated_at",
+    "id, codigo, cliente_id, etapa, etapa_desde, origen_solicitud_id, embarque_id, proporcion_flete, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_combustible, veh_cilindrada_cc, veh_transmision, veh_condicion, veh_categoria, veh_origen, veh_pais_ensamblaje, veh_doc_propiedad, veh_peso_kg, veh_medidas, moneda_compra, precio_compra, precio_compra_usd, fecha_limite_compra, fecha_inspeccion, historial_ref, fecha_release, pais_origen, puerto_origen, presupuesto, honorarios_usd, honorarios_base_usd, honorarios_igv_usd, porcentaje_detraccion, margen_h3, tarifa_custodia_usd, costo_inspeccion_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, loa_vence, dam_numero, dam_fecha, dam_canal, dam_factor_conversion, dam_tc_sbs, levante_en, placa, tive_numero, km_entrega, fecha_entrega, cancelado_motivo, cerrado_en, created_at, updated_at",
   /** Columnas de la vista `expediente_cliente` (sin reservado ni margen). */
   expedienteCliente:
     "id, codigo, cliente_id, etapa, etapa_desde, embarque_id, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_combustible, veh_cilindrada_cc, veh_transmision, veh_condicion, veh_categoria, veh_pais_ensamblaje, moneda_compra, precio_compra, precio_compra_usd, fecha_inspeccion, pais_origen, puerto_origen, honorarios_usd, honorarios_base_usd, honorarios_igv_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, dam_numero, dam_fecha, levante_en, placa, tive_numero, fecha_entrega, cancelado_motivo, cerrado_en, created_at, updated_at",
@@ -350,9 +387,13 @@ export const COLUMNAS = {
   etapaHistCliente: "id, expediente_id, etapa, desde, hasta",
   aprobacion: "id, expediente_id, tipo, payload, created_at",
   /** Tabla base (equipo). Las rutas se piden solo para saber si existe cada archivo. */
-  documento: "id, expediente_id, tipo, version, estado, origen, titulo, plantilla_version, ruta_pdf, ruta_docx, ruta_firmado, visible_cliente, emitido_en, firmado_en, created_at",
+  documento: "id, expediente_id, tipo, version, estado, origen, titulo, plantilla_version, ruta_pdf, ruta_docx, ruta_firmado, visible_cliente, emitido_en, firmado_en, created_at, movimiento_id, hito",
   /** Vista `expediente_documento_cliente`. */
-  documentoCliente: "id, expediente_id, tipo, version, estado, titulo, tiene_firmado, tiene_pdf, emitido_en, firmado_en, created_at",
+  documentoCliente: "id, expediente_id, tipo, version, estado, titulo, tiene_firmado, tiene_pdf, emitido_en, firmado_en, created_at, movimiento_id, hito",
+  /** Tabla base (equipo). La ruta del comprobante se pide solo para saber si existe. */
+  movimiento: "id, expediente_id, tipo, cuenta, hito, estado, fecha, moneda, monto, tipo_cambio, monto_usd, contraparte_id, concepto, documento_ref, comprobante_path, declarado_por_cliente, nota_interna, created_at",
+  /** Vista `expediente_movimiento_cliente`. */
+  movimientoCliente: "id, expediente_id, tipo, cuenta, hito, estado, fecha, moneda, monto, tipo_cambio, monto_usd, concepto, documento_ref, tiene_comprobante, declarado_por_cliente, created_at",
   embarqueCliente:
     "expediente_id, id, codigo, modalidad, contenedor, puerto_origen, puerto_destino, fecha_release_est, fecha_release_real, fecha_carga, fecha_zarpe_est, fecha_zarpe_real, fecha_arribo_est, fecha_arribo_real, nave, master_bl",
 } as const;

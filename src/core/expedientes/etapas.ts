@@ -17,6 +17,7 @@
 
 import { oldestImportableModelYear } from "../pricing/pricingConfig";
 import { estadoHito } from "./hitos";
+import { conceptoDe } from "./ledger";
 import type {
   ContextoExpediente,
   EstadoTarea,
@@ -85,6 +86,20 @@ function docPresente(tipo: TipoDocumento, tareaClave: string) {
 }
 
 /** Hito acreditado en el libro, o la tarea de confirmación hecha mientras no hay libro. */
+/** Clave de la tarea del cliente que paga cada hito (la misma tabla que `tarea_cliente_de_hito` en SQL). */
+export const TAREA_CLIENTE_POR_HITO: Record<TipoHito, string> = {
+  H1: "cliente.pagar_h1",
+  H2: "cliente.depositar_h2",
+  H3: "cliente.depositar_h3",
+  H4: "cliente.pagar_h4",
+};
+
+/** Hito al que apunta una tarea de pago del cliente, o `null`. */
+export function hitoDeTarea(clave: string): TipoHito | null {
+  for (const [hito, c] of Object.entries(TAREA_CLIENTE_POR_HITO)) if (c === clave) return hito as TipoHito;
+  return null;
+}
+
 function hitoAcreditado(tipo: TipoHito, tareaClave: string) {
   return (ctx: ContextoExpediente) => {
     const hito = ctx.hitos.find((h) => h.tipo === tipo);
@@ -218,7 +233,7 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
       { clave: "luxcars.proforma", titulo: "Pro forma del vendedor a nombre del cliente", responsable: "luxcars" },
       { clave: "luxcars.anexo_a_presupuesto", titulo: "Anexo A (unidad) y presupuesto definitivo (Anexo B)", responsable: "luxcars" },
       { clave: "cliente.aprobar_inspeccion", titulo: "Aprobar la inspección y el precio", responsable: "cliente", visibleCliente: true, accion: "aprobar_inspeccion", descripcion: "Revisa el informe de inspección y el precio final. Con tu aprobación firmamos el Anexo A y seguimos con la compra." },
-      { clave: "cliente.pagar_h1", titulo: "Pagar el hito H1 (30 % de honorarios) al firmar el Anexo A", responsable: "cliente", visibleCliente: true },
+      { clave: "cliente.pagar_h1", titulo: "Pagar el hito H1 (30 % de honorarios) al firmar el Anexo A", responsable: "cliente", visibleCliente: true, accion: "declarar_deposito", descripcion: "Transfiere a la cuenta de Operaciones del Anexo D (la detracción, al Banco de la Nación) y decláralo aquí con el comprobante. Te emitimos la factura al acreditarse." },
       { clave: "luxcars.verificar_cuenta_vendedor", titulo: "Verificar por teléfono la cuenta del vendedor", responsable: "luxcars" },
       { clave: "luxcars.instrucciones_vendedor", titulo: "Instrucciones al vendedor", responsable: "luxcars" },
     ],
@@ -238,7 +253,7 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
       C("anio_modelo", "El año modelo cumple la antigüedad máxima a la fecha estimada de numeración de la DAM", anioModeloCumple),
     ],
     tareas: [
-      { clave: "cliente.depositar_h2", titulo: "Depositar el hito H2 (precio del auto, transporte, flete y seguro)", responsable: "cliente", visibleCliente: true, vence: "fecha_limite_h2", descripcion: "Transfiere a la cuenta de Fondos de Clientes que confirmaste por teléfono. Al acreditarse te enviamos la constancia." },
+      { clave: "cliente.depositar_h2", titulo: "Depositar el hito H2 (precio del auto, transporte, flete y seguro)", responsable: "cliente", visibleCliente: true, vence: "fecha_limite_h2", accion: "declarar_deposito", descripcion: "Transfiere a la cuenta de Fondos de Clientes que confirmaste por teléfono y decláralo aquí con el comprobante. Al acreditarse te enviamos la constancia." },
       { clave: "luxcars.confirmar_h2", titulo: "Confirmar H2 y emitir la constancia de fondos", responsable: "luxcars" },
       { clave: "luxcars.wire_vendedor", titulo: "Wire al vendedor y archivar el SWIFT", responsable: "luxcars" },
       { clave: "luxcars.bill_of_sale", titulo: "Bill of sale definitivo", responsable: "luxcars" },
@@ -257,7 +272,7 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
     compuerta: [
       C("h2_acreditado", "H2 acreditado", hitoAcreditado("H2", "luxcars.confirmar_h2")),
       C("pago_vendedor", "Pago al vendedor registrado", (ctx) =>
-        ctx.movimientos.some((m) => m.tipo === "pago" && m.estado === "confirmado" && /vendedor|wire/i.test(m.concepto ?? "")) ||
+        ctx.movimientos.some((m) => m.tipo === "pago" && m.estado === "confirmado" && conceptoDe(m).clave === "precio_vehiculo") ||
         tareaHecha(ctx, "luxcars.wire_vendedor")),
       C("bill_of_sale", "Bill of sale subido", docPresente("bill_of_sale", "luxcars.bill_of_sale")),
     ],
@@ -295,7 +310,7 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
       { clave: "luxcars.docs_agente", titulo: "Documentos al agente de aduana", responsable: "luxcars" },
       { clave: "cliente.mandato_electronico", titulo: "Otorgar el mandato electrónico al agente de aduana (Clave SOL)", responsable: "cliente", visibleCliente: true, descripcion: "Entra a SUNAT Operaciones en Línea con tu Clave SOL y autoriza al agente de aduana que te indicamos. Te guiamos por WhatsApp." },
       { clave: "luxcars.aviso_h3", titulo: "Emitir el aviso de pago H3 con los valores reales", responsable: "luxcars" },
-      { clave: "cliente.depositar_h3", titulo: "Depositar el hito H3 (tributos, aduana y registrales)", responsable: "cliente", visibleCliente: true, vence: "fecha_est_arribo", descripcion: "Debe estar acreditado antes del arribo para numerar la DAM sin demoras." },
+      { clave: "cliente.depositar_h3", titulo: "Depositar el hito H3 (tributos, aduana y registrales)", responsable: "cliente", visibleCliente: true, vence: "fecha_est_arribo", accion: "declarar_deposito", descripcion: "Debe estar acreditado antes del arribo para numerar la DAM sin demoras. Transfiere el monto del aviso de pago y decláralo aquí con el comprobante." },
       { clave: "luxcars.confirmar_h3", titulo: "Confirmar H3 y emitir la constancia", responsable: "luxcars" },
       { clave: "tercero.numerar_dam", titulo: "Numerar la DAM anticipada", responsable: "tercero" },
     ],
@@ -353,7 +368,7 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
     ],
     tareas: [
       { clave: "luxcars.factura_2", titulo: "Factura 2 de honorarios (70 %)", responsable: "luxcars" },
-      { clave: "cliente.pagar_h4", titulo: "Pagar el hito H4 (70 % de honorarios)", responsable: "cliente", visibleCliente: true, vence: "fecha_est_entrega" },
+      { clave: "cliente.pagar_h4", titulo: "Pagar el hito H4 (70 % de honorarios)", responsable: "cliente", visibleCliente: true, vence: "fecha_est_entrega", accion: "declarar_deposito", descripcion: "Transfiere a la cuenta de Operaciones del Anexo D contra la factura 2 y decláralo aquí con el comprobante." },
       { clave: "luxcars.acta_entrega", titulo: "Acta de entrega", responsable: "luxcars" },
       { clave: "luxcars.rendicion", titulo: "Rendición de cuentas desde el libro", responsable: "luxcars" },
       { clave: "luxcars.devolver_saldo", titulo: "Devolver el saldo a favor", responsable: "luxcars" },

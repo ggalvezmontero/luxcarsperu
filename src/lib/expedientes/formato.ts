@@ -5,7 +5,10 @@
 
 import type { BadgeTone } from "@/components/portal/CrmUI";
 import type {
+  CuentaMovimiento,
   EstadoDocumento,
+  EstadoHito,
+  EstadoMovimiento,
   EstadoTarea,
   EtapaExpediente,
   ModalidadEmbarque,
@@ -15,6 +18,7 @@ import type {
   TipoContraparte,
   TipoDocumento,
   TipoHito,
+  TipoMovimiento,
 } from "@/core/expedientes/tipos";
 
 export const ETAPA_TONE: Record<EtapaExpediente, BadgeTone> = {
@@ -125,6 +129,49 @@ export const HITO_LABEL: Record<TipoHito, string> = {
   H3: "H3 · Tributos y gastos",
   H4: "H4 · Honorarios 70 %",
 };
+
+export const TIPO_MOVIMIENTO_LABEL: Record<TipoMovimiento, string> = {
+  deposito: "Depósito del cliente",
+  pago: "Pago a tercero",
+  devolucion: "Devolución al cliente",
+  ajuste: "Ajuste",
+};
+
+export const ESTADO_MOVIMIENTO_LABEL: Record<EstadoMovimiento, string> = {
+  por_confirmar: "Por confirmar",
+  confirmado: "Confirmado",
+  anulado: "Anulado",
+};
+
+export const ESTADO_MOVIMIENTO_TONE: Record<EstadoMovimiento, BadgeTone> = {
+  por_confirmar: "warn",
+  confirmado: "ok",
+  anulado: "neutral",
+};
+
+export const CUENTA_LABEL: Record<CuentaMovimiento, string> = {
+  fondos_clientes: "Fondos de clientes",
+  operaciones: "Operaciones",
+  detracciones: "Detracciones",
+};
+
+export const ESTADO_HITO_LABEL: Record<EstadoHito, string> = {
+  pendiente: "Pendiente",
+  parcial: "Parcial",
+  acreditado: "Acreditado",
+};
+
+export const ESTADO_HITO_TONE: Record<EstadoHito, BadgeTone> = {
+  pendiente: "neutral",
+  parcial: "warn",
+  acreditado: "ok",
+};
+
+/** Monto en su moneda (CAD 98,500.00 · PEN 16,570.22). */
+export function dinero(moneda: string, n: number | null | undefined, decimales = 2): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return "—";
+  return `${moneda} ${new Intl.NumberFormat("en-US", { minimumFractionDigits: decimales, maximumFractionDigits: decimales }).format(n)}`;
+}
 
 /** `2026-11-24` o un ISO con hora → "24 nov 2026". Vacío si no hay fecha. */
 export function fecha(iso: string | null | undefined): string {
