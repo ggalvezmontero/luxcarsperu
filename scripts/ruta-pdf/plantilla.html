@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Ruta de la importación a pedido · Luxcars</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 210mm; height: 297mm; }
+  body {
+    font-family: Inter, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: #15151a; background: #fff; font-size: 9pt; line-height: 1.3;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .page { width: 210mm; height: 297mm; display: flex; flex-direction: column; overflow: hidden; }
+  .head { flex: none; background: #050505; color: #fff; padding: 7mm 14mm 5mm; position: relative; overflow: hidden; }
+  .head::after { content: ""; position: absolute; inset: auto -20% -60% -20%; height: 60mm;
+    background: radial-gradient(60% 100% at 50% 100%, rgba(212,175,55,.18), transparent 70%); }
+  .head .row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; position: relative; z-index: 1; }
+  .logo { height: 10mm; width: auto; display: block; }
+  .eyebrow { font-size: 7pt; letter-spacing: .18em; text-transform: uppercase; color: #c0c0c0; font-weight: 500; }
+  .eyebrow::before { content: ""; display: inline-block; width: 6mm; height: 1px; background: #c0c0c0; vertical-align: middle; margin-right: 2.5mm; }
+  h1 { font-size: 21pt; font-weight: 600; letter-spacing: -.02em; line-height: 1.05; margin-top: 2.5mm; }
+  h1 em { font-family: "Instrument Serif", Georgia, serif; font-style: italic; font-weight: 400; color: #e8e8ec; }
+  .lead { color: #b8b8be; margin-top: 2mm; max-width: 118mm; font-size: 8.8pt; }
+  .kpis { display: flex; gap: 3mm; margin-top: 3.5mm; position: relative; z-index: 1; }
+  .kpi { border: 1px solid rgba(255,255,255,.14); border-radius: 3mm; padding: 1.4mm 3mm; min-width: 30mm; display: flex; align-items: baseline; gap: 2mm; }
+  .kpi b { display: block; font-size: 11pt; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 7pt; color: #9e9ea6; }
+  .plazo { text-align: right; font-size: 7.6pt; color: #9e9ea6; max-width: 58mm; padding-top: 1mm; }
+  .plazo b { color: #fff; font-weight: 600; }
+
+  main { zoom: 0.93; padding: 3.5mm 15mm 0; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3mm; }
+  h2 { font-size: 7pt; letter-spacing: .18em; text-transform: uppercase; color: #6d6d72; font-weight: 600; margin-bottom: 2.2mm; }
+  h2::before { content: ""; display: inline-block; width: 6mm; height: 1px; background: #9a9aa2; vertical-align: middle; margin-right: 2.5mm; }
+
+  .pasos { border: 1px solid #dcdce1; border-radius: 3.5mm; overflow: hidden; }
+  .paso { display: grid; grid-template-columns: 8mm 44mm 1fr 42mm; gap: 4mm; padding: 2.2mm 4mm; border-top: 1px solid #e6e6ea; align-items: start; }
+  .paso:first-child { border-top: 0; }
+  .n { font-family: "SF Mono", Menlo, monospace; font-size: 8.5pt; color: #8a8a92; padding-top: .6mm; }
+  .paso h3 { font-size: 9.2pt; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; }
+  .paso .tu { margin-top: 1mm; font-size: 7pt; color: #5b5b63; }
+  .paso .tu b { color: #15151a; font-weight: 600; }
+  .paso p.txt { font-size: 7.5pt; color: #3a3a41; }
+  .pago { border: 1px solid #d4af37; border-radius: 2.5mm; padding: 2mm 2.8mm; background: #fbf7ea; }
+  .pago .lab { font-size: 6.6pt; letter-spacing: .16em; text-transform: uppercase; color: #9a761f; font-weight: 600; }
+  .pago b { display: block; font-size: 8.4pt; font-weight: 600; margin-top: .8mm; }
+  .pago span { display: block; font-size: 7pt; color: #5b5b63; margin-top: .6mm; }
+  .sinpago { border: 1px dashed #cfcfd5; border-radius: 2.5mm; padding: 2mm 2.8mm; color: #6d6d72; font-size: 7.2pt; }
+  .sinpago .lab { font-size: 6.6pt; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: #8a8a92; display: block; margin-bottom: .8mm; }
+
+  .cols2 { display: grid; grid-template-columns: 1.1fr 1fr; gap: 6mm; }
+  .cards.c4 { grid-template-columns: repeat(4, 1fr); }
+  .cards.c3 { grid-template-columns: repeat(3, 1fr); }
+  .lista.l2 { grid-template-columns: 1fr 1fr; column-gap: 6mm; }
+  .cards { display: grid; gap: 1.5mm; }
+  .card { border: 1px solid #dcdce1; border-radius: 2.6mm; padding: 1.8mm 3mm; display: grid; grid-template-columns: 6mm 1fr; gap: 2.4mm; align-items: start; }
+  .card .ic { width: 6mm; height: 6mm; border-radius: 50%; border: 1px solid #c9c9cf; display: grid; place-items: center; font-size: 7pt; color: #4b4b52; font-family: "SF Mono", Menlo, monospace; }
+  .card h4 { font-size: 8.2pt; font-weight: 600; }
+  .card p { font-size: 6.9pt; color: #5b5b63; margin-top: .4mm; }
+  .lista { list-style: none; display: grid; gap: 1.6mm; }
+  .lista li { display: flex; gap: 2.2mm; font-size: 7.5pt; color: #3a3a41; }
+  .lista li::before { content: "✓"; color: #9a761f; font-weight: 600; flex: none; }
+
+  footer { flex: none; margin-top: auto; padding: 2mm 14mm 4.5mm; display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #e6e6ea; font-size: 7.2pt; color: #6d6d72; }
+  footer b { color: #15151a; font-weight: 600; }
+  footer .r { text-align: right; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="head">
+    <div class="row">
+      <div>
+        <img class="logo" src="LOGO_SRC" alt="Luxcars" />
+        <p class="eyebrow" style="margin-top:4.5mm">Importación a pedido</p>
+        <h1>Tu ruta, <em>paso a paso</em></h1>
+        <p class="lead">Cinco pasos, cuatro pagos y tres firmas. Tu dinero en una cuenta separada y cada movimiento visible desde tu cuenta en luxcars.pe.</p>
+      </div>
+      <div class="plazo">
+        <b>30 a 60 días</b> desde Estados Unidos según el plan. Desde otros países, el plazo se fija al cotizar. El tramo marítimo depende del calendario de naves.
+      </div>
+    </div>
+    <div class="kpis"><div class="kpi"><b>5</b><span>pasos</span></div><div class="kpi"><b>4</b><span>pagos con constancia</span></div><div class="kpi"><b>3</b><span>firmas</span></div><div class="kpi"><b>1</b><span>cuenta separada</span></div></div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Los cinco pasos</h2>
+      <div class="pasos">PASOS_HTML</div>
+    </section>
+
+    <section>
+      <h2>Tu dinero</h2>
+      <div class="cards c4">DINERO_HTML</div>
+    </section>
+    <section>
+      <h2>Lo que firmas</h2>
+      <div class="cards c3">FIRMAS_HTML</div>
+    </section>
+    <section>
+      <h2>Tu cuenta en luxcars.pe</h2>
+      <ul class="lista l2">CUENTA_HTML</ul>
+    </section>
+  </main>
+
+  <footer>
+    <div><b>Lux Cars Import S.A.C.</b> · RUC 20615410935<br />Calle Dionisio Derteano 184, Of. 1102, San Isidro, Lima</div>
+    <div class="r"><b>www.luxcars.pe/importar/ruta</b><br />WhatsApp +51 980 794 348 · info@luxcars.pe</div>
+  </footer>
+</div>
+</body>
+</html>
