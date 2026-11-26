@@ -117,7 +117,11 @@ const PREGUNTAS: { pregunta: string; respuesta: React.ReactNode }[] = [
         <Link href="/como-funciona" className="font-medium text-ink underline underline-offset-4">
           cómo funciona
         </Link>
-        .
+        ; si ya vas a contratar, la{" "}
+        <Link href="/importar/ruta" className="font-medium text-ink underline underline-offset-4">
+          ruta con pagos y firmas
+        </Link>{" "}
+        explica cómo se maneja tu dinero.
       </>
     ),
   },

@@ -184,8 +184,8 @@ export const PRICING_CONFIG = {
   brokerFeeMinimum: 5000,
   brokerFeeBase: "sobre-costo" as "sobre-costo" | "sobre-precio-final",
   /**
-   * FAST TRACK CUESTA USD 1,200 MÁS QUE ESTÁNDAR, FIJOS (decisión del dueño,
-   * 2026-11-06). Es un cargo de servicio: no toca el flete, así que no cambia
+   * FAST TRACK CUESTA USD 2,000 MÁS QUE ESTÁNDAR, FIJOS (decisión del dueño,
+   * 2026-11-26; antes 1,200 desde el 2026-11-06). Es un cargo de servicio: no toca el flete, así que no cambia
    * el CIF ni los tributos, y la diferencia entre los dos planes es la misma
    * para cualquier auto.
    *
@@ -198,7 +198,7 @@ export const PRICING_CONFIG = {
       key: "fast",
       label: "Fast Track",
       fleteAdjustment: 1,
-      documentHandlingFee: 1200,
+      documentHandlingFee: 2000,
       timelineLabel: "30-40 días",
     },
     standard: {

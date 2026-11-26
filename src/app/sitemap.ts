@@ -63,6 +63,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/vender`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
     { url: `${BASE}/escaneo`, lastModified: ahora, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/como-funciona`, lastModified: ahora, changeFrequency: "monthly", priority: 0.8 },
+    // Hoja de ruta del cliente a pedido (pasos, pagos, firmas): la versión web
+    // del PDF que el asesor deja después de la cita.
+    { url: `${BASE}/importar/ruta`, lastModified: ahora, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/faq`, lastModified: ahora, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/terminos`, lastModified: ahora, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/privacidad`, lastModified: ahora, changeFrequency: "yearly", priority: 0.3 },
