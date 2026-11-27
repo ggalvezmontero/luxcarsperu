@@ -43,7 +43,7 @@ function construir(c: Campos): Estructura {
         `Sin el código ${c.EXPEDIENTE} en el concepto la transferencia no se aplica hasta identificarla; si no se identifica en dos días hábiles, se devuelve.`,
         "Por cada depósito acreditado, LUXCARS envía una constancia de recepción dentro de un día hábil, con el saldo del expediente. El Pago 4 no lleva constancia de LUXCARS: el comprobante es el de SUNAT o el del banco.",
         "Los montos se pactan en dólares americanos. Un pago en soles se convierte al tipo de cambio venta publicado por la SBS el día del abono. Para montos altos conviene usar ventanilla o transferencia interbancaria inmediata: las aplicaciones móviles suelen tener topes diarios.",
-        `Detracción. Si el Mandante es una empresa, cada factura de honorarios lleva detracción del ${c.PORCENTAJE_DETRACCION} %. El Mandante no tiene que hacer nada: paga el importe completo dentro de su Pago 2 y su Pago 5, y LUXCARS deposita la detracción en el Banco de la Nación dentro de los cinco días hábiles y le envía la constancia. Si prefiere detraer él mismo, deposita la detracción en la cuenta de detracciones de LUXCARS en el Banco de la Nación n.º ${c.CTA_DETRACCION_NUMERO}, la descuenta de su pago y envía la constancia a ${c.LUXCARS_CORREO} (cláusula 5.3 del contrato). [CONFIRMAR con el contador el porcentaje y el código de servicio]`,
+        `Detracción. Si el Mandante es una empresa, cada factura de honorarios lleva detracción del ${c.PORCENTAJE_DETRACCION} %. El Mandante no tiene que hacer nada: paga el importe completo dentro de su Pago 2 y su Pago 5, y LUXCARS deposita la detracción en el Banco de la Nación dentro de los cinco días hábiles y le envía la constancia. Si prefiere detraer él mismo, deposita la detracción en la cuenta de detracciones de LUXCARS en el Banco de la Nación n.º ${c.CTA_DETRACCION_NUMERO}, la descuenta de su pago y envía la constancia a ${c.LUXCARS_CORREO} (cláusula 5.3 del contrato).`,
         "Para los Pagos 2 y 5 se acepta también cheque de gerencia no negociable a nombre de Lux Cars Import S.A.C.",
         `Si el Mandante pide que LUXCARS pague los tributos por su cuenta (cláusula 6.6 del contrato), deposita antes su importe en la cuenta Fondos de Clientes con el concepto "${c.EXPEDIENTE} Pago 4".`,
         "La comisión que el banco cobre por una transferencia al exterior la repone LUXCARS el mismo día: el saldo del Mandante no cambia.",
@@ -61,7 +61,7 @@ function construir(c: Campos): Estructura {
 
 export const anexoD: Plantilla = {
   tipo: "anexo_d",
-  version: "anexo_d@2026-11-27d",
+  version: "anexo_d@2026-11-28",
   nombre: "Anexo D · Instrucciones de pago",
   idioma: "es",
   tarea: "luxcars.generar_contrato",

@@ -7,7 +7,7 @@
  * NINGUNA FUNCIÓN LANZA.
  */
 
-import { CAMPOS_EMPRESA, esCampo, type Campo, type CamposExtra } from "@/core/expedientes/campos";
+import { CAMPOS_EMPRESA, PENDIENTES_EMPRESA, esCampo, type Campo, type CamposExtra, type ClavePendiente } from "@/core/expedientes/campos";
 import type { PortalClient } from "@/lib/portal/portalClient";
 
 export type Resultado = { ok: boolean; message: string };
@@ -72,6 +72,39 @@ export async function guardarConfiguracion(
       // sin consecuencias
     }
     return { ok: true, message: "Guardado. Los documentos que se emitan desde ahora usan estos datos." };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/** Estado de las confirmaciones pendientes del dueño: clave → fecha (ISO) en que se marcó hecha. */
+export async function leerPendientes(client: PortalClient): Promise<{ hechos: Partial<Record<ClavePendiente, string>>; error: string | null }> {
+  try {
+    const claves = PENDIENTES_EMPRESA.map((p) => p.clave);
+    const { data, error } = await client.from("configuracion_documentos").select("clave, valor").in("clave", claves);
+    if (error) return { hechos: {}, error: describir(error.message) };
+    const hechos: Partial<Record<ClavePendiente, string>> = {};
+    for (const f of (data ?? []) as unknown as { clave: string; valor: string }[]) {
+      if ((claves as readonly string[]).includes(f.clave)) hechos[f.clave as ClavePendiente] = f.valor;
+    }
+    return { hechos, error: null };
+  } catch {
+    return { hechos: {}, error: MSG_RED };
+  }
+}
+
+/** Marca una confirmación como hecha (fila con la fecha) o la vuelve a pendiente (borra la fila). */
+export async function marcarPendiente(client: PortalClient, clave: ClavePendiente, hecho: boolean, actorId: string | null): Promise<Resultado> {
+  try {
+    if (hecho) {
+      const ahora = new Date().toISOString();
+      const { error } = await client.from("configuracion_documentos").upsert([{ clave, valor: ahora, updated_by: actorId, updated_at: ahora }], { onConflict: "clave" });
+      if (error) return { ok: false, message: describir(error.message) };
+      return { ok: true, message: "Confirmación marcada como hecha." };
+    }
+    const { error } = await client.from("configuracion_documentos").delete().eq("clave", clave);
+    if (error) return { ok: false, message: describir(error.message) };
+    return { ok: true, message: "La confirmación volvió a pendiente." };
   } catch {
     return { ok: false, message: MSG_RED };
   }

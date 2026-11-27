@@ -32,7 +32,19 @@ import { plantillaDe } from "@/core/expedientes/documentos";
 import { FACTURA_POR_HITO, HITOS_HONORARIOS, TAREA_AUTODETRACCION_POR_HITO, type HitoHonorarios } from "@/core/expedientes/etapas";
 import { detraccionSugerida, importeFactura, llevaDetraccion } from "@/core/expedientes/honorarios";
 import { CUENTA_POR_HITO, DIAS_HABILES_PAGO_TRIBUTOS, etiquetaPago, sumarDiasHabiles } from "@/core/expedientes/hitos";
-import { CONCEPTOS_PAGO_TERCEROS, comisionesBancarias, conceptoDe, datosPago5, estadoHitos, ordenarLibro, saldoFondos, type HitoConAviso } from "@/core/expedientes/ledger";
+import {
+  CONCEPTOS_PAGO_TERCEROS,
+  OBSERVACIONES_POR_DEFECTO,
+  PENDIENTES_POR_DEFECTO,
+  comisionesBancarias,
+  conceptoDe,
+  datosPago5,
+  estadoHitos,
+  ordenarLibro,
+  quienRecibe,
+  saldoFondos,
+  type HitoConAviso,
+} from "@/core/expedientes/ledger";
 import type { ContextoExpediente, CuentaMovimiento, Movimiento, TipoDocumento, TipoHito, TipoMovimiento } from "@/core/expedientes/tipos";
 import { CUENTAS_MOVIMIENTO, PAGO_POR_HITO, TIPOS_HITO, TIPOS_MOVIMIENTO } from "@/core/expedientes/tipos";
 import {
@@ -768,7 +780,7 @@ const DOCUMENTOS_LIBRO: DocumentoLibro[] = [
   { clave: "aviso_h5", tipo: "aviso_h3", hito: "H5", titulo: "Aviso del Pago 4 · tributos a SUNAT (H5)", etiqueta: "Emitir aviso del Pago 4", manuales: ["FECHA_AVISO", "LIQUIDACION_NUMERO", "TRIBUTOS_USD", "TRIBUTOS_SOLES", "TC_REFERENCIAL"], ayuda: "Con la liquidación de SUNAT. El cliente paga directo a SUNAT dentro de dos días hábiles: la fecha límite del hito H5 y de su tarea se fija al emitir." },
   { clave: "aviso_h6", tipo: "aviso_h3", hito: "H6", titulo: "Aviso del Pago 5 · honorarios netos (H6)", etiqueta: "Emitir aviso del Pago 5", manuales: ["FECHA_AVISO"], ayuda: "Con el levante. Segunda mitad de los honorarios menos el sobrante (o más el faltante) de los gastos de aduana del libro, a Fondos de Clientes como siempre; el hito H6 queda por el neto." },
   { clave: "liquidacion", tipo: "liquidacion_definitiva", titulo: "Liquidación definitiva", etiqueta: "Emitir liquidación definitiva", manuales: [], ayuda: "Toma la DAM del expediente, los tributos pagados (directo por el cliente o por Luxcars) y los gastos de aduana del libro, con el saldo para el Pago 5. Visible para el cliente." },
-  { clave: "acta", tipo: "acta_rendicion", titulo: "Acta de entrega y rendición de cuentas", etiqueta: "Emitir acta de entrega y rendición", manuales: [], ayuda: "Placa, TIVe, kilometraje y fecha de entrega del expediente; todo el libro, lo pagado directo a SUNAT, el saldo de aduana aplicado al Pago 5 y las comisiones repuestas. Se firma simple con el auto delante y abre la tarea de conformidad del cliente." },
+  { clave: "acta", tipo: "acta_rendicion", titulo: "Acta de entrega y rendición de cuentas", etiqueta: "Emitir acta de entrega y rendición", manuales: ["HORA_ENTREGA", "LUGAR_ENTREGA", "NIVEL_COMBUSTIBLE", "OBSERVACIONES_ENTREGA", "PENDIENTES_ENTREGA", "RECIBE_ENTREGA"], ayuda: "Se emite con el auto delante: hora, lugar, nivel de combustible, observaciones, pendientes y quién recibe (el acta no lleva espacios para llenar a mano). Placa, TIVe, kilometraje y fecha de entrega salen del expediente; las tablas, de todo el libro. Se firma simple y abre la tarea de conformidad del cliente." },
 ];
 
 /** Valores que el formulario propone para cada aviso (se pueden corregir). */
@@ -784,6 +796,11 @@ function propuestos(ctx: ContextoExpediente, d: DocumentoLibro): Record<string, 
   return base;
 }
 
+/** Lo que el acta propone y el equipo corrige con el auto delante (hora, lugar y combustible se escriben siempre). */
+function propuestosActa(ctx: ContextoExpediente): Record<string, string> {
+  return { OBSERVACIONES_ENTREGA: OBSERVACIONES_POR_DEFECTO, PENDIENTES_ENTREGA: PENDIENTES_POR_DEFECTO, RECIBE_ENTREGA: quienRecibe(ctx) };
+}
+
 function DocumentosDelLibro({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
   const [abierto, setAbierto] = useState<string | null>(null);
   const [extra, setExtra] = useState<Record<string, string>>({});
@@ -795,7 +812,7 @@ function DocumentosDelLibro({ ctx, onResultado }: { ctx: ContextoExpediente; onR
     if (abierto === d.clave) return setAbierto(null);
     setAbierto(d.clave);
     setFaltantes([]);
-    setExtra(propuestos(ctx, d));
+    setExtra(d.tipo === "acta_rendicion" ? propuestosActa(ctx) : propuestos(ctx, d));
   };
 
   const emitir = async (d: DocumentoLibro) => {

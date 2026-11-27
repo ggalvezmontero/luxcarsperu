@@ -265,6 +265,9 @@ function bloques(lista: Bloque[]): (Paragraph | Table)[] {
               alignment: AlignmentType.JUSTIFIED,
               indent: { left: SANGRIA, hanging: SANGRIA },
               tabStops: [{ type: TabStopType.LEFT, position: SANGRIA }],
+              // Número y texto son un solo párrafo; con control de viudas y huérfanas
+              // tampoco queda una línea suelta al pie o al inicio de página.
+              widowControl: true,
               ...conFirmas,
               children: [new TextRun({ text: `${num.numero}\t`, font: FUENTE, size: CUERPO, color: TINTA }), ...tramos(num.resto)],
             }),

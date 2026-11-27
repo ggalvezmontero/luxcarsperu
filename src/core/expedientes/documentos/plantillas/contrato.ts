@@ -27,7 +27,7 @@
 import type { Campos } from "../../campos";
 import { firmas, h2, lista, p, type Estructura } from "../estructura";
 import { tablaCalendario } from "./calendario";
-import type { Plantilla } from "./tipos";
+import { cargoEnTexto, type Plantilla } from "./tipos";
 
 function construir(c: Campos): Estructura {
   const usado = c.VEH_CONDICION.toLowerCase().startsWith("usado");
@@ -39,8 +39,8 @@ function construir(c: Campos): Estructura {
     bloques: [
       p('Conste por el presente documento el contrato de mandato con representación para la importación de un vehículo (el "Contrato") que celebran:'),
       lista([
-        `**LUX CARS IMPORT S.A.C.**, con RUC ${c.LUXCARS_RUC}, domicilio en ${c.LUXCARS_DOMICILIO}, inscrita en la partida ${c.LUXCARS_PARTIDA} del Registro de Personas Jurídicas de Lima, representada por su gerente general ${c.LUXCARS_REPRESENTANTE}, identificado con DNI ${c.LUXCARS_REP_DNI}, con poderes inscritos en la misma partida; en adelante, "LUXCARS" o "el Mandatario".`,
-        `**${c.CLIENTE_RAZON_SOCIAL}**, con RUC ${c.CLIENTE_RUC}, domicilio en ${c.CLIENTE_DOMICILIO}, inscrita en la partida ${c.CLIENTE_PARTIDA} del Registro de Personas Jurídicas de Lima, representada por su ${c.CLIENTE_REP_CARGO} ${c.CLIENTE_REPRESENTANTE}, identificado con DNI ${c.CLIENTE_REP_DNI}, con poderes inscritos en la misma partida; en adelante, "el Mandante".`,
+        `**LUX CARS IMPORT S.A.C.**, con RUC ${c.LUXCARS_RUC}, domicilio en ${c.LUXCARS_DOMICILIO}, inscrita en la partida ${c.LUXCARS_PARTIDA} del Registro de Personas Jurídicas de Lima, representada por su gerente general ${c.LUXCARS_REPRESENTANTE}, con DNI n.º ${c.LUXCARS_REP_DNI}, con poderes inscritos en la misma partida; en adelante, "LUXCARS" o "el Mandatario".`,
+        `**${c.CLIENTE_RAZON_SOCIAL}**, con RUC ${c.CLIENTE_RUC}, domicilio en ${c.CLIENTE_DOMICILIO}, inscrita en la partida ${c.CLIENTE_PARTIDA} del Registro de Personas Jurídicas de Lima, representada por su ${cargoEnTexto(c.CLIENTE_REP_CARGO)} ${c.CLIENTE_REPRESENTANTE}, con DNI n.º ${c.CLIENTE_REP_DNI}, con poderes inscritos en la misma partida; en adelante, "el Mandante".`,
       ]),
       p("En los términos y condiciones siguientes:"),
 
@@ -83,7 +83,7 @@ function construir(c: Campos): Estructura {
       h2("Quinta: Honorarios"),
       p(`5.1 Los honorarios de LUXCARS por todos los actos de la cláusula segunda ascienden a USD ${c.COMISION_TOTAL} (base imponible USD ${c.COMISION_BASE} más IGV USD ${c.COMISION_IGV}). El monto incluye el IGV.`),
       p(`5.2 Se pagan en dos mitades iguales de USD ${c.COMISION_MITAD} (50 % cada una), dentro del calendario de la cláusula tercera: la primera con el Pago 2, cuando el Vehículo queda listo para embarcar, y la segunda con el Pago 5, cuando la Administración Aduanera autoriza el levante. El Pago 5 se ajusta con el saldo de los gastos de aduana conforme al numeral 8.5. Por cada mitad LUXCARS emite factura electrónica con la glosa "Honorarios por servicio de intermediación e importación por mandato, vehículo VIN ${c.VEH_VIN}, expediente ${c.EXPEDIENTE}".`),
-      p(`5.3 Las facturas a una empresa están sujetas al Sistema de Pago de Obligaciones Tributarias (detracción) del ${c.PORCENTAJE_DETRACCION} %. El Mandante paga siempre el importe completo de cada factura, dentro de su pago, en la cuenta Fondos de Clientes, y LUXCARS deposita la detracción en su propia cuenta de detracciones del Banco de la Nación dentro de los cinco días hábiles siguientes de recibido el pago y le envía la constancia del depósito. Si el Mandante prefiere detraer él mismo, deposita la detracción en esa cuenta, indicada en el Anexo D, la descuenta de su pago y envía la constancia a LUXCARS. Si el Mandante es una persona natural que recibe boleta de venta, no hay detracción. [CONFIRMAR con el contador el porcentaje aplicable antes del primer uso]`),
+      p(`5.3 Las facturas a una empresa están sujetas al Sistema de Pago de Obligaciones Tributarias (detracción) del ${c.PORCENTAJE_DETRACCION} %. El Mandante paga siempre el importe completo de cada factura, dentro de su pago, en la cuenta Fondos de Clientes, y LUXCARS deposita la detracción en su propia cuenta de detracciones del Banco de la Nación dentro de los cinco días hábiles siguientes de recibido el pago y le envía la constancia del depósito. Si el Mandante prefiere detraer él mismo, deposita la detracción en esa cuenta, indicada en el Anexo D, la descuenta de su pago y envía la constancia a LUXCARS. Si el Mandante es una persona natural que recibe boleta de venta, no hay detracción.`),
       p(
         `5.4 Los honorarios comprenden: la búsqueda y la verificación de la unidad (sin costo para el Mandante hasta su elección), la gestión integral de la operación, la gestión registral completa (homologación o ficha técnica ante el MTC, inscripción en la SUNARP, placas y tarjeta de identificación vehicular, con sus tasas y derechos), las comisiones bancarias de las transferencias al exterior (las que el banco debite de la cuenta Fondos de Clientes las repone LUXCARS el mismo día), el traslado en grúa dentro de Lima hasta la entrega y el tiempo de LUXCARS. No comprenden ningún pago a terceros: precio del Vehículo, ${usado ? "inspección del vehículo usado (Anexo B), " : ""}impuestos del país de origen, flete, seguro, tributos de importación, gastos de aduana (agente de aduana, almacenaje, visto bueno y grúa del puerto), SOAT, ni gastos extraordinarios (almacenaje o sobreestadía por demora del Mandante, reclamos a terceros, reexportación).`,
       ),
@@ -224,7 +224,7 @@ function construir(c: Campos): Estructura {
 
 export const contrato: Plantilla = {
   tipo: "contrato",
-  version: "contrato@2026-11-27d",
+  version: "contrato@2026-11-28",
   nombre: "Contrato de mandato",
   idioma: "es",
   tarea: "luxcars.generar_contrato",

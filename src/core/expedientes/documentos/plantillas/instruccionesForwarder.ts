@@ -1,13 +1,32 @@
 /** 4 · Shipping Instructions to the Freight Forwarder (inglés). Transcrito del paquete. */
 
 import type { Campos } from "../../campos";
-import { casillas, firmas, h2, p, tabla, vinetas, type Estructura } from "../estructura";
-import type { Plantilla } from "./tipos";
+import type { ContextoExpediente } from "../../tipos";
+import { firmas, h2, p, tabla, vinetas, type Bloque, type Estructura } from "../estructura";
+import { fechaEnIngles, type Plantilla } from "./tipos";
 
-function construir(c: Campos): Estructura {
+/** La modalidad de embarque del expediente, sin opciones para marcar: solo la que aplica. */
+function modalidad(c: Campos, ctx: ContextoExpediente): Bloque {
+  const elegida = c.MODALIDAD_EMBARQUE ? ctx.embarque?.modalidad : undefined;
+  if (elegida === "consolidado") {
+    return p(`**Consolidated**: this vehicle shares a ${c.TIPO_CONTENEDOR} with VIN ${c.VIN_OTRA_UNIDAD}, which has a different consignee. Required: one house B/L per vehicle, each with its own consignee; freight and container charges split ${c.PROPORCION_FLETE} to this vehicle and shown on each house B/L; a separate invoice per consignee for its share plus its own charges (never one invoice for both vehicles); a loading plan with both vehicles' dimensions approved by us before booking; a loading report with photos of both vehicles lashed, both odometer readings and the seal number.`);
+  }
+  if (elegida === "roro") return p("**Ro-Ro**, one vehicle, one house B/L.");
+  if (elegida === "exclusivo") return p(`**Exclusive container ${c.TIPO_CONTENEDOR}**: one vehicle, one house B/L.`);
+  return p(c.MODALIDAD_EMBARQUE);
+}
+
+/** Quién contrata el seguro: Luxcars si el embarque tiene aseguradora asignada; si no, el forwarder, con el valor declarado. */
+function seguro(c: Campos, ctx: ContextoExpediente): Bloque {
+  if (ctx.embarque?.aseguradoraId) return p("Arranged by Lux Cars Import S.A.C. We will send you the certificate.");
+  return p(`Arranged by the forwarder: Institute Cargo Clauses (A), warehouse to warehouse, 110 % of the CIF value, insured and beneficiary ${c.CLIENTE_RAZON_SOCIAL}, one certificate per vehicle. Declared value: 110 % of the estimated CIF value of USD ${c.EST_CIF}, adjusted to the actual freight.`);
+}
+
+function construir(c: Campos, ctx: ContextoExpediente): Estructura {
+  const fecha = fechaEnIngles(c.FECHA_EMISION);
   return {
     titulo: "Shipping Instructions to the Freight Forwarder",
-    subtitulo: `**File ${c.EXPEDIENTE} · Date: ______________**`,
+    subtitulo: `**File ${c.EXPEDIENTE} · Date: ${fecha}**`,
     idioma: "en",
     codigoExpediente: c.EXPEDIENTE,
     bloques: [
@@ -34,12 +53,8 @@ function construir(c: Campos): Estructura {
         ["Ownership documents", "Travel by courier with the keys, never inside the vehicle"],
       ], [1.5, 3.5]),
 
-      h2("3. Shipment mode (tick one)"),
-      casillas([
-        `**Exclusive container ${c.TIPO_CONTENEDOR}**: one vehicle, one house B/L.`,
-        `**Consolidated**: this vehicle shares a ${c.TIPO_CONTENEDOR} with VIN ${c.VIN_OTRA_UNIDAD}, which has a different consignee. Required: one house B/L per vehicle, each with its own consignee; freight and container charges split ${c.PROPORCION_FLETE} to this vehicle and shown on each house B/L; a separate invoice per consignee for its share plus its own charges (never one invoice for both vehicles); a loading plan with both vehicles' dimensions approved by us before booking; a loading report with photos of both vehicles lashed, both odometer readings and the seal number.`,
-        "**Ro-Ro**.",
-      ]),
+      h2("3. Shipment mode"),
+      modalidad(c, ctx),
 
       h2("4. Routing and dates"),
       tabla(["Item", "Detail"], [
@@ -77,10 +92,7 @@ function construir(c: Campos): Estructura {
       ]),
 
       h2("8. Insurance"),
-      casillas([
-        "Arranged by Lux Cars Import S.A.C. We will send you the certificate.",
-        `Arranged by the forwarder: Institute Cargo Clauses (A), warehouse to warehouse, 110 % of the CIF value, insured and beneficiary ${c.CLIENTE_RAZON_SOCIAL}, one certificate per vehicle. Declared value: USD ______________.`,
-      ]),
+      seguro(c, ctx),
 
       h2("9. Invoicing"),
       p(`Invoice all charges for this vehicle to **${c.CLIENTE_RAZON_SOCIAL}, RUC ${c.CLIENTE_RUC}, ${c.CLIENTE_DOMICILIO}, Lima, Peru**, care of Lux Cars Import S.A.C. Payment is remitted by Lux Cars Import S.A.C. on the consignee's behalf with the reference ${c.EXPEDIENTE}. Send banking details on letterhead; we confirm them by phone before paying.`),
@@ -93,8 +105,8 @@ function construir(c: Campos): Estructura {
         ["Dealer (pickup)", `${c.DEALER_NOMBRE}, ${c.DEALER_CONTACTO}`],
       ], [2, 3]),
       firmas(
-        ["Issued by Lux Cars Import S.A.C.", c.LUXCARS_REPRESENTANTE, "Date: ______________"],
-        ["Acknowledged by the forwarder", "Name: ______________", "Date: ______________"],
+        ["Issued by Lux Cars Import S.A.C.", c.LUXCARS_REPRESENTANTE, fecha],
+        ["Acknowledged by the forwarder", "Name, signature and date"],
       ),
     ],
   };
@@ -102,7 +114,7 @@ function construir(c: Campos): Estructura {
 
 export const instruccionesForwarder: Plantilla = {
   tipo: "instrucciones_forwarder",
-  version: "instrucciones_forwarder@2026-11-27",
+  version: "instrucciones_forwarder@2026-11-28",
   nombre: "Shipping Instructions (EN)",
   idioma: "en",
   tarea: "luxcars.instrucciones_forwarder",

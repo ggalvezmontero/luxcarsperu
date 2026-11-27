@@ -1,8 +1,8 @@
 /** 2 · Letter of Authorization and Limited Power of Attorney (inglés). Transcrito del paquete; broker como Seller y dealer como emisor de factura y MSO (27 nov 2026). */
 
 import type { Campos } from "../../campos";
-import { firmas, h2, nota, numerada, p, tabla, vinetas, type Estructura } from "../estructura";
-import type { Plantilla } from "./tipos";
+import { firmas, h2, numerada, p, tabla, vinetas, type Estructura } from "../estructura";
+import { cargoEnTexto, type Plantilla } from "./tipos";
 
 function construir(c: Campos): Estructura {
   return {
@@ -11,7 +11,7 @@ function construir(c: Campos): Estructura {
     idioma: "en",
     codigoExpediente: c.EXPEDIENTE,
     bloques: [
-      p(`**${c.CLIENTE_RAZON_SOCIAL}**, a company organized and existing under the laws of the Republic of Peru, Peruvian Tax ID (RUC) No. ${c.CLIENTE_RUC}, with registered address at ${c.CLIENTE_DOMICILIO}, Lima, Peru (the "Principal"), acting through its ${c.CLIENTE_REP_CARGO}, ${c.CLIENTE_REPRESENTANTE}, holder of Peruvian National ID (DNI) No. ${c.CLIENTE_REP_DNI}, duly empowered,`),
+      p(`**${c.CLIENTE_RAZON_SOCIAL}**, a company organized and existing under the laws of the Republic of Peru, Peruvian Tax ID (RUC) No. ${c.CLIENTE_RUC}, with registered address at ${c.CLIENTE_DOMICILIO}, Lima, Peru (the "Principal"), acting through its ${cargoEnTexto(c.CLIENTE_REP_CARGO)}, ${c.CLIENTE_REPRESENTANTE}, holder of Peruvian National ID (DNI) No. ${c.CLIENTE_REP_DNI}, duly empowered,`),
       p(`hereby authorizes and appoints **LUX CARS IMPORT S.A.C.**, a company organized under the laws of the Republic of Peru, RUC No. ${c.LUXCARS_RUC}, with registered address at ${c.LUXCARS_DOMICILIO}, Lima, Peru, acting through ${c.LUXCARS_REPRESENTANTE}, DNI No. ${c.LUXCARS_REP_DNI} (the "Agent"), to act in the Principal's name and on its behalf as its agent and attorney-in-fact, limited to the acts listed below in connection with the vehicle described in Section 1 (the "Vehicle").`),
 
       h2("1. Vehicle"),
@@ -53,14 +53,13 @@ function construir(c: Campos): Estructura {
         ["For the Principal", c.CLIENTE_RAZON_SOCIAL, `${c.CLIENTE_REPRESENTANTE}, ${c.CLIENTE_REP_CARGO}`, `DNI No. ${c.CLIENTE_REP_DNI}`, "Signature certified by a Peruvian notary public"],
         ["Accepted by the Agent", "LUX CARS IMPORT S.A.C.", `${c.LUXCARS_REPRESENTANTE}, General Manager`, `DNI No. ${c.LUXCARS_REP_DNI}`],
       ),
-      nota("*Nota de uso, no imprimir: la firma del cliente se legaliza ante notario en la misma visita en que firma el contrato y el poder para la inmatriculación. La apostilla (Ministerio de Relaciones Exteriores) solo se tramita si el broker, el dealer o el forwarder la exigen; la mayoría acepta la carta notarizada con copia del DNI y de la vigencia de poder.*"),
     ],
   };
 }
 
 export const loa: Plantilla = {
   tipo: "loa",
-  version: "loa@2026-11-27",
+  version: "loa@2026-11-28",
   nombre: "Letter of Authorization (EN)",
   idioma: "en",
   tarea: "luxcars.generar_contrato",

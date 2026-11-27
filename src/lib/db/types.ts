@@ -630,11 +630,17 @@ export type ClienteRow = {
   banco_origen: string | null;
   beneficiario_final: string | null;
   origen_fondos: string | null;
+  origen_fondos_tipo: string | null;
   es_pep: boolean | null;
+  pep_cargo: string | null;
+  /** Arreglo JSON de `{ nombre, documento, porcentaje, pep }`. */
+  beneficiarios: unknown;
   kyc_ficha_ruc_en: string | null;
   kyc_vigencia_en: string | null;
   kyc_listas_en: string | null;
   kyc_listas_resultado: string | null;
+  kyc_uif_en: string | null;
+  kyc_responsable: string | null;
   kyc_completo: boolean | null;
   user_id: string | null;
   notas_internas: string | null;

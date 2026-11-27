@@ -22,7 +22,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import type { CamposExtra } from "@/core/expedientes/campos";
+import { fechaEnLetras, type CamposExtra } from "@/core/expedientes/campos";
 import { construirDocumento, nombreArchivo, type Plantilla } from "@/core/expedientes/documentos";
 import { TAREA_AVISO_POR_HITO } from "@/core/expedientes/etapas";
 import { sumarDiasHabiles, DIAS_HABILES_PAGO_TRIBUTOS } from "@/core/expedientes/hitos";
@@ -106,7 +106,8 @@ export async function emitirDocumento(plantilla: Plantilla, ctx: ContextoExpedie
 
   // Lo del libro manda sobre el expediente; lo escrito a mano manda sobre todo
   // (para corregir una fecha); los parámetros de la empresa solo rellenan vacíos.
-  const doc = construirDocumento(plantilla, ctx, { ...libro.campos, ...opciones.extra }, opciones.porDefecto ?? {});
+  // La fecha de emisión es la del día en Lima, salvo que el formulario traiga otra.
+  const doc = construirDocumento(plantilla, ctx, { FECHA_EMISION: fechaEnLetras(hoyLima()), ...libro.campos, ...opciones.extra }, opciones.porDefecto ?? {});
   if (doc.faltantes.length > 0) {
     return { ok: false, status: 422, mensaje: `Faltan datos para emitir este documento: ${doc.faltantes.join(", ")}.`, faltantes: doc.faltantes };
   }

@@ -8,7 +8,7 @@
  */
 
 import type { Campos } from "../../campos";
-import { casillas, h2, nota, p, tabla, type Estructura } from "../estructura";
+import { h2, nota, p, tabla, vinetas, type Estructura } from "../estructura";
 import type { Plantilla } from "./tipos";
 
 function construir(c: Campos): Estructura {
@@ -64,7 +64,8 @@ function construir(c: Campos): Estructura {
       ], [2, 3]),
 
       h2("4. Verificaciones realizadas antes de la aprobación"),
-      casillas(
+      p("LUXCARS realizó estas verificaciones antes de que el Mandante aprobara la unidad:"),
+      vinetas(
         usado
           ? [
               `Historial del vehículo (CarFax u otro) n.º ${c.HISTORIAL_REF}: sin siniestros graves ni título marcado`,
@@ -107,7 +108,7 @@ function construir(c: Campos): Estructura {
 
 export const anexoA: Plantilla = {
   tipo: "anexo_a",
-  version: "anexo_a@2026-11-27d",
+  version: "anexo_a@2026-11-28",
   nombre: "Anexo A · Ficha del vehículo",
   idioma: "es",
   tarea: "luxcars.generar_contrato",

@@ -10,6 +10,7 @@ import {
   ETAPAS_EXPEDIENTE,
   MODALIDADES_EMBARQUE,
   RESPONSABLES_TAREA,
+  ORIGENES_FONDOS,
   TIPOS_CLIENTE,
   TIPOS_CONTENEDOR,
   TIPOS_CONTRAPARTE,
@@ -17,7 +18,9 @@ import {
   TIPOS_HITO,
   TIPOS_MOVIMIENTO,
   type Aprobacion,
+  type Beneficiario,
   type Cliente,
+  type OrigenFondos,
   type Contraparte,
   type DatosBancarios,
   type Documento,
@@ -73,6 +76,22 @@ export function mapEtapa(value: unknown): EtapaExpediente {
   return pick(value, ETAPAS_EXPEDIENTE, "prospecto");
 }
 
+/** Beneficiarios finales desde la columna JSON; `null` si no hay arreglo (todavía no se declararon). */
+export function mapBeneficiarios(crudo: unknown): Beneficiario[] | null {
+  if (!Array.isArray(crudo)) return null;
+  return crudo.flatMap((x) => {
+    if (!x || typeof x !== "object") return [];
+    const o = x as Record<string, unknown>;
+    const porcentaje = typeof o.porcentaje === "number" ? o.porcentaje : Number(o.porcentaje);
+    return [{
+      nombre: typeof o.nombre === "string" ? o.nombre : "",
+      documento: typeof o.documento === "string" ? o.documento : "",
+      porcentaje: Number.isFinite(porcentaje) ? porcentaje : 0,
+      pep: o.pep === true,
+    }];
+  });
+}
+
 export function mapCliente(row: ClienteRow): Cliente {
   return {
     id: row.id,
@@ -91,11 +110,16 @@ export function mapCliente(row: ClienteRow): Cliente {
     bancoOrigen: row.banco_origen,
     beneficiarioFinal: row.beneficiario_final,
     origenFondos: row.origen_fondos,
-    esPep: row.es_pep === true,
+    origenFondosTipo: (ORIGENES_FONDOS as readonly string[]).includes(row.origen_fondos_tipo ?? "") ? (row.origen_fondos_tipo as OrigenFondos) : null,
+    esPep: row.es_pep === null || row.es_pep === undefined ? null : row.es_pep === true,
+    pepCargo: row.pep_cargo ?? null,
+    beneficiarios: mapBeneficiarios(row.beneficiarios),
     kycFichaRucEn: row.kyc_ficha_ruc_en,
     kycVigenciaEn: row.kyc_vigencia_en,
     kycListasEn: row.kyc_listas_en,
     kycListasResultado: row.kyc_listas_resultado,
+    kycUifEn: row.kyc_uif_en ?? null,
+    kycResponsable: row.kyc_responsable ?? null,
     kycCompleto: row.kyc_completo === true,
     userId: row.user_id,
     notasInternas: row.notas_internas,
@@ -408,7 +432,7 @@ export function mapTramo(row: ExpedienteEtapaRow): TramoEtapa {
 /** Columnas que se piden a la Data API. Explícitas, para que el tipo de fila no mienta. */
 export const COLUMNAS = {
   cliente:
-    "id, tipo, razon_social, ruc, dni, domicilio, partida, representante, representante_dni, representante_cargo, email, telefono, actividad, banco_origen, beneficiario_final, origen_fondos, es_pep, kyc_ficha_ruc_en, kyc_vigencia_en, kyc_listas_en, kyc_listas_resultado, kyc_completo, user_id, notas_internas, created_at, updated_at",
+    "id, tipo, razon_social, ruc, dni, domicilio, partida, representante, representante_dni, representante_cargo, email, telefono, actividad, banco_origen, beneficiario_final, origen_fondos, origen_fondos_tipo, es_pep, pep_cargo, beneficiarios, kyc_ficha_ruc_en, kyc_vigencia_en, kyc_listas_en, kyc_listas_resultado, kyc_uif_en, kyc_responsable, kyc_completo, user_id, notas_internas, created_at, updated_at",
   contraparte: "id, tipo, nombre, pais, direccion, contacto, email, telefono, ruc_o_tax_id, banco_verificado_en",
   /** Con datos bancarios, verificador y notas: para /portal/contrapartes y las advertencias de pago. */
   contraparteCompleta: "id, tipo, nombre, pais, direccion, contacto, email, telefono, ruc_o_tax_id, datos_bancarios, banco_verificado_en, banco_verificado_por, notas",

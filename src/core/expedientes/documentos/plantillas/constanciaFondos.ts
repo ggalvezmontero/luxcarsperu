@@ -9,7 +9,8 @@
 
 import type { Campos } from "../../campos";
 import { fechaEnLetras, monto } from "../../campos";
-import type { ContextoExpediente, TipoHito } from "../../tipos";
+import { queCubrePago } from "../../hitos";
+import type { ContextoExpediente, NumeroPago, TipoHito } from "../../tipos";
 import { firmas, h2, p, tabla, type Estructura } from "../estructura";
 import type { Plantilla } from "./tipos";
 
@@ -19,7 +20,9 @@ function destinos(c: Campos, ctx: ContextoExpediente): string[][] {
   const terceros = ctx.contrapartes ?? [];
   const nombre = (id: string | null | undefined, fallback: string) => (id ? terceros.find((t) => t.id === id)?.nombre ?? fallback : fallback);
   const hito = (c.HITO || "") as TipoHito | "";
-  if (!pre) return [["", "", "", ""]];
+  // Sin presupuesto o sin hito conocido no hay desglose: una fila con el concepto del contrato, nunca una fila en blanco.
+  const sinDesglose = [["Conceptos de este pago según el calendario del contrato (cláusula tercera)", "Los que indica el contrato", c.MONTO_DEPOSITO, "Según el calendario"]];
+  if (!pre) return sinDesglose;
   const e = ctx.expediente;
   if (hito === "H1") {
     const broker = nombre(e.reservado?.brokerId ?? e.reservado?.vendedorId, "Vendedor (broker)");
@@ -44,12 +47,14 @@ function destinos(c: Campos, ctx: ContextoExpediente): string[][] {
   if (hito === "H6") {
     return [["Segunda mitad de los honorarios (factura 2), que LUXCARS aplica al emitir la factura junto con el saldo de los gastos de aduana", "LUX CARS IMPORT S.A.C.", c.COMISION_MITAD, "Al emitir la factura 2"]];
   }
-  return [["", "", "", ""]];
+  return sinDesglose;
 }
 
 function construir(c: Campos, ctx: ContextoExpediente): Estructura {
   const pago = c.PAGO_DEPOSITO;
-  const marca = (n: number) => (pago.startsWith(`Pago ${n} `) ? "[X]" : "[ ]");
+  // El concepto es el del pago de esta constancia, con el texto del calendario del contrato: sin casillas.
+  const numero = Number(/^Pago (\d) de 5/.exec(pago)?.[1] ?? 0);
+  const concepto = numero >= 1 && numero <= 5 ? queCubrePago(numero as NumeroPago, ctx.expediente.vehiculo.condicion === "usado") : pago;
   return {
     titulo: "Constancia de recepción de fondos",
     subtitulo: `**Constancia n.º ${c.EXPEDIENTE}-${c.CONSTANCIA_NUMERO} · Fecha: ${c.FECHA_DEPOSITO}**`,
@@ -65,7 +70,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
         ["Banco y cuenta de origen", c.CLIENTE_BANCO_ORIGEN],
         ["Número de operación", c.NUMERO_OPERACION],
         ["Pago al que corresponde", pago],
-        ["Concepto según el contrato", `${marca(1)} Pago 1 de 5: el precio del auto   ${marca(2)} Pago 2 de 5: flete, seguro y primera mitad de los honorarios   ${marca(3)} Pago 3 de 5: gastos de aduana   ${marca(5)} Pago 5 de 5: segunda mitad de los honorarios`],
+        ["Concepto según el contrato (cláusula tercera)", concepto],
       ], [2, 3]),
 
       h2(`2. Saldo del expediente ${c.EXPEDIENTE}`),
@@ -89,7 +94,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
 
 export const constanciaFondos: Plantilla = {
   tipo: "constancia_fondos",
-  version: "constancia_fondos@2026-11-27c",
+  version: "constancia_fondos@2026-11-28",
   nombre: "Constancia de recepción de fondos",
   idioma: "es",
   seFirma: false,

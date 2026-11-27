@@ -10,6 +10,9 @@
  * Documentos manda a esta pantalla. Los valores viven en la tabla
  * `configuracion_documentos` (RLS solo admin); la variable de entorno
  * `LUXCARS_DOCUMENTOS_JSON` queda como respaldo y se muestra como tal.
+ *
+ * Arriba, las confirmaciones que el dueño marca como hechas antes del primer
+ * uso (`PENDIENTES_EMPRESA`): ya no van como notas en los documentos.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -17,8 +20,9 @@ import { Button } from "@/components/Button";
 import { Notice, PortalPageHeader, PortalPanel } from "@/components/portal/CrmUI";
 import { Campo as CampoForm, Entrada, Rejilla } from "@/components/portal/expedientes/Formulario";
 import { usePortalSession } from "@/components/portal/portalSession";
-import { CAMPOS_EMPRESA, FICHA, type Campo, type CamposExtra } from "@/core/expedientes/campos";
-import { guardarConfiguracion, leerConfiguracion, leerRespaldo } from "./consultas";
+import { CAMPOS_EMPRESA, FICHA, PENDIENTES_EMPRESA, type Campo, type CamposExtra, type ClavePendiente } from "@/core/expedientes/campos";
+import { fecha } from "@/lib/expedientes/formato";
+import { guardarConfiguracion, leerConfiguracion, leerPendientes, leerRespaldo, marcarPendiente } from "./consultas";
 
 type Grupo = { titulo: string; descripcion: string; campos: Campo[] };
 
@@ -49,7 +53,7 @@ const GRUPOS: Grupo[] = [
   },
   {
     titulo: "Cuentas",
-    descripcion: "Operaciones recibe los honorarios (H1 y H4); Fondos de Clientes recibe el dinero del auto y de los tributos (H2 y H3); Detracciones es la cuenta del Banco de la Nación para el SPOT.",
+    descripcion: "Fondos de Clientes recibe todos los pagos del cliente (Pagos 1, 2, 3 y 5); el Pago 4 lo paga el cliente directo a SUNAT. Detracciones es la cuenta del Banco de la Nación donde LUXCARS deposita la detracción de cada factura de honorarios.",
     campos: CAMPOS_EMPRESA.filter((k) => FICHA[k].grupo === "cuentas"),
   },
   {
@@ -68,6 +72,8 @@ export function ConfiguracionScreen() {
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hechos, setHechos] = useState<Partial<Record<ClavePendiente, string>>>({});
+  const [marcando, setMarcando] = useState<ClavePendiente | null>(null);
 
   const canQuery = sessionStatus === "autenticado" && Boolean(client);
 
@@ -77,7 +83,8 @@ export function ConfiguracionScreen() {
       return;
     }
     setLoading(true);
-    const [tabla, resp] = await Promise.all([leerConfiguracion(client), leerRespaldo()]);
+    const [tabla, resp, pend] = await Promise.all([leerConfiguracion(client), leerRespaldo(), leerPendientes(client)]);
+    setHechos(pend.hechos);
     const g: CamposExtra = {};
     for (const f of tabla.filas) g[f.clave] = f.valor;
     setGuardados(g);
@@ -114,6 +121,16 @@ export function ConfiguracionScreen() {
     if (r.ok) void load();
   };
 
+  const marcar = async (clave: ClavePendiente, hecho: boolean) => {
+    if (!client) return;
+    setMarcando(clave);
+    const r = await marcarPendiente(client, clave, hecho, profile?.id ?? null);
+    setMarcando(null);
+    setFlash({ ok: r.ok, text: r.message });
+    if (r.ok) void load();
+  };
+  const pendientes = PENDIENTES_EMPRESA.filter((p) => !hechos[p.clave]);
+
   return (
     <div className="space-y-8">
       <PortalPageHeader
@@ -144,6 +161,34 @@ export function ConfiguracionScreen() {
           {flash.text}
         </Notice>
       ) : null}
+
+      <PortalPanel
+        title={`Confirmaciones antes del primer uso${pendientes.length ? ` (${pendientes.length} pendientes)` : ""}`}
+        description="Lo que el dueño confirma una vez con el contador o el notario. Ningún documento las imprime: se marcan aquí cuando están hechas."
+      >
+        <ul className="divide-y divide-line">
+          {PENDIENTES_EMPRESA.map((p) => {
+            const hecho = hechos[p.clave];
+            return (
+              <li key={p.clave} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+                <div className="min-w-0 max-w-2xl">
+                  <p className={`text-sm ${hecho ? "text-ink-3" : "text-ink"}`}>{p.titulo}</p>
+                  <p className="mt-0.5 text-xs text-ink-4">{hecho ? `Hecho el ${fecha(hecho)}.` : p.detalle}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={hecho ? "ghost" : "secondary"}
+                  className={hecho ? "border border-line" : ""}
+                  disabled={loading || !canQuery || marcando !== null}
+                  onClick={() => void marcar(p.clave, !hecho)}
+                >
+                  {marcando === p.clave ? "…" : hecho ? "Volver a pendiente" : "Marcar como hecho"}
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      </PortalPanel>
 
       {GRUPOS.map((g) => (
         <PortalPanel key={g.titulo} title={g.titulo} description={g.descripcion}>

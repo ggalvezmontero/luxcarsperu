@@ -29,7 +29,7 @@
  * TypeScript puro, sin fecha actual ni entrada/salida.
  */
 
-import type { ContextoExpediente, Contraparte, TipoContenedor } from "./tipos";
+import type { Beneficiario, Cliente, ContextoExpediente, Contraparte, OrigenFondos, TipoContenedor } from "./tipos";
 
 /* -------------------------------------------------------------------------- */
 /* La lista                                                                   */
@@ -97,8 +97,9 @@ export const FICHA = {
   CLIENTE_TELEFONO: { grupo: "cliente", descripcion: "WhatsApp válido para aprobaciones", ejemplo: "+51 9XX XXX XXX" },
   CLIENTE_ACTIVIDAD: { grupo: "cliente", descripcion: "Actividad económica (CIIU de la ficha RUC)", ejemplo: "Transporte de carga por carretera" },
   CLIENTE_BANCO_ORIGEN: { grupo: "cliente", descripcion: "Banco y cuenta desde donde pagará (debe ser de la propia empresa)", ejemplo: "BCP, cuenta corriente en dólares" },
-  CLIENTE_BENEFICIARIO_FINAL: { grupo: "cliente", descripcion: "Persona natural con 10 % o más del capital: nombre, DNI y porcentaje", ejemplo: "Juan Pérez Rojas, DNI 0XXXXXXX, 60 %" },
-  CLIENTE_ORIGEN_FONDOS: { grupo: "cliente", descripcion: "De dónde sale el dinero", ejemplo: "Utilidades acumuladas de la empresa" },
+  CLIENTE_PEP: { grupo: "cliente", descripcion: "Si el representante es o fue en los últimos cinco años persona expuesta políticamente (o pariente o asociado cercano): \"No\" o \"Sí: cargo\". Se pide en el portal en la etapa de contrato", ejemplo: "No" },
+  CLIENTE_BENEFICIARIOS: { grupo: "cliente", descripcion: "Beneficiarios finales (10 % o más del capital, o control): nombre, documento, participación y si son PEP. Se piden en el portal, uno por fila; la tabla del Anexo C sale de ahí", ejemplo: "Juan Pérez Rojas (DNI 0XXXXXXX, 60 %, no PEP)" },
+  CLIENTE_ORIGEN_FONDOS: { grupo: "cliente", descripcion: "Origen de los fondos con su detalle: utilidades, préstamo (entidad), aporte de capital, venta de un activo (cuál) u otro", ejemplo: "Ingresos ordinarios o utilidades acumuladas de la empresa: utilidades 2025 según estados financieros" },
 
   // Vehículo
   VEH_MARCA: { grupo: "vehiculo", descripcion: "Marca", ejemplo: "Toyota" },
@@ -196,10 +197,17 @@ export const FICHA = {
   KM_ENTREGA: { grupo: "cierre", descripcion: "Kilometraje a la entrega (acta)", ejemplo: "1,260 km" },
   PLACA: { grupo: "cierre", descripcion: "Placa asignada (acta y rendición)", ejemplo: "BXX-000" },
   TIVE_NUMERO: { grupo: "cierre", descripcion: "Número de la tarjeta de identificación vehicular (acta)", ejemplo: "n.º ..." },
+  HORA_ENTREGA: { grupo: "cierre", descripcion: "Hora de la entrega (acta); se escribe al emitir el acta con el auto delante", ejemplo: "10:30" },
+  LUGAR_ENTREGA: { grupo: "cierre", descripcion: "Lugar exacto de la entrega (acta); se escribe al emitir", ejemplo: "Av. Javier Prado Este 1234, San Isidro" },
+  NIVEL_COMBUSTIBLE: { grupo: "cierre", descripcion: "Nivel de combustible o de carga a la entrega (acta); se escribe al emitir", ejemplo: "3/4 de tanque" },
+  OBSERVACIONES_ENTREGA: { grupo: "cierre", descripcion: "Observaciones del estado del vehículo a la entrega (acta); por defecto \"Sin observaciones\"", ejemplo: "Sin observaciones" },
+  PENDIENTES_ENTREGA: { grupo: "cierre", descripcion: "Pendientes con responsable y fecha, si los hay (acta); por defecto \"Sin pendientes\"", ejemplo: "Sin pendientes" },
+  RECIBE_ENTREGA: { grupo: "cierre", descripcion: "Quién recibe por el Mandante (acta): por defecto su representante, con cargo y DNI; si recibe otra persona autorizada por escrito, su nombre y DNI", ejemplo: "Juan Pérez Rojas, gerente general, con DNI n.º 0XXXXXXX" },
   // Fase 3: los arma el libro (src/core/expedientes/ledger.ts); se escriben a mano solo si el libro no los tiene.
   CONSTANCIA_NUMERO: { grupo: "cierre", descripcion: "Correlativo de la constancia dentro del expediente, por orden de depósitos confirmados", ejemplo: "F01" },
   NUMERO_OPERACION: { grupo: "cierre", descripcion: "Número de operación bancaria del depósito o de la devolución", ejemplo: "00123456" },
   FECHA_AVISO: { grupo: "cierre", descripcion: "Fecha en que se emite un aviso de pago (Pagos 3, 4 o 5)", ejemplo: "2 de febrero de 2027" },
+  FECHA_EMISION: { grupo: "cierre", descripcion: "Fecha en que se emite el documento (instrucciones al vendedor y al forwarder); la pone el portal al emitir", ejemplo: "28 de noviembre de 2026" },
   FECHA_LIMITE_PAGO: { grupo: "cierre", descripcion: "Fecha límite del pago avisado: al arribo (Pago 3), dos días hábiles desde el aviso (Pago 4) o al levante (Pago 5)", ejemplo: "4 de febrero de 2027" },
   MONTO_AVISO: { grupo: "cierre", descripcion: "Monto en USD del aviso: gastos de aduana según la pro forma del agente (Pago 3) u honorarios netos (Pago 5)", ejemplo: "2,300.00" },
   LIQUIDACION_NUMERO: { grupo: "cierre", descripcion: "Número de la liquidación de cobranza de SUNAT con que el cliente paga los tributos (Pago 4)", ejemplo: "2027-118-000123" },
@@ -250,6 +258,29 @@ export const CAMPOS_EMPRESA: readonly Campo[] = [
 export function esCampoEmpresa(campo: Campo): boolean {
   return CAMPOS_EMPRESA.includes(campo);
 }
+
+/**
+ * Confirmaciones del dueño antes del primer uso real. Antes eran notas
+ * "[CONFIRMAR…]" impresas en los documentos; desde el 28 nov 2026 ningún
+ * documento lleva notas internas y estas viven en /portal/configuracion: una
+ * fila `PENDIENTE_*` en `configuracion_documentos`, con la fecha en que se
+ * marcó como hecha (sin fila = pendiente).
+ */
+export const PENDIENTES_EMPRESA = [
+  {
+    clave: "PENDIENTE_DETRACCION",
+    titulo: "Confirmar con el contador el porcentaje de detracción y el código de servicio del SPOT",
+    detalle: "Lo usan la cláusula 5.3 del contrato, el Anexo D, el aviso del Pago 5 y la autodetracción de cada factura de honorarios.",
+  },
+  {
+    clave: "PENDIENTE_PODER_SUNARP",
+    titulo: "Confirmar con el notario que SUNARP acepta el poder especial para la inmatriculación con firma legalizada",
+    detalle: "Si exige escritura pública o la firma directa del propietario en el formato de inmatriculación, el poder se ajusta antes del primer uso.",
+  },
+] as const;
+
+export type PendienteEmpresa = (typeof PENDIENTES_EMPRESA)[number];
+export type ClavePendiente = PendienteEmpresa["clave"];
 
 /** Mapa completo: cada campo con su valor (vacío = "") . */
 export type Campos = Record<Campo, string>;
@@ -333,6 +364,51 @@ const COMBUSTIBLE_POR_CATEGORIA = {
 function contacto(c: Contraparte | null | undefined): string {
   if (!c) return "";
   return [c.contacto, c.email].filter(Boolean).join(", ");
+}
+
+/** Cómo se lee cada origen de los fondos en el Anexo C. */
+export const ORIGEN_FONDOS_LABEL: Record<OrigenFondos, string> = {
+  utilidades: "Ingresos ordinarios o utilidades acumuladas de la empresa",
+  prestamo: "Préstamo bancario o arrendamiento financiero",
+  aporte_capital: "Aporte de capital de los socios",
+  venta_activo: "Venta de un activo",
+  otro: "Otro origen",
+};
+
+/** Respuesta PEP del representante: "No" o "Sí: cargo". Vacía mientras no se declare (o si es PEP y falta el cargo). */
+export function textoPep(c: Pick<Cliente, "esPep" | "pepCargo"> | null | undefined): string {
+  if (!c || c.esPep === null || c.esPep === undefined) return "";
+  if (!c.esPep) return "No";
+  const cargo = (c.pepCargo ?? "").trim();
+  return cargo ? `Sí: ${cargo}` : "";
+}
+
+/** Participación con su signo de porcentaje: 60 % · 12.5 %. */
+export function participacion(p: number): string {
+  return `${Number.isInteger(p) ? p : Number(p.toFixed(2))} %`;
+}
+
+/** Un beneficiario está completo con nombre, documento y una participación mayor que 0 y hasta 100. */
+export function beneficiarioCompleto(b: Beneficiario): boolean {
+  return b.nombre.trim().length >= 3 && b.documento.trim().length >= 5 && Number.isFinite(b.porcentaje) && b.porcentaje > 0 && b.porcentaje <= 100;
+}
+
+/**
+ * Resumen de los beneficiarios finales declarados. Vacío si no hay ninguno, si
+ * alguno está incompleto o si suman más de 100 %: así el Anexo C no se emite
+ * con filas en blanco.
+ */
+export function textoBeneficiarios(lista: readonly Beneficiario[] | null | undefined): string {
+  if (!lista || lista.length === 0 || !lista.every(beneficiarioCompleto)) return "";
+  if (lista.reduce((s, b) => s + b.porcentaje, 0) > 100.001) return "";
+  return lista.map((b) => `${b.nombre.trim()} (${b.documento.trim()}, ${participacion(b.porcentaje)}, ${b.pep ? "PEP" : "no PEP"})`).join("; ");
+}
+
+/** Origen de los fondos con su detalle; vacío si falta la categoría o el detalle. */
+export function textoOrigenFondos(c: Pick<Cliente, "origenFondos" | "origenFondosTipo"> | null | undefined): string {
+  const tipo = c?.origenFondosTipo;
+  const detalle = (c?.origenFondos ?? "").trim();
+  return tipo && detalle ? `${ORIGEN_FONDOS_LABEL[tipo]}: ${detalle}` : "";
 }
 
 function texto(v: string | null | undefined): string {
@@ -435,8 +511,9 @@ export function camposPlantilla(ctx: ContextoExpediente, extra: CamposExtra = {}
     CLIENTE_TELEFONO: texto(c?.telefono),
     CLIENTE_ACTIVIDAD: texto(c?.actividad),
     CLIENTE_BANCO_ORIGEN: texto(c?.bancoOrigen),
-    CLIENTE_BENEFICIARIO_FINAL: texto(c?.beneficiarioFinal),
-    CLIENTE_ORIGEN_FONDOS: texto(c?.origenFondos),
+    CLIENTE_PEP: textoPep(c),
+    CLIENTE_BENEFICIARIOS: textoBeneficiarios(c?.beneficiarios),
+    CLIENTE_ORIGEN_FONDOS: textoOrigenFondos(c),
 
     VEH_MARCA: v.marca,
     VEH_MODELO: v.modelo,
@@ -528,9 +605,18 @@ export function camposPlantilla(ctx: ContextoExpediente, extra: CamposExtra = {}
     KM_ENTREGA: e.kmEntrega !== null ? entero(e.kmEntrega, " km") : "",
     PLACA: texto(e.placa),
     TIVE_NUMERO: texto(e.tiveNumero),
+    // Se escriben al emitir el acta (o los propone el libro): `camposActaRendicion`.
+    HORA_ENTREGA: "",
+    LUGAR_ENTREGA: "",
+    NIVEL_COMBUSTIBLE: "",
+    OBSERVACIONES_ENTREGA: "",
+    PENDIENTES_ENTREGA: "",
+    RECIBE_ENTREGA: "",
     CONSTANCIA_NUMERO: "",
     NUMERO_OPERACION: "",
     FECHA_AVISO: "",
+    // La pone `emitirDocumento` con la fecha del día (o el formulario de emisión).
+    FECHA_EMISION: "",
     FECHA_LIMITE_PAGO: "",
     MONTO_AVISO: "",
     LIQUIDACION_NUMERO: "",

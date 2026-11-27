@@ -1,10 +1,29 @@
-/** Anexo C · Declaración jurada de origen de fondos y datos del cliente (KYC). Transcrito del paquete. */
+/**
+ * Anexo C · Declaración jurada de origen de fondos y datos del cliente (KYC).
+ *
+ * Sale lleno, sin casillas ni líneas para completar a mano (28 nov 2026): la
+ * respuesta PEP del representante, los beneficiarios finales (uno por fila,
+ * con documento, participación y si son PEP) y el origen de los fondos con su
+ * detalle se piden en el portal en la etapa de contrato; si falta alguno, el
+ * anexo no se emite. La verificación de LUXCARS (ficha RUC, vigencia de poder,
+ * listas, registro UIF, responsable) es interna: vive en la pestaña Cliente
+ * del expediente y nunca va en este documento.
+ */
 
-import type { Campos } from "../../campos";
-import { casillas, firmas, h2, lista, nota, p, tabla, type Estructura } from "../estructura";
+import { beneficiarioCompleto, participacion, type Campos } from "../../campos";
+import type { ContextoExpediente } from "../../tipos";
+import { firmas, h2, lista, p, tabla, type Estructura } from "../estructura";
 import type { Plantilla } from "./tipos";
 
-function construir(c: Campos): Estructura {
+/** Filas de beneficiarios finales; sin declarar, una fila con el campo (que bloquea la emisión mientras esté vacío). */
+function filasBeneficiarios(c: Campos, ctx: ContextoExpediente): string[][] {
+  const resumen = c.CLIENTE_BENEFICIARIOS;
+  const declarados = ctx.cliente?.beneficiarios ?? [];
+  if (!resumen || declarados.length === 0 || !declarados.every(beneficiarioCompleto)) return [[resumen, "", "", ""]];
+  return declarados.map((b) => [b.nombre.trim(), b.documento.trim(), participacion(b.porcentaje), b.pep ? "Sí" : "No"]);
+}
+
+function construir(c: Campos, ctx: ContextoExpediente): Estructura {
   return {
     titulo: "Anexo C · Declaración jurada de origen de fondos y datos del cliente",
     subtitulo: `**Expediente ${c.EXPEDIENTE} · Anexo C del contrato de mandato del ${c.FECHA_FIRMA}**`,
@@ -28,16 +47,12 @@ function construir(c: Campos): Estructura {
         ["Nombre completo", c.CLIENTE_REPRESENTANTE],
         ["DNI", c.CLIENTE_REP_DNI],
         ["Cargo", c.CLIENTE_REP_CARGO],
-        ["¿Es o ha sido en los últimos cinco años persona expuesta políticamente (PEP), o pariente o asociado cercano de una?", "[ ] No [ ] Sí: ______________"],
+        ["¿Es o ha sido en los últimos cinco años persona expuesta políticamente (PEP), o pariente o asociado cercano de una?", c.CLIENTE_PEP],
       ], [2, 3]),
 
       h2("3. Beneficiarios finales"),
       p("Personas naturales que poseen, directa o indirectamente, el 10 % o más del capital, o que ejercen el control de la empresa."),
-      tabla(["Nombre completo", "DNI o pasaporte", "Participación", "¿PEP?"], [
-        [c.CLIENTE_BENEFICIARIO_FINAL, "", "", "[ ] No [ ] Sí"],
-        ["", "", "", "[ ] No [ ] Sí"],
-        ["", "", "", "[ ] No [ ] Sí"],
-      ], [3, 2, 1.5, 1.5]),
+      tabla(["Nombre completo", "Documento", "Participación", "¿PEP?"], filasBeneficiarios(c, ctx), [3, 2, 1.5, 1.2]),
 
       h2("4. Origen de los fondos"),
       tabla(["Campo", "Dato"], [
@@ -45,14 +60,6 @@ function construir(c: Campos): Estructura {
         ["Origen de los fondos", c.CLIENTE_ORIGEN_FONDOS],
         ["Banco y cuenta desde la que se pagará (a nombre del Mandante)", c.CLIENTE_BANCO_ORIGEN],
       ], [2, 3]),
-      p("Marcar lo que corresponda:"),
-      casillas([
-        "Ingresos ordinarios o utilidades acumuladas de la empresa",
-        "Préstamo bancario o arrendamiento financiero (entidad: ______________)",
-        "Aporte de capital de los socios",
-        "Venta de un activo (detalle: ______________)",
-        "Otro: ______________",
-      ]),
 
       h2("5. Declaración jurada"),
       p("El Mandante, a través de su representante legal, declara bajo juramento que:"),
@@ -66,24 +73,13 @@ function construir(c: Campos): Estructura {
       ]),
       p(`${c.CIUDAD_FIRMA}, ${c.FECHA_FIRMA}`),
       firmas(["Por el Mandante", c.CLIENTE_REPRESENTANTE, `${c.CLIENTE_REP_CARGO}, DNI ${c.CLIENTE_REP_DNI}`, c.CLIENTE_RAZON_SOCIAL]),
-
-      h2("6. Verificación de LUXCARS (uso interno, no se entrega al cliente)"),
-      casillas([
-        "Ficha RUC consultada el ______________: activo y habido",
-        "Vigencia de poder del representante, fecha de emisión ______________",
-        "DNI del representante validado contra el documento físico",
-        "Listas de sanciones (OFAC, ONU, otras) consultadas el ______________, resultado: ______________, captura archivada",
-        "Cuenta de origen de los fondos a nombre del Mandante, verificada en la primera transferencia",
-        "Registro de operaciones de la UIF completado el ______________",
-      ]),
-      nota("Responsable: ______________"),
     ],
   };
 }
 
 export const anexoC: Plantilla = {
   tipo: "anexo_c",
-  version: "anexo_c@2026-11-27",
+  version: "anexo_c@2026-11-28",
   nombre: "Anexo C · Origen de fondos (KYC)",
   idioma: "es",
   tarea: "luxcars.generar_contrato",

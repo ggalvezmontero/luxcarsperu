@@ -421,12 +421,20 @@ function esIndivisible(b: Bloque | undefined): boolean {
 const SITIO_INICIO_TABLA = 64;
 
 /**
+ * Sitio mínimo (en puntos) para empezar un numeral ("3.3 …") en una página: su
+ * primera línea, con el número, y dos más. Si no lo hay, número y texto pasan
+ * juntos a la siguiente; así el número nunca queda solo al pie.
+ */
+const SITIO_INICIO_NUMERAL = Math.ceil(CUERPO_PT * 1.35 * 3) + 2;
+
+/**
  * Los bloques en orden, con las reglas de paginación de un documento legal que
  * react-pdf no resuelve solo (`minPresenceAhead` no mueve un título cuando lo
  * que sigue es indivisible y no cabe):
  * - un título va pegado al bloque indivisible que le sigue (tabla corta, firmas);
  * - las firmas van pegadas al párrafo que las precede ("Firmado en…, el…");
- * - una tabla larga no empieza con la cabecera sola al pie de la página.
+ * - una tabla larga no empieza con la cabecera sola al pie de la página;
+ * - un numeral ("3.3 …") no empieza con su número solo al pie de la página.
  */
 function Bloques({ bloques }: { bloques: Bloque[] }) {
   const salida: ReactElement[] = [];
@@ -445,6 +453,7 @@ function Bloques({ bloques }: { bloques: Bloque[] }) {
       continue;
     }
     if (b.tipo === "tabla" && !esIndivisible(b)) salida.push(<View key={`${i}-sitio`} minPresenceAhead={SITIO_INICIO_TABLA} />);
+    if (b.tipo === "parrafo" && b.alineacion !== "centro" && partirNumeracion(b.texto)) salida.push(<View key={`${i}-sitio`} minPresenceAhead={SITIO_INICIO_NUMERAL} />);
     salida.push(bloque(b, i));
   }
   return <>{salida}</>;

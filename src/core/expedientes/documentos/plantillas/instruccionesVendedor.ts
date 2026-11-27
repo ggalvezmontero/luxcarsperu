@@ -2,13 +2,14 @@
 
 import type { Campos } from "../../campos";
 import { firmas, h2, p, tabla, vinetas, type Estructura } from "../estructura";
-import type { Plantilla } from "./tipos";
+import { fechaEnIngles, type Plantilla } from "./tipos";
 
 function construir(c: Campos): Estructura {
   const usado = c.VEH_CONDICION.toLowerCase().startsWith("usado");
+  const fecha = fechaEnIngles(c.FECHA_EMISION);
   return {
     titulo: "Purchase and Export Instructions to the Seller",
-    subtitulo: `**File ${c.EXPEDIENTE} · Date: ______________**`,
+    subtitulo: `**File ${c.EXPEDIENTE} · Date: ${fecha}**`,
     idioma: "en",
     codigoExpediente: c.EXPEDIENTE,
     bloques: [
@@ -74,8 +75,8 @@ function construir(c: Campos): Estructura {
         ["Dealer", `${c.DEALER_NOMBRE}, ${c.DEALER_CONTACTO}`],
       ], [2, 3]),
       firmas(
-        ["Issued by Lux Cars Import S.A.C.", c.LUXCARS_REPRESENTANTE, "Date: ______________"],
-        ["Acknowledged by the Seller", "Name: ______________", "Date: ______________"],
+        ["Issued by Lux Cars Import S.A.C.", c.LUXCARS_REPRESENTANTE, fecha],
+        ["Acknowledged by the Seller", "Name, signature and date"],
       ),
     ],
   };
@@ -83,7 +84,7 @@ function construir(c: Campos): Estructura {
 
 export const instruccionesVendedor: Plantilla = {
   tipo: "instrucciones_vendedor",
-  version: "instrucciones_vendedor@2026-11-27c",
+  version: "instrucciones_vendedor@2026-11-28",
   nombre: "Purchase and Export Instructions (EN)",
   idioma: "en",
   tarea: "luxcars.instrucciones_vendedor",

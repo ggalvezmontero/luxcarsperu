@@ -11,6 +11,7 @@ import { Badge, PortalPanel } from "@/components/portal/CrmUI";
 import { ClienteForm } from "@/components/portal/expedientes/ClienteForm";
 import { Dato, Entrada } from "@/components/portal/expedientes/Formulario";
 import type { Profile } from "@/lib/auth/perfil";
+import { participacion, textoOrigenFondos, textoPep } from "@/core/expedientes/campos";
 import type { ContextoExpediente } from "@/core/expedientes/tipos";
 import { actualizarCliente, buscarPerfiles, vincularCuenta } from "@/lib/expedientes/consultas";
 import { TIPO_CLIENTE_LABEL, fecha } from "@/lib/expedientes/formato";
@@ -64,10 +65,16 @@ export function PestanaCliente({
                   <Dato label="Actividad">{c.actividad ?? "—"}</Dato>
                 </>
               ) : null}
-              <Dato label="Banco de origen">{c.bancoOrigen ?? "—"}</Dato>
-              <Dato label="Beneficiario final">{c.beneficiarioFinal ?? "—"}</Dato>
-              <Dato label="Origen de fondos">{c.origenFondos ?? "—"}</Dato>
-              <Dato label="PEP">{c.esPep ? "Sí" : "No"}</Dato>
+              <Dato label="Banco y cuenta de origen">{c.bancoOrigen ?? "Sin declarar"}</Dato>
+              <Dato label="Origen de fondos">{textoOrigenFondos(c) || "Sin declarar"}</Dato>
+              <Dato label="¿Representante PEP?">{textoPep(c) || (c.esPep ? "Sí, falta el cargo" : "Sin declarar")}</Dato>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <Dato label="Beneficiarios finales">
+                  {c.beneficiarios?.length
+                    ? c.beneficiarios.map((b) => `${b.nombre} (${b.documento}, ${participacion(b.porcentaje)}${b.pep ? ", PEP" : ""})`).join(" · ")
+                    : "Sin declarar"}
+                </Dato>
+              </div>
               {c.notasInternas ? (
                 <div className="sm:col-span-2 lg:col-span-3">
                   <Dato label="Notas internas">{c.notasInternas}</Dato>
@@ -79,12 +86,14 @@ export function PestanaCliente({
       </div>
 
       <div className="space-y-6">
-        <PortalPanel title="KYC" description="Debida diligencia con fecha. Es compuerta para entrar a búsqueda.">
+        <PortalPanel title="KYC (uso interno)" description="Verificación de LUXCARS con fecha. Es compuerta para pasar a compra y nunca va en un documento del cliente.">
           <div className="space-y-3 px-5 py-4">
             <Badge tone={c.kycCompleto ? "ok" : "warn"}>{c.kycCompleto ? "Completo" : "Pendiente"}</Badge>
-            <Dato label="Ficha RUC">{fecha(c.kycFichaRucEn) || "Sin revisar"}</Dato>
+            <Dato label="Ficha RUC: activo y habido">{fecha(c.kycFichaRucEn) || "Sin revisar"}</Dato>
             <Dato label="Vigencia de poder">{fecha(c.kycVigenciaEn) || "Sin revisar"}</Dato>
-            <Dato label="Listas">{c.kycListasEn ? `${fecha(c.kycListasEn)}${c.kycListasResultado ? ` · ${c.kycListasResultado}` : ""}` : "Sin revisar"}</Dato>
+            <Dato label="Listas de sanciones">{c.kycListasEn ? `${fecha(c.kycListasEn)}${c.kycListasResultado ? ` · ${c.kycListasResultado}` : ""}` : "Sin revisar"}</Dato>
+            <Dato label="Registro de operaciones UIF">{fecha(c.kycUifEn) || "Pendiente"}</Dato>
+            <Dato label="Responsable">{c.kycResponsable || "Sin asignar"}</Dato>
           </div>
         </PortalPanel>
 

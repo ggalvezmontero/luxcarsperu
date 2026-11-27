@@ -13,11 +13,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { Badge, Notice, PortalPanel } from "@/components/portal/CrmUI";
+import { ControlOrigenFondos, ControlPep, EditorBeneficiarios, beneficiariosParaGuardar } from "@/components/portal/expedientes/DatosKyc";
 import { Campo, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
 import { FICHA, type Campo as NombreCampo } from "@/core/expedientes/campos";
 import { datosPorEtapa, type DatoFaltante } from "@/core/expedientes/datosPorEtapa";
 import { nombreEtapaEquipo } from "@/core/expedientes/etapas";
-import type { ContextoExpediente } from "@/core/expedientes/tipos";
+import type { Beneficiario, ContextoExpediente, OrigenFondos } from "@/core/expedientes/tipos";
 import { MODALIDADES_EMBARQUE, TIPOS_CONTENEDOR } from "@/core/expedientes/tipos";
 import type { ClienteRow, ContraparteRow, EmbarqueRow, ExpedienteReservadoRow, ExpedienteRow } from "@/lib/db/types";
 import { actualizarCliente, actualizarContraparte, actualizarEmbarque, actualizarExpediente, actualizarReservado, cargarCamposFijos } from "@/lib/expedientes/consultas";
@@ -43,6 +44,42 @@ function convertir(f: DatoFaltante, crudo: string): string | number | null {
   if (f.campo === "VEH_VIN") return t.toUpperCase();
   return t;
 }
+
+/** Controles compuestos del Anexo C: guardan su estado como JSON en el mismo mapa de valores. */
+type ValorPep = { esPep: boolean | null; cargo: string };
+type ValorOrigen = { tipo: OrigenFondos | null; detalle: string };
+
+function leerJson<T>(crudo: string | undefined, porDefecto: T): T {
+  if (!crudo) return porDefecto;
+  try {
+    return JSON.parse(crudo) as T;
+  } catch {
+    return porDefecto;
+  }
+}
+
+/** Columnas del cliente que escribe un control compuesto; vacío si todavía no se tocó. */
+function columnasCompuestas(f: DatoFaltante, crudo: string | undefined): Record<string, unknown> {
+  if (!crudo) return {};
+  if (f.origen.tipo === "pep") {
+    const v = leerJson<ValorPep>(crudo, { esPep: null, cargo: "" });
+    return v.esPep === null ? {} : { es_pep: v.esPep, pep_cargo: v.esPep ? v.cargo.trim() || null : null };
+  }
+  if (f.origen.tipo === "origen_fondos") {
+    const v = leerJson<ValorOrigen>(crudo, { tipo: null, detalle: "" });
+    const salida: Record<string, unknown> = {};
+    if (v.tipo) salida.origen_fondos_tipo = v.tipo;
+    if (v.detalle.trim()) salida.origen_fondos = v.detalle.trim();
+    return salida;
+  }
+  if (f.origen.tipo === "beneficiarios") {
+    const lista = beneficiariosParaGuardar(leerJson<Beneficiario[]>(crudo, []));
+    return lista ? { beneficiarios: lista } : {};
+  }
+  return {};
+}
+
+const COMPUESTOS = new Set(["pep", "origen_fondos", "beneficiarios"]);
 
 /** Id de la contraparte del expediente a la que apunta un campo. */
 function contraparteId(ctx: ContextoExpediente, cual: DatoFaltante["origen"]["contraparte"]): string | null {
@@ -96,6 +133,10 @@ export function DatosPorEtapaPanel({ client, ctx, onResultado }: { client: Porta
     const emb: Record<string, unknown> = {};
     const contra = new Map<string, Record<string, unknown>>();
     for (const f of r.faltantes) {
+      if (f.origen.tipo && COMPUESTOS.has(f.origen.tipo)) {
+        Object.assign(cli, columnasCompuestas(f, valores[f.campo]));
+        continue;
+      }
       const valor = convertir(f, valores[f.campo] ?? "");
       if (valor === null || !f.origen.columna) continue;
       if (f.origen.destino === "expediente") exp[f.origen.columna] = valor;
@@ -124,6 +165,19 @@ export function DatosPorEtapaPanel({ client, ctx, onResultado }: { client: Porta
   const control = (f: DatoFaltante) => {
     const v = valores[f.campo] ?? "";
     const set = (x: string) => setValores((p) => ({ ...p, [f.campo]: x }));
+    const c = ctx.cliente;
+    if (f.origen.tipo === "pep") {
+      const actual = leerJson<ValorPep>(v, { esPep: c?.esPep ?? null, cargo: c?.pepCargo ?? "" });
+      return <ControlPep esPep={actual.esPep} cargo={actual.cargo} onCambio={(esPep, cargo) => set(JSON.stringify({ esPep, cargo }))} />;
+    }
+    if (f.origen.tipo === "origen_fondos") {
+      const actual = leerJson<ValorOrigen>(v, { tipo: c?.origenFondosTipo ?? null, detalle: c?.origenFondos ?? "" });
+      return <ControlOrigenFondos tipo={actual.tipo} detalle={actual.detalle} onCambio={(tipo, detalle) => set(JSON.stringify({ tipo, detalle }))} />;
+    }
+    if (f.origen.tipo === "beneficiarios") {
+      const actual = leerJson<Beneficiario[]>(v, c?.beneficiarios ?? []);
+      return <EditorBeneficiarios valor={actual} onCambio={(lista) => set(JSON.stringify(lista))} />;
+    }
     if (f.campo === "VEH_CATEGORIA") {
       return (
         <Selector value={v} onChange={(x) => set(x.target.value)}>
@@ -183,6 +237,7 @@ export function DatosPorEtapaPanel({ client, ctx, onResultado }: { client: Porta
                   <Campo
                     key={f.campo}
                     label={f.origen.etiqueta}
+                    className={f.origen.tipo === "beneficiarios" ? "sm:col-span-3" : f.origen.tipo === "origen_fondos" ? "sm:col-span-2" : undefined}
                     requerido={f.urgente}
                     hint={[f.compuertas.length ? "Lo pide la compuerta siguiente" : null, f.documentos.length ? `Lo usa: ${f.documentos.map((t) => TIPO_DOCUMENTO_LABEL[t]).join(", ")}` : null].filter(Boolean).join(" · ")}
                   >

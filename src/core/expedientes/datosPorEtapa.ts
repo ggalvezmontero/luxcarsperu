@@ -44,8 +44,13 @@ export type OrigenCampo = {
   destino: DestinoDato;
   /** Columna en la tabla de destino (snake_case), cuando se guarda en una. */
   columna?: string;
-  /** Tipo del control del formulario. */
-  tipo?: "texto" | "fecha" | "numero";
+  /**
+   * Tipo del control del formulario. `pep`, `origen_fondos` y `beneficiarios`
+   * son controles compuestos del cliente (Anexo C): escriben varias columnas
+   * (`es_pep` + `pep_cargo`, `origen_fondos_tipo` + `origen_fondos`, el
+   * arreglo `beneficiarios`).
+   */
+  tipo?: "texto" | "fecha" | "numero" | "pep" | "origen_fondos" | "beneficiarios";
   /** Para `contraparte`: qué contraparte del expediente. */
   contraparte?: "vendedor" | "broker" | "inspector" | "forwarder" | "agente_aduana";
   /** Etiqueta corta para el formulario. */
@@ -108,9 +113,10 @@ export const ORIGEN_CAMPO: Partial<Record<Campo, OrigenCampo>> = {
   CLIENTE_CORREO: { destino: "cliente", columna: "email", etiqueta: "Correo del cliente" },
   CLIENTE_TELEFONO: { destino: "cliente", columna: "telefono", etiqueta: "Teléfono del cliente" },
   CLIENTE_ACTIVIDAD: { destino: "cliente", columna: "actividad", etiqueta: "Actividad económica" },
-  CLIENTE_BANCO_ORIGEN: { destino: "cliente", columna: "banco_origen", etiqueta: "Banco y cuenta de origen" },
-  CLIENTE_BENEFICIARIO_FINAL: { destino: "cliente", columna: "beneficiario_final", etiqueta: "Beneficiario final" },
-  CLIENTE_ORIGEN_FONDOS: { destino: "cliente", columna: "origen_fondos", etiqueta: "Origen de los fondos" },
+  CLIENTE_BANCO_ORIGEN: { destino: "cliente", columna: "banco_origen", etiqueta: "Banco y cuenta de origen (a nombre del cliente)" },
+  CLIENTE_PEP: { destino: "cliente", tipo: "pep", etiqueta: "¿El representante es PEP?" },
+  CLIENTE_ORIGEN_FONDOS: { destino: "cliente", tipo: "origen_fondos", etiqueta: "Origen de los fondos" },
+  CLIENTE_BENEFICIARIOS: { destino: "cliente", tipo: "beneficiarios", etiqueta: "Beneficiarios finales" },
 
   MODALIDAD_EMBARQUE: { destino: "embarque", columna: "modalidad", etiqueta: "Modalidad de embarque" },
   TIPO_CONTENEDOR: { destino: "embarque", columna: "contenedor", etiqueta: "Tipo de contenedor" },
@@ -132,6 +138,13 @@ export const ORIGEN_CAMPO: Partial<Record<Campo, OrigenCampo>> = {
   AGENTE_ADUANA_CONTACTO: { destino: "contraparte", contraparte: "agente_aduana", columna: "contacto", etiqueta: "Sectorista de la agencia" },
 
   /** Se escriben al emitir (formulario del documento). */
+  FECHA_EMISION: { destino: "emision", etiqueta: "Fecha de emisión" },
+  HORA_ENTREGA: { destino: "emision", etiqueta: "Hora de la entrega" },
+  LUGAR_ENTREGA: { destino: "emision", etiqueta: "Lugar de la entrega" },
+  NIVEL_COMBUSTIBLE: { destino: "emision", etiqueta: "Nivel de combustible o carga" },
+  OBSERVACIONES_ENTREGA: { destino: "emision", etiqueta: "Observaciones de la entrega" },
+  PENDIENTES_ENTREGA: { destino: "emision", etiqueta: "Pendientes de la entrega" },
+  RECIBE_ENTREGA: { destino: "emision", etiqueta: "Quién recibe" },
   FECHA_AVISO: { destino: "emision", etiqueta: "Fecha del aviso" },
   TC_REFERENCIAL: { destino: "emision", etiqueta: "Tipo de cambio referencial" },
   FECHA_LIMITE_PAGO: { destino: "emision", etiqueta: "Fecha límite del pago" },

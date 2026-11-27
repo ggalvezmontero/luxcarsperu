@@ -8,10 +8,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/Button";
-import type { Cliente, TipoCliente } from "@/core/expedientes/tipos";
+import type { Beneficiario, Cliente, OrigenFondos, TipoCliente } from "@/core/expedientes/tipos";
 import { TIPOS_CLIENTE } from "@/core/expedientes/tipos";
 import type { DatosCliente } from "@/lib/expedientes/consultas";
 import { TIPO_CLIENTE_LABEL } from "@/lib/expedientes/formato";
+import { ControlOrigenFondos, ControlPep, EditorBeneficiarios, beneficiariosParaGuardar } from "./DatosKyc";
 import { AreaTexto, Campo, Entrada, Rejilla, Selector } from "./Formulario";
 
 type Valores = {
@@ -28,13 +29,17 @@ type Valores = {
   telefono: string;
   actividad: string;
   banco_origen: string;
-  beneficiario_final: string;
   origen_fondos: string;
-  es_pep: boolean;
+  origen_fondos_tipo: OrigenFondos | null;
+  es_pep: boolean | null;
+  pep_cargo: string;
+  beneficiarios: Beneficiario[];
   kyc_ficha_ruc_en: string;
   kyc_vigencia_en: string;
   kyc_listas_en: string;
   kyc_listas_resultado: string;
+  kyc_uif_en: string;
+  kyc_responsable: string;
   notas_internas: string;
 };
 
@@ -53,13 +58,17 @@ function desde(c: Cliente | null, prellenado: Partial<Valores> = {}): Valores {
     telefono: c?.telefono ?? "",
     actividad: c?.actividad ?? "",
     banco_origen: c?.bancoOrigen ?? "",
-    beneficiario_final: c?.beneficiarioFinal ?? "",
     origen_fondos: c?.origenFondos ?? "",
-    es_pep: c?.esPep ?? false,
+    origen_fondos_tipo: c?.origenFondosTipo ?? null,
+    es_pep: c ? c.esPep : null,
+    pep_cargo: c?.pepCargo ?? "",
+    beneficiarios: c?.beneficiarios ?? [],
     kyc_ficha_ruc_en: c?.kycFichaRucEn ?? "",
     kyc_vigencia_en: c?.kycVigenciaEn ?? "",
     kyc_listas_en: c?.kycListasEn ?? "",
     kyc_listas_resultado: c?.kycListasResultado ?? "",
+    kyc_uif_en: c?.kycUifEn ?? "",
+    kyc_responsable: c?.kycResponsable ?? "",
     notas_internas: c?.notasInternas ?? "",
     ...prellenado,
   };
@@ -80,13 +89,17 @@ export function aDatosCliente(v: Valores): DatosCliente {
     telefono: v.telefono,
     actividad: v.actividad,
     banco_origen: v.banco_origen,
-    beneficiario_final: v.beneficiario_final,
     origen_fondos: v.origen_fondos,
+    origen_fondos_tipo: v.origen_fondos_tipo,
     es_pep: v.es_pep,
+    pep_cargo: v.es_pep ? v.pep_cargo : null,
+    beneficiarios: beneficiariosParaGuardar(v.beneficiarios),
     kyc_ficha_ruc_en: v.kyc_ficha_ruc_en || null,
     kyc_vigencia_en: v.kyc_vigencia_en || null,
     kyc_listas_en: v.kyc_listas_en || null,
     kyc_listas_resultado: v.kyc_listas_resultado,
+    kyc_uif_en: v.kyc_uif_en || null,
+    kyc_responsable: v.kyc_responsable,
     notas_internas: v.notas_internas,
   };
 }
@@ -98,6 +111,8 @@ export function validarCliente(v: Valores): string | null {
   if (ruc && ruc.length !== 11) return "El RUC tiene once dígitos.";
   if (!ruc && !v.dni.trim()) return "El cliente necesita RUC o DNI.";
   if (v.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email.trim())) return "El correo no parece válido.";
+  if (v.es_pep && v.pep_cargo.trim().length < 3) return "Escribe el cargo que hace PEP al representante.";
+  if (v.beneficiarios.reduce((s, b) => s + (Number.isFinite(b.porcentaje) ? b.porcentaje : 0), 0) > 100.001) return "Los beneficiarios finales suman más de 100 %.";
   return null;
 }
 
@@ -185,7 +200,25 @@ export function ClienteForm({
 
       {!compacto ? (
         <>
-          <h3 className="pt-2 text-xs font-semibold uppercase tracking-[0.18em] text-silver">Debida diligencia (KYC)</h3>
+          <h3 className="pt-2 text-xs font-semibold uppercase tracking-[0.18em] text-silver">Declaración del Anexo C</h3>
+          <p className="text-xs text-ink-4">Lo que el cliente declara y firma en el Anexo C. Sale tal cual en el anexo, sin casillas: si falta algo, el anexo no se emite.</p>
+          <Rejilla columnas={3}>
+            <Campo label="¿El representante es PEP?">
+              <ControlPep esPep={v.es_pep} cargo={v.pep_cargo} onCambio={(esPep, cargo) => setV((p) => ({ ...p, es_pep: esPep, pep_cargo: cargo }))} />
+            </Campo>
+            <Campo label="Origen de los fondos" className="sm:col-span-2">
+              <ControlOrigenFondos tipo={v.origen_fondos_tipo} detalle={v.origen_fondos} onCambio={(tipo, detalle) => setV((p) => ({ ...p, origen_fondos_tipo: tipo, origen_fondos: detalle }))} />
+            </Campo>
+            <Campo label="Banco y cuenta de origen (a nombre del cliente)" className="sm:col-span-3">
+              <Entrada value={v.banco_origen} onChange={(e) => set("banco_origen", e.target.value)} maxLength={120} placeholder="ej. BCP, cuenta corriente en dólares" />
+            </Campo>
+          </Rejilla>
+          <Campo label="Beneficiarios finales (10 % o más del capital, o control)">
+            <EditorBeneficiarios valor={v.beneficiarios} onCambio={(lista) => set("beneficiarios", lista)} />
+          </Campo>
+
+          <h3 className="pt-2 text-xs font-semibold uppercase tracking-[0.18em] text-silver">Debida diligencia (KYC), uso interno</h3>
+          <p className="text-xs text-ink-4">Verificación de LUXCARS. Solo la ve el equipo: no va en ningún documento del cliente.</p>
           <Rejilla columnas={3}>
             <Campo label="Ficha RUC revisada el">
               <Entrada type="date" value={v.kyc_ficha_ruc_en} onChange={(e) => set("kyc_ficha_ruc_en", e.target.value)} />
@@ -199,20 +232,11 @@ export function ClienteForm({
             <Campo label="Resultado de listas" className="sm:col-span-2">
               <Entrada value={v.kyc_listas_resultado} onChange={(e) => set("kyc_listas_resultado", e.target.value)} maxLength={300} placeholder="Sin coincidencias" />
             </Campo>
-            <Campo label="Persona expuesta políticamente">
-              <label className="flex min-h-10 items-center gap-2 text-sm normal-case tracking-normal text-ink-2">
-                <input type="checkbox" checked={v.es_pep} onChange={(e) => set("es_pep", e.target.checked)} className="h-4 w-4 accent-silver" />
-                Es PEP o vinculado
-              </label>
+            <Campo label="Registro de operaciones de la UIF el">
+              <Entrada type="date" value={v.kyc_uif_en} onChange={(e) => set("kyc_uif_en", e.target.value)} />
             </Campo>
-            <Campo label="Banco de origen de los fondos">
-              <Entrada value={v.banco_origen} onChange={(e) => set("banco_origen", e.target.value)} maxLength={120} />
-            </Campo>
-            <Campo label="Beneficiario final">
-              <Entrada value={v.beneficiario_final} onChange={(e) => set("beneficiario_final", e.target.value)} maxLength={200} />
-            </Campo>
-            <Campo label="Origen de los fondos">
-              <Entrada value={v.origen_fondos} onChange={(e) => set("origen_fondos", e.target.value)} maxLength={500} />
+            <Campo label="Responsable de la verificación" className="sm:col-span-2">
+              <Entrada value={v.kyc_responsable} onChange={(e) => set("kyc_responsable", e.target.value)} maxLength={120} placeholder="Nombre de quien revisó" />
             </Campo>
           </Rejilla>
           <Campo label="Notas internas" hint="Solo las ve el equipo.">

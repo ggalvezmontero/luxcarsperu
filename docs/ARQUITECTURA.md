@@ -620,6 +620,36 @@ cinco filas (Pago, Cuándo, Qué cubre, Monto, Dónde pagas;
 `documentos/plantillas/calendario.ts`) y nunca códigos internos: siempre "Pago
 N de 5".
 
+**Documentos del cliente sin rayas ni notas internas** (tercera ronda,
+versiones `@2026-11-28`, migración
+`20261128090000_expedientes_documentos_sin_rayas.sql`): ningún documento que
+recibe el cliente o un tercero lleva notas internas, `[CONFIRMAR`, líneas para
+llenar a mano ni casillas; lo vigila la prueba "documentos sin rayas ni notas
+internas" de `core/expedientes/documentos.test.ts`, que arma todas las
+plantillas (nuevo y usado) y las del libro. Las confirmaciones previas al
+primer uso (detracción con el contador, poder con el notario;
+`PENDIENTES_EMPRESA` en `campos.ts`) son filas `PENDIENTE_*` de
+`configuracion_documentos` que el dueño marca como hechas en
+`/portal/configuracion`. El Anexo C sale lleno con lo que el portal pide en la
+etapa de contrato (panel "Datos que faltan" y pestaña Cliente): `es_pep` (ya
+sin valor por defecto: `null` es "sin declarar") con `pep_cargo`,
+`beneficiarios` (jsonb, una fila por persona con nombre, documento,
+participación y PEP; hasta diez), `origen_fondos_tipo` con su detalle en
+`origen_fondos`, y `banco_origen`; si falta uno, el anexo no se emite. La
+verificación KYC de Luxcars (ficha RUC, vigencia de poder, listas,
+`kyc_uif_en`, `kyc_responsable`) es interna y vive solo en la pestaña Cliente.
+El acta pide al emitirla la hora, el lugar, el nivel de combustible, las
+observaciones, los pendientes y quién recibe (el libro propone "Sin
+observaciones", "Sin pendientes" y al representante, con su cargo en
+minúsculas). Las instrucciones en inglés llevan `FECHA_EMISION` en inglés y las
+del forwarder imprimen solo la modalidad y el seguro que aplican. En el PDF, un
+espaciador con `minPresenceAhead` antes de cada párrafo numerado evita que el
+número quede solo al pie de la página (puesto en el primer hijo de la fila no
+hace efecto); en el DOCX, número y texto van en un mismo párrafo con
+`widowControl`. El seed de la demo usa los valores de
+`configuracion_documentos` cuando existen y el respaldo solo para los que
+faltan.
+
 **Variables de servidor**: `LUXCARS_DOCUMENTOS_JSON` (respaldo de los datos de
 la empresa; lo normal es `/portal/configuracion`),
 `RESEND_API_KEY` (sin ella los correos quedan `fallida` con el motivo),

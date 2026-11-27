@@ -125,8 +125,10 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
 
     // ── Cliente ───────────────────────────────────────────────────────────────
     const cliente = await uno(sql`
-      insert into public.clientes (tipo, razon_social, ruc, domicilio, partida, representante, representante_dni, representante_cargo, email, telefono, actividad, banco_origen, beneficiario_final, origen_fondos, es_pep, kyc_ficha_ruc_en, kyc_vigencia_en, kyc_listas_en, kyc_listas_resultado, user_id, notas_internas, created_by)
-      values ('empresa', 'ANDINA DEMO IMPORTACIONES S.A.C.', '20999999991', 'Av. Demostración 123, Of. 501, San Isidro, Lima', '14999999', 'Lucía Paredes Demo', '09999999', 'Gerente general', ${DEMO_EMAIL}, '+51 999 000 000', 'Comercialización de equipos para minería', 'BCP cuenta corriente en dólares', 'Lucía Paredes Demo (100 %)', 'Utilidades acumuladas de la empresa (estados financieros 2025)', false, '2026-11-03', '2026-11-03', '2026-11-03', 'Sin coincidencias en listas PEP, OFAC ni ONU', ${DEMO_USER}::uuid, 'EXPEDIENTE DE DEMOSTRACIÓN para citas. Todo es ficticio.', ${ADMIN}::uuid)
+      insert into public.clientes (tipo, razon_social, ruc, domicilio, partida, representante, representante_dni, representante_cargo, email, telefono, actividad, banco_origen, origen_fondos_tipo, origen_fondos, es_pep, beneficiarios, kyc_ficha_ruc_en, kyc_vigencia_en, kyc_listas_en, kyc_listas_resultado, kyc_uif_en, kyc_responsable, user_id, notas_internas, created_by)
+      values ('empresa', 'ANDINA DEMO IMPORTACIONES S.A.C.', '20999999991', 'Av. Demostración 123, Of. 501, San Isidro, Lima', '14999999', 'Lucía Paredes Demo', '09999999', 'Gerente general', ${DEMO_EMAIL}, '+51 999 000 000', 'Comercialización de equipos para minería', 'BCP, cuenta corriente en dólares a nombre de la empresa', 'utilidades', 'Utilidades acumuladas según los estados financieros 2025', false,
+        ${JSON.stringify([{ nombre: "Lucía Paredes Demo", documento: "DNI 09999999", porcentaje: 100, pep: false }])}::jsonb,
+        '2026-11-03', '2026-11-03', '2026-11-03', 'Sin coincidencias en listas PEP, OFAC ni ONU', '2026-11-06', 'Equipo Luxcars (DEMO)', ${DEMO_USER}::uuid, 'EXPEDIENTE DE DEMOSTRACIÓN para citas. Todo es ficticio.', ${ADMIN}::uuid)
       returning id`);
     const clienteId = cliente.id as string;
 
@@ -161,15 +163,21 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
     const ctx0 = (await cargarContextoServidor(expedienteId))!;
     await sql`select public.insertar_tareas_expediente(${expedienteId}::uuid, 'busqueda', ${JSON.stringify(tareasAJson(tareasParaEtapa("busqueda", ctx0)))}::jsonb)`;
 
-    // ── Parámetros de la empresa para los documentos: los de /portal/configuracion (o la variable) si están; si no, marcadores ──
-    // Ningún campo puede quedar vacío (regla "sin rayas"): lo que la empresa no tenga configurado sale como "(por confirmar)".
-    const fijos = {
+    // ── Parámetros de la empresa para los documentos ──────────────────────────
+    // Mandan los de /portal/configuracion (tabla configuracion_documentos; o la variable de respaldo);
+    // el respaldo de la demo solo cubre lo que todavía falte. Así, cuando el dueño llene la configuración,
+    // una demo rehecha sale con sus datos reales. Lo que falte sale como "(por confirmar)": ningún campo vacío.
+    const configuracion = await camposFijosLuxcars();
+    const respaldoDemo: Record<string, string> = {
       LUXCARS_PARTIDA: "(por confirmar)", LUXCARS_REP_DNI: "(por confirmar)", LUXCARS_REPRESENTANTE: "Gianfranco Gálvez Montero",
       LUXCARS_RUC: "20615410935", LUXCARS_DOMICILIO: "Calle Dionisio Derteano 184, Of. 1102, San Isidro, Lima",
       CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "(por confirmar)", CTA_FONDOS_CCI: "(por confirmar)", CTA_DETRACCION_NUMERO: "(por confirmar)",
       PORCENTAJE_DETRACCION: "12", DIAS_ESPERA_MAX: "15", CIUDAD_FIRMA: "Lima", TC_REFERENCIAL: "3.7500",
-      ...(await camposFijosLuxcars()),
     };
+    const fijos: Record<string, string> = { ...respaldoDemo };
+    for (const [clave, valor] of Object.entries(configuracion)) if (valor && valor.trim()) fijos[clave] = valor.trim();
+    const conRespaldo = Object.keys(respaldoDemo).filter((k) => !configuracion[k as keyof typeof configuracion]);
+    if (conRespaldo.length) console.log(`Configuración de la empresa incompleta; la demo usa el respaldo en: ${conRespaldo.join(", ")}.`);
 
     const emitir = async (tipo: string, visible: boolean, extra: Record<string, string> = {}, movimiento: unknown = null) => {
       const ctx = (await cargarContextoServidor(expedienteId))!;

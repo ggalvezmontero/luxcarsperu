@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CAMPOS, CAMPOS_EMPRESA, FICHA, camposPlantilla, esCampo, esCampoEmpresa, fechaEnLetras, monto, porcentaje } from "./campos";
+import { CAMPOS, CAMPOS_EMPRESA, FICHA, PENDIENTES_EMPRESA, camposPlantilla, esCampo, esCampoEmpresa, fechaEnLetras, monto, porcentaje } from "./campos";
 import { PLANTILLAS, TIPOS_DESDE_LIBRO, construirDocumento, nombreArchivo, plantillaDe, textoDeEstructura } from "./documentos";
 import { camposActaRendicion, datosActa, datosAvisoPago, datosConstancia, datosLiquidacion, datosPago5, montoDelAviso, saldoCuenta } from "./ledger";
 import { COLUMNAS_COMPUERTA, ORIGEN_CAMPO, PLANTILLAS_POR_ETAPA, datosPorEtapa, plantillasDelMapaExisten } from "./datosPorEtapa";
@@ -121,6 +121,8 @@ const FIJOS = {
   CIUDAD_FIRMA: "Lima",
   DIAS_ESPERA_MAX: "15",
   TC_REFERENCIAL: "3.7500",
+  // La pone `emitirDocumento` con la fecha del día.
+  FECHA_EMISION: "28 de noviembre de 2026",
 } as const;
 
 /** La otra unidad del contenedor compartido (consolidado). */
@@ -131,6 +133,9 @@ const UNIDADES = [
 
 /** Lo que el formulario escribe a mano para que las plantillas del libro salgan completas en el render. */
 const A_MANO = { FECHA_AVISO: "2 de febrero de 2027" } as const;
+
+/** Lo que el equipo escribe al emitir el acta, con el auto delante. */
+const EN_LA_ENTREGA = { HORA_ENTREGA: "10:30", LUGAR_ENTREGA: "Av. Javier Prado Este 1234, San Isidro", NIVEL_COMBUSTIBLE: "3/4 de tanque" } as const;
 
 function contexto(cambios: Partial<ContextoExpediente> = {}, exp: Partial<Expediente> = {}): ContextoExpediente {
   return {
@@ -150,9 +155,16 @@ function contexto(cambios: Partial<ContextoExpediente> = {}, exp: Partial<Expedi
       telefono: "+51 999 999 999",
       actividad: "Transporte de carga por carretera",
       bancoOrigen: "BCP, cuenta corriente en dólares",
-      beneficiarioFinal: "Juan Pérez Rojas, DNI 08000000, 60 %",
-      origenFondos: "Utilidades acumuladas de la empresa",
+      beneficiarioFinal: null,
+      // Lo que el cliente declara en el Anexo C y el portal pide en la etapa de contrato.
+      origenFondos: "Utilidades acumuladas 2025 según estados financieros",
+      origenFondosTipo: "utilidades",
       esPep: false,
+      pepCargo: null,
+      beneficiarios: [
+        { nombre: "Juan Pérez Rojas", documento: "DNI 08000000", porcentaje: 60, pep: false },
+        { nombre: "Rosa Rojas Díaz", documento: "DNI 08000001", porcentaje: 40, pep: false },
+      ],
       kycFichaRucEn: null,
       kycVigenciaEn: null,
       kycListasEn: null,
@@ -441,8 +453,13 @@ describe("plantillas", () => {
     const tributosFila = /Tributos de importación \(Pago 4, directo a SUNAT\)\n[^\n]*\n([\d,.]+)/.exec(anexoBTexto)?.[1];
     expect(anexoBTexto).toContain(`USD ${tributosFila} (estimado; se paga en soles)`);
     const poder = textoDeEstructura(construirDocumento(plantillaDe("poder_inmatriculacion")!, ctx, {}, FIJOS).estructura);
-    expect(poder).toContain("CONFIRMAR con el notario");
+    // Sin notas internas: lo de SUNARP es una confirmación pendiente en /portal/configuracion.
+    expect(poder).not.toMatch(/CONFIRMAR|no imprimir|Nota interna/);
     expect(poder).toContain("inmatriculación");
+    // Redacción neutra y cargo en minúsculas dentro del texto corrido.
+    expect(poder).toContain("representada por su gerente general Juan Pérez Rojas, con DNI n.º 08000000");
+    expect(contratoTexto).toContain("representada por su gerente general Juan Pérez Rojas, con DNI n.º 08000000");
+    expect(contratoTexto).not.toMatch(/identificad[oa] con DNI/);
   });
 
   it("un auto usado trae la inspección en el contrato, el Anexo A, el Anexo B y las instrucciones al vendedor, sin faltantes", () => {
@@ -603,7 +620,7 @@ describe("plantillas que nacen del libro", () => {
     const texto = textoDeEstructura(doc.estructura);
     expect(texto).toContain("Constancia n.º LC-2026-011-F01");
     expect(texto).toContain("Pago al que corresponde\nPago 1 de 5");
-    expect(texto).toContain("[X] Pago 1 de 5: el precio del auto");
+    expect(texto).toContain("Concepto según el contrato (cláusula tercera)\nEl precio del auto, según la pro forma del vendedor");
     // El destino del H1 es el broker.
     expect(texto).toContain("Example Auto Brokers LLC");
     expect(texto).toContain("BCP");
@@ -695,9 +712,14 @@ describe("plantillas que nacen del libro", () => {
 
   it("el acta de entrega y rendición: Pago 5 acreditado solo con el libro, las dos facturas tomadas de Fondos de Clientes con su detracción, y cuadra con Fondos de Clientes", () => {
     const ctx = contextoConLibro();
-    const sin = construirDocumento(plantillaDe("acta_rendicion")!, ctx, camposActaRendicion(ctx), FIJOS);
+    // Hora, lugar y combustible se escriben al emitir, con el auto delante: sin ellos el acta no sale.
+    expect(construirDocumento(plantillaDe("acta_rendicion")!, ctx, camposActaRendicion(ctx), FIJOS).faltantes).toEqual(["HORA_ENTREGA", "LUGAR_ENTREGA", "NIVEL_COMBUSTIBLE"]);
+    const sin = construirDocumento(plantillaDe("acta_rendicion")!, ctx, { ...camposActaRendicion(ctx), ...EN_LA_ENTREGA }, FIJOS);
     expect(sin.faltantes).toEqual([]);
-    expect(textoDeEstructura(sin.estructura)).toContain("[X] pendiente, el vehículo queda en custodia");
+    expect(textoDeEstructura(sin.estructura)).toContain("Pago 5 de 5: pendiente. El vehículo queda en custodia");
+    expect(textoDeEstructura(sin.estructura)).toContain("a las 10:30 horas, en Av. Javier Prado Este 1234, San Isidro,");
+    expect(textoDeEstructura(sin.estructura)).toContain("que recibe por medio de Juan Pérez Rojas, gerente general, con DNI n.º 08000000,");
+    expect(textoDeEstructura(sin.estructura)).toContain("Observaciones\nSin observaciones");
     expect(sin.campos.H6_ACREDITADO_FECHA).toBe("pendiente");
     expect(datosActa(ctx).H6_ACREDITADO_FECHA).toBe("pendiente");
     expect(textoDeEstructura(sin.estructura)).toContain("Placa\nBXX-000");
@@ -710,7 +732,7 @@ describe("plantillas que nacen del libro", () => {
       mov({ id: "a3", tipo: "pago", montoUsd: p5.honorarios, concepto: "Aplicación de honorarios · factura 2 F001-000187", documentoRef: "F001-000187", fecha: "2027-03-05" }),
       mov({ id: "a4", tipo: "deposito", cuenta: "operaciones", montoUsd: p5.honorarios, concepto: "Honorarios recibidos desde Fondos de Clientes · factura 2 F001-000187", documentoRef: "F001-000187", fecha: "2027-03-05" }),
     );
-    const sinDevolver = camposActaRendicion(ctx);
+    const sinDevolver = { ...camposActaRendicion(ctx), ...EN_LA_ENTREGA };
     expect(sinDevolver.H6_ACREDITADO_FECHA).toBe("5 de marzo de 2027");
     // Recibido (los cuatro pagos a Fondos de Clientes) menos lo pagado a terceros menos las dos facturas; la comisión del wire se repuso.
     const recibido = (["H1", "H2", "H3", "H4"] as const).reduce((s, t) => s + ctxH(ctx, t), 0) + p5.neto;
@@ -725,7 +747,7 @@ describe("plantillas que nacen del libro", () => {
     expect(sinDevolver.DEVOLUCION_MONTO).toBe("pendiente");
     expect(sinDevolver.DEVOLUCION_FECHA).toBe("pendiente");
     ctx.movimientos.push(mov({ id: "dev", tipo: "devolucion", montoUsd: saldo, fecha: "2027-03-06", documentoRef: "00999" }));
-    const campos = camposActaRendicion(ctx);
+    const campos = { ...camposActaRendicion(ctx), ...EN_LA_ENTREGA };
     expect(campos.DEVOLUCION_MONTO).toBe(sinDevolver.SALDO_RENDICION);
     expect(campos.NUMERO_OPERACION).toBe("00999");
     // Crédito fiscal: los tributos pagados directo no traen el detalle, se toma el del Anexo B.
@@ -748,7 +770,7 @@ describe("plantillas que nacen del libro", () => {
     expect(texto).toContain("Comisiones bancarias de las transferencias al exterior");
     expect(texto).toContain(`Honorarios tomados de Fondos de Clientes al emitir cada factura (sección 9)\n− ${monto(ctxH(ctx, "H3") + p5.honorarios)}`);
     expect(texto).toContain("Total pagado por el Mandante");
-    expect(texto).toContain("Pago 5 de 5: [X] acreditado el 5 de marzo de 2027");
+    expect(texto).toContain("Pago 5 de 5: acreditado el 5 de marzo de 2027.");
     // Las dos facturas: fecha de emisión, lo tomado de Fondos de Clientes y la constancia de la detracción.
     expect(texto).toContain(`Factura 1 (50 %, al release)\nPago 2 de 5\n18 de diciembre de 2026\n${monto(p5.honorarios)}\n${monto(ctxH(ctx, "H3"))}\n561.08 · BN 123456789`);
     expect(texto).toContain(`Factura 2 (50 %, al levante)\nPago 5 de 5\n5 de marzo de 2027\n${monto(p5.honorarios)}\n${monto(p5.honorarios)}`);
@@ -763,7 +785,7 @@ describe("plantillas que nacen del libro", () => {
       construirDocumento(plantillaDe("constancia_fondos")!, ctx, datosConstancia(ctx.movimientos.find((m) => m.id === "d2")!, ctx), FIJOS),
       ...(["H4", "H5", "H6"] as const).map((h) => construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...extra, ...datosAvisoPago(ctx, h, {}, "2027-02-11") }, FIJOS)),
       construirDocumento(plantillaDe("liquidacion_definitiva")!, ctx, datosLiquidacion(ctx), FIJOS),
-      construirDocumento(plantillaDe("acta_rendicion")!, ctx, camposActaRendicion(ctx), FIJOS),
+      construirDocumento(plantillaDe("acta_rendicion")!, ctx, { ...camposActaRendicion(ctx), ...EN_LA_ENTREGA }, FIJOS),
     ];
     for (const d of docs) {
       const texto = textoDeEstructura(d.estructura);
@@ -773,7 +795,7 @@ describe("plantillas que nacen del libro", () => {
     }
     // La constancia del Pago 2 lo nombra entero: flete, seguro y primera mitad de los honorarios.
     const constancia = textoDeEstructura(docs.find((d) => d.plantilla.tipo === "constancia_fondos")!.estructura);
-    expect(constancia).toContain("[X] Pago 2 de 5: flete, seguro y primera mitad de los honorarios");
+    expect(constancia).toContain("Concepto según el contrato (cláusula tercera)\nEl flete hasta el Callao, el seguro y la primera mitad de nuestros honorarios");
   });
 
   it("sin libro, las cuatro plantillas del libro no lanzan pero declaran faltantes: no se emiten con rayas", () => {
@@ -784,6 +806,68 @@ describe("plantillas que nacen del libro", () => {
       // Ningún campo vacío se imprime como raya (las rayas que quedan en el texto son las de llenar a mano al firmar: hora, nivel de combustible, observaciones).
       expect(Object.values(doc.campos).some((v) => /^_+$/.test(v)), tipo).toBe(false);
     }
+  });
+});
+
+describe("documentos sin rayas ni notas internas", () => {
+  /** Lo que nunca puede salir en un documento: rayas para llenar a mano, notas internas ni casillas. */
+  const PROHIBIDO = [/_{3,}/, /\[CONFIRMAR/i, /no imprimir/i, /uso interno/i, /Nota interna/i, /\[ \]/, /\[X\]/i];
+
+  function revisar(nombre: string, doc: ReturnType<typeof construirDocumento>) {
+    const texto = textoDeEstructura(doc.estructura);
+    for (const patron of PROHIBIDO) expect(texto, `${nombre}: ${patron}`).not.toMatch(patron);
+    expect(doc.estructura.bloques.some((b) => b.tipo === "lista" && b.estilo === "casillas"), `${nombre}: casillas`).toBe(false);
+    // Ninguna fila de tabla en blanco: se vería como una línea para llenar a mano.
+    const filaEnBlanco = doc.estructura.bloques.some((b) => b.tipo === "tabla" && b.filas.some((f) => f.every((celda) => !String(celda ?? "").trim())));
+    expect(filaEnBlanco, `${nombre}: fila de tabla en blanco`).toBe(false);
+    // Con el expediente completo, nada falta: el documento se puede emitir tal cual.
+    expect(doc.faltantes, nombre).toEqual([]);
+  }
+
+  it("ninguna plantilla, nueva o usada, imprime rayas, [CONFIRMAR], notas de uso interno ni casillas vacías", () => {
+    for (const [variante, ctx] of [["nuevo", contexto()], ["usado", contextoUsado()]] as const) {
+      for (const plantilla of PLANTILLAS.filter((p) => !TIPOS_DESDE_LIBRO.includes(p.tipo))) {
+        revisar(`${plantilla.tipo} (${variante})`, construirDocumento(plantilla, ctx, A_MANO, FIJOS));
+      }
+    }
+    const ctx = contextoConLibro();
+    revisar("constancia_fondos", construirDocumento(plantillaDe("constancia_fondos")!, ctx, datosConstancia(ctx.movimientos.find((m) => m.id === "d1")!, ctx), FIJOS));
+    const sinPresupuesto = contextoConLibro();
+    sinPresupuesto.expediente = { ...sinPresupuesto.expediente, presupuesto: null };
+    revisar("constancia_fondos sin presupuesto", construirDocumento(plantillaDe("constancia_fondos")!, sinPresupuesto, datosConstancia(sinPresupuesto.movimientos.find((m) => m.id === "d1")!, sinPresupuesto), FIJOS));
+    const tributos = { LIQUIDACION_NUMERO: "118-2027-0001234", TRIBUTOS_USD: "27,587.85", TRIBUTOS_SOLES: "103,785.55" };
+    for (const h of ["H4", "H5", "H6"] as const) {
+      revisar(`aviso ${h}`, construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...A_MANO, ...tributos, ...datosAvisoPago(ctx, h, {}, "2027-02-11") }, FIJOS));
+    }
+    revisar("liquidacion_definitiva", construirDocumento(plantillaDe("liquidacion_definitiva")!, ctx, datosLiquidacion(ctx), FIJOS));
+    revisar("acta_rendicion", construirDocumento(plantillaDe("acta_rendicion")!, ctx, { ...camposActaRendicion(ctx), ...EN_LA_ENTREGA }, FIJOS));
+  });
+
+  it("el Anexo C sale lleno: PEP, beneficiarios por fila y origen con detalle; sin ellos no se emite", () => {
+    const ctx = contexto();
+    const texto = textoDeEstructura(construirDocumento(plantillaDe("anexo_c")!, ctx, A_MANO, FIJOS).estructura);
+    expect(texto).toContain("persona expuesta políticamente (PEP), o pariente o asociado cercano de una?\nNo");
+    expect(texto).toContain("Juan Pérez Rojas\nDNI 08000000\n60 %\nNo\nRosa Rojas Díaz\nDNI 08000001\n40 %\nNo");
+    expect(texto).toContain("Origen de los fondos\nIngresos ordinarios o utilidades acumuladas de la empresa: Utilidades acumuladas 2025 según estados financieros");
+    expect(texto).not.toContain("Verificación de LUXCARS");
+    // PEP sin declarar, PEP sin cargo, beneficiarios incompletos o que pasan de 100 %, y origen sin categoría: faltantes.
+    const sinDeclarar = contexto();
+    sinDeclarar.cliente = { ...sinDeclarar.cliente!, esPep: null, beneficiarios: null, origenFondosTipo: null };
+    expect(construirDocumento(plantillaDe("anexo_c")!, sinDeclarar, A_MANO, FIJOS).faltantes).toEqual(["CLIENTE_PEP", "CLIENTE_BENEFICIARIOS", "CLIENTE_ORIGEN_FONDOS"]);
+    const pepSinCargo = contexto();
+    pepSinCargo.cliente = { ...pepSinCargo.cliente!, esPep: true, pepCargo: null };
+    expect(construirDocumento(plantillaDe("anexo_c")!, pepSinCargo, A_MANO, FIJOS).faltantes).toEqual(["CLIENTE_PEP"]);
+    const conCargo = contexto();
+    conCargo.cliente = { ...conCargo.cliente!, esPep: true, pepCargo: "Regidor de la Municipalidad de Lima (2019 a 2022)" };
+    expect(textoDeEstructura(construirDocumento(plantillaDe("anexo_c")!, conCargo, A_MANO, FIJOS).estructura)).toContain("\nSí: Regidor de la Municipalidad de Lima (2019 a 2022)");
+    const sumanMas = contexto();
+    sumanMas.cliente = { ...sumanMas.cliente!, beneficiarios: [{ nombre: "Juan Pérez Rojas", documento: "DNI 08000000", porcentaje: 70, pep: false }, { nombre: "Rosa Rojas Díaz", documento: "DNI 08000001", porcentaje: 40, pep: false }] };
+    expect(construirDocumento(plantillaDe("anexo_c")!, sumanMas, A_MANO, FIJOS).faltantes).toEqual(["CLIENTE_BENEFICIARIOS"]);
+  });
+
+  it("las confirmaciones del dueño viven en Configuración, no en los documentos", () => {
+    expect(PENDIENTES_EMPRESA.map((p) => p.clave)).toEqual(["PENDIENTE_DETRACCION", "PENDIENTE_PODER_SUNARP"]);
+    for (const p of PENDIENTES_EMPRESA) expect(p.clave).toMatch(/^[A-Z][A-Z0-9_]{1,63}$/);
   });
 });
 
@@ -886,7 +970,12 @@ describe("datos por etapa", () => {
     // El acta de la etapa siguiente pide la fecha de entrega y el km; el libro arma los totales (no se piden).
     expect(por.FECHA_ENTREGA.documentos).toEqual(["acta_rendicion"]);
     expect(Object.keys(por)).not.toContain("TOTAL_RECIBIDO");
-    expect(r.contrapartesSinAsignar).toEqual(["agente_aduana"]);
+    // El acta lista los pagos reales del libro: ya no pide al agente de aduana por su cuenta.
+    expect(r.contrapartesSinAsignar).toEqual([]);
+    // En tránsito, el aviso del Pago 3 nombra al agente: sin asignar, avisa.
+    const transito = contexto({}, { etapa: "transito" });
+    transito.expediente.reservado = { ...transito.expediente.reservado!, agenteAduanaId: null };
+    expect(datosPorEtapa(transito, FIJOS).contrapartesSinAsignar).toEqual(["agente_aduana"]);
     // Sin siguiente etapa no hay compuertas.
     expect(datosPorEtapa(contexto({}, { etapa: "cerrado" }), FIJOS).etapaSiguiente).toBeNull();
   });

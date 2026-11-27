@@ -239,19 +239,46 @@ export type Cliente = {
   telefono: string | null;
   actividad: string | null;
   bancoOrigen: string | null;
+  /** Texto libre anterior al 27 nov 2026; desde entonces manda `beneficiarios`. */
   beneficiarioFinal: string | null;
+  /** Detalle del origen de los fondos (de qué utilidades, qué préstamo, qué activo…). */
   origenFondos: string | null;
-  esPep: boolean;
+  /** Categoría del origen de los fondos; `null` mientras no se declare. */
+  origenFondosTipo?: OrigenFondos | null;
+  /** ¿El representante es o fue PEP (o pariente o asociado cercano)? `null` = todavía no lo declaró. */
+  esPep: boolean | null;
+  /** Cargo público que hace PEP al representante, si `esPep`. */
+  pepCargo?: string | null;
+  /** Beneficiarios finales (10 % o más del capital, o control); `null` mientras no se declaren. */
+  beneficiarios?: Beneficiario[] | null;
   kycFichaRucEn: FechaIso | null;
   kycVigenciaEn: FechaIso | null;
   kycListasEn: FechaIso | null;
   kycListasResultado: string | null;
+  /** Fecha en que se completó el Registro de Operaciones de la UIF (uso interno, nunca en un documento del cliente). */
+  kycUifEn?: FechaIso | null;
+  /** Quién hizo la debida diligencia (uso interno). */
+  kycResponsable?: string | null;
   kycCompleto: boolean;
   /** Cuenta en /cuenta vinculada. `null` hasta vincular. */
   userId: string | null;
   notasInternas: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+/** Origen de los fondos que declara el cliente en el Anexo C. */
+export const ORIGENES_FONDOS = ["utilidades", "prestamo", "aporte_capital", "venta_activo", "otro"] as const;
+export type OrigenFondos = (typeof ORIGENES_FONDOS)[number];
+
+/** Un beneficiario final del Anexo C. */
+export type Beneficiario = {
+  nombre: string;
+  /** DNI, carné de extranjería o pasaporte, con su número. */
+  documento: string;
+  /** Participación en el capital, de 0 a 100. */
+  porcentaje: number;
+  pep: boolean;
 };
 
 export type Embarque = {

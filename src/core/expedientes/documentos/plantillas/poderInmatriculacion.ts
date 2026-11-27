@@ -3,13 +3,14 @@
  * 2026: el cliente lo firma en la misma visita a la notaría que el contrato y
  * la LOA, para que Luxcars tramite la primera inscripción en SUNARP, recoja
  * las placas y la tarjeta de identificación vehicular sin otra visita del
- * cliente. Texto corto y formal. Lleva una nota interna [CONFIRMAR con el
- * notario que SUNARP lo acepta] que no se imprime para el cliente.
+ * cliente. Texto corto y formal. Que SUNARP acepte este poder con firma
+ * legalizada es una confirmación pendiente del dueño en /portal/configuracion
+ * (`PENDIENTES_EMPRESA`): el documento no lleva notas internas.
  */
 
 import type { Campos } from "../../campos";
-import { firmas, h2, lista, nota, p, tabla, type Estructura } from "../estructura";
-import type { Plantilla } from "./tipos";
+import { firmas, h2, lista, p, tabla, type Estructura } from "../estructura";
+import { cargoEnTexto, type Plantilla } from "./tipos";
 
 function construir(c: Campos): Estructura {
   return {
@@ -18,7 +19,7 @@ function construir(c: Campos): Estructura {
     idioma: "es",
     codigoExpediente: c.EXPEDIENTE,
     bloques: [
-      p(`**${c.CLIENTE_RAZON_SOCIAL}**, con RUC ${c.CLIENTE_RUC}, domicilio en ${c.CLIENTE_DOMICILIO}, inscrita en la partida ${c.CLIENTE_PARTIDA} del Registro de Personas Jurídicas de Lima, representada por su ${c.CLIENTE_REP_CARGO} ${c.CLIENTE_REPRESENTANTE}, identificado con DNI ${c.CLIENTE_REP_DNI}, con poderes inscritos en la misma partida (el "Poderdante"), otorga poder especial a favor de **LUX CARS IMPORT S.A.C.**, con RUC ${c.LUXCARS_RUC}, domicilio en ${c.LUXCARS_DOMICILIO}, inscrita en la partida ${c.LUXCARS_PARTIDA} del Registro de Personas Jurídicas de Lima, representada por su gerente general ${c.LUXCARS_REPRESENTANTE}, identificado con DNI ${c.LUXCARS_REP_DNI} (el "Apoderado"), en los términos siguientes.`),
+      p(`**${c.CLIENTE_RAZON_SOCIAL}**, con RUC ${c.CLIENTE_RUC}, domicilio en ${c.CLIENTE_DOMICILIO}, inscrita en la partida ${c.CLIENTE_PARTIDA} del Registro de Personas Jurídicas de Lima, representada por su ${cargoEnTexto(c.CLIENTE_REP_CARGO)} ${c.CLIENTE_REPRESENTANTE}, con DNI n.º ${c.CLIENTE_REP_DNI}, con poderes inscritos en la misma partida (el "Poderdante"), otorga poder especial a favor de **LUX CARS IMPORT S.A.C.**, con RUC ${c.LUXCARS_RUC}, domicilio en ${c.LUXCARS_DOMICILIO}, inscrita en la partida ${c.LUXCARS_PARTIDA} del Registro de Personas Jurídicas de Lima, representada por su gerente general ${c.LUXCARS_REPRESENTANTE}, con DNI n.º ${c.LUXCARS_REP_DNI} (el "Apoderado"), en los términos siguientes.`),
 
       h2("1. Vehículo"),
       tabla(["Campo", "Dato"], [
@@ -52,14 +53,13 @@ function construir(c: Campos): Estructura {
         [c.CLIENTE_RAZON_SOCIAL, c.CLIENTE_REPRESENTANTE, `${c.CLIENTE_REP_CARGO}, DNI ${c.CLIENTE_REP_DNI}`, "Firma legalizada ante notario"],
         ["Acepta el Apoderado: LUX CARS IMPORT S.A.C.", c.LUXCARS_REPRESENTANTE, `Gerente general, DNI ${c.LUXCARS_REP_DNI}`],
       ),
-      nota("*Nota interna, no imprimir para el cliente: [CONFIRMAR con el notario que SUNARP acepta este poder especial con firma legalizada para la inmatriculación; si exige poder por escritura pública o firma directa del propietario en el formato, ajustar antes del primer uso.]*"),
     ],
   };
 }
 
 export const poderInmatriculacion: Plantilla = {
   tipo: "poder_inmatriculacion",
-  version: "poder_inmatriculacion@2026-11-27",
+  version: "poder_inmatriculacion@2026-11-28",
   nombre: "Poder para la inmatriculación",
   idioma: "es",
   tarea: "luxcars.generar_contrato",

@@ -10,16 +10,21 @@
  * con sus detracciones. Nombra los pagos "Pago N de 5", nunca con códigos H.
  * Debe cuadrar: el saldo de Fondos de Clientes menos lo devuelto = 0. La
  * conformidad también se registra desde el portal (`conformidad_rendicion`).
+ *
+ * Sin rayas ni casillas (28 nov 2026): la hora, el lugar, el nivel de
+ * combustible, las observaciones, los pendientes y quién recibe se escriben al
+ * emitir el acta con el auto delante (formulario de la pestaña Dinero; el
+ * libro propone "Sin observaciones", "Sin pendientes" y al representante).
  */
 
 import type { Campos } from "../../campos";
 import { fechaEnLetras, monto } from "../../campos";
 import { etiquetaPago } from "../../hitos";
-import { datosRendicion, numeroConstancia } from "../../ledger";
+import { PENDIENTES_POR_DEFECTO, datosRendicion, numeroConstancia } from "../../ledger";
 import type { ContextoExpediente, Movimiento, TipoHito } from "../../tipos";
 import { PAGO_POR_HITO } from "../../tipos";
-import { casillas, firmas, h2, p, tabla, type Estructura } from "../estructura";
-import { firmasLuxcarsYMandante, type Plantilla } from "./tipos";
+import { firmas, h2, p, tabla, vinetas, type Estructura } from "../estructura";
+import type { Plantilla } from "./tipos";
 
 /** "Pago 2 de 5" para un movimiento con hito; "—" sin hito. */
 function pagoDe(hito: TipoHito | null): string {
@@ -37,21 +42,13 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
   const h6Acreditado = Boolean(c.H6_ACREDITADO_FECHA) && c.H6_ACREDITADO_FECHA !== "pendiente";
   const recibidos = r.recibidos.length
     ? r.recibidos.map((m) => [fechaEnLetras(m.fecha), pagoDe(m.hito), `${c.EXPEDIENTE}-${numeroConstancia(m, ctx.movimientos)}`, monto(m.montoUsd)])
-    : [["", "Pago 1 de 5", "", ""], ["", "Pago 2 de 5", "", ""], ["", "Pago 3 de 5", "", ""], ["", "Pago 5 de 5", "", ""]];
+    : [["", "Sin depósitos confirmados en el libro", "", ""]];
   const directos = r.directos.length
     ? r.directos.map((d) => [fechaEnLetras(d.fecha), pagoDe(d.hito), d.referencia || "Comprobante del Mandante", d.moneda === "PEN" ? `S/ ${monto(d.monto)}` : "", monto(d.montoUsd)])
     : [["", "Pago 4 de 5", "Pendiente de confirmar", "", ""]];
   const pagos = r.pagos.length
     ? r.pagos.map((l) => [fechaEnLetras(l.fecha), l.concepto, l.proveedor, l.documento, `${l.moneda} ${monto(l.monto)}`, l.moneda === "USD" ? "1" : String(l.tipoCambio), monto(l.montoUsd)])
-    : [
-        ["", "Precio del vehículo (wire al broker)", c.VENDEDOR_NOMBRE, "Pro forma, bill of sale n.º ___, SWIFT n.º ___", c.MONEDA_COMPRA, "", ""],
-        ["", `Flete: traslado al puerto y marítimo (${c.PROPORCION_FLETE})`, c.FORWARDER_NOMBRE, "Factura n.º, house BL n.º", "", "", ""],
-        ["", "Seguro de transporte", "", "Póliza n.º", "", "", ""],
-        ["", "Agente de aduana", c.AGENTE_ADUANA, "Factura n.º", "", "", ""],
-        ["", "Almacenaje (depósito temporal)", "", "Factura n.º", "", "", ""],
-        ["", "Grúa del puerto", "", "Factura n.º", "", "", ""],
-        ["", "Otros autorizados por el Mandante", "", "", "", "", ""],
-      ];
+    : [["", "Sin pagos a terceros registrados en el libro", "", "", "", "", ""]];
   // Cada factura: lo aplicado desde Fondos de Clientes (o, en expedientes anteriores al 27 nov, el depósito directo) y su detracción.
   const aplicada = (n: 1 | 2) => deLaFactura(r.aplicaciones, n) ?? r.honorarios.find((m) => m.hito === (n === 1 ? "H3" : "H6"));
   const detraccion = (n: 1 | 2) => deLaFactura(r.detracciones, n);
@@ -68,6 +65,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
     ];
   };
   const saldoACargo = r.saldo < 0;
+  const conPendientes = c.PENDIENTES_ENTREGA.trim() !== PENDIENTES_POR_DEFECTO;
 
   return {
     titulo: "Acta de entrega y rendición de cuentas",
@@ -75,7 +73,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
     idioma: "es",
     codigoExpediente: c.EXPEDIENTE,
     bloques: [
-      p(`En ${c.CIUDAD_FIRMA}, el ${c.FECHA_ENTREGA}, a las ______ horas, en ______________, LUX CARS IMPORT S.A.C., representada por ${c.LUXCARS_REPRESENTANTE} (DNI ${c.LUXCARS_REP_DNI}), entrega a **${c.CLIENTE_RAZON_SOCIAL}**, representada por ${c.CLIENTE_REPRESENTANTE} (DNI ${c.CLIENTE_REP_DNI}) o por la persona autorizada que se identifica al final, el vehículo y los documentos que siguen, y rinde cuentas del mandato conforme al artículo 1793 del Código Civil y a la cláusula vigésima del contrato.`),
+      p(`En ${c.CIUDAD_FIRMA}, el ${c.FECHA_ENTREGA}, a las ${c.HORA_ENTREGA} horas, en ${c.LUGAR_ENTREGA}, LUX CARS IMPORT S.A.C., representada por su gerente general ${c.LUXCARS_REPRESENTANTE}, con DNI n.º ${c.LUXCARS_REP_DNI}, entrega a **${c.CLIENTE_RAZON_SOCIAL}**, que recibe por medio de ${c.RECIBE_ENTREGA}, el vehículo y los documentos que siguen, y rinde cuentas del mandato conforme al artículo 1793 del Código Civil y a la cláusula vigésima del contrato.`),
 
       h2("1. Vehículo entregado"),
       tabla(["Campo", "Dato"], [
@@ -86,24 +84,13 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
         ["Placa", c.PLACA],
         ["Tarjeta de identificación vehicular (TIVe) n.º", c.TIVE_NUMERO],
         ["Kilometraje a la entrega", c.KM_ENTREGA],
-        ["Nivel de combustible o carga", "______________"],
+        ["Nivel de combustible o carga", c.NIVEL_COMBUSTIBLE],
       ], [2, 3]),
 
       h2("2. Estado del vehículo"),
-      p("Revisado en presencia de ambas partes. Lo no marcado se considera conforme."),
-      casillas([
-        "Carrocería y pintura sin daños, salvo las observaciones anotadas",
-        "Vidrios, espejos y luces completos y sin fisuras",
-        "Llantas y aro de repuesto (o kit de inflado) en buen estado",
-        "Interior: asientos, tapicería, tablero, pantalla y controles sin daños",
-        "Aire acondicionado, luces, limpiaparabrisas y bocina funcionan",
-        "Encendido normal, sin testigos de falla en el tablero",
-        "Accesorios: gata, llave de ruedas, kit de herramientas, triángulos, extintor, alfombras",
-        "Cargador y cables (solo híbridos enchufables y eléctricos)",
-        "Dos llaves, ambas programadas",
-      ]),
-      p("Observaciones: ______________________________________________"),
-      p("Fotos tomadas en el acto y enviadas a ambas partes: ______ (cantidad)."),
+      p("Las partes revisaron juntas, con el vehículo a la vista: carrocería y pintura; vidrios, espejos y luces; llantas y aro de repuesto (o kit de inflado); interior, tablero, pantalla y controles; aire acondicionado, limpiaparabrisas y bocina; encendido, sin testigos de falla en el tablero; accesorios (gata, llave de ruedas, herramientas, triángulos, extintor y alfombras); cargador y cables si el vehículo es enchufable; y las dos llaves, ambas programadas. Todo está conforme, salvo lo que se anota:"),
+      tabla(["Revisión", "Resultado"], [["Observaciones", c.OBSERVACIONES_ENTREGA]], [1.5, 3.5]),
+      p("Las partes toman fotos del vehículo en el acto y se las envían el mismo día."),
 
       h2("3. Fondos recibidos en la cuenta Fondos de Clientes"),
       tabla(["Fecha", "Pago", "Constancia n.º", "USD"], [
@@ -146,9 +133,9 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
         [saldoACargo ? "**Saldo a cargo del Mandante**" : "**Saldo a favor del Mandante**", `**${c.SALDO_RENDICION}**`],
         [`Devuelto el ${c.DEVOLUCION_FECHA} a la cuenta ${c.CLIENTE_BANCO_ORIGEN}, operación n.º ${c.NUMERO_OPERACION}`, c.DEVOLUCION_MONTO],
       ], [4, 1.5]),
-      p(saldoACargo
-        ? `El saldo resulta a cargo del Mandante: USD ${monto(Math.abs(r.saldo))}, a depositar en Fondos de Clientes con el concepto "${c.EXPEDIENTE} saldo". Fecha en que lo depositó: ______________.`
-        : "Si el saldo resultara a cargo del Mandante, se indica aquí el monto y la fecha en que lo depositó: ______________."),
+      ...(saldoACargo
+        ? [p(`El saldo resulta a cargo del Mandante: USD ${monto(Math.abs(r.saldo))}, que deposita en la cuenta Fondos de Clientes con el concepto "${c.EXPEDIENTE} saldo" antes de recibir el vehículo.`)]
+        : []),
 
       h2("9. Honorarios de LUXCARS (tomados de Fondos de Clientes al emitir cada factura)"),
       tabla(["Factura", "Se pagó con", "Fecha", "Total USD", "Tomado de Fondos de Clientes USD", "Detracción USD · constancia n.º"], [
@@ -157,7 +144,9 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
         ["**Total honorarios**", "", "", `**${c.COMISION_TOTAL}** (base ${c.COMISION_BASE} + IGV ${c.COMISION_IGV})`, r.totalHonorarios > 0 ? `**${monto(r.totalHonorarios)}**` : "", ""],
       ], [2.2, 1.4, 1.8, 2.4, 1.8, 2.2]),
       p("Los honorarios incluyen la gestión registral: homologación o ficha técnica, inscripción en SUNARP, placas y tarjeta de identificación vehicular. Con cliente empresa, LUXCARS depositó la detracción de cada factura en el Banco de la Nación (cláusula 5.3 del contrato); la constancia va en la carpeta."),
-      p(`Pago 5 de 5: ${h6Acreditado ? "[X]" : "[ ]"} acreditado el ${h6Acreditado ? c.H6_ACREDITADO_FECHA : "______________"}   ${h6Acreditado ? "[ ]" : "[X]"} pendiente, el vehículo queda en custodia conforme a la cláusula décima tercera del contrato.`),
+      p(h6Acreditado
+        ? `Pago 5 de 5: acreditado el ${c.H6_ACREDITADO_FECHA}.`
+        : "Pago 5 de 5: pendiente. El vehículo queda en custodia conforme a la cláusula décima tercera del contrato hasta que se acredite."),
 
       h2("10. Costo total de la operación para el Mandante"),
       tabla(["Concepto", "USD"], [
@@ -171,7 +160,8 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
       ], [4, 1.5]),
 
       h2("11. Documentos y carpeta entregada"),
-      casillas([
+      p("LUXCARS entrega al Mandante la carpeta del expediente con:"),
+      vinetas([
         "Contrato de mandato con los anexos A, B, C y D, carta de autorización y poder para la inmatriculación",
         "Pro forma y factura o bill of sale del dealer a nombre del Mandante y comprobante del pago al broker",
         `Documento de propiedad del exterior (${c.VEH_DOC_PROPIEDAD}) con la transferencia`,
@@ -188,14 +178,15 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
         "Manuales del vehículo",
       ]),
 
-      h2("12. Pendientes, si los hay"),
-      tabla(["Pendiente", "Responsable", "Fecha compromiso"], [["", "", ""], ["", "", ""]], [3, 2, 2]),
+      h2("12. Pendientes"),
+      p(conPendientes ? c.PENDIENTES_ENTREGA : `${c.PENDIENTES_ENTREGA}.`),
 
       h2("13. Conformidad"),
-      p(`El Mandante declara recibir el vehículo y los documentos a su satisfacción, en el estado descrito, sin perjuicio de las garantías que otorguen el fabricante o el dealer. Desde este momento la custodia, el riesgo, el SOAT y el seguro vehicular son de su cargo. Aprueba esta rendición de cuentas, declara haber recibido el saldo indicado y la carpeta completa, y da por cumplido el mandato del ${c.FECHA_FIRMA}, sin reclamo pendiente salvo los que se anotan aquí: ______________________________________________. La misma conformidad puede registrarse desde su cuenta en el portal de LUXCARS.`),
+      p(`El Mandante declara recibir el vehículo y los documentos a su satisfacción, en el estado descrito, sin perjuicio de las garantías que otorguen el fabricante o el dealer. Desde este momento la custodia, el riesgo, el SOAT y el seguro vehicular son de su cargo. Aprueba esta rendición de cuentas, declara haber recibido el saldo indicado y la carpeta completa, y da por cumplido el mandato del ${c.FECHA_FIRMA}, sin reclamo pendiente${conPendientes ? ", salvo lo indicado en la sección 12" : ""}. La misma conformidad puede registrarse desde su cuenta en el portal de LUXCARS.`),
       p(`${c.CIUDAD_FIRMA}, ${c.FECHA_ENTREGA}`),
       firmas(
-        ...firmasLuxcarsYMandante(c, true).map((col, i) => (i === 1 ? [...col, "O persona autorizada: nombre ______________ DNI ______________"] : col)),
+        ["LUX CARS IMPORT S.A.C.", c.LUXCARS_REPRESENTANTE, `Gerente general, DNI ${c.LUXCARS_REP_DNI}`],
+        [c.CLIENTE_RAZON_SOCIAL, `Recibe: ${c.RECIBE_ENTREGA}`],
       ),
     ],
   };
@@ -203,7 +194,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
 
 export const actaRendicion: Plantilla = {
   tipo: "acta_rendicion",
-  version: "acta_rendicion@2026-11-27c",
+  version: "acta_rendicion@2026-11-28",
   nombre: "Acta de entrega y rendición de cuentas",
   idioma: "es",
   tarea: "luxcars.acta_rendicion",

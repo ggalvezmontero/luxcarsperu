@@ -714,7 +714,27 @@ export function datosActa(ctx: ContextoExpediente): CamposExtra {
   const ultimo = ordenarLibro(ctx.movimientos).filter((m) => esConfirmado(m) && m.tipo === "deposito" && m.hito === "H6").pop();
   return {
     H6_ACREDITADO_FECHA: acreditado && ultimo ? fechaEnLetras(ultimo.fecha) : "pendiente",
+    // Propuestas que el formulario de emisión puede corregir; hora, lugar y nivel de combustible se escriben con el auto delante.
+    OBSERVACIONES_ENTREGA: OBSERVACIONES_POR_DEFECTO,
+    PENDIENTES_ENTREGA: PENDIENTES_POR_DEFECTO,
+    RECIBE_ENTREGA: quienRecibe(ctx),
   };
+}
+
+/** Lo que el acta dice cuando la entrega no deja observaciones ni pendientes. */
+export const OBSERVACIONES_POR_DEFECTO = "Sin observaciones";
+export const PENDIENTES_POR_DEFECTO = "Sin pendientes";
+
+/** Quién recibe por el Mandante, por defecto: su representante con cargo y DNI (o la persona natural con su DNI). */
+export function quienRecibe(ctx: ContextoExpediente): string {
+  const c = ctx.cliente;
+  if (!c) return "";
+  if (c.tipo === "persona") return c.razonSocial && c.dni ? `${c.razonSocial}, con DNI n.º ${c.dni}` : "";
+  const nombre = (c.representante ?? "").trim();
+  const dni = (c.representanteDni ?? "").trim();
+  if (!nombre || !dni) return "";
+  const cargo = (c.representanteCargo ?? "").trim();
+  return `${nombre}${cargo ? `, ${cargo.toLowerCase()}` : ""}, con DNI n.º ${dni}`;
 }
 
 /** Todo lo del acta de entrega y rendición de cuentas (un solo documento desde el 27 nov 2026). */
