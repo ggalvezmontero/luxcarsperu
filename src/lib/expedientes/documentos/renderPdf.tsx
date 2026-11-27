@@ -3,7 +3,7 @@
  * la ruta que genera documentos, nunca el bundle del navegador.
  *
  * Mismo árbol que `renderHtml` y `renderDocx`, con formato de documento legal:
- * A4 con márgenes de 25 × 22 mm, Source Serif 4 incrustada (10,5 pt, interlineado
+ * A4 con márgenes de 25 × 22 mm, Luxcars Serif (Source Serif 4) incrustada (10,5 pt, interlineado
  * 1,35, justificado), cabecera fija con el logotipo y la razón social sobre un
  * filete dorado, portada con el título en mayúsculas espaciadas, cláusulas en
  * mayúsculas, numerales "4.3" en sangría francesa, tablas de bordes finos, notas
@@ -17,15 +17,31 @@
 import "server-only";
 
 import { Document, Font, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
-import type { ReactElement } from "react";
+import type { ComponentProps, ReactElement } from "react";
 
-import { partirInline, partirNumeracion, tituloCortoDe, type Bloque, type Estructura, type Texto } from "@/core/expedientes/documentos/estructura";
+import {
+  alineacionesDeTabla,
+  partirInline,
+  partirNumeracion,
+  tituloCortoDe,
+  unirCifras,
+  type Alineacion,
+  type Bloque,
+  type Estructura,
+  type Texto,
+} from "@/core/expedientes/documentos/estructura";
 
-import { EMPRESA, MEDIDAS_MM, ORO, PROPORCION, recursos, rotulos } from "./recursos";
+import { EMPRESA, FILAS_TABLA_JUNTA, MEDIDAS_MM, ORO, PROPORCION, RELLENO_CELDA_PT, TABLA_PT, anchosDeTabla, recursos, rotulos } from "./recursos";
 
-const FAMILIA = "Source Serif 4";
-/** Cuerpo de texto. Va en cada estilo junto a `lineHeight`: sin `fontSize` al lado, react-pdf calcula el interlineado sobre 18 pt. */
+const FAMILIA = "Luxcars Serif";
+/**
+ * Cuerpo de texto. El interlineado (1,35) va en cada estilo de texto junto a
+ * este `fontSize`, no en la página ni en un contenedor: con `lineHeight` en
+ * `Page` react-pdf 4.9 deja de pintar el pie fijo, y sin `fontSize` en el mismo
+ * estilo calcula el interlineado sobre 18 pt.
+ */
 const CUERPO_PT = 10.5;
+const ALINEAR: Record<Alineacion, "left" | "center" | "right"> = { izquierda: "left", centro: "center", derecha: "right" };
 
 /* -------------------------------------------------------------------------- */
 /* Fuentes: una sola vez por proceso                                          */
@@ -56,20 +72,13 @@ export function registrarFuentes(): number {
     ],
   });
   /**
-   * Un CCI ("002-194-000000000000-00") o un VIN en una celda angosta se saldría
-   * de la tabla; lo que pasa de 14 caracteres seguidos se puede cortar donde
-   * haga falta (de preferencia en los guiones). El texto normal no se toca.
+   * Nunca partir una palabra. react-pdf pone un guion en cada corte dentro de una
+   * palabra (incluso detrás de un guion que ya estaba), así que un CCI salía como
+   * "002-194--000…" y un VIN como "1FMEE5DP0PLA00-" / "000": un dato falso en un
+   * documento de pagos. En su lugar, `anchosDeTabla` da a cada columna el ancho de
+   * su palabra o cifra más larga, y en el cuerpo del texto cualquier palabra cabe.
    */
-  const LARGO_SIN_CORTE = 14;
-  Font.registerHyphenationCallback((palabra) => {
-    if (palabra.length <= LARGO_SIN_CORTE) return [palabra];
-    const trozos = palabra.split(/(?<=-)/);
-    const salida: string[] = [];
-    for (const t of trozos) {
-      for (let i = 0; i < t.length; i += LARGO_SIN_CORTE) salida.push(t.slice(i, i + LARGO_SIN_CORTE));
-    }
-    return salida;
-  });
+  Font.registerHyphenationCallback((palabra) => [palabra]);
   vecesRegistradas += 1;
   return vecesRegistradas;
 }
@@ -91,7 +100,8 @@ const BOTTOM_CUERPO = MARGEN_Y + mm(4);
 const TINTA = "#111111";
 const GRIS = "#5f6368";
 const GRIS_LINEA = "#c4c4c8";
-const GRIS_FONDO = "#efefef";
+/** Fondo de la cabecera de tabla: gris claro que se imprime nítido en blanco y negro. */
+const GRIS_CABECERA = "#e4e4e4";
 
 const estilos = StyleSheet.create({
   pagina: {
@@ -102,11 +112,6 @@ const estilos = StyleSheet.create({
     fontSize: 10.5,
     color: TINTA,
   },
-  /**
-   * El interlineado (1,35) va en cada estilo de texto, no en la página ni en un
-   * contenedor: con `lineHeight` en `Page` react-pdf 4.9 deja de pintar el pie
-   * fijo, y sin `fontSize` en el mismo estilo se calcula sobre 18 pt.
-   */
   marca: { position: "absolute" },
   cabecera: {
     position: "absolute",
@@ -226,16 +231,16 @@ const estilos = StyleSheet.create({
     borderBottomColor: GRIS_LINEA,
   },
   filaUltima: { flexDirection: "row" },
-  filaCabecera: { backgroundColor: GRIS_FONDO },
+  /** Cabecera destacada: fondo gris, negrita y una raya negra debajo. */
+  filaCabecera: { backgroundColor: GRIS_CABECERA, borderBottomWidth: 0.9, borderBottomColor: TINTA },
   celda: {
     paddingVertical: 3.5,
-    paddingHorizontal: 5,
+    paddingHorizontal: RELLENO_CELDA_PT,
     borderRightWidth: 0.5,
     borderRightColor: GRIS_LINEA,
-    fontSize: 9.5,
-    lineHeight: 1.3,
   },
   celdaUltima: { borderRightWidth: 0 },
+  celdaTexto: { fontSize: TABLA_PT, lineHeight: 1.3 },
   celdaCabecera: { fontWeight: 700 },
   firmasFila: { flexDirection: "row", marginBottom: 8 },
   firma: {
@@ -260,134 +265,189 @@ const estilos = StyleSheet.create({
 /* Componentes                                                                */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Penalización "infinita" de textkit (`linebreak.infinity`): un punto con ella
+ * nunca es candidato a corte de línea. Con la de fábrica, react-pdf corta y
+ * pone un guion donde no hay sílabas: tras dos o más espacios seguidos
+ * ("registrales-") y en el límite entre una negrita y la puntuación que la
+ * sigue ("**Mandante**,"). Así las líneas solo se cortan en espacios.
+ */
+const NUNCA_CORTAR_PALABRA = 10000;
+
+/** `Text` de react-pdf que nunca corta dentro de una palabra. Todo el texto del documento pasa por aquí. */
+function Txt(props: ComponentProps<typeof Text>) {
+  return <Text hyphenationPenalty={NUNCA_CORTAR_PALABRA} {...props} />;
+}
+
 function Inline({ texto }: { texto: Texto }) {
   return (
     <>
       {partirInline(texto).map((t, i) => (
-        <Text key={i} style={t.negrita ? estilos.negrita : t.cursiva ? estilos.cursiva : undefined}>
-          {t.texto}
-        </Text>
+        <Txt key={i} style={t.negrita ? estilos.negrita : t.cursiva ? estilos.cursiva : undefined}>
+          {unirCifras(t.texto)}
+        </Txt>
       ))}
     </>
   );
 }
 
-function normalizar(anchos: number[] | undefined, columnas: number): number[] {
-  const base = anchos && anchos.length === columnas ? anchos : Array.from({ length: columnas }, () => 1);
-  const suma = base.reduce((s, x) => s + x, 0) || 1;
-  return base.map((x) => (x / suma) * 100);
-}
-
-/** Firmas de dos en dos: cada fila entera se mantiene en la misma página. */
+/** Firmas de dos en dos por fila. */
 function enPares<T>(xs: T[]): T[][] {
   const filas: T[][] = [];
   for (let i = 0; i < xs.length; i += 2) filas.push(xs.slice(i, i + 2));
   return filas;
 }
 
-function Bloques({ bloques }: { bloques: Bloque[] }) {
-  return (
-    <>
-      {bloques.map((b, i) => {
-        switch (b.tipo) {
-          case "titulo":
-            return (
-              <Text key={i} style={b.nivel === 1 ? estilos.h1 : b.nivel === 2 ? estilos.h2 : estilos.h3} minPresenceAhead={60}>
-                <Inline texto={b.texto} />
-              </Text>
-            );
-          case "parrafo": {
-            const num = b.alineacion === "centro" ? null : partirNumeracion(b.texto);
-            if (num) {
-              return (
-                <View key={i} style={estilos.numerado}>
-                  <Text style={estilos.numero}>{num.numero}</Text>
-                  <Text style={estilos.numeradoTexto}>
-                    <Inline texto={num.resto} />
-                  </Text>
+/** Un bloque del árbol como elemento de react-pdf. */
+function bloque(b: Bloque, key: string | number): ReactElement {
+  switch (b.tipo) {
+    case "titulo":
+      return (
+        <Txt key={key} style={b.nivel === 1 ? estilos.h1 : b.nivel === 2 ? estilos.h2 : estilos.h3} minPresenceAhead={60}>
+          <Inline texto={b.texto} />
+        </Txt>
+      );
+    case "parrafo": {
+      const num = b.alineacion === "centro" ? null : partirNumeracion(b.texto);
+      if (num) {
+        return (
+          <View key={key} style={estilos.numerado}>
+            <Txt style={estilos.numero}>{num.numero}</Txt>
+            <Txt style={estilos.numeradoTexto}>
+              <Inline texto={num.resto} />
+            </Txt>
+          </View>
+        );
+      }
+      return (
+        <Txt key={key} style={[estilos.parrafo, b.alineacion === "centro" ? estilos.centro : {}]}>
+          <Inline texto={b.texto} />
+        </Txt>
+      );
+    }
+    case "nota":
+      return (
+        <View key={key} style={estilos.nota} wrap={false}>
+          <Txt>
+            <Inline texto={b.texto} />
+          </Txt>
+        </View>
+      );
+    case "salto":
+      return <View key={key} break />;
+    case "lista":
+      return (
+        <View key={key} style={estilos.lista}>
+          {b.items.map((item, j) => (
+            <View key={j} style={estilos.item} wrap={false}>
+              {b.estilo === "casillas" ? (
+                <View style={estilos.casilla} />
+              ) : b.estilo === "simple" ? (
+                <View style={{ width: 6 }} />
+              ) : (
+                <Txt style={estilos.marcador}>{b.estilo === "numerada" ? `${j + 1}.` : "•"}</Txt>
+              )}
+              <Txt style={estilos.itemTexto}>
+                <Inline texto={item} />
+              </Txt>
+            </View>
+          ))}
+        </View>
+      );
+    case "tabla": {
+      const anchos = anchosDeTabla(b).map((f) => f * 100);
+      const alineaciones = alineacionesDeTabla(b);
+      // Corta: entera en una página. Larga: se parte entre filas y la cabecera
+      // (`fixed` dentro de la tabla) se repite arriba de cada página; nunca
+      // queda sola al pie (`minPresenceAhead`).
+      const junta = b.filas.length <= FILAS_TABLA_JUNTA;
+      const fila = (celdas: Texto[], esCabecera: boolean, ultima: boolean, key: string) => (
+        <View
+          key={key}
+          style={[ultima ? estilos.filaUltima : estilos.fila, esCabecera ? estilos.filaCabecera : {}]}
+          wrap={false}
+          fixed={esCabecera && !junta}
+          minPresenceAhead={esCabecera && !junta ? 40 : undefined}
+        >
+          {celdas.map((celda, k) => (
+            <View key={k} style={[estilos.celda, { width: `${anchos[k] ?? 10}%` }, k === celdas.length - 1 ? estilos.celdaUltima : {}]}>
+              <Txt style={[estilos.celdaTexto, esCabecera ? estilos.celdaCabecera : {}, { textAlign: ALINEAR[alineaciones[k] ?? "izquierda"] }]}>
+                <Inline texto={celda} />
+              </Txt>
+            </View>
+          ))}
+        </View>
+      );
+      return (
+        <View key={key} style={estilos.tabla} wrap={!junta}>
+          {b.cabecera ? fila(b.cabecera, true, b.filas.length === 0, "cab") : null}
+          {b.filas.map((f, j) => fila(f, false, j === b.filas.length - 1, `f${j}`))}
+        </View>
+      );
+    }
+    case "firmas":
+      // El bloque entero en la misma página, con dos firmantes por fila.
+      return (
+        <View key={key} wrap={false}>
+          {enPares(b.columnas).map((par, j) => (
+            <View key={j} style={estilos.firmasFila}>
+              {par.map((col, k) => (
+                <View key={k} style={estilos.firma}>
+                  <View style={estilos.raya} />
+                  {col.lineas.map((l, m) => (
+                    <Txt key={m} style={[estilos.firmaLinea, m === 0 ? estilos.firmaNombre : {}]}>
+                      <Inline texto={l} />
+                    </Txt>
+                  ))}
                 </View>
-              );
-            }
-            return (
-              <Text key={i} style={[estilos.parrafo, b.alineacion === "centro" ? estilos.centro : {}]}>
-                <Inline texto={b.texto} />
-              </Text>
-            );
-          }
-          case "nota":
-            return (
-              <View key={i} style={estilos.nota} wrap={false}>
-                <Text>
-                  <Inline texto={b.texto} />
-                </Text>
-              </View>
-            );
-          case "salto":
-            return <View key={i} break />;
-          case "lista":
-            return (
-              <View key={i} style={estilos.lista}>
-                {b.items.map((item, j) => (
-                  <View key={j} style={estilos.item} wrap={false}>
-                    {b.estilo === "casillas" ? (
-                      <View style={estilos.casilla} />
-                    ) : b.estilo === "simple" ? (
-                      <View style={{ width: 6 }} />
-                    ) : (
-                      <Text style={estilos.marcador}>{b.estilo === "numerada" ? `${j + 1}.` : "•"}</Text>
-                    )}
-                    <Text style={estilos.itemTexto}>
-                      <Inline texto={item} />
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            );
-          case "tabla": {
-            const columnas = b.cabecera?.length ?? b.filas[0]?.length ?? 1;
-            const anchos = normalizar(b.anchos, columnas);
-            const fila = (celdas: Texto[], esCabecera: boolean, ultima: boolean, key: string) => (
-              <View key={key} style={[ultima ? estilos.filaUltima : estilos.fila, esCabecera ? estilos.filaCabecera : {}]} wrap={false}>
-                {celdas.map((celda, k) => (
-                  <View key={k} style={[estilos.celda, { width: `${anchos[k] ?? 10}%` }, k === celdas.length - 1 ? estilos.celdaUltima : {}]}>
-                    <Text style={esCabecera ? estilos.celdaCabecera : undefined}>
-                      <Inline texto={celda} />
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            );
-            return (
-              <View key={i} style={estilos.tabla}>
-                {b.cabecera ? fila(b.cabecera, true, b.filas.length === 0, "cab") : null}
-                {b.filas.map((f, j) => fila(f, false, j === b.filas.length - 1, `f${j}`))}
-              </View>
-            );
-          }
-          case "firmas":
-            return (
-              <View key={i}>
-                {enPares(b.columnas).map((par, j) => (
-                  <View key={j} style={estilos.firmasFila} wrap={false}>
-                    {par.map((col, k) => (
-                      <View key={k} style={estilos.firma}>
-                        <View style={estilos.raya} />
-                        {col.lineas.map((l, m) => (
-                          <Text key={m} style={[estilos.firmaLinea, m === 0 ? estilos.firmaNombre : {}]}>
-                            <Inline texto={l} />
-                          </Text>
-                        ))}
-                      </View>
-                    ))}
-                    {par.length === 1 && b.columnas.length > 1 ? <View style={estilos.firma} /> : null}
-                  </View>
-                ))}
-              </View>
-            );
-        }
-      })}
-    </>
-  );
+              ))}
+              {par.length === 1 && b.columnas.length > 1 ? <View style={estilos.firma} /> : null}
+            </View>
+          ))}
+        </View>
+      );
+  }
+}
+
+/** Va entero en una página: las tablas cortas y el bloque de firmas. */
+function esIndivisible(b: Bloque | undefined): boolean {
+  return (b?.tipo === "tabla" && b.filas.length <= FILAS_TABLA_JUNTA) || b?.tipo === "firmas";
+}
+
+/**
+ * Sitio mínimo (en puntos) que necesita una tabla larga para empezar en una
+ * página: la cabecera y dos filas. Si no lo hay, la tabla empieza en la siguiente.
+ */
+const SITIO_INICIO_TABLA = 64;
+
+/**
+ * Los bloques en orden, con las reglas de paginación de un documento legal que
+ * react-pdf no resuelve solo (`minPresenceAhead` no mueve un título cuando lo
+ * que sigue es indivisible y no cabe):
+ * - un título va pegado al bloque indivisible que le sigue (tabla corta, firmas);
+ * - las firmas van pegadas al párrafo que las precede ("Firmado en…, el…");
+ * - una tabla larga no empieza con la cabecera sola al pie de la página.
+ */
+function Bloques({ bloques }: { bloques: Bloque[] }) {
+  const salida: ReactElement[] = [];
+  for (let i = 0; i < bloques.length; i++) {
+    const b = bloques[i];
+    if (!b) continue;
+    const siguiente = bloques[i + 1];
+    if (siguiente && esIndivisible(siguiente) && (b.tipo === "titulo" || (b.tipo === "parrafo" && siguiente.tipo === "firmas"))) {
+      salida.push(
+        <View key={i} wrap={false}>
+          {bloque(b, "a")}
+          {bloque(siguiente, "b")}
+        </View>,
+      );
+      i += 1;
+      continue;
+    }
+    if (b.tipo === "tabla" && !esIndivisible(b)) salida.push(<View key={`${i}-sitio`} minPresenceAhead={SITIO_INICIO_TABLA} />);
+    salida.push(bloque(b, i));
+  }
+  return <>{salida}</>;
 }
 
 function MarcaDeAgua({ tipo }: { tipo: Estructura["marcaDeAgua"] }) {
@@ -442,30 +502,30 @@ function DocumentoPdf({ estructura }: { estructura: Estructura }): ReactElement 
         <View style={estilos.cabecera} fixed>
           <Image src={{ data: r.logo, format: "png" }} style={estilos.logo} />
           <View style={estilos.cabeceraTexto}>
-            <Text style={estilos.cabeceraLinea}>{t.lineaEmpresa}</Text>
-            <Text style={estilos.cabeceraLinea}>
+            <Txt style={estilos.cabeceraLinea}>{t.lineaEmpresa}</Txt>
+            <Txt style={estilos.cabeceraLinea}>
               {t.expediente} {estructura.codigoExpediente} · {corto}
-            </Text>
+            </Txt>
           </View>
         </View>
 
         <View style={estilos.pie} fixed>
-          <Text style={estilos.pieIzq}>
+          <Txt style={estilos.pieIzq}>
             {estructura.codigoExpediente} · {corto}
-          </Text>
-          <Text style={estilos.pieCentro} render={({ pageNumber, totalPages }) => t.pagina(pageNumber, totalPages)} />
-          <Text style={estilos.pieDer}>{EMPRESA.web}</Text>
+          </Txt>
+          <Txt style={estilos.pieCentro} render={({ pageNumber, totalPages }) => t.pagina(pageNumber, totalPages)} />
+          <Txt style={estilos.pieDer}>{EMPRESA.web}</Txt>
         </View>
 
         <>
           <View style={estilos.portada}>
-            <Text style={estilos.titulo}>{estructura.titulo}</Text>
+            <Txt style={estilos.titulo}>{estructura.titulo}</Txt>
             {estructura.subtitulo ? (
-              <Text style={estilos.subtitulo}>
+              <Txt style={estilos.subtitulo}>
                 <Inline texto={estructura.subtitulo} />
-              </Text>
+              </Txt>
             ) : null}
-            {estructura.lugarFecha ? <Text style={estilos.lugarFecha}>{estructura.lugarFecha}</Text> : null}
+            {estructura.lugarFecha ? <Txt style={estilos.lugarFecha}>{estructura.lugarFecha}</Txt> : null}
             <View style={estilos.filetePortada} />
           </View>
 

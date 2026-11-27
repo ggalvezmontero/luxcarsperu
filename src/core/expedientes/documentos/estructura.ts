@@ -15,6 +15,8 @@
 /** Texto con `**negrita**` y `*cursiva*` opcionales. */
 export type Texto = string;
 
+export type Alineacion = "izquierda" | "centro" | "derecha";
+
 export type Tramo = { texto: string; negrita?: boolean; cursiva?: boolean };
 
 export type Bloque =
@@ -31,6 +33,11 @@ export type Bloque =
       filas: Texto[][];
       /** Anchos relativos por columna (suman lo que sea; se normalizan). */
       anchos?: number[];
+      /**
+       * Alineación por columna. Sin ella (o en las columnas que no la indiquen),
+       * `alineacionesDeTabla` la deduce: montos y porcentajes a la derecha.
+       */
+      alineaciones?: Alineacion[];
     }
   /** Bloque de firmas: una columna por firmante, con sus líneas debajo de la raya. */
   | { tipo: "firmas"; columnas: { lineas: Texto[] }[] }
@@ -74,6 +81,49 @@ export type MarcaDeAgua = "isotipo" | "borrador" | null;
 export function partirNumeracion(texto: Texto): { numero: string; resto: Texto } | null {
   const m = /^(\d{1,2}(?:\.\d{1,2}){1,3}\.?)\s+(\S[\s\S]*)$/.exec(texto);
   return m ? { numero: m[1], resto: m[2] } : null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Alineación de las columnas de una tabla                                    */
+/* -------------------------------------------------------------------------- */
+
+const MONEDA = /^(?:USD|US\$|S\/\.?|PEN|CAD|EUR|\$)\s?/i;
+const NUMERO = /^\(?[-−]?\d[\d.,\s]*\)?(?:\s?%)?$/;
+const ENTERO_CORTO = /^\d{1,3}$/;
+/** Celdas sin dato ("", "—", "____"): no cuentan para decidir la alineación. */
+const SIN_DATO = /^[\s_.\-–—]*$/;
+
+/**
+ * ¿Es una cifra que se lee mejor alineada a la derecha? Montos con o sin
+ * moneda ("USD 2,692.45", "S/ 1,200", "62,400.00"), porcentajes ("30 %") y
+ * enteros de hasta seis dígitos. Un RUC o un DNI (8 a 11 dígitos sin
+ * separadores) no: son identificadores y van como texto.
+ */
+function esCifra(valor: string): boolean {
+  const conMoneda = MONEDA.test(valor);
+  const resto = valor.replace(MONEDA, "").trim();
+  if (!NUMERO.test(resto)) return false;
+  return conMoneda || /[.,]\d/.test(resto) || /%$/.test(resto) || /^\d{1,6}$/.test(resto);
+}
+
+/**
+ * Alineación de cada columna de una tabla: la que indique la plantilla en
+ * `alineaciones` o, si no, la deducida del cuerpo (sin la cabecera): columnas
+ * de cifras a la derecha, de enteros cortos ("1", "2", "12") al centro y el
+ * resto a la izquierda. La cabecera sigue a su columna. La usan los tres
+ * renderizadores, así que PDF, DOCX y vista previa alinean igual.
+ */
+export function alineacionesDeTabla(tabla: Extract<Bloque, { tipo: "tabla" }>): Alineacion[] {
+  const columnas = tabla.cabecera?.length ?? Math.max(1, ...tabla.filas.map((f) => f.length));
+  return Array.from({ length: columnas }, (_, k): Alineacion => {
+    const indicada = tabla.alineaciones?.[k];
+    if (indicada) return indicada;
+    const valores = tabla.filas.map((f) => textoPlano(f[k] ?? "").trim()).filter((v) => !SIN_DATO.test(v));
+    if (valores.length === 0) return "izquierda";
+    if (valores.every((v) => ENTERO_CORTO.test(v))) return "centro";
+    if (valores.every(esCifra)) return "derecha";
+    return "izquierda";
+  });
 }
 
 /** El título breve para cabecera y pie: `tituloCorto`, o `titulo` recortado. */
@@ -129,6 +179,16 @@ export function partirInline(texto: Texto): Tramo[] {
   }
   if (ultimo < texto.length) tramos.push({ texto: texto.slice(ultimo) });
   return tramos.length > 0 ? tramos : [{ texto: "" }];
+}
+
+/**
+ * Une con espacio de no separación lo que no debe quedar en dos líneas: la
+ * moneda con su monto ("USD 2,692.45", "S/ 1,200") y la cifra con su signo de
+ * porcentaje ("30 %"). Lo aplican los tres renderizadores al pintar; el texto de
+ * la plantilla no cambia.
+ */
+export function unirCifras(texto: string): string {
+  return texto.replace(/(\d) %/g, "$1\u00a0%").replace(/\b(USD|US\$|S\/\.?|PEN|CAD|EUR) (?=[\d(−-])/g, "$1\u00a0").replace(/(^|[\s(])(S\/\.?|US\$|\$) (?=[\d(−-])/g, "$1$2\u00a0");
 }
 
 /** El texto sin marcas, para títulos de archivo, búsquedas y pruebas. */

@@ -4,7 +4,7 @@
  * un ajuste puntual; el PDF es el que se firma.
  *
  * Mismo árbol y mismo formato legal que `renderPdf`: A4 con márgenes de 25 × 22
- * mm, Source Serif 4 incrustada en el archivo (Word la usa aunque no esté
+ * mm, Luxcars Serif (Source Serif 4) incrustada en el archivo (Word la usa aunque no esté
  * instalada), cabecera con el logotipo y la razón social sobre un filete
  * dorado, portada centrada, cláusulas en mayúsculas (estilos de Word,
  * navegables), numerales "4.3" en sangría francesa, tablas de bordes finos,
@@ -29,9 +29,11 @@ import {
   PageBreak,
   PageNumber,
   Paragraph,
+  ShadingType,
   Table,
   TableBorders,
   TableCell,
+  TableLayoutType,
   TableRow,
   TabStopType,
   TextRun,
@@ -44,20 +46,23 @@ import {
 } from "docx";
 
 import {
+  alineacionesDeTabla,
   partirInline,
   partirNumeracion,
   tituloCortoDe,
+  unirCifras,
+  type Alineacion,
   type Bloque,
   type Estructura,
   type Texto,
 } from "@/core/expedientes/documentos/estructura";
 
-import { EMPRESA, MEDIDAS_MM, ORO, PROPORCION, recursos, rotulos } from "./recursos";
+import { EMPRESA, FILAS_TABLA_JUNTA, MEDIDAS_MM, ORO, PROPORCION, RELLENO_CELDA_PT, TABLA_PT, anchosDeTabla, recursos, rotulos } from "./recursos";
 
-const FUENTE = "Source Serif 4";
+const FUENTE = "Luxcars Serif";
 /** Tamaños en medios puntos (docx): 21 = 10,5 pt. */
 const CUERPO = 21;
-const TABLA = 19;
+const TABLA = TABLA_PT * 2;
 const NOTA = 18;
 const PIE = 15;
 /** Interlineado 1,35 en 240avos de línea. */
@@ -66,7 +71,8 @@ const INTERLINEADO = 324;
 const TINTA = "111111";
 const GRIS = "5F6368";
 const GRIS_LINEA = "C4C4C8";
-const GRIS_FONDO = "EFEFEF";
+/** Fondo de la cabecera de tabla: gris claro que se imprime nítido en blanco y negro. */
+const GRIS_CABECERA = "E4E4E4";
 const ORO_HEX = ORO.replace("#", "").toUpperCase();
 
 /** Twips (1/20 pt). 1 mm = 56,69 twips. */
@@ -90,6 +96,13 @@ const BORDE_TABLA = { style: BorderStyle.SINGLE, size: 4, color: GRIS_LINEA };
 const BORDES_TABLA = { top: BORDE_TABLA, bottom: BORDE_TABLA, left: BORDE_TABLA, right: BORDE_TABLA };
 /** Bordes a nivel de tabla: sin esto `docx` dibuja la rejilla negra por defecto. */
 const REJILLA_GRIS = { ...BORDES_TABLA, insideHorizontal: BORDE_TABLA, insideVertical: BORDE_TABLA };
+/** Raya negra bajo la cabecera de las tablas. */
+const BORDE_CABECERA = { style: BorderStyle.SINGLE, size: 8, color: TINTA };
+const ALINEAR: Record<Alineacion, (typeof AlignmentType)[keyof typeof AlignmentType]> = {
+  izquierda: AlignmentType.LEFT,
+  centro: AlignmentType.CENTER,
+  derecha: AlignmentType.RIGHT,
+};
 
 type Extra = { size?: number; color?: string; bold?: boolean; italics?: boolean };
 
@@ -97,7 +110,7 @@ function tramos(texto: Texto, extra: Extra = {}): TextRun[] {
   return partirInline(texto).map(
     (t) =>
       new TextRun({
-        text: t.texto,
+        text: unirCifras(t.texto),
         bold: extra.bold || t.negrita,
         italics: extra.italics || t.cursiva,
         font: FUENTE,
@@ -115,45 +128,60 @@ function run(text: string, extra: Omit<IRunOptions, "text" | "children"> = {}): 
   return new TextRun({ text, font: FUENTE, size: PIE, color: GRIS, ...extra });
 }
 
-function normalizar(anchos: number[] | undefined, columnas: number): number[] {
-  const base = anchos && anchos.length === columnas ? anchos : Array.from({ length: columnas }, () => 1);
-  const suma = base.reduce((s, x) => s + x, 0) || 1;
-  return base.map((x) => Math.round((x / suma) * ANCHO_UTIL));
+/** Anchos de columna en DXA: los de `anchosDeTabla`, ajustados para que sumen el ancho útil exacto. */
+function anchosDxa(b: Extract<Bloque, { tipo: "tabla" }>): number[] {
+  const dxa = anchosDeTabla(b).map((f) => Math.round(f * ANCHO_UTIL));
+  const diferencia = ANCHO_UTIL - dxa.reduce((s, x) => s + x, 0);
+  if (dxa.length > 0) dxa[dxa.length - 1] = (dxa[dxa.length - 1] ?? 0) + diferencia;
+  return dxa;
 }
 
+/**
+ * Tabla a todo el ancho con anchos fijos (Word no los reajusta), cabecera
+ * destacada que se repite en cada página, cifras alineadas a la derecha
+ * (`alineacionesDeTabla`) y filas que no se parten. Una tabla corta
+ * (`FILAS_TABLA_JUNTA`) va entera: cada fila "se mantiene con la siguiente".
+ */
 function tabla(b: Extract<Bloque, { tipo: "tabla" }>): Table {
-  const columnas = b.cabecera?.length ?? b.filas[0]?.length ?? 1;
-  const anchos = normalizar(b.anchos, columnas);
-  const fila = (celdas: Texto[], cabecera: boolean) =>
-    new TableRow({
-      tableHeader: cabecera,
-      cantSplit: true,
-      children: celdas.map(
-        (c, k) =>
-          new TableCell({
-            width: { size: anchos[k] ?? 1000, type: WidthType.DXA },
-            borders: BORDES_TABLA,
-            shading: cabecera ? { fill: GRIS_FONDO } : undefined,
-            margins: { top: 70, bottom: 70, left: 100, right: 100 },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.LEFT,
-                spacing: { line: 276, after: 0 },
-                children: tramos(c, { size: TABLA, bold: cabecera }),
-              }),
-            ],
-          }),
-      ),
-    });
+  const anchos = anchosDxa(b);
+  const alineaciones = alineacionesDeTabla(b);
+  const junta = b.filas.length <= FILAS_TABLA_JUNTA;
+  const filas = [...(b.cabecera ? [{ celdas: b.cabecera, cabecera: true }] : []), ...b.filas.map((celdas) => ({ celdas, cabecera: false }))];
   return new Table({
     width: { size: ANCHO_UTIL, type: WidthType.DXA },
+    layout: TableLayoutType.FIXED,
     borders: REJILLA_GRIS,
     columnWidths: anchos,
-    rows: [...(b.cabecera ? [fila(b.cabecera, true)] : []), ...b.filas.map((f) => fila(f, false))],
+    rows: filas.map(({ celdas, cabecera }, j) => {
+      // La cabecera nunca queda sola al pie; en una tabla corta, ninguna fila se separa de la siguiente.
+      const conSiguiente = j < filas.length - 1 && (cabecera || junta);
+      return new TableRow({
+        tableHeader: cabecera,
+        cantSplit: true,
+        children: celdas.map(
+          (c, k) =>
+            new TableCell({
+              width: { size: anchos[k] ?? 1000, type: WidthType.DXA },
+              borders: cabecera ? { ...BORDES_TABLA, bottom: BORDE_CABECERA } : BORDES_TABLA,
+              shading: cabecera ? { type: ShadingType.CLEAR, color: "auto", fill: GRIS_CABECERA } : undefined,
+              margins: { top: 70, bottom: 70, left: RELLENO_CELDA_PT * 20, right: RELLENO_CELDA_PT * 20 },
+              children: [
+                new Paragraph({
+                  alignment: ALINEAR[alineaciones[k] ?? "izquierda"],
+                  spacing: { line: 276, after: 0 },
+                  keepNext: conSiguiente,
+                  keepLines: true,
+                  children: tramos(c, { size: TABLA, bold: cabecera }),
+                }),
+              ],
+            }),
+        ),
+      });
+    }),
   });
 }
 
-/** Firmas de dos en dos: cada fila entera se mantiene en la misma página. */
+/** Firmas de dos en dos por fila. */
 function enPares<T>(xs: T[]): T[][] {
   const filas: T[][] = [];
   for (let i = 0; i < xs.length; i += 2) filas.push(xs.slice(i, i + 2));
@@ -161,57 +189,61 @@ function enPares<T>(xs: T[]): T[][] {
 }
 
 /**
- * Bloque de firmas como tabla sin bordes, dos columnas por fila: espacio para
- * firmar, la raya y las líneas debajo. `cantSplit` + `keepNext` para que ni la
- * fila ni sus párrafos se separen entre páginas.
+ * Bloque de firmas como UNA tabla sin bordes, dos firmantes por fila: espacio
+ * para firmar, la raya y las líneas debajo. Ninguna fila se parte (`cantSplit`)
+ * y todas menos la última "se mantienen con la siguiente", así el bloque entero
+ * queda en la misma página.
  */
-function firmas(b: Extract<Bloque, { tipo: "firmas" }>): Table[] {
-  return enPares(b.columnas).map((par) => {
-    const n = b.columnas.length > 1 ? 2 : 1;
-    const ancho = Math.floor(ANCHO_UTIL / n);
-    const celdas = par.map(
-      (col) =>
-        new TableCell({
-          width: { size: ancho, type: WidthType.DXA },
-          borders: SIN_BORDES,
-          margins: { top: 0, bottom: 60, left: 400, right: 400 },
-          children: [
-            new Paragraph({ spacing: { before: twips(MEDIDAS_MM.espacioFirma), after: 0, line: 240 }, keepNext: true, keepLines: true }),
-            new Paragraph({
-              border: { top: { style: BorderStyle.SINGLE, size: 6, color: TINTA, space: 4 } },
-              spacing: { before: 0, after: 60, line: 240 },
-              keepNext: true,
-              keepLines: true,
-            }),
-            ...col.lineas.map(
-              (l, k) =>
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  spacing: { after: 0, line: 276 },
-                  keepNext: k < col.lineas.length - 1,
-                  keepLines: true,
-                  children: tramos(l, { size: TABLA, bold: k === 0 }),
-                }),
-            ),
-          ],
-        }),
-    );
-    if (par.length === 1 && n === 2) {
-      celdas.push(new TableCell({ width: { size: ancho, type: WidthType.DXA }, borders: SIN_BORDES, children: [new Paragraph({})] }));
-    }
-    return new Table({
-      width: { size: ANCHO_UTIL, type: WidthType.DXA },
-      borders: TableBorders.NONE,
-      columnWidths: celdas.map(() => ancho),
-      rows: [new TableRow({ cantSplit: true, children: celdas })],
-    });
+function firmas(b: Extract<Bloque, { tipo: "firmas" }>): Table {
+  const n = b.columnas.length > 1 ? 2 : 1;
+  const ancho = Math.floor(ANCHO_UTIL / n);
+  const pares = enPares(b.columnas);
+  return new Table({
+    width: { size: ANCHO_UTIL, type: WidthType.DXA },
+    layout: TableLayoutType.FIXED,
+    borders: TableBorders.NONE,
+    columnWidths: Array.from({ length: n }, () => ancho),
+    rows: pares.map((par, j) => {
+      const ultimaFila = j === pares.length - 1;
+      const celdas = par.map(
+        (col) =>
+          new TableCell({
+            width: { size: ancho, type: WidthType.DXA },
+            borders: SIN_BORDES,
+            margins: { top: 0, bottom: 60, left: 400, right: 400 },
+            children: [
+              new Paragraph({ spacing: { before: twips(MEDIDAS_MM.espacioFirma), after: 0, line: 240 }, keepNext: true, keepLines: true }),
+              new Paragraph({
+                border: { top: { style: BorderStyle.SINGLE, size: 6, color: TINTA, space: 4 } },
+                spacing: { before: 0, after: 60, line: 240 },
+                keepNext: true,
+                keepLines: true,
+              }),
+              ...col.lineas.map(
+                (l, k) =>
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 0, line: 276 },
+                    keepNext: !ultimaFila || k < col.lineas.length - 1,
+                    keepLines: true,
+                    children: tramos(l, { size: TABLA, bold: k === 0 }),
+                  }),
+              ),
+            ],
+          }),
+      );
+      if (par.length === 1 && n === 2) {
+        celdas.push(new TableCell({ width: { size: ancho, type: WidthType.DXA }, borders: SIN_BORDES, children: [new Paragraph({ keepNext: !ultimaFila })] }));
+      }
+      return new TableRow({ cantSplit: true, children: celdas });
+    }),
   });
 }
 
 function bloques(lista: Bloque[]): (Paragraph | Table)[] {
   const salida: (Paragraph | Table)[] = [];
   let instanciaNumerada = 0;
-  for (const b of lista) {
+  for (const [indice, b] of lista.entries()) {
     switch (b.tipo) {
       case "titulo":
         salida.push(
@@ -224,6 +256,8 @@ function bloques(lista: Bloque[]): (Paragraph | Table)[] {
         );
         break;
       case "parrafo": {
+        // El párrafo de cierre ("Firmado en…, el…") no se separa de las firmas.
+        const conFirmas = lista[indice + 1]?.tipo === "firmas" ? { keepNext: true, keepLines: true } : {};
         const num = b.alineacion === "centro" ? null : partirNumeracion(b.texto);
         if (num) {
           salida.push(
@@ -231,11 +265,12 @@ function bloques(lista: Bloque[]): (Paragraph | Table)[] {
               alignment: AlignmentType.JUSTIFIED,
               indent: { left: SANGRIA, hanging: SANGRIA },
               tabStops: [{ type: TabStopType.LEFT, position: SANGRIA }],
+              ...conFirmas,
               children: [new TextRun({ text: `${num.numero}\t`, font: FUENTE, size: CUERPO, color: TINTA }), ...tramos(num.resto)],
             }),
           );
         } else {
-          salida.push(parrafo(b.texto, { alignment: b.alineacion === "centro" ? AlignmentType.CENTER : AlignmentType.JUSTIFIED }));
+          salida.push(parrafo(b.texto, { alignment: b.alineacion === "centro" ? AlignmentType.CENTER : AlignmentType.JUSTIFIED, ...conFirmas }));
         }
         break;
       }
@@ -282,7 +317,7 @@ function bloques(lista: Bloque[]): (Paragraph | Table)[] {
         salida.push(tabla(b), new Paragraph({ spacing: { before: 0, after: 80, line: 240 } }));
         break;
       case "firmas":
-        salida.push(...firmas(b), new Paragraph({ spacing: { before: 0, after: 60, line: 240 } }));
+        salida.push(firmas(b), new Paragraph({ spacing: { before: 0, after: 60, line: 240 } }));
         break;
     }
   }
@@ -305,6 +340,8 @@ function imagenFlotante(data: Buffer, anchoMm: number, proporcion: number): Imag
       behindDocument: true,
       allowOverlap: true,
       lockAnchor: true,
+      // Fuera de toda celda: con "diseño en celda" Word la ubicaría respecto de la celda, no de la página.
+      layoutInCell: false,
       wrap: { type: TextWrappingType.NONE },
       margins: { top: emu(0), bottom: emu(0), left: emu(0), right: emu(0) },
     },
@@ -324,6 +361,7 @@ function cabecera(estructura: Estructura): Header {
     children: [
       new Table({
         width: { size: ANCHO_UTIL, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
         borders: TableBorders.NONE,
         columnWidths: [anchoLogo, ANCHO_UTIL - anchoLogo],
         rows: [
@@ -338,7 +376,6 @@ function cabecera(estructura: Estructura): Header {
                   new Paragraph({
                     spacing: { before: 0, after: 0, line: 240 },
                     children: [
-                      ...flotantes,
                       new ImageRun({
                         type: "png",
                         data: r.logo,
@@ -367,7 +404,9 @@ function cabecera(estructura: Estructura): Header {
           }),
         ],
       }),
-      new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ORO_HEX, space: 1 } }, spacing: { before: 60, after: 0, line: 120 } }),
+      // Filete dorado. La marca de agua se ancla en este párrafo y no en la tabla
+      // de arriba: anclada dentro de una celda, Word la ubicaría respecto de ella.
+      new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ORO_HEX, space: 1 } }, spacing: { before: 60, after: 0, line: 120 }, children: flotantes }),
     ],
   });
 }

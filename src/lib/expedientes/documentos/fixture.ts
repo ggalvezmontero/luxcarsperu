@@ -17,8 +17,47 @@ import {
   salto,
   tabla,
   vinetas,
+  type Bloque,
   type Estructura,
 } from "@/core/expedientes/documentos/estructura";
+
+/**
+ * El calendario de pagos con que abren el contrato, el Anexo B, el Anexo D y
+ * los avisos de pago: cinco filas, montos a la derecha, número de pago al
+ * centro. Es lo primero que lee el cliente.
+ */
+export function tablaCalendario(): Bloque {
+  return tabla(
+    ["Pago", "Cuándo", "Qué cubre", "Monto", "Dónde pagas"],
+    [
+      ["1", "Al firmar el contrato", "30 % de los honorarios (fijo)", "USD 2,692.45", "Cuenta de operaciones de Luxcars; la detracción, al Banco de la Nación"],
+      ["2", "Al aprobar la inspección, a más tardar el 12 de diciembre de 2026", "Precio del vehículo, transporte en origen, flete y seguro (estimado)", "USD 64,008.00", "Cuenta Fondos de Clientes, CCI 002-194-000000000000-00"],
+      ["3", "Antes del arribo, un día hábil después del aviso", "Tributos de importación y gastos de aduana, más 3 % de margen (estimado)", "USD 24,778.97", "Cuenta Fondos de Clientes"],
+      ["4", "Al recibir el vehículo con placas", "70 % de los honorarios (fijo)", "USD 6,282.37", "Cuenta de operaciones de Luxcars; la detracción, al Banco de la Nación"],
+      ["", "**Total estimado**", "", "**USD 97,761.79**", ""],
+    ],
+    [0.7, 2.6, 3.2, 1.7, 2.6],
+  );
+}
+
+/** Una tabla que no cabe en una página: para probar que se parte entre filas y repite la cabecera. */
+export function fixtureTablaLarga(filas = 60): Estructura {
+  return {
+    titulo: "Rendición de cuentas",
+    subtitulo: "Expediente LC-2026-099 · Movimientos del expediente",
+    idioma: "es",
+    codigoExpediente: "LC-2026-099",
+    bloques: [
+      p("Movimientos registrados en el libro del expediente."),
+      tabla(
+        ["Fecha", "Concepto", "Monto"],
+        Array.from({ length: filas }, (_, i) => [`2026-12-${String((i % 28) + 1).padStart(2, "0")}`, `Movimiento número ${i + 1} del expediente`, `USD ${(1250.5 * (i + 1)).toLocaleString("en-US", { minimumFractionDigits: 2 })}`]),
+        [1.2, 4, 1.6],
+      ),
+      p("Fin de la rendición."),
+    ],
+  };
+}
 
 export function fixtureCompleto(cambios: Partial<Estructura> = {}): Estructura {
   return {
@@ -29,6 +68,8 @@ export function fixtureCompleto(cambios: Partial<Estructura> = {}): Estructura {
     idioma: "es",
     codigoExpediente: "LC-2026-099",
     bloques: [
+      h2("Calendario de pagos"),
+      tablaCalendario(),
       p("Conste por el presente documento el **contrato de mandato** que celebran *Lux Cars Import S.A.C.* y el Mandante, en los términos siguientes."),
       h1("Título preliminar"),
       h2("Primera: Antecedentes"),
@@ -90,16 +131,7 @@ export function fixtureAnexoB(): Estructura {
       h2("1. Costo estimado puesto en Lima"),
       tabla(["#", "Concepto", "Base de cálculo", "USD estimado"], filas, [0.6, 3, 4, 1.8]),
       h2("2. Calendario de pagos"),
-      tabla(
-        ["Hito", "Cuándo", "Qué cubre", "USD", "Cuenta de destino"],
-        [
-          ["H1", "Firma del Anexo A", "30 % de los honorarios (fijo)", "2,692.45", "Operaciones"],
-          ["H2", "Inspección aprobada", "Líneas 1 a 4 (estimado)", "64,008.00", "Fondos de Clientes"],
-          ["H3", "Antes del arribo", "Líneas 5 a 7 más margen del 3 %", "24,778.97", "Fondos de Clientes"],
-          ["H4", "Entrega con placas", "70 % de los honorarios (fijo)", "6,282.37", "Operaciones"],
-        ],
-        [0.8, 3, 3, 1.6, 2.6],
-      ),
+      tablaCalendario(),
       p("Lima, 28 de noviembre de 2026"),
       firmas(["LUX CARS IMPORT S.A.C.", "Representante Legal", "DNI 00000000"], ["Prueba & Cía S.A.C.", "Ana Pérez", "DNI 12345678"]),
     ],

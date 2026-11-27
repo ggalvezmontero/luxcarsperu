@@ -10,7 +10,7 @@
  * `src/app/globals.css`, utilidad `papel-doc`.
  */
 
-import { partirInline, partirNumeracion, tituloCortoDe, type Bloque, type Estructura, type Texto, type Tramo } from "./estructura";
+import { alineacionesDeTabla, partirInline, partirNumeracion, tituloCortoDe, unirCifras, type Alineacion, type Bloque, type Estructura, type Texto, type Tramo } from "./estructura";
 
 function escapar(texto: string): string {
   return texto
@@ -21,7 +21,7 @@ function escapar(texto: string): string {
 }
 
 function tramo(t: Tramo): string {
-  let s = escapar(t.texto);
+  let s = escapar(unirCifras(t.texto));
   if (t.negrita) s = `<strong>${s}</strong>`;
   if (t.cursiva) s = `<em>${s}</em>`;
   return s;
@@ -29,6 +29,13 @@ function tramo(t: Tramo): string {
 
 export function inlineHtml(texto: Texto): string {
   return partirInline(texto).map(tramo).join("");
+}
+
+/** Clase de alineación de una celda; la izquierda es la de siempre y no lleva clase. */
+function claseCelda(alineacion: Alineacion | undefined): string {
+  if (alineacion === "derecha") return ' class="doc-celda-der"';
+  if (alineacion === "centro") return ' class="doc-celda-centro"';
+  return "";
 }
 
 function bloqueHtml(b: Bloque): string {
@@ -52,11 +59,12 @@ function bloqueHtml(b: Bloque): string {
       return `<ul class="doc-ul doc-ul-${b.estilo}">${items}</ul>`;
     }
     case "tabla": {
+      const alineaciones = alineacionesDeTabla(b);
       const cab = b.cabecera
-        ? `<thead><tr>${b.cabecera.map((c) => `<th>${inlineHtml(c)}</th>`).join("")}</tr></thead>`
+        ? `<thead><tr>${b.cabecera.map((c, k) => `<th${claseCelda(alineaciones[k])}>${inlineHtml(c)}</th>`).join("")}</tr></thead>`
         : "";
       const filas = b.filas
-        .map((f) => `<tr>${f.map((c) => `<td>${inlineHtml(c)}</td>`).join("")}</tr>`)
+        .map((f) => `<tr>${f.map((c, k) => `<td${claseCelda(alineaciones[k])}>${inlineHtml(c)}</td>`).join("")}</tr>`)
         .join("");
       return `<table class="doc-tabla">${cab}<tbody>${filas}</tbody></table>`;
     }

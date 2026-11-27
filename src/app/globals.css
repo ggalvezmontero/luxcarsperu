@@ -384,7 +384,10 @@ select:not([multiple]) optgroup {
   & .doc-casilla { display: inline-block; width: 0.65em; height: 0.65em; border: 1px solid var(--color-void); margin-right: 0.6em; vertical-align: -0.05em; }
   & .doc-tabla { width: 100%; border-collapse: collapse; margin: 0.3rem 0 0.7rem; font-size: 0.72rem; }
   & .doc-tabla th, & .doc-tabla td { border: 1px solid var(--color-line-strong); padding: 0.3rem 0.45rem; text-align: left; vertical-align: top; }
-  & .doc-tabla th { background: var(--color-silver-bright); font-weight: 700; }
+  & .doc-tabla th { background: var(--color-silver-bright); font-weight: 700; border-bottom: 2px solid var(--color-void); }
+  /* Cifras a la derecha con dígitos del mismo ancho; enteros cortos al centro (alineacionesDeTabla). */
+  & .doc-tabla .doc-celda-der { text-align: right; font-variant-numeric: tabular-nums; }
+  & .doc-tabla .doc-celda-centro { text-align: center; }
   /* Firmas: dos por fila, con espacio para firmar encima de la raya. */
   & .doc-firmas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 2rem; margin-top: 0.5rem; }
   & .doc-firma { text-align: center; font-size: 0.72rem; padding-top: 3.5rem; margin: 0 0.5rem 0.75rem; }
