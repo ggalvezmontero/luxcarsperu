@@ -12,15 +12,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { Badge, Notice, PortalPageHeader, PortalPanel } from "@/components/portal/CrmUI";
-import { AreaTexto, Campo, Dato, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
+import { AreaTexto, Campo, Dato, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
 import { EtapaBadge } from "@/components/portal/expedientes/Piezas";
 import { usePortalSession } from "@/components/portal/portalSession";
-import { calcularCotizacion, estadoEfectivo, importadorDe, usd } from "@/core/cotizaciones";
+import { calcularCotizacion, estadoEfectivo, importadorCompleto, importadorDe, usd, type ClienteCotizacion } from "@/core/cotizaciones";
 import type { ImporterProfile } from "@/core/pricing/pricingConfig";
 import {
   aceptarCotizacion,
   cambiarEstadoCotizacion,
   cargarCotizacion,
+  completarImportadores,
   generarDocumentoCotizacion,
   guardarCotizacion,
   urlDescargaCotizacion,
@@ -45,6 +46,7 @@ export function CotizacionDetalleScreen({ id }: { id: string }) {
   const [perfil, setPerfil] = useState<ImporterProfile>("primera-importacion");
   const [percepcionEnPago4, setPercepcionEnPago4] = useState(false);
   const [motivo, setMotivo] = useState("");
+  const [importadores, setImportadores] = useState<ClienteCotizacion[]>([]);
 
   const load = useCallback(async () => {
     if (!client) return;
@@ -149,7 +151,16 @@ export function CotizacionDetalleScreen({ id }: { id: string }) {
           ) : null}
           {aceptable ? (
             <>
-              <Button size="sm" disabled={busy !== null} onClick={() => setAceptando((v) => !v)}>Aceptar y abrir expedientes</Button>
+              <Button
+                size="sm"
+                disabled={busy !== null}
+                onClick={() => {
+                  setImportadores(q.datos.autos.map((a) => ({ ...importadorDe(a, q.cliente), clienteId: undefined })));
+                  setAceptando((v) => !v);
+                }}
+              >
+                Aceptar y abrir expedientes
+              </Button>
               <Button size="sm" variant="secondary" disabled={busy !== null} onClick={() => setRechazando((v) => !v)}>Rechazada</Button>
               {q.estado === "enviada" ? (
                 <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => void ejecutar("vencida", () => cambiarEstadoCotizacion(client, q.id, "vencida"))}>Marcar vencida</Button>
@@ -168,6 +179,31 @@ export function CotizacionDetalleScreen({ id }: { id: string }) {
               Se abre un expediente por auto ({q.datos.autos.length}), en búsqueda, con el presupuesto, los cinco pagos y los datos del cliente de esta cotización.
               {q.datos.autos.length > 1 ? " Quedan juntos en un embarque consolidado nuevo." : ""} El contrato se prepara cuando el cliente aprueba la unidad desde su cuenta.
             </p>
+            <div className="space-y-3">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-ink-4">Importador de cada auto (obligatorio para aceptar)</p>
+              {importadores.map((imp, i) => {
+                const cambiar = (c: Partial<ClienteCotizacion>) => setImportadores((p) => p.map((x, j) => (j === i ? { ...x, ...c } : x)));
+                return (
+                  <div key={i} className="rounded-lux border border-line px-4 py-3">
+                    <p className="mb-2 text-sm text-ink">
+                      Auto {i + 1} · {q.datos.autos[i].marca} {q.datos.autos[i].modelo}
+                      {importadorCompleto(imp) ? null : <span className="ml-2 text-xs text-warn">falta completar</span>}
+                    </p>
+                    <Rejilla columnas={4}>
+                      <Campo label="Tipo">
+                        <Selector value={imp.tipo} onChange={(e) => cambiar({ tipo: e.target.value as ClienteCotizacion["tipo"] })}>
+                          <option value="empresa">Empresa</option>
+                          <option value="persona">Persona natural</option>
+                        </Selector>
+                      </Campo>
+                      <Campo label={imp.tipo === "empresa" ? "Razón social" : "Nombre"} requerido><Entrada value={imp.nombre} onChange={(e) => cambiar({ nombre: e.target.value })} /></Campo>
+                      <Campo label={imp.tipo === "empresa" ? "RUC" : "DNI o carné"} requerido><Entrada inputMode="numeric" value={imp.documento} onChange={(e) => cambiar({ documento: e.target.value })} /></Campo>
+                      <Campo label="Correo"><Entrada type="email" value={imp.email} onChange={(e) => cambiar({ email: e.target.value })} /></Campo>
+                    </Rejilla>
+                  </div>
+                );
+              })}
+            </div>
             <Rejilla columnas={2}>
               <Campo label="Perfil del importador" hint="Fija la percepción del expediente.">
                 <Selector value={perfil} onChange={(e) => setPerfil(e.target.value as ImporterProfile)}>
@@ -185,7 +221,13 @@ export function CotizacionDetalleScreen({ id }: { id: string }) {
               disabled={busy !== null}
               onClick={() =>
                 void ejecutar("aceptar", async () => {
-                  const r = await aceptarCotizacion(client, q, { perfil, percepcionEnTributos: percepcionEnPago4 });
+                  const falta = importadores.findIndex((imp) => !importadorCompleto(imp));
+                  if (falta >= 0) return { ok: false, message: `Auto ${falta + 1}: completa la razón social o el nombre y el RUC (11 dígitos) o DNI del importador.` };
+                  const c = await completarImportadores(client, q.id, importadores);
+                  if (!c.ok) return c;
+                  const fresca = await cargarCotizacion(client, q.id);
+                  if (!fresca.cotizacion) return { ok: false, message: fresca.error ?? "No se pudo releer la cotización." };
+                  const r = await aceptarCotizacion(client, fresca.cotizacion, { perfil, percepcionEnTributos: percepcionEnPago4 });
                   if (r.ok) setAceptando(false);
                   return r;
                 })

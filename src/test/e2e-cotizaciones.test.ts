@@ -7,7 +7,10 @@
  * inventadas. No correr en paralelo con las otras e2e (comparten la cuenta cliente).
  *
  * Cubre: `guardar_cotizacion` asigna el siguiente COT-AAAA-NNN y solo edita
- * en borrador; `cambiar_estado_cotizacion` exige PDF para enviar y fija la
+ * en borrador; los importadores pueden quedar pendientes (sin razón social ni
+ * RUC) hasta aceptar: `clientes_de_cotizacion` lo rechaza y
+ * `completar_importadores_cotizacion` los fija ya enviada, sin tocar cifras;
+ * `cambiar_estado_cotizacion` exige PDF para enviar y fija la
  * vigencia de 15 días; el cliente ve la cotización por `cotizacion_cliente`
  * (correo de su cuenta) y otro usuario no; `clientes_de_cotizacion` crea una
  * ficha por importador; `aceptar_cotizacion` abre un expediente por auto, en
@@ -64,10 +67,16 @@ async function reponer(nombre: string, antes: number) {
   else await sql.query(`select setval('public.${nombre}', ${antes}, true)`);
 }
 
+const IMPORTADORES = [
+  { tipo: "empresa", nombre: "Prueba Uno E2E S.A.C.", documento: RUC_1, email: "uno-e2e@luxcars.test", telefono: "" },
+  { tipo: "empresa", nombre: "Prueba Dos E2E S.A.C.", documento: RUC_2, email: "dos-e2e@luxcars.test", telefono: "" },
+] as const;
+
 const datos: DatosCotizacion = {
   autos: [
-    { marca: "Marca", modelo: "Alfa Sport", anio: 2026, color: "Gris", condicion: "nuevo", propulsion: "gasolina", origen: "originario-usa", precio: 50000, clase: "M1", importador: { tipo: "empresa", nombre: "Prueba Uno E2E S.A.C.", documento: RUC_1, email: "uno-e2e@luxcars.test", telefono: "" } },
-    { marca: "Otra", modelo: "Beta Hybrid", anio: 2026, color: "", condicion: "nuevo", propulsion: "hev", origen: "originario-usa", precio: 60000, clase: "M1", importador: { tipo: "empresa", nombre: "Prueba Dos E2E S.A.C.", documento: RUC_2, email: "dos-e2e@luxcars.test", telefono: "" } },
+    // Importadores pendientes: la razón social y el RUC se completan al aceptar.
+    { marca: "Marca", modelo: "Alfa Sport", anio: 2026, color: "Gris", condicion: "nuevo", propulsion: "gasolina", origen: "originario-usa", precio: 50000, clase: "M1", importador: { tipo: "empresa", nombre: "", documento: "", email: "", telefono: "" } },
+    { marca: "Otra", modelo: "Beta Hybrid", anio: 2026, color: "", condicion: "nuevo", propulsion: "hev", origen: "originario-usa", precio: 60000, clase: "M1", importador: { tipo: "empresa", nombre: "", documento: "", email: "", telefono: "" } },
   ],
   costos: { flete: 4000, seguro: 600, gastosAduana: 3000, honorarios: 12000 },
   reparto: { modo: "iguales" },
@@ -145,6 +154,20 @@ describe.skipIf(!ACTIVA)("cotizaciones de punta a punta (base real)", () => {
     expect(base).toEqual([]);
   }, 60_000);
 
+  it("importadores pendientes: no se aceptan hasta completarlos, y se completan ya enviada sin tocar cifras", async () => {
+    await expect(comoUsuario(ADMIN, (tx) => tx`select public.clientes_de_cotizacion(${cotizacionId}::uuid)`)).rejects.toThrow(/Falta el nombre|Falta el documento/);
+    const [antes] = (await sql`select total_usd::float as total, datos->'costos' as costos from public.cotizaciones where id = ${cotizacionId}::uuid`) as unknown as { total: number; costos: unknown }[];
+    await expect(
+      comoUsuario(ADMIN, (tx) => tx`select public.completar_importadores_cotizacion(${cotizacionId}::uuid, ${JSON.stringify([{ ...IMPORTADORES[0], documento: "123" }, IMPORTADORES[1]])}::jsonb)`),
+    ).rejects.toThrow(/11 dígitos/);
+    await comoUsuario(ADMIN, (tx) => tx`select public.completar_importadores_cotizacion(${cotizacionId}::uuid, ${JSON.stringify(IMPORTADORES)}::jsonb)`);
+    const [despues] = (await sql`select estado, total_usd::float as total, datos->'costos' as costos, datos->'autos'->1->'importador'->>'documento' as ruc from public.cotizaciones where id = ${cotizacionId}::uuid`) as unknown as { estado: string; total: number; costos: unknown; ruc: string }[];
+    expect(despues.estado).toBe("enviada");
+    expect(despues.total).toBe(antes.total);
+    expect(despues.costos).toEqual(antes.costos);
+    expect(despues.ruc).toBe(RUC_2);
+  }, 60_000);
+
   it("aceptar abre un expediente por auto con las cifras de la cotización, en búsqueda y en un embarque", async () => {
     const [{ ids }] = (await comoUsuario(ADMIN, (tx) => tx`select public.clientes_de_cotizacion(${cotizacionId}::uuid) as ids`)) as { ids: string[] }[];
     expect(ids).toHaveLength(2);
@@ -156,11 +179,11 @@ describe.skipIf(!ACTIVA)("cotizaciones de punta a punta (base real)", () => {
 
     const filas = (await sql`select * from public.clientes where id = any(${ids}::uuid[])`) as unknown as ClienteRow[];
     const resultado = calcularCotizacion(datos);
-    const [q] = (await sql`select codigo from public.cotizaciones where id = ${cotizacionId}::uuid`) as unknown as { codigo: string }[];
-    const expedientes = datos.autos.map((auto, i) =>
+    const [q] = (await sql`select codigo, datos from public.cotizaciones where id = ${cotizacionId}::uuid`) as unknown as { codigo: string; datos: DatosCotizacion }[];
+    const expedientes = q.datos.autos.map((auto, i) =>
       datosExpedienteDesdeCotizacion({
         codigo: q.codigo,
-        datos,
+        datos: q.datos,
         auto,
         resultado: resultado.autos[i],
         cliente: mapCliente(filas.find((f) => f.id === ids[i])!),

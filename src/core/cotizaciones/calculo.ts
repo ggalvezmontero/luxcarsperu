@@ -77,8 +77,8 @@ export function validarDatos(datos: DatosCotizacion): string | null {
     if (resolveIscRate({ category: getVehicleCategory(a.propulsion), condition: a.condicion }) === null) {
       return `${n}: un ${getVehicleCategory(a.propulsion).label.toLowerCase()} usado no se puede importar.`;
     }
+    // La razón social y el RUC del importador pueden quedar pendientes hasta aceptar.
     if (a.importador) {
-      if (a.importador.nombre.trim().length < 2) return `${n}: falta el nombre o la razón social del importador.`;
       if (a.importador.tipo === "empresa" && a.importador.documento.trim() && !/^\d{11}$/.test(a.importador.documento.trim())) {
         return `${n}: el RUC del importador tiene 11 dígitos.`;
       }

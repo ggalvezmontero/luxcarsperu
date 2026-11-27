@@ -10,6 +10,7 @@ import {
   estadoEfectivo,
   formatoCodigoCotizacion,
   honorariosPropuestos,
+  importadorCompleto,
   presupuestoDesdeCotizacion,
   repartir,
   validarDatos,
@@ -91,15 +92,53 @@ describe("documento", () => {
     expect(txt).toContain("Lima, 28 de noviembre de 2026");
   });
 
-  it("dos empresas: Empresa 1 y 2, calendario de cada empresa y detracción", () => {
+  it("dos empresas conocidas: su razón social en la tabla, calendario de cada empresa y detracción", () => {
     const d = dosAutos([empresa("Uno S.A.C.", "20000000001"), empresa("Dos S.A.C.", "20000000002")]);
     const r = calcularCotizacion(d);
     const txt = textoDeEstructura(construirDocumentoCotizacion({ codigo: "COT-2026-901", fecha: "2026-11-28", cliente: persona, datos: d, resultado: r }));
-    expect(txt).toContain("Empresa 2");
+    expect(txt).toContain("Dos S.A.C.");
     expect(txt).toContain("Calendario de pagos de cada empresa");
     expect(txt).toContain("entre las dos");
     expect(txt).toContain("Crédito fiscal y detracción");
     expect(txt).toContain("por la Alfa y");
+  });
+});
+
+describe("contacto e importadores", () => {
+  const pendiente = (): ClienteCotizacion => ({ tipo: "empresa", nombre: "", documento: "", email: "", telefono: "" });
+
+  it("importadores pendientes: Atención al contacto, Empresa 1 y 2, calendario de cada empresa", () => {
+    const d = dosAutos([pendiente(), pendiente()]);
+    expect(validarDatos(d)).toBeNull();
+    const txt = textoDeEstructura(construirDocumentoCotizacion({ codigo: "COT-2026-902", fecha: "2026-11-28", cliente: persona, datos: d, resultado: calcularCotizacion(d) }));
+    expect(txt).toContain("Atención: Cliente de Prueba · un contenedor · dos empresas importadoras");
+    expect(txt).toContain("Empresa 1");
+    expect(txt).toContain("Empresa 2");
+    expect(txt).toContain("Calendario de pagos de cada empresa");
+    expect(txt).toContain("Crédito fiscal y detracción");
+  });
+
+  it("con la razón social conocida, la tabla de vehículos la muestra", () => {
+    const d = dosAutos([empresa("Uno S.A.C.", "20000000001"), pendiente()]);
+    const txt = textoDeEstructura(construirDocumentoCotizacion({ codigo: "COT-2026-903", fecha: "2026-11-28", cliente: persona, datos: d, resultado: calcularCotizacion(d) }));
+    expect(txt).toContain("Uno S.A.C.");
+    expect(txt).toContain("Empresa 2");
+  });
+
+  it("un solo importador distinto del contacto: Atención y quién importa", () => {
+    const uno = empresa("Uno S.A.C.", "20000000001");
+    const d = dosAutos([uno, uno]);
+    const txt = textoDeEstructura(construirDocumentoCotizacion({ codigo: "COT-2026-904", fecha: "2026-11-28", cliente: persona, datos: d, resultado: calcularCotizacion(d) }));
+    expect(txt).toContain("Atención: Cliente de Prueba · importa Uno S.A.C.");
+    expect(txt).toContain("Auto 2");
+    expect(txt).toContain("3. Calendario de pagos");
+  });
+
+  it("para aceptar el importador necesita nombre y RUC o DNI", () => {
+    expect(importadorCompleto(pendiente())).toBe(false);
+    expect(importadorCompleto(empresa("Uno S.A.C.", "2000000000"))).toBe(false);
+    expect(importadorCompleto(empresa("Uno S.A.C.", "20000000001"))).toBe(true);
+    expect(importadorCompleto(persona)).toBe(true);
   });
 });
 

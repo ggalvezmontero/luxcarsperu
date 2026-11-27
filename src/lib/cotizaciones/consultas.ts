@@ -7,6 +7,8 @@
 
 import {
   calcularCotizacion,
+  importadorCompleto,
+  importadorDe,
   type ClienteCotizacion,
   type DatosCotizacion,
   type EstadoCotizacion,
@@ -217,6 +219,10 @@ export async function aceptarCotizacion(client: PortalClient, q: Cotizacion, opc
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "No se pudo calcular la cotización." };
   }
+  const incompleto = q.datos.autos.findIndex((a) => !importadorCompleto(importadorDe(a, q.cliente)));
+  if (incompleto >= 0) {
+    return { ok: false, message: `Auto ${incompleto + 1}: para aceptar falta la razón social o el nombre del importador y su RUC (11 dígitos) o DNI.` };
+  }
   try {
     const { data: ids, error: e1 } = await client.rpc("clientes_de_cotizacion", { p_id: q.id });
     if (e1) return { ok: false, message: error(e1.message) };
@@ -234,6 +240,23 @@ export async function aceptarCotizacion(client: PortalClient, q: Cotizacion, opc
     if (e2) return { ok: false, message: error(e2.message) };
     const creados = (Array.isArray(data) ? data : []) as string[];
     return { ok: true, message: creados.length === 1 ? "Cotización aceptada: expediente abierto." : `Cotización aceptada: ${creados.length} expedientes abiertos.`, expedienteIds: creados };
+  } catch {
+    return { ok: false, message: MSG_RED };
+  }
+}
+
+/**
+ * Fija el importador de cada auto (pendiente hasta aceptar) sin tocar cifras;
+ * vale también en una cotización enviada.
+ */
+export async function completarImportadores(client: PortalClient, id: string, importadores: ClienteCotizacion[]): Promise<Resultado> {
+  try {
+    const { error: er } = await client.rpc("completar_importadores_cotizacion", {
+      p_id: id,
+      p_importadores: importadores.map((c) => ({ tipo: c.tipo, nombre: c.nombre.trim(), documento: c.documento.replace(/\s/g, ""), email: c.email.trim(), telefono: c.telefono.trim() })),
+    });
+    if (er) return { ok: false, message: error(er.message) };
+    return { ok: true, message: "Importadores guardados." };
   } catch {
     return { ok: false, message: MSG_RED };
   }

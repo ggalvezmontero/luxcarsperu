@@ -222,7 +222,7 @@ export function CotizacionEditor({
 
   return (
     <div className="space-y-6">
-      <PortalPanel title="Cliente" description="A quien va dirigida la cotización. Si un auto lo importa otra persona o empresa, se indica en ese auto.">
+      <PortalPanel title="Contacto" description="Quien pide la cotización (el PDF dice «Atención: …»). Si los autos se importan a nombre de otras personas o empresas, se indica en cada auto.">
         <div className="space-y-4 px-5 py-4">
           <ClienteCampos valor={f.cliente} onChange={(c) => set({ cliente: { ...f.cliente, ...c } })} prefijo="cliente" />
         </div>
@@ -276,7 +276,8 @@ export function CotizacionEditor({
             {a.otroImportador ? (
               <div className="rounded-lux border border-line px-4 py-3">
                 <p className="mb-3 text-[11px] uppercase tracking-[0.12em] text-ink-4">Importador del auto {i + 1}</p>
-                <ClienteCampos valor={a.importador} onChange={(c) => setImportador(i, c)} prefijo={`imp-${i}`} />
+                <p className="mb-3 text-xs text-ink-4">La razón social y el RUC pueden quedar pendientes: se piden al aceptar la cotización. Mientras falten, el PDF dice &quot;Empresa {i + 1}&quot;.</p>
+                <ClienteCampos valor={a.importador} onChange={(c) => setImportador(i, c)} prefijo={`imp-${i}`} pendiente />
               </div>
             ) : null}
           </div>
@@ -341,7 +342,7 @@ export function CotizacionEditor({
   );
 }
 
-function ClienteCampos({ valor, onChange, prefijo }: { valor: ClienteForm; onChange: (c: Partial<ClienteForm>) => void; prefijo: string }) {
+function ClienteCampos({ valor, onChange, prefijo, pendiente = false }: { valor: ClienteForm; onChange: (c: Partial<ClienteForm>) => void; prefijo: string; pendiente?: boolean }) {
   return (
     <Rejilla columnas={4}>
       <Campo label="Tipo">
@@ -350,7 +351,7 @@ function ClienteCampos({ valor, onChange, prefijo }: { valor: ClienteForm; onCha
           <option value="empresa">Empresa</option>
         </Selector>
       </Campo>
-      <Campo label={valor.tipo === "empresa" ? "Razón social" : "Nombre"} requerido>
+      <Campo label={valor.tipo === "empresa" ? "Razón social" : "Nombre"} requerido={!pendiente} hint={pendiente ? "Puede quedar pendiente" : undefined}>
         <Entrada name={`${prefijo}-nombre`} value={valor.nombre} onChange={(e) => onChange({ nombre: e.target.value })} />
       </Campo>
       <Campo label={valor.tipo === "empresa" ? "RUC" : "DNI o carné"}>

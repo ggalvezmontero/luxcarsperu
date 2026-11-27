@@ -19,6 +19,8 @@ export {
   PLAZO_POR_DEFECTO,
   construirDocumentoCotizacion,
   fechaLarga,
+  clavesImportadores,
+  importadorCompleto,
   importadorDe,
   importadoresDistintos,
   nombreArchivoCotizacion,

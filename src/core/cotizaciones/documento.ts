@@ -62,19 +62,37 @@ export function importadorDe(auto: AutoCotizacion, cliente: ClienteCotizacion): 
   return auto.importador ?? cliente;
 }
 
-function claveImportador(c: ClienteCotizacion): string {
+/**
+ * Quién es el mismo importador: por documento, si no por nombre. Un importador
+ * todavía sin razón social ni RUC (pendiente hasta aceptar) cuenta como uno
+ * distinto por auto.
+ */
+function claveImportador(c: ClienteCotizacion, indiceAuto: number): string {
   const doc = c.documento.replace(/\s/g, "");
-  return doc ? `${c.tipo}:${doc}` : `${c.tipo}:${c.nombre.trim().toLowerCase()}`;
+  if (doc) return `${c.tipo}:${doc}`;
+  const nombre = c.nombre.trim().toLowerCase();
+  return nombre ? `${c.tipo}:${nombre}` : `pendiente:${indiceAuto}`;
+}
+
+/** ¿El importador ya tiene razón social (o nombre) y RUC (o DNI)? Hace falta para aceptar. */
+export function importadorCompleto(c: ClienteCotizacion): boolean {
+  const doc = c.documento.replace(/\s/g, "");
+  return c.nombre.trim().length >= 2 && (c.tipo === "empresa" ? /^\d{11}$/.test(doc) : doc.length >= 6 && doc.length <= 20);
+}
+
+/** Clave del importador de cada auto, en orden. */
+export function clavesImportadores(datos: DatosCotizacion, cliente: ClienteCotizacion): string[] {
+  return datos.autos.map((a, i) => claveImportador(importadorDe(a, cliente), i));
 }
 
 /** Importadores distintos, en el orden de los autos. */
 export function importadoresDistintos(datos: DatosCotizacion, cliente: ClienteCotizacion): ClienteCotizacion[] {
   const vistos = new Map<string, ClienteCotizacion>();
-  for (const a of datos.autos) {
+  datos.autos.forEach((a, i) => {
     const imp = importadorDe(a, cliente);
-    const k = claveImportador(imp);
+    const k = claveImportador(imp, i);
     if (!vistos.has(k)) vistos.set(k, imp);
-  }
+  });
   return [...vistos.values()];
 }
 
@@ -142,11 +160,15 @@ export function construirDocumentoCotizacion(e: EntradaDocumento): Estructura {
   // ---------------------------------------------------------------- portada
   const nombreAutos = enumerar(autos.map((a) => a.nombre.replace(/\s\d{4}$/, "")));
   const unoImp = importadores[0];
+  const claves = clavesImportadores(datos, cliente);
+  const ordenImportador = [...new Set(claves)];
+  const contactoEsImportador = !variosImportadores && datos.autos.every((a) => a.importador === null || claveImportador(a.importador, 0) === claveImportador(cliente, -1));
+  const nombreDe = (c: ClienteCotizacion, numero: number) => c.nombre.trim() || `${c.tipo === "empresa" ? "Empresa" : "Importador"} ${numero}`;
   const subtitulo = variosImportadores
     ? `Atención: ${contacto} · un contenedor · ${NUMEROS_F[importadores.length] ?? importadores.length} ${sustantivoPlural} importador${todosEmpresa ? "as" : "es"}`
     : [
-        `Para ${unoImp.nombre.trim()}`,
-        claveImportador(unoImp) !== claveImportador(cliente) ? `atención: ${contacto}` : null,
+        contactoEsImportador ? `Para ${contacto}` : `Atención: ${contacto}`,
+        contactoEsImportador ? null : `importa ${nombreDe(unoImp, 1)}`,
         nombreAutos,
         varios ? "un contenedor" : null,
       ]
@@ -161,18 +183,24 @@ export function construirDocumentoCotizacion(e: EntradaDocumento): Estructura {
       `El flete, el seguro, los gastos de aduana y los honorarios de Luxcars se reparten ${textoReparto}.`;
   } else if (varios) {
     intro =
-      `Cotización para ${unoImp.nombre.trim()} por la importación de ${NUMEROS[n] ?? n} vehículos${condicionPlural} desde Estados Unidos, en un solo contenedor al Callao. ` +
+      `Cotización para ${nombreDe(unoImp, 1)} por la importación de ${NUMEROS[n] ?? n} vehículos${condicionPlural} desde Estados Unidos, en un solo contenedor al Callao. ` +
       `${n === 2 ? "Ambos autos" : "Todos los autos"} se importan a su nombre. ` +
       `Para mostrar el costo de cada auto, el flete, el seguro, los gastos de aduana y los honorarios de Luxcars se ${iguales ? "dividen en partes iguales" : `reparten ${textoReparto}`}.`;
   } else {
-    intro = `Cotización para ${unoImp.nombre.trim()} por la importación de un vehículo${condicionSingular} desde Estados Unidos al Callao.`;
+    intro = `Cotización para ${nombreDe(unoImp, 1)} por la importación de un vehículo${condicionSingular} desde Estados Unidos al Callao.`;
   }
-  if (!variosImportadores && claveImportador(unoImp) !== claveImportador(cliente)) {
+  if (!variosImportadores && !contactoEsImportador) {
     intro = `A la atención de ${contacto}. ${intro}`;
   }
 
   // ------------------------------------------------------------- vehículos
-  const etiquetaAuto = (i: number) => (variosImportadores ? `${todosEmpresa ? "Empresa" : "Importador"} ${i + 1}` : `Auto ${i + 1}`);
+  // Varios importadores: la razón social si ya se conoce; si no, "Empresa 1", "Empresa 2".
+  const etiquetaAuto = (i: number) => {
+    if (!variosImportadores) return `Auto ${i + 1}`;
+    const numero = ordenImportador.indexOf(claves[i]) + 1;
+    const imp = importadorDe(datos.autos[i], cliente);
+    return imp.nombre.trim() || `${todosEmpresa ? "Empresa" : "Importador"} ${numero}`;
+  };
   const tablaVehiculos = tabla(
     ["", "Vehículo", "Detalle", "Precio"],
     datos.autos.map((a, i) => [etiquetaAuto(i), autos[i].nombre, detalleAuto(a), usd(autos[i].precio)]),
