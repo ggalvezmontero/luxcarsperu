@@ -27,7 +27,7 @@ function construir(c: Campos): Estructura {
         `Sin el código ${c.EXPEDIENTE} en el concepto la transferencia no se aplica hasta identificarla; si no se identifica en dos días hábiles, se devuelve.`,
         "Por cada depósito acreditado en Fondos de Clientes, LUXCARS envía una constancia de recepción dentro de un día hábil, con el saldo del expediente.",
         "Los montos se pactan en dólares americanos. Un pago en soles se convierte al tipo de cambio venta publicado por la SBS el día del abono. Para montos altos conviene usar ventanilla o transferencia interbancaria inmediata: las aplicaciones móviles suelen tener topes diarios.",
-        `La detracción la deposita el Mandante en el Banco de la Nación dentro del plazo legal y envía la constancia a ${c.LUXCARS_CORREO}. [CONFIRMAR con el contador el porcentaje y el código de servicio]`,
+        `La detracción la deposita el Mandante en el Banco de la Nación dentro del plazo legal y envía la constancia a ${c.LUXCARS_CORREO}. Si el Mandante prefiere transferir el total de la factura a la cuenta de Operaciones, LUXCARS deposita la detracción en su propia cuenta del Banco de la Nación dentro de los cinco días hábiles siguientes y le envía la constancia (cláusula 4.3 del contrato). [CONFIRMAR con el contador el porcentaje y el código de servicio]`,
         "Para H1 y H4 se acepta también cheque de gerencia no negociable a nombre de Lux Cars Import S.A.C.",
         "Si el Mandante opta por pagar directamente al vendedor o a SUNAT (cláusula 5.6 del contrato), lo coordina antes con LUXCARS, usa las instrucciones bancarias que LUXCARS le entregue por escrito y envía el comprobante el mismo día.",
       ]),
@@ -44,7 +44,7 @@ function construir(c: Campos): Estructura {
 
 export const anexoD: Plantilla = {
   tipo: "anexo_d",
-  version: "anexo_d@2026-11-25",
+  version: "anexo_d@2026-11-27",
   nombre: "Anexo D · Instrucciones de pago",
   idioma: "es",
   tarea: "luxcars.generar_contrato",

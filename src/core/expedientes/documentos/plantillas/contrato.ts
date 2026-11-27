@@ -52,7 +52,7 @@ function construir(c: Campos): Estructura {
       h2("Cuarta: Honorarios"),
       p(`4.1 Los honorarios de LUXCARS por todos los actos de la cláusula segunda ascienden a USD ${c.COMISION_TOTAL} (base imponible USD ${c.COMISION_BASE} más IGV USD ${c.COMISION_IGV}). El monto incluye el IGV.`),
       p(`4.2 Se pagan en dos partes: USD ${c.COMISION_H1} (30 %) a la firma del Anexo A (hito H1) y USD ${c.COMISION_H4} (70 %) contra la entrega del Vehículo (hito H4). Por cada pago LUXCARS emite factura electrónica con la glosa "Honorarios por servicio de intermediación e importación por mandato, vehículo VIN ${c.VEH_VIN}, expediente ${c.EXPEDIENTE}".`),
-      p(`4.3 Las facturas están sujetas al Sistema de Pago de Obligaciones Tributarias (detracción). El Mandante deposita el ${c.PORCENTAJE_DETRACCION} % de cada factura en la cuenta de detracciones de LUXCARS indicada en el Anexo D y el saldo en la cuenta de Operaciones, dentro del plazo legal. [CONFIRMAR con el contador el porcentaje aplicable antes del primer uso]`),
+      p(`4.3 Las facturas están sujetas al Sistema de Pago de Obligaciones Tributarias (detracción). El Mandante deposita el ${c.PORCENTAJE_DETRACCION} % de cada factura en la cuenta de detracciones de LUXCARS indicada en el Anexo D y el saldo en la cuenta de Operaciones, dentro del plazo legal. Si el Mandante prefiere pagar el importe total de la factura a la cuenta de Operaciones, LUXCARS efectúa por su cuenta el depósito de la detracción en su propia cuenta del Banco de la Nación dentro de los cinco días hábiles siguientes de recibido el pago y remite al Mandante la constancia del depósito. [CONFIRMAR con el contador el porcentaje aplicable antes del primer uso]`),
       p("4.4 Los honorarios comprenden: búsqueda, verificación, inspección previa a la compra, gestión integral de la operación, comisiones del banco de LUXCARS por las transferencias al vendedor, traslado en grúa dentro de Lima hasta la entrega y el tiempo de LUXCARS. No comprenden ningún pago a terceros: precio del Vehículo, impuestos del país de origen, transporte interno, flete, seguro, tributos de importación, gastos de aduana, almacenaje, homologación, tasas registrales, notaría, placas, SOAT, ni gastos extraordinarios (almacenaje o sobreestadía por demora del Mandante, inspecciones adicionales, reclamos a terceros, reexportación)."),
       p("4.5 Los honorarios se pagan en dólares americanos o, a elección del Mandante, en soles al tipo de cambio venta publicado por la SBS en la fecha de pago."),
 
@@ -194,7 +194,7 @@ function construir(c: Campos): Estructura {
 
 export const contrato: Plantilla = {
   tipo: "contrato",
-  version: "contrato@2026-11-25",
+  version: "contrato@2026-11-27",
   nombre: "Contrato de mandato",
   idioma: "es",
   tarea: "luxcars.generar_contrato",
