@@ -2,7 +2,7 @@
  * EXPEDIENTE DE DEMOSTRACIÓN para las citas con clientes (no es una prueba).
  *
  * Siembra en la base y el bucket REALES un expediente ficticio, completo hasta
- * la etapa "tránsito", a nombre de la cuenta demo@luxcars.pe, para enseñar la
+ * la etapa "tránsito", a nombre de la cuenta contacto@luxcars.pe, para enseñar la
  * cuenta del cliente en una reunión: avance, documentos firmados, estado de
  * cuenta con constancias, aprobación de la inspección y el botón "Ya transferí"
  * del hito H3. Hace lo mismo que haría el equipo desde el portal, con las
@@ -12,7 +12,7 @@
  *   SEED_DEMO=1 SEED_DEMO_RESET=1 npx vitest run src/test/seed-demo.test.ts   (borra la demo anterior y la rehace)
  *
  * Queda SALTADO en `npm test`. Requiere `DATABASE_URL` y las credenciales del
- * bucket en `.env.local`, y que exista la cuenta demo@luxcars.pe en Neon Auth.
+ * bucket en `.env.local`, y que exista la cuenta contacto@luxcars.pe en Neon Auth.
  * Todos los datos (empresa, RUC, VIN, dealer, montos de operación) son
  * inventados y se nota: la razón social dice "DEMO".
  */
@@ -37,7 +37,8 @@ for (const raw of ACTIVA ? readFileSync(resolve(process.cwd(), ".env.local"), "u
 
 const sql = neon(process.env.DATABASE_URL || "postgres://x:y@localhost/z");
 const ADMIN = "c3939210-9184-4e18-8ed3-7d2ce7612a64"; // cuenta admin del dueño: actor de lo que "hizo el equipo"
-const DEMO_EMAIL = "demo@luxcars.pe";
+const DEMO_EMAIL = "demo@luxcars.pe"; // correo del CLIENTE ficticio (clave de idempotencia)
+const DEMO_CUENTA = "contacto@luxcars.pe"; // cuenta de Neon Auth con la que el dueño entra en las citas
 
 const claims = (sub: string) => JSON.stringify({ sub, role: "authenticated" });
 type Tx = NeonQueryFunctionInTransaction<false, false>;
@@ -72,8 +73,8 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
     const { EXPEDIENTES_BUCKET, subirObjeto, listarObjetos, borrarObjeto } = await import("@/lib/portal/objectStorage");
 
     // ── La cuenta demo tiene que existir (la crea el dueño o Neon) ────────────
-    const cuenta = await uno(sql`select id from neon_auth."user" where lower(email) = ${DEMO_EMAIL}`);
-    expect(cuenta, `No existe la cuenta ${DEMO_EMAIL} en Neon Auth`).toBeTruthy();
+    const cuenta = await uno(sql`select id from neon_auth."user" where lower(email) = ${DEMO_CUENTA}`);
+    expect(cuenta, `No existe la cuenta ${DEMO_CUENTA} en Neon Auth`).toBeTruthy();
     const DEMO_USER = cuenta.id as string;
 
     // ── Idempotencia: una sola demo ───────────────────────────────────────────
