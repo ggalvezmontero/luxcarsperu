@@ -12,7 +12,7 @@ function contexto(): ContextoExpediente {
   return {
     expediente: {
       id: "e1", codigo: "LC-2026-099", clienteId: "c1", etapa: "contrato", etapaDesde: "2026-11-25T00:00:00Z", origenSolicitudId: null, embarqueId: null, proporcionFlete: 1,
-      vehiculo: { marca: "Ford", modelo: "Bronco", version: null, anio: 2026, vin: "1FMEE5DP0PLA00000", color: null, km: null, combustible: null, cilindradaCc: null, transmision: null, condicion: "nuevo", categoria: "gasolina", origen: "otro", paisEnsamblaje: null, docPropiedad: null, pesoKg: null, medidas: null },
+      vehiculo: { marca: "Ford", modelo: "Bronco", version: null, anio: 2026, vin: "1FMEE5DP0PLA00000", color: null, km: null, combustible: null, cilindradaCc: null, transmision: null, condicion: "nuevo", categoria: "gasolina", origen: "otro", paisEnsamblaje: null, docPropiedad: null, pesoKg: null, medidas: null, clase: "M1" },
       monedaCompra: "USD", precioCompra: 60_000, precioCompraUsd: 60_000, fechaLimiteCompra: null, fechaInspeccion: null, historialRef: null, fechaRelease: null, paisOrigen: "Estados Unidos", puertoOrigen: "Miami",
       presupuesto, honorariosUsd: presupuesto.honorarios, honorariosBaseUsd: presupuesto.honorariosBase, honorariosIgvUsd: presupuesto.honorariosIgv, porcentajeDetraccion: 12, margenH3: 0.03, tarifaCustodiaUsd: 25, costoInspeccionUsd: 350,
       fechaFirma: "2026-11-28", fechaLimiteH2: "2026-12-12", fechaEstEmbarque: "2027-01-09", fechaEstArribo: "2027-02-10", fechaEstEntrega: "2027-03-05", semanasEstimadas: "10 a 14", loaVence: "2027-02-28",

@@ -109,12 +109,11 @@ export {
 } from "./codigo";
 export {
   CAMPOS,
+  CAMPOS_EMPRESA,
   FICHA,
-  LINEA_EN_BLANCO,
-  camposParaImprimir,
   camposPlantilla,
   esCampo,
-  esManual,
+  esCampoEmpresa,
   espiarCampos,
   fechaEnLetras,
   monto,

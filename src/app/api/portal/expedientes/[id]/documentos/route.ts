@@ -1,7 +1,10 @@
 /**
  * /api/portal/expedientes/[id]/documentos — generar documentos del expediente.
  *
- *   GET                         → { fijos }: datos fijos de Luxcars para la vista previa
+ *   GET                         → { fijos, tc }: parámetros de la empresa
+ *                                 (/portal/configuracion, respaldo en la variable
+ *                                 LUXCARS_DOCUMENTOS_JSON) y el tipo de cambio
+ *                                 referencial del día, para la vista previa
  *   POST { tipo, extra?, visibleCliente?, movimientoId?, avisar? }
  *                               → construye el documento desde su plantilla,
  *                                 renderiza PDF y DOCX, los sube al bucket PRIVADO
@@ -19,6 +22,9 @@
  * subir → `registrar_documento`). Los cinco tipos del libro (constancia,
  * aviso H3, liquidación definitiva, acta, rendición) arman sus campos desde
  * `ledger.ts`, no desde el formulario; la constancia exige `movimientoId`.
+ * Los parámetros de la empresa y el tipo de cambio van como `porDefecto` (solo
+ * rellenan lo que el expediente dejó vacío); lo del formulario gana sobre todo.
+ * Ningún campo sale en blanco: si falta uno, 422 con la lista.
  *
  * Nunca lanza: todo error sale como JSON con `ok: false` y un mensaje en español.
  */
@@ -36,6 +42,19 @@ import { emitirDocumento } from "@/lib/expedientes/servidor/emitirDocumento";
 import { avisarPorCorreoSiHayCorreo } from "@/lib/expedientes/servidor/notificar";
 import { verificarSesionPortal } from "@/lib/portal/authServer";
 import { getStorageWriteMissingEnv, isStorageWriteConfigured } from "@/lib/portal/objectStorage";
+import { tipoDeCambioUsdPen } from "@/lib/tipoDeCambio";
+
+/** `TC_REFERENCIAL` del día con cuatro decimales; `null` si el servicio falló (mejor pedirlo que inventarlo). */
+async function tcReferencialDelDia(): Promise<string | null> {
+  const tc = await tipoDeCambioUsdPen();
+  return tc ? tc.pen.toFixed(4) : null;
+}
+
+/** Parámetros de la empresa más el tipo de cambio del día: la capa `porDefecto`. */
+async function porDefectoDelDia(): Promise<CamposExtra> {
+  const [fijos, tc] = await Promise.all([camposFijosLuxcars(), tcReferencialDelDia()]);
+  return tc ? { ...fijos, TC_REFERENCIAL: tc } : fijos;
+}
 
 function fallo(status: number, mensaje: string, extra: Record<string, unknown> = {}) {
   return NextResponse.json({ ok: false, mensaje, ...extra }, { status });
@@ -48,7 +67,8 @@ export async function GET(_request: Request, { params }: Contexto) {
   if (!sesion.ok) return fallo(sesion.status, sesion.mensaje);
   const { id } = await params;
   if (!esUuid(id)) return fallo(400, "Expediente inválido.");
-  return NextResponse.json({ ok: true, fijos: camposFijosLuxcars() });
+  const [fijos, tc] = await Promise.all([camposFijosLuxcars(), tcReferencialDelDia()]);
+  return NextResponse.json({ ok: true, fijos, tc });
 }
 
 export async function POST(request: Request, { params }: Contexto) {
@@ -76,7 +96,7 @@ export async function POST(request: Request, { params }: Contexto) {
   if (!tipo || !plantilla) return fallo(400, "Ese tipo de documento no se genera desde una plantilla.");
 
   // Lo escrito a mano en el formulario, solo nombres de campo válidos y texto.
-  const extra: CamposExtra = { ...camposFijosLuxcars() };
+  const extra: CamposExtra = {};
   if (cuerpo.extra && typeof cuerpo.extra === "object") {
     for (const [k, v] of Object.entries(cuerpo.extra as Record<string, unknown>)) {
       if (esCampo(k) && typeof v === "string" && v.trim()) extra[k] = v.trim().slice(0, 500);
@@ -96,7 +116,8 @@ export async function POST(request: Request, { params }: Contexto) {
   const movimiento = movimientoId ? ctx.movimientos.find((m) => m.id === movimientoId) ?? null : null;
   if (movimientoId && !movimiento) return fallo(404, "Ese movimiento no pertenece al expediente.");
 
-  const r = await emitirDocumento(plantilla, ctx, { actorId: sesion.userId, extra, visibleCliente, movimiento });
+  const porDefecto = await porDefectoDelDia();
+  const r = await emitirDocumento(plantilla, ctx, { actorId: sesion.userId, extra, porDefecto, visibleCliente, movimiento });
   if (!r.ok) return fallo(r.status, r.mensaje, r.faltantes ? { faltantes: r.faltantes } : {});
 
   // Aviso al cliente por correo cuando el documento le queda visible (fase 4).
@@ -127,7 +148,6 @@ export async function POST(request: Request, { params }: Contexto) {
     ok: true,
     documentoId: r.documentoId,
     version: r.version,
-    manualesVacios: r.manualesVacios,
     bytes: r.bytes,
     urls: r.urls,
     aviso,

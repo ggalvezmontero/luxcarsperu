@@ -488,12 +488,17 @@ export function camposRendicion(ctx: ContextoExpediente): CamposExtra {
   };
 }
 
-/** Campos del acta de entrega: placa, TIVe, kilometraje y fecha ya vienen del expediente; acá la fecha en que se acreditó el H4. */
+/**
+ * Campos del acta de entrega: placa, TIVe, kilometraje y fecha ya vienen del
+ * expediente; acá la fecha en que se acreditó el H4, o "pendiente" si todavía
+ * no (el acta marca entonces la casilla de custodia). Nunca vacío: un campo
+ * vacío bloquearía la emisión.
+ */
 export function datosActa(ctx: ContextoExpediente): CamposExtra {
   const h4 = ctx.hitos.find((h) => h.tipo === "H4");
   const acreditado = h4 ? estadoHito(h4, ctx.movimientos) === "acreditado" : false;
   const ultimo = ordenarLibro(ctx.movimientos).filter((m) => esConfirmado(m) && m.tipo === "deposito" && m.hito === "H4").pop();
   return {
-    H4_ACREDITADO_FECHA: acreditado && ultimo ? fechaEnLetras(ultimo.fecha) : "",
+    H4_ACREDITADO_FECHA: acreditado && ultimo ? fechaEnLetras(ultimo.fecha) : "pendiente",
   };
 }

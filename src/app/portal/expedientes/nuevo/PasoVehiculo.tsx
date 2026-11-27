@@ -14,6 +14,7 @@ import { Campo, Entrada, Rejilla, Selector } from "@/components/portal/expedient
 import { resolveOrigin } from "@/core/pricing/originInference";
 import { VEHICLE_CATEGORIES } from "@/core/pricing/vehicleCategories";
 import { normalizeVin, validateVin, vinCheckDigitMatches, type VinDecoded, type VinLookupResponse } from "@/lib/vin";
+import type { ClaseVehiculo } from "@/core/expedientes/tipos";
 import type { VehicleCategoryId, VehicleCondition, VehicleOrigin } from "@/lib/db/types";
 import { presupuestoInicial, type EstadoAlta, type VehiculoForm } from "./estado";
 
@@ -134,6 +135,12 @@ export function PasoVehiculo({
                 {VEHICLE_CATEGORIES.map((c) => (
                   <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
+              </Selector>
+            </Campo>
+            <Campo label="Clase (Anexo A y aduana)" requerido>
+              <Selector value={v.clase} onChange={(e) => set("clase", e.target.value as ClaseVehiculo)}>
+                <option value="M1">M1 · autos y SUV</option>
+                <option value="N1">N1 · pickups y camionetas</option>
               </Selector>
             </Campo>
             <Campo label="Cilindrada (cc)">

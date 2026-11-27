@@ -519,7 +519,8 @@ etapa, año y cliente; búsqueda por código, VIN o cliente; "Ver archivo" lee l
 cerrados y cancelados por año de cierre), `/nuevo` (asistente; `?solicitud=`
 precarga marca, modelo, años, condición, presupuesto, notas y cliente desde
 `/portal/solicitudes`), `/[id]` (pestañas Resumen, Cliente, Vehículo, Dinero,
-Documentos, Embarque, Etapas y tareas, Actividad), `/cumplimiento` (Registro
+Documentos, Embarque, Etapas y tareas, Actividad), `/portal/configuracion`
+(datos de la empresa para los documentos), `/cumplimiento` (Registro
 de Operaciones para la UIF: individuales ≥ USD 10,000 y acumulado mensual por
 cliente ≥ USD 50,000, umbrales parametrizados en `core/expedientes/uif.ts`;
 CSV con BOM y `;` desde `GET /api/portal/expedientes/uif`), `/metricas`
@@ -532,8 +533,29 @@ vencidos, próximos arribos; `core/expedientes/metricas.ts`), `/portal/embarques
 (`vercel.json`, una vez al día): alertas del core + depósitos por confirmar +
 embarques incompletos, un correo al equipo. Nunca escribe a clientes.
 
-**Variables de servidor**: `LUXCARS_DOCUMENTOS_JSON` (datos fijos de la
-empresa que van en los documentos: RUC, partida, cuentas; no están en el repo),
+**Datos de la empresa y regla "sin rayas"** (migración
+`20261127090000_configuracion_documentos.sql`): los parámetros de la empresa que
+van en los documentos (RUC, domicilio, partida, representante y DNI, cuentas de
+Operaciones / Fondos de Clientes / Detracciones, porcentaje de detracción,
+ciudad de firma, días de espera en consolidado; `CAMPOS_EMPRESA` en
+`core/expedientes/campos.ts`) se fijan una vez en `/portal/configuracion`, que
+lee y escribe la tabla `configuracion_documentos` (una fila por campo, RLS solo
+admin) por la Data API. El servidor los junta en `camposFijosLuxcars()`
+(`lib/expedientes/servidor/datosFijos.ts`, caché de 60 s): valores públicos de
+`LUXCARS_CONFIG` → variable `LUXCARS_DOCUMENTOS_JSON` (solo respaldo) → tabla
+(manda). `camposPlantilla(ctx, extra, porDefecto)` arma los campos en tres
+capas: el expediente; `porDefecto` (empresa + `TC_REFERENCIAL` del día por
+`tipoDeCambioUsdPen()`), que solo rellena lo que el expediente dejó vacío; y
+`extra` (formulario y libro), que gana sobre todo. Ya no existe la marca
+`manual` ni la línea en blanco: **todo campo que la plantilla use y esté vacío
+es `faltante` y bloquea la emisión** (422 con la lista); la pestaña Documentos
+pide los del expediente en el formulario y manda a Configuración los de la
+empresa. `VIN_OTRA_UNIDAD` sale de los otros expedientes del mismo embarque
+(`ctx.unidadesDelEmbarque`; "N/A" si no es consolidado) y `VEH_CATEGORIA` de
+`expedientes.veh_clase` (M1 / N1, obligatoria en el alta).
+
+**Variables de servidor**: `LUXCARS_DOCUMENTOS_JSON` (respaldo de los datos de
+la empresa; lo normal es `/portal/configuracion`),
 `RESEND_API_KEY` (sin ella los correos quedan `fallida` con el motivo),
 `CRON_SECRET`, `NEON_STORAGE_*` (alcanza los dos buckets), opcional
 `AVISOS_EMAIL`. Ver `.env.example`.

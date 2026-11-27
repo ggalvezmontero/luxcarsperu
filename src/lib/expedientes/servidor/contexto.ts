@@ -89,6 +89,16 @@ export async function cargarContextoServidor(expedienteId: string): Promise<Cont
 
   const r = reservado[0] ?? null;
   const emb = embarques[0] ?? null;
+  // Las otras unidades del mismo embarque (consolidado): el forwarder las nombra.
+  const unidades = fila.embarque_id
+    ? ((await sql`select id, codigo, veh_vin, veh_marca, veh_modelo from public.expedientes where embarque_id = ${fila.embarque_id}::uuid and etapa <> 'cancelado' order by codigo`) as unknown as {
+        id: string;
+        codigo: string;
+        veh_vin: string | null;
+        veh_marca: string;
+        veh_modelo: string;
+      }[])
+    : [];
   // Terceros del expediente y los que cobraron algún pago del libro (la rendición los nombra).
   const ids = [
     ...new Set(
@@ -113,5 +123,6 @@ export async function cargarContextoServidor(expedienteId: string): Promise<Cont
     movimientos: movimientos.map(mapMovimiento),
     documentos: documentos.map(mapDocumento),
     contrapartes: contrapartes.map(mapContraparte),
+    unidadesDelEmbarque: unidades.map((u) => ({ id: u.id, codigo: u.codigo, vin: u.veh_vin, marca: u.veh_marca, modelo: u.veh_modelo })),
   };
 }

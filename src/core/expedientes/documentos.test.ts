@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CAMPOS, FICHA, camposPlantilla, esCampo, esManual, fechaEnLetras, monto, porcentaje } from "./campos";
+import { CAMPOS, CAMPOS_EMPRESA, FICHA, camposPlantilla, esCampo, esCampoEmpresa, fechaEnLetras, monto, porcentaje } from "./campos";
 import { PLANTILLAS, TIPOS_DESDE_LIBRO, construirDocumento, nombreArchivo, plantillaDe, textoDeEstructura } from "./documentos";
 import { camposRendicion, datosActa, datosAvisoH3, datosConstancia, datosLiquidacion } from "./ledger";
 import { partirInline } from "./documentos/estructura";
@@ -55,6 +55,7 @@ function expediente(cambios: Partial<Expediente> = {}): Expediente {
       docPropiedad: "NVIS sin registrar",
       pesoKg: 2650,
       medidas: "5.93 × 2.03 × 1.98 m",
+      clase: "N1",
     },
     monedaCompra: "CAD",
     precioCompra: 98_500,
@@ -121,7 +122,20 @@ const FIJOS = {
   CTA_FONDOS_NUMERO: "194-0000000-1-01",
   CTA_FONDOS_CCI: "002-194-000000000000-01",
   CTA_DETRACCION_NUMERO: "00-000-000000",
+  PORCENTAJE_DETRACCION: "10",
+  CIUDAD_FIRMA: "Lima",
+  DIAS_ESPERA_MAX: "15",
+  TC_REFERENCIAL: "3.7500",
 } as const;
+
+/** La otra unidad del contenedor compartido (consolidado). */
+const UNIDADES = [
+  { id: "e1", codigo: "LC-2026-011", vin: "5TFPC5DB1RX000000", marca: "Toyota", modelo: "Tundra" },
+  { id: "e2", codigo: "LC-2026-012", vin: "1FTFW1E8XPFA00000", marca: "Ford", modelo: "F-150" },
+];
+
+/** Lo que el formulario escribe a mano para que las plantillas del libro salgan completas en el render. */
+const A_MANO = { FECHA_AVISO: "2 de febrero de 2027", FECHA_RENDICION: "6 de marzo de 2027" } as const;
 
 function contexto(cambios: Partial<ContextoExpediente> = {}, exp: Partial<Expediente> = {}): ContextoExpediente {
   return {
@@ -187,6 +201,7 @@ function contexto(cambios: Partial<ContextoExpediente> = {}, exp: Partial<Expedi
     movimientos: [],
     documentos: [],
     contrapartes: CONTRAPARTES,
+    unidadesDelEmbarque: UNIDADES,
     ...cambios,
   };
 }
@@ -240,7 +255,7 @@ describe("formatos de los campos", () => {
 
 describe("camposPlantilla", () => {
   it("llena los campos desde el expediente, el cliente, el embarque, las contrapartes y el presupuesto", () => {
-    const { campos, faltantes } = camposPlantilla(contexto(), FIJOS);
+    const { campos, faltantes } = camposPlantilla(contexto(), {}, FIJOS);
     expect(campos.EXPEDIENTE).toBe("LC-2026-011");
     expect(campos.FECHA_FIRMA).toBe("28 de noviembre de 2026");
     expect(campos.MODALIDAD_EMBARQUE).toBe("contenedor consolidado con otra unidad");
@@ -255,36 +270,92 @@ describe("camposPlantilla", () => {
     expect(campos.PRECIO_TOPE).toBe("100,000.00");
     expect(campos.PRECIO_COMPRA_USD).toBe("70,920.00");
     expect(campos.MARGEN_H3).toBe("3");
-    expect(campos.PORCENTAJE_DETRACCION).toBe("12");
     expect(campos.TASA_PERCEPCION).toBe("10 %");
     expect(campos.LUXCARS_RUC).toBe(FIJOS.LUXCARS_RUC);
-    // Solo quedan vacíos los que llegan con cada evento o se escriben a mano.
-    expect(faltantes).toEqual([]);
+    // Solo quedan vacíos los que arma el libro con cada evento o se escriben a mano al emitir.
+    expect(faltantes).not.toContain("LUXCARS_RUC");
+    expect(faltantes).not.toContain("CIUDAD_FIRMA");
+    expect(faltantes).toContain("FECHA_DEPOSITO");
+    expect(faltantes).toContain("FECHA_AVISO");
   });
 
-  it("detecta lo que falta y separa lo manual", () => {
+  it("todo lo vacío es faltante: ya no hay campos manuales ni líneas en blanco", () => {
     const ctx = contexto();
     ctx.cliente = { ...ctx.cliente!, ruc: null, domicilio: null };
     const r = camposPlantilla(ctx, {});
-    expect(r.faltantes).toEqual(expect.arrayContaining(["CLIENTE_RUC", "CLIENTE_DOMICILIO", "LUXCARS_RUC", "CTA_OPER_NUMERO"]));
-    expect(r.manualesVacios).toEqual(expect.arrayContaining(["DIAS_ESPERA_MAX", "VIN_OTRA_UNIDAD", "TC_REFERENCIAL"]));
-    expect(r.faltantes).not.toContain("DIAS_ESPERA_MAX");
+    expect(r.faltantes).toEqual(expect.arrayContaining(["CLIENTE_RUC", "CLIENTE_DOMICILIO", "LUXCARS_RUC", "CTA_OPER_NUMERO", "DIAS_ESPERA_MAX", "TC_REFERENCIAL", "CIUDAD_FIRMA"]));
+    expect(Object.values(r.campos).some((v) => v.includes("______"))).toBe(false);
+    expect("manualesVacios" in r).toBe(false);
   });
 
-  it("lo que llega de fuera gana, y lo vacío de fuera no borra lo del expediente", () => {
-    const r = camposPlantilla(contexto(), { ...FIJOS, CIUDAD_FIRMA: "Arequipa", VEH_MARCA: "   " });
-    expect(r.campos.CIUDAD_FIRMA).toBe("Arequipa");
-    expect(r.campos.VEH_MARCA).toBe("Toyota");
+  it("el expediente manda sobre el porDefecto, y el formulario (extra) manda sobre todo", () => {
+    // El expediente tiene 12 % de detracción: el 10 % de la empresa no lo pisa.
+    const base = camposPlantilla(contexto(), {}, FIJOS);
+    expect(base.campos.PORCENTAJE_DETRACCION).toBe("12");
+    // Sin porcentaje en el expediente, vale el de la empresa.
+    const sinPorcentaje = camposPlantilla(contexto({}, { porcentajeDetraccion: null }), {}, FIJOS);
+    expect(sinPorcentaje.campos.PORCENTAJE_DETRACCION).toBe("10");
+    // Lo escrito en el formulario gana sobre el expediente y sobre la empresa.
+    const aMano = camposPlantilla(contexto(), { PORCENTAJE_DETRACCION: "12", CIUDAD_FIRMA: "Arequipa", DIAS_ESPERA_MAX: "20", VEH_MARCA: "   " }, FIJOS);
+    expect(aMano.campos.PORCENTAJE_DETRACCION).toBe("12");
+    expect(aMano.campos.CIUDAD_FIRMA).toBe("Arequipa");
+    expect(aMano.campos.DIAS_ESPERA_MAX).toBe("20");
+    // Un extra vacío no borra lo del expediente; un porDefecto vacío tampoco.
+    expect(aMano.campos.VEH_MARCA).toBe("Toyota");
+    expect(camposPlantilla(contexto(), {}, { ...FIJOS, VEH_MARCA: " " }).campos.VEH_MARCA).toBe("Toyota");
+    // La ciudad de firma y los días de espera salen de la empresa; el TC referencial del servicio del día.
+    expect(base.campos.CIUDAD_FIRMA).toBe("Lima");
+    expect(base.campos.DIAS_ESPERA_MAX).toBe("15");
+    expect(base.campos.TC_REFERENCIAL).toBe("3.7500");
+  });
+
+  it("en consolidado el VIN de la otra unidad sale de los otros expedientes del embarque; en exclusivo dice N/A", () => {
+    expect(camposPlantilla(contexto(), {}, FIJOS).campos.VIN_OTRA_UNIDAD).toBe("1FTFW1E8XPFA00000");
+    // Dos unidades más en el contenedor: las dos, separadas por coma.
+    const tres = contexto({ unidadesDelEmbarque: [...UNIDADES, { id: "e3", codigo: "LC-2026-013", vin: "WBA00000000000000", marca: "BMW", modelo: "X5" }] });
+    expect(camposPlantilla(tres, {}, FIJOS).campos.VIN_OTRA_UNIDAD).toBe("1FTFW1E8XPFA00000, WBA00000000000000");
+    // La otra unidad todavía no tiene VIN: queda vacío (lo pide el formulario), no se inventa.
+    const sinVin = contexto({ unidadesDelEmbarque: [UNIDADES[0], { ...UNIDADES[1], vin: null }] });
+    expect(camposPlantilla(sinVin, {}, FIJOS).campos.VIN_OTRA_UNIDAD).toBe("");
+    expect(camposPlantilla(sinVin, {}, FIJOS).faltantes).toContain("VIN_OTRA_UNIDAD");
+    // Solo en el embarque, sin otras unidades: también falta.
+    expect(camposPlantilla(contexto({ unidadesDelEmbarque: [UNIDADES[0]] }), {}, FIJOS).campos.VIN_OTRA_UNIDAD).toBe("");
+    // Exclusivo o Ro-Ro: no aplica.
+    const exclusivo = contexto();
+    exclusivo.embarque = { ...exclusivo.embarque!, modalidad: "exclusivo" };
+    expect(camposPlantilla(exclusivo, {}, FIJOS).campos.VIN_OTRA_UNIDAD).toBe("N/A");
+  });
+
+  it("la clase del vehículo (M1 / N1) llena VEH_CATEGORIA y sin ella falta", () => {
+    expect(camposPlantilla(contexto(), {}, FIJOS).campos.VEH_CATEGORIA).toBe("N1");
+    const m1 = contexto();
+    m1.expediente.vehiculo = { ...m1.expediente.vehiculo, clase: "M1" };
+    expect(camposPlantilla(m1, {}, FIJOS).campos.VEH_CATEGORIA).toBe("M1");
+    const sinClase = contexto();
+    sinClase.expediente.vehiculo = { ...sinClase.expediente.vehiculo, clase: null };
+    expect(camposPlantilla(sinClase, {}, FIJOS).faltantes).toContain("VEH_CATEGORIA");
   });
 
   it("adapta razón social, RUC y representante a una persona natural", () => {
     const ctx = contexto();
     ctx.cliente = { ...ctx.cliente!, tipo: "persona", ruc: null, dni: "45678901", representante: null, representanteDni: null, representanteCargo: null, partida: null };
-    const { campos, faltantes } = camposPlantilla(ctx, FIJOS);
+    const { campos, faltantes } = camposPlantilla(ctx, {}, FIJOS);
     expect(campos.CLIENTE_RUC).toBe("45678901");
     expect(campos.CLIENTE_REPRESENTANTE).toBe("Inversiones Andinas S.A.C.");
     expect(campos.CLIENTE_REP_DNI).toBe("45678901");
-    expect(faltantes).toEqual([]);
+    expect(faltantes).not.toContain("CLIENTE_PARTIDA");
+  });
+
+  it("CAMPOS_EMPRESA son los de Luxcars y sus cuentas (menos correo y teléfono) más detracción, ciudad y días de espera", () => {
+    expect(CAMPOS_EMPRESA).toEqual([
+      "LUXCARS_RUC", "LUXCARS_DOMICILIO", "LUXCARS_PARTIDA", "LUXCARS_REPRESENTANTE", "LUXCARS_REP_DNI",
+      "CTA_OPER_BANCO", "CTA_OPER_NUMERO", "CTA_OPER_CCI", "CTA_FONDOS_BANCO", "CTA_FONDOS_NUMERO", "CTA_FONDOS_CCI", "CTA_DETRACCION_NUMERO",
+      "PORCENTAJE_DETRACCION", "CIUDAD_FIRMA", "DIAS_ESPERA_MAX",
+    ]);
+    expect(esCampoEmpresa("LUXCARS_RUC")).toBe(true);
+    expect(esCampoEmpresa("LUXCARS_CORREO")).toBe(false);
+    expect(esCampoEmpresa("CLIENTE_RUC")).toBe(false);
+    for (const k of CAMPOS_EMPRESA) expect(FICHA[k].descripcion).not.toMatch(/CONFIRMAR/);
   });
 });
 
@@ -299,39 +370,53 @@ describe("plantillas", () => {
     expect(TIPOS_DESDE_LIBRO.every((t) => plantillaDe(t) !== null)).toBe(true);
   });
 
-  it("cada plantilla referencia solo campos existentes y construye sin faltantes con el expediente completo", () => {
+  it("cada plantilla referencia solo campos existentes y las ocho de firma construyen sin faltantes con el expediente completo", () => {
     const ctx = contexto();
     for (const plantilla of PLANTILLAS) {
-      const doc = construirDocumento(plantilla, ctx, FIJOS);
+      const doc = construirDocumento(plantilla, ctx, {}, FIJOS);
       expect(doc.usados.length, plantilla.tipo).toBeGreaterThan(5);
       for (const campo of doc.usados) expect(esCampo(campo), `${plantilla.tipo} usa ${campo}`).toBe(true);
-      expect(doc.faltantes, plantilla.tipo).toEqual([]);
+      if (!TIPOS_DESDE_LIBRO.includes(plantilla.tipo)) expect(doc.faltantes, plantilla.tipo).toEqual([]);
       expect(doc.estructura.codigoExpediente).toBe("LC-2026-011");
       expect(doc.estructura.bloques.length, plantilla.tipo).toBeGreaterThan(3);
+      expect("manualesVacios" in doc).toBe(false);
     }
   });
 
   it("todos los campos de la ficha los usa alguna plantilla", () => {
     const ctx = contexto();
     const usados = new Set<string>();
-    for (const plantilla of PLANTILLAS) for (const k of construirDocumento(plantilla, ctx, FIJOS).usados) usados.add(k);
+    for (const plantilla of PLANTILLAS) for (const k of construirDocumento(plantilla, ctx, {}, FIJOS).usados) usados.add(k);
     const sinUsar = CAMPOS.filter((k) => !usados.has(k));
     expect(sinUsar, sinUsar.join(", ")).toEqual([]);
   });
 
-  it("detecta los faltantes de ESE documento y los manuales salen como línea en blanco", () => {
+  it("detecta los faltantes de ESE documento; sin la empresa configurada, el contrato pide sus datos y nunca imprime una raya", () => {
     const ctx = contexto();
     ctx.cliente = { ...ctx.cliente!, ruc: null };
-    const doc = construirDocumento(plantillaDe("contrato")!, ctx, FIJOS);
+    const doc = construirDocumento(plantillaDe("contrato")!, ctx, {}, FIJOS);
     expect(doc.faltantes).toEqual(["CLIENTE_RUC"]);
-    expect(doc.manualesVacios).toContain("DIAS_ESPERA_MAX");
-    expect(textoDeEstructura(doc.estructura)).toContain("esperar hasta ______________ días calendario");
-    // Las instrucciones al forwarder no leen el RUC del cliente... sí lo leen; el Anexo B no.
-    expect(construirDocumento(plantillaDe("anexo_b")!, ctx, FIJOS).faltantes).toEqual([]);
+    expect(textoDeEstructura(doc.estructura)).toContain("esperar hasta 15 días calendario");
+    // El Anexo B no lee el RUC del cliente.
+    expect(construirDocumento(plantillaDe("anexo_b")!, ctx, {}, FIJOS).faltantes).toEqual([]);
+    // Sin los datos de la empresa: faltan, son todos de CAMPOS_EMPRESA y el texto no tiene líneas en blanco.
+    const sinEmpresa = construirDocumento(plantillaDe("contrato")!, contexto(), {});
+    expect(sinEmpresa.faltantes.length).toBeGreaterThan(5);
+    // Correo y teléfono no son de Configuración: los pone el servidor desde LUXCARS_CONFIG.
+    expect(sinEmpresa.faltantes.filter((k) => !esCampoEmpresa(k))).toEqual(["LUXCARS_CORREO", "LUXCARS_TELEFONO"]);
+    expect(sinEmpresa.faltantes).toEqual(expect.arrayContaining(["LUXCARS_RUC", "LUXCARS_REP_DNI", "DIAS_ESPERA_MAX", "CIUDAD_FIRMA"]));
+    expect(textoDeEstructura(sinEmpresa.estructura)).not.toContain("______________");
+  });
+
+  it("el formulario (extra) pisa al porDefecto también en el documento construido", () => {
+    const doc = construirDocumento(plantillaDe("contrato")!, contexto(), { CIUDAD_FIRMA: "Arequipa", DIAS_ESPERA_MAX: "20" }, FIJOS);
+    const texto = textoDeEstructura(doc.estructura);
+    expect(texto).toContain("en Arequipa, el 28 de noviembre de 2026");
+    expect(texto).toContain("esperar hasta 20 días calendario");
   });
 
   it("el contrato tiene las veintiuna cláusulas y la cláusula 18.1 admite las acciones del portal", () => {
-    const texto = textoDeEstructura(construirDocumento(plantillaDe("contrato")!, contexto(), FIJOS).estructura);
+    const texto = textoDeEstructura(construirDocumento(plantillaDe("contrato")!, contexto(), {}, FIJOS).estructura);
     for (const titulo of ["Primera: Antecedentes", "Undécima: Transporte", "Décima octava: Comunicaciones", "Vigésima primera: Disposiciones generales"]) {
       expect(texto).toContain(titulo);
     }
@@ -345,12 +430,12 @@ describe("plantillas", () => {
     const ctx = contexto();
     ctx.cliente = { ...ctx.cliente!, razonSocial: "Tienda <Ampersand> & Hijos S.A.C." };
     for (const plantilla of PLANTILLAS) {
-      const html = renderHtml(construirDocumento(plantilla, ctx, FIJOS).estructura);
+      const html = renderHtml(construirDocumento(plantilla, ctx, A_MANO, FIJOS).estructura);
       expect(html.length, plantilla.tipo).toBeGreaterThan(500);
       expect(html).toContain('<article class="doc"');
       expect(html).not.toContain("<Ampersand>");
     }
-    const html = renderHtml(construirDocumento(plantillaDe("anexo_d")!, ctx, FIJOS).estructura);
+    const html = renderHtml(construirDocumento(plantillaDe("anexo_d")!, ctx, {}, FIJOS).estructura);
     expect(html).toContain("Tienda &lt;Ampersand&gt; &amp; Hijos S.A.C.");
     expect(html).toContain("<strong>Lux Cars Import S.A.C.</strong>");
     expect(html).toContain('<table class="doc-tabla">');
@@ -405,7 +490,7 @@ describe("plantillas que nacen del libro", () => {
     const campos = datosConstancia(deposito, ctx);
     expect(campos).toMatchObject({ FECHA_DEPOSITO: "10 de diciembre de 2026", HITO: "H2", SALDO_ANTERIOR: "0.00", CONSTANCIA_NUMERO: "F02", CLIENTE_BANCO_ORIGEN: "BCP", NUMERO_OPERACION: "00123456" });
     expect(campos.SALDO_NUEVO).toBe(campos.MONTO_DEPOSITO);
-    const doc = construirDocumento(plantillaDe("constancia_fondos")!, ctx, { ...FIJOS, ...campos });
+    const doc = construirDocumento(plantillaDe("constancia_fondos")!, ctx, campos, FIJOS);
     expect(doc.faltantes).toEqual([]);
     const texto = textoDeEstructura(doc.estructura);
     expect(texto).toContain("Constancia n.º LC-2026-011-F02");
@@ -422,7 +507,7 @@ describe("plantillas que nacen del libro", () => {
     expect(campos.EST_INLAND).toBe("450.00");
     expect(campos.FECHA_LIMITE_H3).toBe("3 de febrero de 2027");
     expect(campos.H3_SOLES).not.toBe("");
-    const doc = construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...FIJOS, ...campos, TC_REFERENCIAL: "3.75", FECHA_AVISO: "2 de febrero de 2027" });
+    const doc = construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...campos, TC_REFERENCIAL: "3.75", FECHA_AVISO: "2 de febrero de 2027" }, FIJOS);
     expect(doc.faltantes).toEqual([]);
     expect(textoDeEstructura(doc.estructura)).toContain("Depósito a más tardar: 3 de febrero de 2027");
     expect(textoDeEstructura(doc.estructura)).toContain("Al tipo de cambio 3.75");
@@ -436,7 +521,7 @@ describe("plantillas que nacen del libro", () => {
     expect(campos.FECHA_LEVANTE).toBe("12 de febrero de 2027");
     expect(campos.H3_PAGADO).toBe("30,067.85");
     expect(campos.TOTAL_TRIBUTOS_PEN).toBe("103,785.55");
-    const doc = construirDocumento(plantillaDe("liquidacion_definitiva")!, ctx, { ...FIJOS, ...campos });
+    const doc = construirDocumento(plantillaDe("liquidacion_definitiva")!, ctx, campos, FIJOS);
     expect(doc.faltantes).toEqual([]);
     const texto = textoDeEstructura(doc.estructura);
     expect(texto).toContain("DAM n.º 118-2027-10-000001 del 9 de febrero de 2027");
@@ -449,12 +534,13 @@ describe("plantillas que nacen del libro", () => {
 
   it("el acta marca el H4 acreditado solo cuando el libro lo tiene", () => {
     const ctx = contextoConLibro();
-    const sin = construirDocumento(plantillaDe("acta_entrega")!, ctx, { ...FIJOS, ...datosActa(ctx) });
+    const sin = construirDocumento(plantillaDe("acta_entrega")!, ctx, datosActa(ctx), FIJOS);
     expect(sin.faltantes).toEqual([]);
     expect(textoDeEstructura(sin.estructura)).toContain("[X] pendiente, el vehículo queda en custodia");
+    expect(sin.campos.H4_ACREDITADO_FECHA).toBe("pendiente");
     expect(textoDeEstructura(sin.estructura)).toContain("Placa\nBXX-000");
     ctx.movimientos.push(mov({ id: "d4", tipo: "deposito", hito: "H4", cuenta: "operaciones", montoUsd: ctx.hitos.find((h) => h.tipo === "H4")!.montoEstimadoUsd, fecha: "2027-03-05" }));
-    const con = construirDocumento(plantillaDe("acta_entrega")!, ctx, { ...FIJOS, ...datosActa(ctx) });
+    const con = construirDocumento(plantillaDe("acta_entrega")!, ctx, datosActa(ctx), FIJOS);
     expect(textoDeEstructura(con.estructura)).toContain("[X] acreditado el 5 de marzo de 2027");
   });
 
@@ -469,7 +555,7 @@ describe("plantillas que nacen del libro", () => {
     expect(campos.DEVOLUCION_MONTO).toBe("807.35");
     expect(campos.NUMERO_OPERACION).toBe("00999");
     expect(campos.CREDITO_FISCAL).toBe("23,183.22");
-    const doc = construirDocumento(plantillaDe("rendicion")!, ctx, { ...FIJOS, ...campos, FECHA_RENDICION: "6 de marzo de 2027" });
+    const doc = construirDocumento(plantillaDe("rendicion")!, ctx, { ...campos, FECHA_RENDICION: "6 de marzo de 2027" }, FIJOS);
     expect(doc.faltantes).toEqual([]);
     const texto = textoDeEstructura(doc.estructura);
     expect(texto).toContain("Saldo a favor del Mandante");
@@ -479,19 +565,20 @@ describe("plantillas que nacen del libro", () => {
     expect(texto).toContain("Total pagado por el Mandante");
   });
 
-  it("sin libro, las cinco plantillas construyen igual con líneas en blanco", () => {
+  it("sin libro, las cinco plantillas no lanzan pero declaran faltantes: no se emiten con rayas", () => {
     const ctx = contexto();
     for (const tipo of TIPOS_DESDE_LIBRO) {
-      const doc = construirDocumento(plantillaDe(tipo)!, ctx, FIJOS);
-      expect(doc.faltantes, tipo).toEqual([]);
-      expect(renderHtml(doc.estructura).length, tipo).toBeGreaterThan(500);
+      const doc = construirDocumento(plantillaDe(tipo)!, ctx, {}, FIJOS);
+      expect(doc.faltantes.length, tipo).toBeGreaterThan(0);
+      // Ningún campo vacío se imprime como raya (las rayas que quedan en el texto son las de llenar a mano al firmar: hora, nivel de combustible, observaciones).
+      expect(Object.values(doc.campos).some((v) => /^_+$/.test(v)), tipo).toBe(false);
     }
   });
 });
 
 describe("ficha de datos (snapshot para mantener el paquete de Claude Docs sincronizado)", () => {
-  it("nombre, grupo, descripción, ejemplo y si es manual", () => {
-    const filas = CAMPOS.map((k) => `${k} · ${FICHA[k].grupo}${esManual(k) ? " · manual" : ""} · ${FICHA[k].descripcion} · ej. ${FICHA[k].ejemplo}`);
+  it("nombre, grupo, si es de la empresa, descripción y ejemplo", () => {
+    const filas = CAMPOS.map((k) => `${k} · ${FICHA[k].grupo}${esCampoEmpresa(k) ? " · empresa" : ""} · ${FICHA[k].descripcion} · ej. ${FICHA[k].ejemplo}`);
     expect(filas).toMatchSnapshot();
   });
 });

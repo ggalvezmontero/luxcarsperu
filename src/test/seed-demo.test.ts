@@ -133,7 +133,7 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
       proporcion_flete: 1,
       veh_marca: "Toyota", veh_modelo: "Sequoia", veh_version: "TRD Pro i-FORCE MAX", veh_anio: 2026, veh_vin: "7SVAAABA5SX123456", veh_color: "Wind Chill Pearl",
       veh_km: 12, veh_combustible: "Híbrido (gasolina)", veh_cilindrada_cc: 3445, veh_transmision: "Automática de 10 velocidades",
-      veh_condicion: "nuevo", veh_categoria: "hev", veh_origen: "originario-usa", veh_pais_ensamblaje: "Estados Unidos (San Antonio, TX)", veh_doc_propiedad: "MSO (Manufacturer Statement of Origin)",
+      veh_condicion: "nuevo", veh_categoria: "hev", veh_clase: "M1", veh_origen: "originario-usa", veh_pais_ensamblaje: "Estados Unidos (San Antonio, TX)", veh_doc_propiedad: "MSO (Manufacturer Statement of Origin)",
       moneda_compra: "USD", precio_compra: 78500, precio_compra_usd: 78500, precio_tope: 82000, fecha_limite_compra: "2026-11-12", pais_origen: "Estados Unidos", puerto_origen: "Miami",
       presupuesto, honorarios_usd: presupuesto.honorarios, honorarios_base_usd: presupuesto.honorariosBase, honorarios_igv_usd: presupuesto.honorariosIgv, margen_h3: presupuesto.margenH3,
       fecha_firma: fechas.fechaFirma, fecha_limite_h2: fechas.fechaLimiteH2, fecha_est_embarque: "2026-11-21", fecha_est_arribo: fechas.fechaEstArribo, fecha_est_entrega: fechas.fechaEstEntrega,
@@ -149,18 +149,20 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
     const ctx0 = (await cargarContextoServidor(expedienteId))!;
     await sql`select public.insertar_tareas_expediente(${expedienteId}::uuid, 'contrato', ${JSON.stringify(tareasAJson(tareasParaEtapa("contrato", ctx0)))}::jsonb)`;
 
-    // ── Datos fijos de Luxcars para los documentos (los reales si están puestos) ──
+    // ── Parámetros de la empresa para los documentos: los de /portal/configuracion (o la variable) si están; si no, marcadores ──
+    // Ningún campo puede quedar vacío (regla "sin rayas"): lo que la empresa no tenga configurado sale como "(por confirmar)".
     const fijos = {
       LUXCARS_PARTIDA: "(por confirmar)", LUXCARS_REP_DNI: "(por confirmar)", LUXCARS_REPRESENTANTE: "Gianfranco Gálvez Montero",
       LUXCARS_RUC: "20615410935", LUXCARS_DOMICILIO: "Calle Dionisio Derteano 184, Of. 1102, San Isidro, Lima",
       CTA_OPER_BANCO: "BCP", CTA_OPER_NUMERO: "(por confirmar)", CTA_OPER_CCI: "(por confirmar)",
       CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "(por confirmar)", CTA_FONDOS_CCI: "(por confirmar)", CTA_DETRACCION_NUMERO: "(por confirmar)",
-      ...camposFijosLuxcars(),
+      PORCENTAJE_DETRACCION: "12", DIAS_ESPERA_MAX: "15", CIUDAD_FIRMA: "Lima", TC_REFERENCIAL: "3.7500",
+      ...(await camposFijosLuxcars()),
     };
 
     const emitir = async (tipo: string, visible: boolean, extra: Record<string, string> = {}, movimiento: unknown = null) => {
       const ctx = (await cargarContextoServidor(expedienteId))!;
-      const r = await emitirDocumento(plantillaDe(tipo as never)!, ctx, { actorId: ADMIN, extra: { ...fijos, ...extra }, visibleCliente: visible, movimiento: movimiento as never });
+      const r = await emitirDocumento(plantillaDe(tipo as never)!, ctx, { actorId: ADMIN, extra, porDefecto: fijos, visibleCliente: visible, movimiento: movimiento as never });
       if (!r.ok) throw new Error(`${tipo}: ${r.mensaje} ${"faltantes" in r ? JSON.stringify(r.faltantes) : ""}`);
       return r;
     };
@@ -194,7 +196,7 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
       const ctx = (await cargarContextoServidor(expedienteId))!;
       const faltas: Record<string, string[]> = {};
       for (const tipo of ["contrato", "anexo_a", "anexo_b", "anexo_c", "anexo_d", "loa", "instrucciones_vendedor", "instrucciones_forwarder"]) {
-        const d = construirDocumento(plantillaDe(tipo as never)!, ctx, fijos);
+        const d = construirDocumento(plantillaDe(tipo as never)!, ctx, {}, fijos);
         if (d.faltantes.length) faltas[tipo] = d.faltantes;
       }
       if (Object.keys(faltas).length) console.log("faltantes por plantilla (antes de avanzar):", JSON.stringify(faltas));

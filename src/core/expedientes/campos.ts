@@ -8,18 +8,23 @@
  * prueba de vitest la vuelca como snapshot para mantener el paquete en Claude
  * Docs sincronizado con el código.
  *
- * `camposPlantilla(ctx, extra)` arma el mapa completo:
- *   · del expediente, el cliente, el embarque, las contrapartes, los hitos y el
- *     presupuesto guardado (snapshot de `presupuestar()`);
- *   · de `extra`, que trae lo que no vive en la base: los datos fijos de
- *     Luxcars y sus cuentas (el servidor los lee de una variable de entorno) y
- *     lo que el equipo escribe a mano al generar (fecha de firma, días de
- *     espera, VIN de la otra unidad…). Lo de `extra` siempre gana.
+ * `camposPlantilla(ctx, extra, porDefecto)` arma el mapa completo, en tres capas:
+ *   1. el expediente, el cliente, el embarque, las otras unidades del mismo
+ *      embarque, las contrapartes, los hitos y el presupuesto guardado
+ *      (snapshot de `presupuestar()`);
+ *   2. `porDefecto`: los parámetros de la EMPRESA (RUC, cuentas, porcentaje de
+ *      detracción, ciudad de firma, días de espera) y el tipo de cambio del
+ *      día. Solo rellenan lo que el expediente dejó vacío: si el expediente
+ *      tiene su propio porcentaje de detracción, ese manda;
+ *   3. `extra`: lo que el equipo escribe en el formulario al generar (fecha
+ *      del aviso, un VIN que todavía no está en la base…) y lo que arma el
+ *      libro. Gana sobre todo.
  *
- * Devuelve además la lista de campos VACÍOS. Los marcados `manual` en la ficha
- * no impiden emitir: se imprimen como una línea para llenar a mano
- * ("______________"), como en el paquete original. Los demás sí bloquean la
- * generación: un contrato sin RUC del cliente no se emite.
+ * REGLA "SIN RAYAS" (decisión del 27 nov 2026): ningún documento sale con una
+ * línea para llenar a mano. Todo campo que la plantilla use y quede vacío es
+ * `faltante` y bloquea la emisión; el portal pide el dato (en el formulario o
+ * en /portal/configuracion si es de la empresa). Por eso ya no existe la
+ * marca `manual` ni la línea en blanco.
  *
  * TypeScript puro, sin fecha actual ni entrada/salida.
  */
@@ -46,8 +51,6 @@ export type DefinicionCampo = {
   /** Qué es, en las palabras de la ficha de datos del paquete. */
   descripcion: string;
   ejemplo: string;
-  /** Se puede dejar en blanco: sale como línea para llenar a mano. */
-  manual?: boolean;
 };
 
 /**
@@ -57,12 +60,12 @@ export type DefinicionCampo = {
 export const FICHA = {
   // Expediente y operación
   EXPEDIENTE: { grupo: "expediente", descripcion: "Código único por vehículo. Va en cada página y en el concepto de cada transferencia", ejemplo: "LC-2026-011" },
-  FECHA_FIRMA: { grupo: "expediente", descripcion: "Fecha del contrato", ejemplo: "28 de noviembre de 2026", manual: true },
-  CIUDAD_FIRMA: { grupo: "expediente", descripcion: "Ciudad de firma", ejemplo: "Lima", manual: true },
+  FECHA_FIRMA: { grupo: "expediente", descripcion: "Fecha del contrato", ejemplo: "28 de noviembre de 2026" },
+  CIUDAD_FIRMA: { grupo: "expediente", descripcion: "Ciudad donde se firman los documentos (valor de la empresa)", ejemplo: "Lima" },
   MODALIDAD_EMBARQUE: { grupo: "expediente", descripcion: "Una de tres: contenedor consolidado con otra unidad / contenedor exclusivo / Ro-Ro", ejemplo: "contenedor consolidado con otra unidad" },
   TIPO_CONTENEDOR: { grupo: "expediente", descripcion: "Equipo", ejemplo: "40' HC" },
   PROPORCION_FLETE: { grupo: "expediente", descripcion: "Parte del flete marítimo y de los gastos del contenedor que asume este vehículo", ejemplo: "50 %" },
-  DIAS_ESPERA_MAX: { grupo: "expediente", descripcion: "Solo consolidado: días máximos que el cliente acepta esperar a la otra unidad", ejemplo: "15", manual: true },
+  DIAS_ESPERA_MAX: { grupo: "expediente", descripcion: "Solo consolidado: días máximos que el cliente acepta esperar a la otra unidad (valor de la empresa; el formulario puede cambiarlo por expediente)", ejemplo: "15" },
   PAIS_ORIGEN: { grupo: "expediente", descripcion: "País donde se compra", ejemplo: "Canadá" },
   PUERTO_ORIGEN: { grupo: "expediente", descripcion: "Puerto de embarque", ejemplo: "Vancouver" },
   PUERTO_DESTINO: { grupo: "expediente", descripcion: "Puerto de llegada", ejemplo: "Callao" },
@@ -92,28 +95,28 @@ export const FICHA = {
   CLIENTE_REP_CARGO: { grupo: "cliente", descripcion: "Cargo", ejemplo: "Gerente general" },
   CLIENTE_CORREO: { grupo: "cliente", descripcion: "Correo válido para aprobaciones", ejemplo: "jperez@empresa.pe" },
   CLIENTE_TELEFONO: { grupo: "cliente", descripcion: "WhatsApp válido para aprobaciones", ejemplo: "+51 9XX XXX XXX" },
-  CLIENTE_ACTIVIDAD: { grupo: "cliente", descripcion: "Actividad económica (CIIU de la ficha RUC)", ejemplo: "Transporte de carga por carretera", manual: true },
-  CLIENTE_BANCO_ORIGEN: { grupo: "cliente", descripcion: "Banco y cuenta desde donde pagará (debe ser de la propia empresa)", ejemplo: "BCP, cuenta corriente en dólares", manual: true },
-  CLIENTE_BENEFICIARIO_FINAL: { grupo: "cliente", descripcion: "Persona natural con 10 % o más del capital: nombre, DNI y porcentaje", ejemplo: "Juan Pérez Rojas, DNI 0XXXXXXX, 60 %", manual: true },
-  CLIENTE_ORIGEN_FONDOS: { grupo: "cliente", descripcion: "De dónde sale el dinero", ejemplo: "Utilidades acumuladas de la empresa", manual: true },
+  CLIENTE_ACTIVIDAD: { grupo: "cliente", descripcion: "Actividad económica (CIIU de la ficha RUC)", ejemplo: "Transporte de carga por carretera" },
+  CLIENTE_BANCO_ORIGEN: { grupo: "cliente", descripcion: "Banco y cuenta desde donde pagará (debe ser de la propia empresa)", ejemplo: "BCP, cuenta corriente en dólares" },
+  CLIENTE_BENEFICIARIO_FINAL: { grupo: "cliente", descripcion: "Persona natural con 10 % o más del capital: nombre, DNI y porcentaje", ejemplo: "Juan Pérez Rojas, DNI 0XXXXXXX, 60 %" },
+  CLIENTE_ORIGEN_FONDOS: { grupo: "cliente", descripcion: "De dónde sale el dinero", ejemplo: "Utilidades acumuladas de la empresa" },
 
   // Vehículo
   VEH_MARCA: { grupo: "vehiculo", descripcion: "Marca", ejemplo: "Toyota" },
   VEH_MODELO: { grupo: "vehiculo", descripcion: "Modelo", ejemplo: "Tundra" },
-  VEH_VERSION: { grupo: "vehiculo", descripcion: "Versión o paquete", ejemplo: "TRD Pro CrewMax", manual: true },
+  VEH_VERSION: { grupo: "vehiculo", descripcion: "Versión o paquete", ejemplo: "TRD Pro CrewMax" },
   VEH_ANIO: { grupo: "vehiculo", descripcion: "Año modelo", ejemplo: "2026" },
   VEH_VIN: { grupo: "vehiculo", descripcion: "VIN de 17 caracteres", ejemplo: "5TFPC5DB1RX000000" },
-  VEH_COLOR: { grupo: "vehiculo", descripcion: "Color", ejemplo: "Blanco", manual: true },
-  VEH_KM: { grupo: "vehiculo", descripcion: "Kilometraje a la fecha de inspección", ejemplo: "1,200 km", manual: true },
+  VEH_COLOR: { grupo: "vehiculo", descripcion: "Color", ejemplo: "Blanco" },
+  VEH_KM: { grupo: "vehiculo", descripcion: "Kilometraje a la fecha de inspección", ejemplo: "1,200 km" },
   VEH_COMBUSTIBLE: { grupo: "vehiculo", descripcion: "Gasolina / híbrido / eléctrico / diésel (solo nuevo)", ejemplo: "Híbrido gasolina" },
-  VEH_CILINDRADA: { grupo: "vehiculo", descripcion: "Cilindrada", ejemplo: "3,445 cc", manual: true },
-  VEH_TRANSMISION: { grupo: "vehiculo", descripcion: "Transmisión", ejemplo: "Automática 10 velocidades", manual: true },
+  VEH_CILINDRADA: { grupo: "vehiculo", descripcion: "Cilindrada", ejemplo: "3,445 cc" },
+  VEH_TRANSMISION: { grupo: "vehiculo", descripcion: "Transmisión", ejemplo: "Automática 10 velocidades" },
   VEH_CONDICION: { grupo: "vehiculo", descripcion: "Nuevo (sin registro previo) o usado", ejemplo: "Nuevo" },
-  VEH_CATEGORIA: { grupo: "vehiculo", descripcion: "M1 (autos y SUV) o N1 (pickups y camionetas)", ejemplo: "N1", manual: true },
-  VEH_PAIS_ENSAMBLAJE: { grupo: "vehiculo", descripcion: "Según el VIN: 1, 4 o 5 EE.UU.; 2 Canadá; 3 México; J Japón", ejemplo: "Estados Unidos", manual: true },
-  VEH_DOC_PROPIEDAD: { grupo: "vehiculo", descripcion: "Documento que entrega el vendedor: NVIS / MSO / registro provincial / título", ejemplo: "NVIS sin registrar", manual: true },
-  VEH_PESO: { grupo: "vehiculo", descripcion: "Peso bruto para el forwarder", ejemplo: "2,650 kg", manual: true },
-  VEH_MEDIDAS: { grupo: "vehiculo", descripcion: "Largo × ancho × alto, para el plano de carga", ejemplo: "5.93 × 2.03 × 1.98 m", manual: true },
+  VEH_CATEGORIA: { grupo: "vehiculo", descripcion: "Clase del vehículo: M1 (autos y SUV) o N1 (pickups y camionetas); se pide al abrir el expediente", ejemplo: "N1" },
+  VEH_PAIS_ENSAMBLAJE: { grupo: "vehiculo", descripcion: "Según el VIN: 1, 4 o 5 EE.UU.; 2 Canadá; 3 México; J Japón", ejemplo: "Estados Unidos" },
+  VEH_DOC_PROPIEDAD: { grupo: "vehiculo", descripcion: "Documento que entrega el vendedor: NVIS / MSO / registro provincial / título", ejemplo: "NVIS sin registrar" },
+  VEH_PESO: { grupo: "vehiculo", descripcion: "Peso bruto para el forwarder", ejemplo: "2,650 kg" },
+  VEH_MEDIDAS: { grupo: "vehiculo", descripcion: "Largo × ancho × alto, para el plano de carga", ejemplo: "5.93 × 2.03 × 1.98 m" },
 
   // Vendedor y compra
   VENDEDOR_NOMBRE: { grupo: "vendedor", descripcion: "Razón social del dealer o nombre del vendedor", ejemplo: "Example Motors Ltd." },
@@ -125,19 +128,19 @@ export const FICHA = {
   PRECIO_TOPE: { grupo: "vendedor", descripcion: "Máximo que el cliente autoriza pagar, misma moneda", ejemplo: "100,000.00" },
   PRECIO_COMPRA_USD: { grupo: "vendedor", descripcion: "Equivalente estimado en dólares americanos al día de la cotización", ejemplo: "71,000.00" },
   FECHA_LIMITE_COMPRA: { grupo: "vendedor", descripcion: "Hasta cuándo vale la autorización de compra", ejemplo: "15 de diciembre de 2026" },
-  FECHA_INSPECCION: { grupo: "vendedor", descripcion: "Fecha de la inspección física", ejemplo: "4 de diciembre de 2026", manual: true },
-  INSPECTOR: { grupo: "vendedor", descripcion: "Quién inspeccionó", ejemplo: "Nombre o empresa", manual: true },
-  HISTORIAL_REF: { grupo: "vendedor", descripcion: "Número del reporte de historial y de la búsqueda de gravámenes", ejemplo: "CARFAX Canada n.º ..., PPSA BC ...", manual: true },
-  FECHA_RELEASE: { grupo: "vendedor", descripcion: "Fecha en que el vendedor entrega el auto al transportista del forwarder", ejemplo: "18 de diciembre de 2026", manual: true },
+  FECHA_INSPECCION: { grupo: "vendedor", descripcion: "Fecha de la inspección física", ejemplo: "4 de diciembre de 2026" },
+  INSPECTOR: { grupo: "vendedor", descripcion: "Quién inspeccionó", ejemplo: "Nombre o empresa" },
+  HISTORIAL_REF: { grupo: "vendedor", descripcion: "Número del reporte de historial y de la búsqueda de gravámenes", ejemplo: "CARFAX Canada n.º ..., PPSA BC ..." },
+  FECHA_RELEASE: { grupo: "vendedor", descripcion: "Fecha en que el vendedor entrega el auto al transportista del forwarder", ejemplo: "18 de diciembre de 2026" },
 
   // Logística y aduana
   FORWARDER_NOMBRE: { grupo: "logistica", descripcion: "Consolidador o forwarder", ejemplo: "Example Logistics Inc." },
   FORWARDER_CONTACTO: { grupo: "logistica", descripcion: "Contacto y correo", ejemplo: "ops@example-logistics.com" },
-  ALMACEN_CONSOLIDACION: { grupo: "logistica", descripcion: "Dirección del almacén donde se carga el contenedor", ejemplo: "5678 Industrial Ave, Delta, BC", manual: true },
-  VIN_OTRA_UNIDAD: { grupo: "logistica", descripcion: "Solo consolidado: VIN del otro auto, para el forwarder", ejemplo: "1FTFW1E8XPFA00000", manual: true },
+  ALMACEN_CONSOLIDACION: { grupo: "logistica", descripcion: "Dirección del almacén donde se carga el contenedor", ejemplo: "5678 Industrial Ave, Delta, BC" },
+  VIN_OTRA_UNIDAD: { grupo: "logistica", descripcion: "Solo consolidado: VIN de la otra unidad del mismo embarque, para el forwarder (sale de los otros expedientes del embarque; en exclusivo o Ro-Ro dice N/A)", ejemplo: "1FTFW1E8XPFA00000" },
   AGENTE_ADUANA: { grupo: "logistica", descripcion: "Agencia de aduana designada", ejemplo: "Agencia ... S.A." },
   AGENTE_ADUANA_RUC: { grupo: "logistica", descripcion: "RUC de la agencia", ejemplo: "20XXXXXXXXX" },
-  AGENTE_ADUANA_CONTACTO: { grupo: "logistica", descripcion: "Sectorista y correo", ejemplo: "Nombre, correo", manual: true },
+  AGENTE_ADUANA_CONTACTO: { grupo: "logistica", descripcion: "Sectorista y correo", ejemplo: "Nombre, correo" },
 
   // Presupuesto estimado (dólares americanos)
   EST_INLAND: { grupo: "presupuesto", descripcion: "Transporte del vendedor al almacén del forwarder", ejemplo: "450.00" },
@@ -160,12 +163,12 @@ export const FICHA = {
   COMISION_IGV: { grupo: "presupuesto", descripcion: "18 % de la base", ejemplo: "1,262.00" },
   COMISION_H1: { grupo: "presupuesto", descripcion: "30 % de los honorarios", ejemplo: "2,481.94" },
   COMISION_H4: { grupo: "presupuesto", descripcion: "70 % de los honorarios", ejemplo: "5,791.19" },
-  PORCENTAJE_DETRACCION: { grupo: "presupuesto", descripcion: "Porcentaje del SPOT sobre cada factura [CONFIRMAR con el contador: 10 % o 12 %]", ejemplo: "12", manual: true },
+  PORCENTAJE_DETRACCION: { grupo: "presupuesto", descripcion: "Porcentaje del SPOT (detracción) sobre cada factura de honorarios: 10 % o 12 % según el código de servicio del SPOT; confirmarlo con el contador", ejemplo: "12" },
   EST_TOTAL: { grupo: "presupuesto", descripcion: "Costo total estimado puesto en Lima con placas, honorarios incluidos", ejemplo: "111,867.24" },
   H2_MONTO: { grupo: "presupuesto", descripcion: "Precio del auto en USD + inland + flete + seguro", ejemplo: "73,490.50" },
   MARGEN_H3: { grupo: "presupuesto", descripcion: "Colchón sobre tributos y gastos para cubrir el tipo de cambio", ejemplo: "3" },
   H3_MONTO: { grupo: "presupuesto", descripcion: "(Tributos + gastos de aduana + gastos registrales) × (1 + margen)", ejemplo: "31,006.72" },
-  TC_REFERENCIAL: { grupo: "presupuesto", descripcion: "Tipo de cambio soles por dólar usado en el aviso de pago", ejemplo: "3.75", manual: true },
+  TC_REFERENCIAL: { grupo: "presupuesto", descripcion: "Tipo de cambio referencial soles por dólar del día del aviso de pago (lo trae el servicio de tipo de cambio; se puede corregir a mano)", ejemplo: "3.75" },
   TARIFA_CUSTODIA: { grupo: "presupuesto", descripcion: "USD por día si el cliente no recoge el auto en 5 días hábiles", ejemplo: "25.00" },
   COSTO_INSPECCION: { grupo: "presupuesto", descripcion: "Gasto de inspección que se retiene si el cliente desiste antes de la compra", ejemplo: "350.00" },
 
@@ -179,45 +182,45 @@ export const FICHA = {
   CTA_DETRACCION_NUMERO: { grupo: "cuentas", descripcion: "Cuenta de detracciones en el Banco de la Nación", ejemplo: "00-XXX-XXXXXX" },
 
   // Campos de cierre (se llenan con cada evento; fases 3 en adelante)
-  FECHA_DEPOSITO: { grupo: "cierre", descripcion: "Fecha del depósito acreditado (constancia de recepción de fondos)", ejemplo: "12 de diciembre de 2026", manual: true },
-  MONTO_DEPOSITO: { grupo: "cierre", descripcion: "Monto del depósito en USD (constancia)", ejemplo: "73,490.50", manual: true },
-  HITO: { grupo: "cierre", descripcion: "Hito al que se aplica el depósito (constancia)", ejemplo: "H2", manual: true },
-  SALDO_ANTERIOR: { grupo: "cierre", descripcion: "Saldo del expediente antes del depósito (constancia)", ejemplo: "0.00", manual: true },
-  SALDO_NUEVO: { grupo: "cierre", descripcion: "Saldo del expediente después del depósito (constancia)", ejemplo: "73,490.50", manual: true },
-  DAM_NUMERO: { grupo: "cierre", descripcion: "Número de la DAM (liquidación definitiva)", ejemplo: "118-2027-10-XXXXXX", manual: true },
-  DAM_FECHA: { grupo: "cierre", descripcion: "Fecha de numeración de la DAM (liquidación definitiva)", ejemplo: "9 de febrero de 2027", manual: true },
-  CANAL: { grupo: "cierre", descripcion: "Canal de control asignado (liquidación definitiva)", ejemplo: "verde", manual: true },
-  FACTOR_CONVERSION: { grupo: "cierre", descripcion: "Factor SUNAT para pasar la factura en CAD a USD en la fecha de numeración", ejemplo: "0.7212", manual: true },
-  TC_SBS_PAGO: { grupo: "cierre", descripcion: "Tipo de cambio venta SBS del día en que se pagaron los tributos", ejemplo: "3.7620", manual: true },
-  FECHA_ENTREGA: { grupo: "cierre", descripcion: "Fecha de entrega del vehículo (acta y rendición)", ejemplo: "5 de marzo de 2027", manual: true },
-  KM_ENTREGA: { grupo: "cierre", descripcion: "Kilometraje a la entrega (acta)", ejemplo: "1,260 km", manual: true },
-  PLACA: { grupo: "cierre", descripcion: "Placa asignada (acta y rendición)", ejemplo: "BXX-000", manual: true },
-  TIVE_NUMERO: { grupo: "cierre", descripcion: "Número de la tarjeta de identificación vehicular (acta)", ejemplo: "n.º ...", manual: true },
+  FECHA_DEPOSITO: { grupo: "cierre", descripcion: "Fecha del depósito acreditado (constancia de recepción de fondos)", ejemplo: "12 de diciembre de 2026" },
+  MONTO_DEPOSITO: { grupo: "cierre", descripcion: "Monto del depósito en USD (constancia)", ejemplo: "73,490.50" },
+  HITO: { grupo: "cierre", descripcion: "Hito al que se aplica el depósito (constancia)", ejemplo: "H2" },
+  SALDO_ANTERIOR: { grupo: "cierre", descripcion: "Saldo del expediente antes del depósito (constancia)", ejemplo: "0.00" },
+  SALDO_NUEVO: { grupo: "cierre", descripcion: "Saldo del expediente después del depósito (constancia)", ejemplo: "73,490.50" },
+  DAM_NUMERO: { grupo: "cierre", descripcion: "Número de la DAM (liquidación definitiva)", ejemplo: "118-2027-10-XXXXXX" },
+  DAM_FECHA: { grupo: "cierre", descripcion: "Fecha de numeración de la DAM (liquidación definitiva)", ejemplo: "9 de febrero de 2027" },
+  CANAL: { grupo: "cierre", descripcion: "Canal de control asignado (liquidación definitiva)", ejemplo: "verde" },
+  FACTOR_CONVERSION: { grupo: "cierre", descripcion: "Factor SUNAT para pasar la factura en CAD a USD en la fecha de numeración", ejemplo: "0.7212" },
+  TC_SBS_PAGO: { grupo: "cierre", descripcion: "Tipo de cambio venta SBS del día en que se pagaron los tributos", ejemplo: "3.7620" },
+  FECHA_ENTREGA: { grupo: "cierre", descripcion: "Fecha de entrega del vehículo (acta y rendición)", ejemplo: "5 de marzo de 2027" },
+  KM_ENTREGA: { grupo: "cierre", descripcion: "Kilometraje a la entrega (acta)", ejemplo: "1,260 km" },
+  PLACA: { grupo: "cierre", descripcion: "Placa asignada (acta y rendición)", ejemplo: "BXX-000" },
+  TIVE_NUMERO: { grupo: "cierre", descripcion: "Número de la tarjeta de identificación vehicular (acta)", ejemplo: "n.º ..." },
   // Fase 3: los arma el libro (src/core/expedientes/ledger.ts); se escriben a mano solo si el libro no los tiene.
-  CONSTANCIA_NUMERO: { grupo: "cierre", descripcion: "Correlativo de la constancia dentro del expediente, por orden de depósitos confirmados", ejemplo: "F01", manual: true },
-  NUMERO_OPERACION: { grupo: "cierre", descripcion: "Número de operación bancaria del depósito o de la devolución", ejemplo: "00123456", manual: true },
-  FECHA_AVISO: { grupo: "cierre", descripcion: "Fecha en que se emite el aviso de pago H3", ejemplo: "2 de febrero de 2027", manual: true },
-  FECHA_LIMITE_H3: { grupo: "cierre", descripcion: "Depósito del H3 a más tardar (fecha límite del hito: una semana antes del arribo)", ejemplo: "3 de febrero de 2027", manual: true },
-  H3_SUBTOTAL: { grupo: "cierre", descripcion: "Tributos (con percepción) más gastos de aduana y registrales, antes del margen (aviso H3)", ejemplo: "30,103.61", manual: true },
-  H3_MARGEN_MONTO: { grupo: "cierre", descripcion: "Monto del margen por tipo de cambio sobre el subtotal (aviso H3)", ejemplo: "903.11", manual: true },
-  H3_SOLES: { grupo: "cierre", descripcion: "Equivalente referencial en soles del H3 al tipo de cambio referencial (aviso H3)", ejemplo: "116,275.20", manual: true },
-  FECHA_LEVANTE: { grupo: "cierre", descripcion: "Fecha del levante (liquidación definitiva)", ejemplo: "12 de febrero de 2027", manual: true },
-  H3_DEPOSITADO: { grupo: "cierre", descripcion: "Depósitos confirmados aplicados al H3 (liquidación definitiva)", ejemplo: "31,006.72", manual: true },
-  H3_PAGADO: { grupo: "cierre", descripcion: "Tributos y gastos pagados con cargo al H3, en USD al tipo de cambio de cada pago", ejemplo: "30,412.18", manual: true },
-  H3_DIFERENCIA: { grupo: "cierre", descripcion: "Diferencia entre lo depositado y lo pagado del H3, en valor absoluto", ejemplo: "594.54", manual: true },
-  TOTAL_TRIBUTOS_USD: { grupo: "cierre", descripcion: "Total de tributos pagados a SUNAT en USD (liquidación definitiva)", ejemplo: "27,623.61", manual: true },
-  TOTAL_TRIBUTOS_PEN: { grupo: "cierre", descripcion: "Total de tributos pagados a SUNAT en soles (liquidación definitiva)", ejemplo: "103,920.02", manual: true },
-  TOTAL_GASTOS_USD: { grupo: "cierre", descripcion: "Total de gastos de aduana y registrales pagados en USD (liquidación definitiva)", ejemplo: "2,480.00", manual: true },
-  FECHA_RENDICION: { grupo: "cierre", descripcion: "Fecha de la rendición de cuentas", ejemplo: "6 de marzo de 2027", manual: true },
-  TOTAL_RECIBIDO: { grupo: "cierre", descripcion: "Total depositado por el cliente en Fondos de Clientes (rendición)", ejemplo: "104,497.22", manual: true },
-  TOTAL_PAGADO: { grupo: "cierre", descripcion: "Total pagado a terceros por cuenta del cliente (rendición)", ejemplo: "103,902.68", manual: true },
-  SALDO_RENDICION: { grupo: "cierre", descripcion: "Saldo a favor del cliente: recibido menos pagado (rendición)", ejemplo: "594.54", manual: true },
-  DEVOLUCION_MONTO: { grupo: "cierre", descripcion: "Monto devuelto al cliente (rendición)", ejemplo: "594.54", manual: true },
-  DEVOLUCION_FECHA: { grupo: "cierre", descripcion: "Fecha de la devolución del saldo (rendición)", ejemplo: "6 de marzo de 2027", manual: true },
-  TOTAL_OPERACION: { grupo: "cierre", descripcion: "Pagos a terceros más honorarios: costo total para el cliente (rendición)", ejemplo: "112,175.81", manual: true },
-  DIFERENCIA_ESTIMADO: { grupo: "cierre", descripcion: "Costo total menos el estimado del Anexo B, con signo (rendición)", ejemplo: "+ 308.57", manual: true },
-  CREDITO_FISCAL: { grupo: "cierre", descripcion: "IGV, IPM y percepción pagados según la DAM: crédito fiscal del cliente (rendición)", ejemplo: "23,203.65", manual: true },
-  H4_ACREDITADO_FECHA: { grupo: "cierre", descripcion: "Fecha en que se acreditó el H4 (acta de entrega); vacío si está pendiente", ejemplo: "5 de marzo de 2027", manual: true },
+  CONSTANCIA_NUMERO: { grupo: "cierre", descripcion: "Correlativo de la constancia dentro del expediente, por orden de depósitos confirmados", ejemplo: "F01" },
+  NUMERO_OPERACION: { grupo: "cierre", descripcion: "Número de operación bancaria del depósito o de la devolución", ejemplo: "00123456" },
+  FECHA_AVISO: { grupo: "cierre", descripcion: "Fecha en que se emite el aviso de pago H3", ejemplo: "2 de febrero de 2027" },
+  FECHA_LIMITE_H3: { grupo: "cierre", descripcion: "Depósito del H3 a más tardar (fecha límite del hito: una semana antes del arribo)", ejemplo: "3 de febrero de 2027" },
+  H3_SUBTOTAL: { grupo: "cierre", descripcion: "Tributos (con percepción) más gastos de aduana y registrales, antes del margen (aviso H3)", ejemplo: "30,103.61" },
+  H3_MARGEN_MONTO: { grupo: "cierre", descripcion: "Monto del margen por tipo de cambio sobre el subtotal (aviso H3)", ejemplo: "903.11" },
+  H3_SOLES: { grupo: "cierre", descripcion: "Equivalente referencial en soles del H3 al tipo de cambio referencial (aviso H3)", ejemplo: "116,275.20" },
+  FECHA_LEVANTE: { grupo: "cierre", descripcion: "Fecha del levante (liquidación definitiva)", ejemplo: "12 de febrero de 2027" },
+  H3_DEPOSITADO: { grupo: "cierre", descripcion: "Depósitos confirmados aplicados al H3 (liquidación definitiva)", ejemplo: "31,006.72" },
+  H3_PAGADO: { grupo: "cierre", descripcion: "Tributos y gastos pagados con cargo al H3, en USD al tipo de cambio de cada pago", ejemplo: "30,412.18" },
+  H3_DIFERENCIA: { grupo: "cierre", descripcion: "Diferencia entre lo depositado y lo pagado del H3, en valor absoluto", ejemplo: "594.54" },
+  TOTAL_TRIBUTOS_USD: { grupo: "cierre", descripcion: "Total de tributos pagados a SUNAT en USD (liquidación definitiva)", ejemplo: "27,623.61" },
+  TOTAL_TRIBUTOS_PEN: { grupo: "cierre", descripcion: "Total de tributos pagados a SUNAT en soles (liquidación definitiva)", ejemplo: "103,920.02" },
+  TOTAL_GASTOS_USD: { grupo: "cierre", descripcion: "Total de gastos de aduana y registrales pagados en USD (liquidación definitiva)", ejemplo: "2,480.00" },
+  FECHA_RENDICION: { grupo: "cierre", descripcion: "Fecha de la rendición de cuentas", ejemplo: "6 de marzo de 2027" },
+  TOTAL_RECIBIDO: { grupo: "cierre", descripcion: "Total depositado por el cliente en Fondos de Clientes (rendición)", ejemplo: "104,497.22" },
+  TOTAL_PAGADO: { grupo: "cierre", descripcion: "Total pagado a terceros por cuenta del cliente (rendición)", ejemplo: "103,902.68" },
+  SALDO_RENDICION: { grupo: "cierre", descripcion: "Saldo a favor del cliente: recibido menos pagado (rendición)", ejemplo: "594.54" },
+  DEVOLUCION_MONTO: { grupo: "cierre", descripcion: "Monto devuelto al cliente (rendición)", ejemplo: "594.54" },
+  DEVOLUCION_FECHA: { grupo: "cierre", descripcion: "Fecha de la devolución del saldo (rendición)", ejemplo: "6 de marzo de 2027" },
+  TOTAL_OPERACION: { grupo: "cierre", descripcion: "Pagos a terceros más honorarios: costo total para el cliente (rendición)", ejemplo: "112,175.81" },
+  DIFERENCIA_ESTIMADO: { grupo: "cierre", descripcion: "Costo total menos el estimado del Anexo B, con signo (rendición)", ejemplo: "+ 308.57" },
+  CREDITO_FISCAL: { grupo: "cierre", descripcion: "IGV, IPM y percepción pagados según la DAM: crédito fiscal del cliente (rendición)", ejemplo: "23,203.65" },
+  H4_ACREDITADO_FECHA: { grupo: "cierre", descripcion: "Fecha en que se acreditó el H4 (acta de entrega); dice 'pendiente' si todavía no se acreditó", ejemplo: "5 de marzo de 2027" },
 } as const satisfies Record<string, DefinicionCampo>;
 
 export type Campo = keyof typeof FICHA;
@@ -228,26 +231,34 @@ export function esCampo(nombre: string): nombre is Campo {
   return Object.prototype.hasOwnProperty.call(FICHA, nombre);
 }
 
-export function esManual(campo: Campo): boolean {
-  return (FICHA[campo] as DefinicionCampo).manual === true;
+/**
+ * Parámetros de la EMPRESA: se fijan una vez en /portal/configuracion
+ * (tabla `configuracion_documentos`; `LUXCARS_DOCUMENTOS_JSON` como respaldo) y
+ * llegan a `camposPlantilla` como `porDefecto`. El correo y el teléfono no
+ * están porque salen de `LUXCARS_CONFIG.contact` (son públicos, van en la web).
+ */
+export const CAMPOS_EMPRESA: readonly Campo[] = [
+  ...CAMPOS.filter((k) => (FICHA[k].grupo === "luxcars" || FICHA[k].grupo === "cuentas") && k !== "LUXCARS_CORREO" && k !== "LUXCARS_TELEFONO"),
+  "PORCENTAJE_DETRACCION",
+  "CIUDAD_FIRMA",
+  "DIAS_ESPERA_MAX",
+];
+
+export function esCampoEmpresa(campo: Campo): boolean {
+  return CAMPOS_EMPRESA.includes(campo);
 }
 
 /** Mapa completo: cada campo con su valor (vacío = "") . */
 export type Campos = Record<Campo, string>;
 
-/** Lo que llega de fuera del expediente (datos fijos de Luxcars, escritos a mano). */
+/** Lo que llega de fuera del expediente (parámetros de la empresa, el libro, el formulario). */
 export type CamposExtra = Partial<Record<Campo, string>>;
 
 export type ResultadoCampos = {
   campos: Campos;
-  /** Vacíos que NO son manuales: bloquean la emisión. */
+  /** Todos los campos vacíos. Quien construye un documento filtra por los que su plantilla usa. */
   faltantes: Campo[];
-  /** Vacíos manuales: se imprimen como línea para llenar a mano. */
-  manualesVacios: Campo[];
 };
-
-/** Lo que se imprime donde un campo manual quedó vacío. */
-export const LINEA_EN_BLANCO = "______________";
 
 /* -------------------------------------------------------------------------- */
 /* Formatos                                                                   */
@@ -329,11 +340,28 @@ function texto(v: string | null | undefined): string {
 /* Armado                                                                     */
 /* -------------------------------------------------------------------------- */
 
+const CLASE_TEXTO = { M1: "M1", N1: "N1" } as const;
+
+/** Copia en `base` lo que `capa` traiga con contenido; con `soloVacios`, solo donde `base` está vacío. */
+function aplicarCapa(base: Campos, capa: CamposExtra, soloVacios: boolean): void {
+  for (const [k, valor] of Object.entries(capa)) {
+    if (!esCampo(k)) continue;
+    const limpio = (valor ?? "").trim();
+    if (!limpio) continue;
+    if (soloVacios && base[k]) continue;
+    base[k] = limpio;
+  }
+}
+
 /**
  * Arma el mapa completo de campos de un expediente. Nunca lanza: lo que no se
- * puede llenar queda vacío y aparece en `faltantes` o `manualesVacios`.
+ * puede llenar queda vacío y aparece en `faltantes`.
+ *
+ *  · `porDefecto` (parámetros de la empresa, tipo de cambio del día) solo
+ *    rellena lo que el expediente dejó vacío.
+ *  · `extra` (formulario, libro) gana sobre todo.
  */
-export function camposPlantilla(ctx: ContextoExpediente, extra: CamposExtra = {}): ResultadoCampos {
+export function camposPlantilla(ctx: ContextoExpediente, extra: CamposExtra = {}, porDefecto: CamposExtra = {}): ResultadoCampos {
   const e = ctx.expediente;
   const v = e.vehiculo;
   const c = ctx.cliente;
@@ -351,10 +379,21 @@ export function camposPlantilla(ctx: ContextoExpediente, extra: CamposExtra = {}
 
   const esPersona = c?.tipo === "persona";
 
+  // Solo en consolidado hay otra unidad: los VIN de los demás expedientes del
+  // mismo embarque (si alguno todavía no tiene VIN, queda vacío y se pide a
+  // mano). En exclusivo o Ro-Ro no aplica y el forwarder lo lee así.
+  const otras = (ctx.unidadesDelEmbarque ?? []).filter((u) => u.id !== e.id);
+  const vinOtraUnidad =
+    emb?.modalidad === "consolidado"
+      ? otras.length > 0 && otras.every((u) => texto(u.vin))
+        ? otras.map((u) => texto(u.vin)).join(", ")
+        : ""
+      : "N/A";
+
   const base: Campos = {
     EXPEDIENTE: e.codigo,
     FECHA_FIRMA: fechaEnLetras(e.fechaFirma),
-    CIUDAD_FIRMA: "Lima",
+    CIUDAD_FIRMA: "",
     MODALIDAD_EMBARQUE: emb ? MODALIDAD_TEXTO[emb.modalidad] : "",
     TIPO_CONTENEDOR: emb?.contenedor ? CONTENEDOR_TEXTO[emb.contenedor] : emb?.modalidad === "roro" ? "Ro-Ro" : "",
     PROPORCION_FLETE: porcentaje(e.proporcionFlete),
@@ -402,7 +441,7 @@ export function camposPlantilla(ctx: ContextoExpediente, extra: CamposExtra = {}
     VEH_CILINDRADA: v.cilindradaCc ? entero(v.cilindradaCc, " cc") : "",
     VEH_TRANSMISION: texto(v.transmision),
     VEH_CONDICION: v.condicion === "nuevo" ? "Nuevo" : "Usado",
-    VEH_CATEGORIA: "",
+    VEH_CATEGORIA: v.clase ? CLASE_TEXTO[v.clase] : "",
     VEH_PAIS_ENSAMBLAJE: texto(v.paisEnsamblaje),
     VEH_DOC_PROPIEDAD: texto(v.docPropiedad),
     VEH_PESO: v.pesoKg ? entero(v.pesoKg, " kg") : "",
@@ -425,7 +464,7 @@ export function camposPlantilla(ctx: ContextoExpediente, extra: CamposExtra = {}
     FORWARDER_NOMBRE: texto(forwarder?.nombre),
     FORWARDER_CONTACTO: contacto(forwarder),
     ALMACEN_CONSOLIDACION: texto(emb?.almacenConsolidacion),
-    VIN_OTRA_UNIDAD: "",
+    VIN_OTRA_UNIDAD: vinOtraUnidad,
     AGENTE_ADUANA: texto(agente?.nombre),
     AGENTE_ADUANA_RUC: texto(agente?.rucOTaxId),
     AGENTE_ADUANA_CONTACTO: contacto(agente),
@@ -507,32 +546,11 @@ export function camposPlantilla(ctx: ContextoExpediente, extra: CamposExtra = {}
     H4_ACREDITADO_FECHA: "",
   };
 
-  // Lo que llega de fuera gana, pero solo si trae algo.
-  for (const [k, valor] of Object.entries(extra)) {
-    if (!esCampo(k)) continue;
-    const limpio = (valor ?? "").trim();
-    if (limpio) base[k] = limpio;
-  }
+  aplicarCapa(base, porDefecto, true);
+  aplicarCapa(base, extra, false);
 
-  const faltantes: Campo[] = [];
-  const manualesVacios: Campo[] = [];
-  for (const campo of CAMPOS) {
-    if (base[campo]) continue;
-    (esManual(campo) ? manualesVacios : faltantes).push(campo);
-  }
-  return { campos: base, faltantes, manualesVacios };
-}
-
-/**
- * Mapa listo para imprimir: los manuales vacíos salen como línea en blanco.
- * Los no manuales vacíos quedan vacíos (quien emite ya los filtró).
- */
-export function camposParaImprimir(campos: Campos): Campos {
-  const salida = { ...campos };
-  for (const campo of CAMPOS) {
-    if (!salida[campo] && esManual(campo)) salida[campo] = LINEA_EN_BLANCO;
-  }
-  return salida;
+  const faltantes = CAMPOS.filter((campo) => !base[campo]);
+  return { campos: base, faltantes };
 }
 
 /**

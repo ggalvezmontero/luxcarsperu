@@ -165,6 +165,13 @@ const NAV_ITEMS: NavItem[] = [
     ready: true,
     icon: <Icon path="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-9a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm10 10v-2a4 4 0 0 0-3-3.9M15 3.1a4 4 0 0 1 0 7.8" />,
   },
+  {
+    href: "/portal/configuracion",
+    label: "Configuración",
+    hint: "Datos de la empresa para los documentos",
+    ready: true,
+    icon: <Icon path="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3a7.4 7.4 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7.5 7.5 0 0 0-2.1-1.2L14.5 3h-5l-.4 2.7a7.5 7.5 0 0 0-2.1 1.2l-2.3-1-2 3.4 2 1.5a7.4 7.4 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1c.6.5 1.3.9 2.1 1.2l.4 2.7h5l.4-2.7c.8-.3 1.5-.7 2.1-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z" />,
+  },
 ];
 
 function BrandMark() {

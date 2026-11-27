@@ -8,6 +8,7 @@ import { tareasParaEtapa } from "@/core/expedientes/avance";
 import { hitosDesde } from "@/core/expedientes/hitos";
 import { entradaPorDefecto, presupuestar } from "@/core/expedientes/presupuesto";
 import type {
+  ClaseVehiculo,
   Cliente,
   ContextoExpediente,
   Embarque,
@@ -40,6 +41,8 @@ export type VehiculoForm = {
   transmision: string;
   condicion: VehicleCondition;
   categoria: VehicleCategoryId;
+  /** M1 autos y SUV / N1 pickups y camionetas: va en el Anexo A. */
+  clase: ClaseVehiculo;
   origen: VehicleOrigin;
   pais_ensamblaje: string;
   doc_propiedad: string;
@@ -103,6 +106,7 @@ export const VEHICULO_INICIAL: VehiculoForm = {
   transmision: "",
   condicion: "nuevo",
   categoria: "gasolina",
+  clase: "M1",
   origen: "otro",
   pais_ensamblaje: "",
   doc_propiedad: "",
@@ -164,6 +168,7 @@ export function validarVehiculo(v: VehiculoForm): string | null {
   const anio = Number(v.anio);
   if (!Number.isInteger(anio) || anio < 1980 || anio > 2100) return "El año modelo no es válido.";
   if (v.vin && v.vin.length !== 17) return "El VIN tiene 17 caracteres (o déjalo vacío si todavía no hay unidad).";
+  if (v.clase !== "M1" && v.clase !== "N1") return "Elige la clase del vehículo: M1 (autos y SUV) o N1 (pickups y camionetas).";
   return null;
 }
 
@@ -250,6 +255,7 @@ export function contextoPrevio(estado: EstadoAlta, embarqueElegido: Embarque | n
       docPropiedad: v.doc_propiedad || null,
       pesoKg: null,
       medidas: null,
+      clase: v.clase,
     },
     monedaCompra: c.moneda,
     precioCompra: leerNumero(c.precio),
@@ -372,6 +378,7 @@ export function construirDatos(estado: EstadoAlta, presupuesto: Presupuesto, emb
     veh_transmision: e.vehiculo.transmision,
     veh_condicion: v.condicion,
     veh_categoria: v.categoria,
+    veh_clase: v.clase,
     veh_origen: v.origen,
     veh_pais_ensamblaje: e.vehiculo.paisEnsamblaje,
     veh_doc_propiedad: e.vehiculo.docPropiedad,

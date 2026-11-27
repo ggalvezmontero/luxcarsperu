@@ -297,6 +297,20 @@ export type Vehiculo = {
   docPropiedad: string | null;
   pesoKg: number | null;
   medidas: string | null;
+  /** Clase para el Anexo A y la aduana: M1 (autos y SUV) o N1 (pickups y camionetas). */
+  clase: ClaseVehiculo | null;
+};
+
+export const CLASES_VEHICULO = ["M1", "N1"] as const;
+export type ClaseVehiculo = (typeof CLASES_VEHICULO)[number];
+
+/** Otro expediente del mismo embarque (consolidado): lo nombran las instrucciones al forwarder. */
+export type UnidadDelEmbarque = {
+  id: string;
+  codigo: string;
+  vin: string | null;
+  marca: string;
+  modelo: string;
 };
 
 /** Parte reservada del expediente (`expedientes_reservado`): solo admin. */
@@ -504,6 +518,12 @@ export type ContextoExpediente = {
    * los recibe (sus datos salen en el Anexo A ya generado).
    */
   contrapartes?: Contraparte[];
+  /**
+   * Los otros expedientes del mismo embarque (incluido este, se filtra por id),
+   * solo para el equipo: en consolidado el VIN de la otra unidad va en las
+   * instrucciones al forwarder.
+   */
+  unidadesDelEmbarque?: UnidadDelEmbarque[];
 };
 
 /* -------------------------------------------------------------------------- */

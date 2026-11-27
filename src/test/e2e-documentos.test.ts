@@ -46,7 +46,7 @@ describe.skipIf(!ACTIVA)("fase 2 de punta a punta (base y bucket reales)", () =>
     secuenciaAntes = antes.is_called ? antes.last_value : antes.last_value - 1;
     const [c] = (await sql`
       insert into public.clientes (tipo, razon_social, ruc, domicilio, partida, representante, representante_dni, representante_cargo, email, telefono, actividad, banco_origen, beneficiario_final, origen_fondos, user_id)
-      values ('empresa', 'PRUEBA FASE 2 S.A.C.', '20999999991', 'Calle Prueba 123, Miraflores, Lima', '12345678', 'Ana Prueba', '12345678', 'Gerente general', 'prueba-fase2@luxcars.test', '+51 999 999 999', 'Transporte', 'BCP dólares', 'Ana Prueba, DNI 12345678, 100 %', 'Utilidades', ${CLIENTE_USER}::uuid)
+      values ('empresa', 'PRUEBA FASE 2 S.A.C.', '20999999981', 'Calle Prueba 123, Miraflores, Lima', '12345678', 'Ana Prueba', '12345678', 'Gerente general', 'prueba-fase2@luxcars.test', '+51 999 999 999', 'Transporte', 'BCP dólares', 'Ana Prueba, DNI 12345678, 100 %', 'Utilidades', ${CLIENTE_USER}::uuid)
       returning id
     `) as unknown as { id: string }[];
     clienteId = c.id;
@@ -76,10 +76,10 @@ describe.skipIf(!ACTIVA)("fase 2 de punta a punta (base y bucket reales)", () =>
       entrada: {},
     };
     const [e] = (await sql`
-      insert into public.expedientes (cliente_id, etapa, embarque_id, proporcion_flete, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_cilindrada_cc, veh_condicion, veh_categoria, veh_origen,
+      insert into public.expedientes (cliente_id, etapa, embarque_id, proporcion_flete, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_cilindrada_cc, veh_condicion, veh_categoria, veh_origen, veh_clase,
         moneda_compra, precio_compra, precio_compra_usd, fecha_limite_compra, pais_origen, puerto_origen, presupuesto, honorarios_usd, honorarios_base_usd, honorarios_igv_usd,
         porcentaje_detraccion, margen_h3, tarifa_custodia_usd, costo_inspeccion_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, loa_vence)
-      values (${clienteId}::uuid, 'contrato', ${embarqueId}::uuid, 0.5, 'Toyota', 'Tundra', 'TRD Pro', 2026, '5TFPC5DB1RX000000', 'Blanco', 1200, 3445, 'nuevo', 'hev', 'otro',
+      values (${clienteId}::uuid, 'contrato', ${embarqueId}::uuid, 0.5, 'Toyota', 'Tundra', 'TRD Pro', 2026, '5TFPC5DB1RX000000', 'Blanco', 1200, 3445, 'nuevo', 'hev', 'otro', 'N1',
         'CAD', 98500, 70920, '2026-12-15', 'Canadá', 'Vancouver', ${JSON.stringify(presupuesto)}::jsonb, 8273.13, 7011.13, 1262,
         12, 0.03, 25, 350, '2026-11-28', '2026-12-12', '2027-01-09', '2027-02-10', '2027-03-05', '10 a 14', '2027-02-28')
       returning id
@@ -127,10 +127,19 @@ describe.skipIf(!ACTIVA)("fase 2 de punta a punta (base y bucket reales)", () =>
     const fijos = {
       LUXCARS_RUC: "20600000001", LUXCARS_DOMICILIO: "Calle Prueba 184, San Isidro, Lima", LUXCARS_PARTIDA: "14000000", LUXCARS_REPRESENTANTE: "Representante Prueba", LUXCARS_REP_DNI: "40000000",
       LUXCARS_CORREO: "info@luxcars.pe", LUXCARS_TELEFONO: "+51 980 794 348", CTA_OPER_BANCO: "BCP", CTA_OPER_NUMERO: "1", CTA_OPER_CCI: "1", CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "2", CTA_FONDOS_CCI: "2", CTA_DETRACCION_NUMERO: "3",
+      PORCENTAJE_DETRACCION: "10", CIUDAD_FIRMA: "Lima", DIAS_ESPERA_MAX: "15",
     };
     const plantilla = plantillaDe("contrato")!;
-    const doc = construirDocumento(plantilla, ctx!, fijos);
+    // Sin los parámetros de la empresa el contrato no se emite (regla "sin rayas").
+    const sinEmpresa = construirDocumento(plantilla, ctx!, {});
+    expect(sinEmpresa.faltantes).toEqual(expect.arrayContaining(["LUXCARS_RUC", "LUXCARS_REP_DNI", "CIUDAD_FIRMA"]));
+    // Con ellos como porDefecto, sale completo; la clase N1 llega de la columna nueva.
+    const doc = construirDocumento(plantilla, ctx!, {}, fijos);
     expect(doc.faltantes).toEqual([]);
+    expect(ctx!.expediente.vehiculo.clase).toBe("N1");
+    expect(construirDocumento(plantillaDe("anexo_a")!, ctx!, {}, fijos).campos.VEH_CATEGORIA).toBe("N1");
+    // El loader del servidor trae las unidades del embarque (acá solo esta).
+    expect(ctx!.unidadesDelEmbarque?.map((u) => u.id)).toEqual([expedienteId]);
 
     const [pdf, docx] = await Promise.all([renderPdf(doc.estructura), renderDocx(doc.estructura)]);
     const rutaPdf = `expedientes/${expedienteId}/documentos/prueba-v1.pdf`;

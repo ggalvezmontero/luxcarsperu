@@ -4,15 +4,7 @@
  * necesita y le faltan.
  */
 
-import {
-  camposParaImprimir,
-  camposPlantilla,
-  esManual,
-  espiarCampos,
-  type Campo,
-  type Campos,
-  type CamposExtra,
-} from "../campos";
+import { camposPlantilla, espiarCampos, type Campo, type Campos, type CamposExtra } from "../campos";
 import type { ContextoExpediente, TipoDocumento } from "../tipos";
 import type { Estructura } from "./estructura";
 import { actaEntrega } from "./plantillas/actaEntrega";
@@ -76,32 +68,33 @@ export type DocumentoConstruido = {
   campos: Campos;
   /** Campos que la plantilla leyó. */
   usados: Campo[];
-  /** Usados, vacíos y NO manuales: impiden emitir. */
+  /** Usados y vacíos: impiden emitir (regla "sin rayas": ningún campo sale en blanco). */
   faltantes: Campo[];
-  /** Usados, vacíos y manuales: salen como línea en blanco. */
-  manualesVacios: Campo[];
 };
 
 /**
  * Construye un documento a partir del expediente. Nunca lanza por datos
  * vacíos: devuelve `faltantes` para que quien emite decida (la ruta responde
- * 422; la vista previa los muestra en pantalla).
+ * 422; la vista previa los muestra en pantalla y manda a Configuración los de
+ * la empresa). La estructura se arma con los valores reales, en una sola
+ * pasada que a la vez registra qué campos leyó la plantilla.
+ *
+ *  · `extra`: el formulario y el libro (gana sobre todo).
+ *  · `porDefecto`: parámetros de la empresa y tipo de cambio del día (solo
+ *    rellenan lo que el expediente dejó vacío).
  */
 export function construirDocumento(
   plantilla: Plantilla,
   ctx: ContextoExpediente,
   extra: CamposExtra = {},
+  porDefecto: CamposExtra = {},
 ): DocumentoConstruido {
-  const { campos } = camposPlantilla(ctx, extra);
-  // Primera pasada con los valores reales, espiando qué campos lee la plantilla.
+  const { campos } = camposPlantilla(ctx, extra, porDefecto);
   const espia = espiarCampos(campos);
-  plantilla.construir(espia.campos, ctx);
+  const estructura = plantilla.construir(espia.campos, ctx);
   const usados = [...espia.usados];
-  const faltantes = usados.filter((k) => !campos[k] && !esManual(k));
-  const manualesVacios = usados.filter((k) => !campos[k] && esManual(k));
-  // Segunda pasada: la estructura que se imprime, con líneas en blanco en los manuales.
-  const estructura = plantilla.construir(camposParaImprimir(campos), ctx);
-  return { plantilla, estructura, campos, usados, faltantes, manualesVacios };
+  const faltantes = usados.filter((k) => !campos[k]);
+  return { plantilla, estructura, campos, usados, faltantes };
 }
 
 /** Nombre de archivo seguro: "LC-2026-001-contrato-v2.pdf". */

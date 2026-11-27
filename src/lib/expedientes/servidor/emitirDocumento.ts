@@ -10,8 +10,9 @@
  * Nunca lanza: devuelve `{ ok: false, status, mensaje }`.
  *
  * LOS CAMPOS DE LOS DOCUMENTOS DEL LIBRO LOS ARMA EL CORE (`ledger.ts`), no el
- * formulario: `camposDelLibro` decide, por tipo, qué se suma a los fijos y a lo
- * escrito a mano. La constancia exige el movimiento; el aviso H3 exige el
+ * formulario: `camposDelLibro` decide, por tipo, qué se suma a lo escrito a
+ * mano; los parámetros de la empresa van aparte como `porDefecto`. Ningún
+ * documento sale con campos en blanco: si falta uno, 422 con la lista. La constancia exige el movimiento; el aviso H3 exige el
  * presupuesto guardado y deja `hito = 'H3'`; la liquidación definitiva y la
  * rendición nacen visibles al cliente; la rendición abre la tarea de
  * conformidad del cliente si no existe.
@@ -36,7 +37,6 @@ export type Emitido = {
   ok: true;
   documentoId: string;
   version: number;
-  manualesVacios: string[];
   bytes: { pdf: number; docx: number };
   urls: { pdf: string | null; docx: string | null };
 };
@@ -46,8 +46,13 @@ export type FalloEmision = { ok: false; status: number; mensaje: string; faltant
 export type OpcionesEmision = {
   /** Usuario verificado que emite (va como actor del evento y de la fila). */
   actorId: string;
-  /** Lo escrito a mano en el formulario, ya filtrado a nombres de campo válidos. */
+  /** Lo escrito a mano en el formulario, ya filtrado a nombres de campo válidos. Gana sobre todo. */
   extra: CamposExtra;
+  /**
+   * Parámetros de la empresa (`camposFijosLuxcars()`) y el tipo de cambio del
+   * día: solo rellenan lo que el expediente dejó vacío.
+   */
+  porDefecto?: CamposExtra;
   visibleCliente: boolean;
   /** Constancia: el depósito confirmado que la origina. */
   movimiento?: Movimiento | null;
@@ -76,7 +81,8 @@ export function camposDelLibro(
       if (!presupuestoAvisoH3(ctx)) {
         return { ok: false, status: 422, mensaje: "El aviso H3 necesita el presupuesto del expediente (Anexo B) para recalcular con los datos reales." };
       }
-      return { ok: true, campos: datosAvisoH3(ctx, opciones.extra), hito: "H3", visible: true };
+      // El tipo de cambio referencial llega por defecto (servicio del día) o corregido a mano.
+      return { ok: true, campos: datosAvisoH3(ctx, { ...opciones.porDefecto, ...opciones.extra }), hito: "H3", visible: true };
     }
     case "liquidacion_definitiva":
       return { ok: true, campos: datosLiquidacion(ctx), hito: "H3", visible: true };
@@ -96,8 +102,9 @@ export async function emitirDocumento(plantilla: Plantilla, ctx: ContextoExpedie
   const libro = camposDelLibro(plantilla, ctx, opciones);
   if (!libro.ok) return libro;
 
-  // Lo del libro manda sobre lo fijo; lo escrito a mano manda sobre todo (para corregir una fecha).
-  const doc = construirDocumento(plantilla, ctx, { ...libro.campos, ...opciones.extra });
+  // Lo del libro manda sobre el expediente; lo escrito a mano manda sobre todo
+  // (para corregir una fecha); los parámetros de la empresa solo rellenan vacíos.
+  const doc = construirDocumento(plantilla, ctx, { ...libro.campos, ...opciones.extra }, opciones.porDefecto ?? {});
   if (doc.faltantes.length > 0) {
     return { ok: false, status: 422, mensaje: `Faltan datos para emitir este documento: ${doc.faltantes.join(", ")}.`, faltantes: doc.faltantes };
   }
@@ -183,7 +190,6 @@ export async function emitirDocumento(plantilla: Plantilla, ctx: ContextoExpedie
     ok: true,
     documentoId: registrado.id,
     version: registrado.version,
-    manualesVacios: doc.manualesVacios,
     bytes: { pdf: pdf.byteLength, docx: docx.byteLength },
     urls: { pdf: urlPdf, docx: urlDocx },
   };

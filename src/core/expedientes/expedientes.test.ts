@@ -42,6 +42,7 @@ function expedienteBase(cambios: Partial<Expediente> = {}): Expediente {
       docPropiedad: null,
       pesoKg: null,
       medidas: null,
+      clase: "M1",
     },
     monedaCompra: "USD",
     precioCompra: 91_000,

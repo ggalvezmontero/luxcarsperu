@@ -201,8 +201,8 @@ describe.skipIf(!ACTIVA)("fase 3 de punta a punta (base y bucket reales)", () =>
     expect(confirmado.notaInterna).toBe("Llegaron 0.50 menos por comisión del banco.");
     expect(estadoHito(ctx.hitos.find((h) => h.tipo === "H2")!, ctx.movimientos)).toBe("acreditado");
 
-    const fijos = { LUXCARS_RUC: "20600000001", LUXCARS_DOMICILIO: "Calle Prueba 184", LUXCARS_PARTIDA: "1", LUXCARS_REPRESENTANTE: "Representante Prueba", LUXCARS_REP_DNI: "40000000", LUXCARS_CORREO: "info@luxcars.pe", LUXCARS_TELEFONO: "+51 980 794 348", CTA_OPER_BANCO: "BCP", CTA_OPER_NUMERO: "1", CTA_OPER_CCI: "1", CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "2", CTA_FONDOS_CCI: "2", CTA_DETRACCION_NUMERO: "3" };
-    const r = await emitirDocumento(plantillaDe("constancia_fondos")!, ctx, { actorId: ADMIN, extra: fijos, visibleCliente: true, movimiento: confirmado });
+    const fijos = { LUXCARS_RUC: "20600000001", LUXCARS_DOMICILIO: "Calle Prueba 184", LUXCARS_PARTIDA: "1", LUXCARS_REPRESENTANTE: "Representante Prueba", LUXCARS_REP_DNI: "40000000", LUXCARS_CORREO: "info@luxcars.pe", LUXCARS_TELEFONO: "+51 980 794 348", CTA_OPER_BANCO: "BCP", CTA_OPER_NUMERO: "1", CTA_OPER_CCI: "1", CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "2", CTA_FONDOS_CCI: "2", CTA_DETRACCION_NUMERO: "3", PORCENTAJE_DETRACCION: "12", CIUDAD_FIRMA: "Lima", DIAS_ESPERA_MAX: "15" };
+    const r = await emitirDocumento(plantillaDe("constancia_fondos")!, ctx, { actorId: ADMIN, extra: {}, porDefecto: fijos, visibleCliente: true, movimiento: confirmado });
     expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
     if (!r.ok) return;
     const [doc] = (await sql`select tipo, version, estado, visible_cliente, movimiento_id, hito, titulo, campos->>'CONSTANCIA_NUMERO' as numero, campos->>'SALDO_NUEVO' as saldo from public.expediente_documentos where id = ${r.documentoId}::uuid`) as unknown as Record<string, unknown>[];

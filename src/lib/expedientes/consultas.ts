@@ -181,6 +181,25 @@ export async function cargarExpediente(
     } else {
       ctx.contrapartes = [];
     }
+    // Las otras unidades del mismo embarque (consolidado): las instrucciones
+    // al forwarder nombran el VIN de la otra unidad.
+    if (ctx.expediente.embarqueId) {
+      const unidades = await client
+        .from("expedientes")
+        .select("id, codigo, veh_vin, veh_marca, veh_modelo")
+        .eq("embarque_id", ctx.expediente.embarqueId)
+        .neq("etapa", "cancelado")
+        .order("codigo");
+      ctx.unidadesDelEmbarque = ((unidades.data ?? []) as unknown as { id: string; codigo: string; veh_vin: string | null; veh_marca: string; veh_modelo: string }[]).map((u) => ({
+        id: u.id,
+        codigo: u.codigo,
+        vin: u.veh_vin,
+        marca: u.veh_marca,
+        modelo: u.veh_modelo,
+      }));
+    } else {
+      ctx.unidadesDelEmbarque = [];
+    }
     return { ctx, error: null };
   } catch {
     return { ctx: null, error: "No se pudo leer el expediente. Revisa tu conexión." };
@@ -352,6 +371,8 @@ export type DatosCrearExpediente = {
   veh_origen: string;
   veh_pais_ensamblaje?: string | null;
   veh_doc_propiedad?: string | null;
+  /** 'M1' | 'N1'. */
+  veh_clase?: string | null;
   moneda_compra: string;
   precio_compra?: number | null;
   precio_compra_usd?: number | null;
@@ -647,14 +668,22 @@ export async function generarDocumento(
   }
 }
 
-/** Datos fijos de Luxcars y sus cuentas (variable de entorno del servidor), para la vista previa. */
-export async function cargarCamposFijos(expedienteId: string): Promise<Record<string, string>> {
+/**
+ * Lo que la vista previa pasa como `porDefecto`: los parámetros de la empresa
+ * (/portal/configuracion, respaldo en la variable de entorno) y el tipo de
+ * cambio referencial del día (`TC_REFERENCIAL`, 4 decimales; ausente si el
+ * servicio falló). `null` si la ruta no respondió.
+ */
+export async function cargarCamposFijos(expedienteId: string): Promise<Record<string, string> | null> {
   try {
     const respuesta = await fetch(`/api/portal/expedientes/${encodeURIComponent(expedienteId)}/documentos`, { credentials: "same-origin", cache: "no-store" });
-    const datos = (await respuesta.json().catch(() => ({}))) as { fijos?: unknown };
-    return datos.fijos && typeof datos.fijos === "object" ? (datos.fijos as Record<string, string>) : {};
+    const datos = (await respuesta.json().catch(() => ({}))) as { ok?: unknown; fijos?: unknown; tc?: unknown };
+    if (datos.ok !== true) return null;
+    const fijos = datos.fijos && typeof datos.fijos === "object" ? { ...(datos.fijos as Record<string, string>) } : {};
+    if (typeof datos.tc === "string" && datos.tc) fijos.TC_REFERENCIAL = datos.tc;
+    return fijos;
   } catch {
-    return {};
+    return null;
   }
 }
 

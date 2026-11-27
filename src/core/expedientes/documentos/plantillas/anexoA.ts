@@ -75,7 +75,7 @@ function construir(c: Campos): Estructura {
       h2("6. Autorización de compra"),
       p(`El Mandante autoriza a LUX CARS IMPORT S.A.C. a adquirir en su nombre y por su cuenta el vehículo descrito en este anexo hasta el precio tope indicado, a emitir al vendedor las instrucciones de compra y exportación y al forwarder las instrucciones de embarque, y a pagar el precio con los fondos del hito H2 una vez acreditados. Esta autorización vence el ${c.FECHA_LIMITE_COMPRA} si la compra no se ha ejecutado.`),
       p(`Con la firma de este anexo se devenga el hito H1 (USD ${c.COMISION_H1}).`),
-      p(`${c.CIUDAD_FIRMA}, ______ de ______________ de 20____`),
+      p(`${c.CIUDAD_FIRMA}, ${c.FECHA_FIRMA}`),
       firmas(...firmasLuxcarsYMandante(c)),
     ],
   };
@@ -83,7 +83,7 @@ function construir(c: Campos): Estructura {
 
 export const anexoA: Plantilla = {
   tipo: "anexo_a",
-  version: "anexo_a@2026-11-25",
+  version: "anexo_a@2026-11-27",
   nombre: "Anexo A · Ficha del vehículo",
   idioma: "es",
   tarea: "luxcars.anexo_a_presupuesto",

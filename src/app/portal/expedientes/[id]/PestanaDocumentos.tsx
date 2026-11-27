@@ -2,20 +2,26 @@
 
 /**
  * Documentos del expediente: generar desde una plantilla (con vista previa y
- * la lista de campos que faltan, los manuales editables), la lista por tipo y
- * versión con su estado, descargar PDF o DOCX, subir el firmado y mostrarlo u
- * ocultarlo al cliente.
+ * la lista de campos que faltan), la lista por tipo y versión con su estado,
+ * descargar PDF o DOCX, subir el firmado y mostrarlo u ocultarlo al cliente.
+ *
+ * REGLA "SIN RAYAS": todo campo que la plantilla use y esté vacío bloquea la
+ * emisión. Si es un dato de la empresa (RUC, cuentas, porcentaje de
+ * detracción…) se completa una vez en /portal/configuracion; los demás se piden
+ * acá para este documento. Los parámetros de la empresa y el tipo de cambio del
+ * día llegan de la ruta como `porDefecto`; lo escrito acá gana sobre todo.
  *
  * La vista previa se construye EN EL NAVEGADOR con el core (`construirDocumento`
  * + `renderHtml`): no genera archivos ni toca el servidor. Solo "Generar" llama
  * a la ruta, que renderiza el PDF y el DOCX y los sube al bucket privado.
  */
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { Badge, Notice, PortalPanel, TableScroll, Td, Th } from "@/components/portal/CrmUI";
 import { Campo, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
-import { FICHA, type Campo as NombreCampo } from "@/core/expedientes/campos";
+import { FICHA, esCampoEmpresa, type Campo as NombreCampo } from "@/core/expedientes/campos";
 import { PLANTILLAS, construirDocumento, esPlantillaDelLibro, plantillaDe, renderHtml } from "@/core/expedientes/documentos";
 import type { ContextoExpediente, Documento, TipoDocumento } from "@/core/expedientes/tipos";
 import {
@@ -53,7 +59,9 @@ export function PestanaDocumentos({
 
 function Generador({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
   const [tipo, setTipo] = useState<TipoDocumento>("contrato");
+  /** `porDefecto`: parámetros de la empresa + TC del día. `null` mientras carga; `{}` si la ruta falló. */
   const [fijos, setFijos] = useState<Record<string, string> | null>(null);
+  const [fijosError, setFijosError] = useState(false);
   const [extra, setExtra] = useState<Record<string, string>>({});
   const [visible, setVisible] = useState(false);
   const [mostrarPrevia, setMostrarPrevia] = useState(false);
@@ -63,7 +71,9 @@ function Generador({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado:
   useEffect(() => {
     let cancelado = false;
     void cargarCamposFijos(ctx.expediente.id).then((f) => {
-      if (!cancelado) setFijos(f);
+      if (cancelado) return;
+      setFijos(f ?? {});
+      setFijosError(f === null);
     });
     return () => {
       cancelado = true;
@@ -73,8 +83,10 @@ function Generador({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado:
   const plantilla = plantillaDe(tipo);
   const doc = useMemo(() => {
     if (!plantilla) return null;
-    return construirDocumento(plantilla, ctx, { ...(fijos ?? {}), ...extra });
+    return construirDocumento(plantilla, ctx, extra, fijos ?? {});
   }, [plantilla, ctx, fijos, extra]);
+  const faltanEmpresa = useMemo(() => (doc ? doc.faltantes.filter((k) => esCampoEmpresa(k)) : []), [doc]);
+  const faltanAqui = useMemo(() => (doc ? doc.faltantes.filter((k) => !esCampoEmpresa(k)) : []), [doc]);
 
   const html = useMemo(() => (doc && mostrarPrevia ? renderHtml(doc.estructura) : ""), [doc, mostrarPrevia]);
   const vigente = ctx.documentos.find((d) => d.tipo === tipo && d.estado !== "reemplazado" && d.estado !== "anulado");
@@ -90,8 +102,8 @@ function Generador({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado:
     onResultado(r);
   };
 
-  const campoEditable = (k: NombreCampo, obligatorio: boolean) => (
-    <Campo key={k} label={k.replace(/_/g, " ").toLowerCase()} hint={FICHA[k].descripcion} requerido={obligatorio}>
+  const campoEditable = (k: NombreCampo) => (
+    <Campo key={k} label={k.replace(/_/g, " ").toLowerCase()} hint={FICHA[k].descripcion} requerido>
       <Entrada
         value={extra[k] ?? ""}
         placeholder={`ej. ${FICHA[k].ejemplo}`}
@@ -120,24 +132,34 @@ function Generador({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado:
           </p>
         ) : null}
 
-        {fijos === null ? <p className="text-xs text-ink-4">Leyendo los datos fijos de Luxcars…</p> : null}
-
-        {doc && doc.faltantes.length > 0 ? (
-          <Notice tone="warn" label={`Faltan ${doc.faltantes.length} datos para emitir`}>
-            Complétalos en el expediente (cliente, vehículo, compra, contrapartes) o escríbelos aquí para este documento.
-            <div className="mt-3">
-              <Rejilla columnas={3}>{doc.faltantes.map((k) => campoEditable(k, true))}</Rejilla>
-            </div>
+        {fijos === null ? <p className="text-xs text-ink-4">Leyendo los datos de la empresa y el tipo de cambio del día…</p> : null}
+        {fijosError ? (
+          <Notice tone="warn" label="No se pudieron leer los datos de la empresa">
+            La vista previa no tiene el RUC, las cuentas ni el tipo de cambio del día. Recarga la página; si sigue, revisa tu sesión.
           </Notice>
         ) : null}
 
-        {doc && doc.manualesVacios.length > 0 ? (
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.12em] text-ink-4">Opcionales: si se dejan vacíos salen como línea para llenar a mano</p>
-            <div className="mt-2">
-              <Rejilla columnas={3}>{doc.manualesVacios.map((k) => campoEditable(k, false))}</Rejilla>
+        {fijos !== null && faltanEmpresa.length > 0 ? (
+          <Notice tone="warn" label={`${faltanEmpresa.length === 1 ? "Falta un dato" : `Faltan ${faltanEmpresa.length} datos`} de la empresa`}>
+            Completa {faltanEmpresa.length === 1 ? "este dato" : "estos datos"} en{" "}
+            <Link href="/portal/configuracion" className="underline text-silver-bright">Configuración</Link>: se fija una vez y vale para todos los expedientes.
+            <ul className="mt-2 list-disc pl-5">
+              {faltanEmpresa.map((k) => (
+                <li key={k}>
+                  <span className="font-medium text-ink">{k.replace(/_/g, " ").toLowerCase()}</span>: {FICHA[k].descripcion}
+                </li>
+              ))}
+            </ul>
+          </Notice>
+        ) : null}
+
+        {fijos !== null && faltanAqui.length > 0 ? (
+          <Notice tone="warn" label={`${faltanAqui.length === 1 ? "Falta un dato" : `Faltan ${faltanAqui.length} datos`} para emitir`}>
+            Ningún documento sale con un campo en blanco. Complétalos en el expediente (cliente, vehículo, compra, contrapartes, embarque) o escríbelos aquí para este documento.
+            <div className="mt-3">
+              <Rejilla columnas={3}>{faltanAqui.map((k) => campoEditable(k))}</Rejilla>
             </div>
-          </div>
+          </Notice>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-3">

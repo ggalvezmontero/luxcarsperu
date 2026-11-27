@@ -730,6 +730,8 @@ export type ExpedienteRow = {
   veh_doc_propiedad?: string | null;
   veh_peso_kg?: number | null;
   veh_medidas?: string | null;
+  /** 'M1' | 'N1' (migración 20261127090000). */
+  veh_clase?: string | null;
   moneda_compra: string;
   precio_compra: number | string | null;
   precio_compra_usd: number | string | null;

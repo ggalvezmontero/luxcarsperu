@@ -12,7 +12,7 @@ import { Button } from "@/components/Button";
 import { PortalPanel } from "@/components/portal/CrmUI";
 import { AreaTexto, Campo, Dato, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
 import { TablaPresupuesto } from "@/components/portal/expedientes/TablaPresupuesto";
-import type { Contraparte, ContextoExpediente, TipoContraparte } from "@/core/expedientes/tipos";
+import type { ClaseVehiculo, Contraparte, ContextoExpediente, TipoContraparte } from "@/core/expedientes/tipos";
 import { TIPOS_CONTRAPARTE } from "@/core/expedientes/tipos";
 import type { EmbarqueRow, ExpedienteRow } from "@/lib/db/types";
 import { actualizarEmbarque, actualizarExpediente, actualizarReservado, crearContraparte, listarContrapartes } from "@/lib/expedientes/consultas";
@@ -21,6 +21,8 @@ import { CATEGORY_LABEL } from "@/lib/stockLabels";
 import type { PortalClient } from "@/lib/portal/portalClient";
 
 type Resultado = { ok: boolean; message: string };
+
+const CLASE_LABEL: Record<ClaseVehiculo, string> = { M1: "M1 · autos y SUV", N1: "N1 · pickups y camionetas" };
 
 export function PestanaVehiculo({
   client,
@@ -44,7 +46,8 @@ export function PestanaVehiculo({
             <Dato label="Año modelo">{v.anio}</Dato>
             <Dato label="VIN">{v.vin ? <span className="font-mono">{v.vin}</span> : "Sin unidad asignada"}</Dato>
             <Dato label="Condición">{v.condicion === "nuevo" ? "Nuevo" : "Usado"}</Dato>
-            <Dato label="Categoría">{CATEGORY_LABEL[v.categoria]}</Dato>
+            <Dato label="Categoría (ISC)">{CATEGORY_LABEL[v.categoria]}</Dato>
+            <Dato label="Clase (Anexo A)">{v.clase ? CLASE_LABEL[v.clase] : "Sin definir: el Anexo A no se emite hasta elegirla (abajo, en Datos de avance)"}</Dato>
             <Dato label="Origen (ad valorem)">{v.origen === "originario-usa" ? "Originario de EE.UU. · 0 %" : "Otro · 6 %"}</Dato>
             <Dato label="Cilindrada">{v.cilindradaCc ? `${v.cilindradaCc} cc` : "—"}</Dato>
             <Dato label="Combustible">{v.combustible ?? "—"}</Dato>
@@ -103,6 +106,7 @@ function DatosAvance({ client, ctx, onResultado }: { client: PortalClient; ctx: 
     tive_numero: e.tiveNumero ?? "",
     fecha_entrega: e.fechaEntrega ?? "",
     km_entrega: e.kmEntrega !== null ? String(e.kmEntrega) : "",
+    veh_clase: e.vehiculo.clase ?? "",
   });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f, valor: string) => setF((p) => ({ ...p, [k]: valor }));
@@ -126,6 +130,7 @@ function DatosAvance({ client, ctx, onResultado }: { client: PortalClient; ctx: 
       tive_numero: f.tive_numero.trim() || null,
       fecha_entrega: f.fecha_entrega || null,
       km_entrega: leerNumero(f.km_entrega),
+      veh_clase: f.veh_clase === "M1" || f.veh_clase === "N1" ? f.veh_clase : null,
     };
     onResultado(await actualizarExpediente(client, e.id, cambios));
     setBusy(false);
@@ -151,6 +156,13 @@ function DatosAvance({ client, ctx, onResultado }: { client: PortalClient; ctx: 
           <Campo label="TIVe"><Entrada value={f.tive_numero} onChange={(x) => set("tive_numero", x.target.value)} maxLength={40} /></Campo>
           <Campo label="Fecha de entrega"><Entrada type="date" value={f.fecha_entrega} onChange={(x) => set("fecha_entrega", x.target.value)} /></Campo>
           <Campo label="Km a la entrega"><Entrada value={f.km_entrega} onChange={(x) => set("km_entrega", x.target.value.replace(/\D/g, ""))} inputMode="numeric" /></Campo>
+          <Campo label="Clase del vehículo" hint="M1 autos y SUV; N1 pickups y camionetas. Va en el Anexo A.">
+            <Selector value={f.veh_clase} onChange={(x) => set("veh_clase", x.target.value)}>
+              <option value="">— Sin definir —</option>
+              <option value="M1">M1 · autos y SUV</option>
+              <option value="N1">N1 · pickups y camionetas</option>
+            </Selector>
+          </Campo>
         </Rejilla>
         <Button size="sm" disabled={busy} onClick={() => void guardar()}>{busy ? "Guardando…" : "Guardar datos de avance"}</Button>
       </div>

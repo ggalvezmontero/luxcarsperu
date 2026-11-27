@@ -129,7 +129,8 @@ export async function POST(request: Request, { params }: Contexto) {
     if (quiereConstancia) {
       const r = await emitirDocumento(plantillaDe("constancia_fondos")!, ctx, {
         actorId: sesion.userId,
-        extra: { ...camposFijosLuxcars() },
+        extra: {},
+        porDefecto: await camposFijosLuxcars(),
         visibleCliente: true,
         movimiento,
       });

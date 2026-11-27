@@ -5,7 +5,7 @@ import { casillas, firmas, h2, p, tabla, type Estructura } from "../estructura";
 import type { Plantilla } from "./tipos";
 
 function construir(c: Campos): Estructura {
-  const h4Acreditado = Boolean(c.H4_ACREDITADO_FECHA && !/^_+$/.test(c.H4_ACREDITADO_FECHA));
+  const h4Acreditado = Boolean(c.H4_ACREDITADO_FECHA) && c.H4_ACREDITADO_FECHA !== "pendiente";
   return {
     titulo: "Acta de entrega del vehículo",
     subtitulo: `**Expediente ${c.EXPEDIENTE} · Contrato de mandato del ${c.FECHA_FIRMA}**`,
@@ -75,7 +75,7 @@ function construir(c: Campos): Estructura {
 
 export const actaEntrega: Plantilla = {
   tipo: "acta_entrega",
-  version: "acta_entrega@2026-11-25",
+  version: "acta_entrega@2026-11-27",
   nombre: "Acta de entrega del vehículo",
   idioma: "es",
   tarea: "luxcars.acta_entrega",
