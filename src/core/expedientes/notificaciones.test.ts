@@ -53,7 +53,8 @@ describe("plantillas de notificación", () => {
   it("depósito confirmado nombra monto, hito y fecha", () => {
     const n = construirNotificacion("deposito_confirmado", ctx, { montoUsd: 73410.5, hito: "H2", fecha: "2026-11-21" });
     expect(n.texto).toContain("USD 73,410.50");
-    expect(n.texto).toContain("H2 (Pago 2: flete y seguro)");
+    expect(n.texto).toContain("del Pago 2 de 5 (flete, seguro y primera mitad de los honorarios)");
+    expect(n.texto).not.toMatch(/\bH[1-6]\b/);
     expect(n.texto).toContain("21 de noviembre de 2026");
     expect(n.texto).toContain("Documentos");
   });
@@ -67,18 +68,24 @@ describe("plantillas de notificación", () => {
 
   it("el aviso de pago cambia por hito: Pago 3 aduana, Pago 4 directo a SUNAT, Pago 5 honorarios netos", () => {
     const p3 = construirNotificacion("aviso_pago", ctx, { hito: "H4", montoUsd: 2500, fechaLimite: "2027-02-15" });
-    expect(p3.asunto).toMatch(/Pago 3/);
-    expect(p3.texto).toContain("USD 2,500.00");
-    expect(p3.texto).toContain("15 de febrero de 2027");
+    // Cada aviso dice qué pago es, el monto exacto, dónde pagar, la fecha límite y de dónde sale la cifra.
+    expect(p3.asunto).toMatch(/^Pago 3 de 5: gastos de aduana/);
+    expect(p3.texto).toContain("Monto exacto: USD 2,500.00.");
+    expect(p3.texto).toContain('Dónde pagar: la cuenta Fondos de Clientes de LUXCARS, la misma de tus pagos anteriores (Anexo D), con el concepto "LC-2026-007 Pago 3".');
+    expect(p3.texto).toContain("Fecha límite: 15 de febrero de 2027.");
+    expect(p3.texto).toContain("De dónde sale la cifra: de la pro forma del agente de aduana.");
     expect(p3.texto).toMatch(/Pago 5/);
-    const p4 = construirNotificacion("aviso_pago", ctx, { hito: "H5", montoUsd: 27587.85, fechaLimite: "2027-02-16" });
-    expect(p4.asunto).toMatch(/Pago 4: tributos a SUNAT/);
-    expect(p4.texto).toMatch(/directamente a SUNAT/);
+    const p4 = construirNotificacion("aviso_pago", ctx, { hito: "H5", montoUsd: 27587.85, montoSoles: "103,785.55", liquidacion: "118-2027-0001234", fechaLimite: "2027-02-16" });
+    expect(p4.asunto).toMatch(/^Pago 4 de 5: tributos a SUNAT/);
+    expect(p4.texto).toContain("Monto exacto: S/ 103,785.55 (USD 27,587.85 según la DAM).");
+    expect(p4.texto).toContain("Dónde pagar: directo a SUNAT, con el número de liquidación 118-2027-0001234");
     expect(p4.texto).toMatch(/Clave SOL/);
     expect(p4.texto).toMatch(/Ya pagué/);
     const p5 = construirNotificacion("aviso_pago", ctx, { hito: "H6", montoUsd: 4086.57 });
-    expect(p5.asunto).toMatch(/Pago 5/);
-    expect(p5.texto).toMatch(/saldo de los gastos de aduana/);
+    expect(p5.asunto).toMatch(/^Pago 5 de 5/);
+    expect(p5.texto).toMatch(/sobró de los gastos de aduana/);
+    expect(p5.texto).toContain('"LC-2026-007 Pago 5"');
+    for (const n of [p3, p4, p5]) expect(n.texto).not.toMatch(/\bH[1-6]\b|Operaciones/);
   });
 
   it("escapa HTML en lo que viene del expediente", () => {

@@ -145,7 +145,10 @@ export function presupuestar(entrada: EntradaPresupuesto): Presupuesto {
   const h1 = precioUsd + costoInspeccion;
   const h2 = flete + seguro;
   const h4 = gastosAduana;
-  const h5 = tributos + (percepcionEnTributos ? fiscal.percepcion : 0);
+  // El Pago 4 es la suma de las líneas redondeadas que se muestran (ad valorem, ISC, IGV, IPM y percepción):
+  // así el Anexo B y el calendario de pagos cuadran al centavo.
+  const tributosMostrados = redondear(redondear(fiscal.adValorem) + redondear(fiscal.isc) + redondear(fiscal.igv) + redondear(fiscal.ipm));
+  const h5 = tributosMostrados + (percepcionEnTributos ? redondear(fiscal.percepcion) : 0);
   const mitad = honorarios * MITAD_HONORARIOS;
 
   const totalSinPercepcion = cif + tributos + gastosAduana + costoInspeccion + honorarios;
@@ -185,7 +188,7 @@ export function presupuestar(entrada: EntradaPresupuesto): Presupuesto {
     igv: redondear(fiscal.igv),
     ipm: redondear(fiscal.ipm),
     percepcion: redondear(fiscal.percepcion),
-    tributos: redondear(tributos),
+    tributos: tributosMostrados,
     gastosAduana,
     costoPuestoEnLima: redondear(costoPuestoEnLima),
     honorarios: redondear(honorarios),

@@ -40,7 +40,7 @@ function construir(c: Campos): Estructura {
       ], [2, 3]),
 
       h2("2. Vendedor (broker) y dealer"),
-      p("El Vendedor es el intermediario al que LUXCARS gira el precio completo con los fondos del hito H1; el dealer es quien emite la factura o bill of sale y el documento de propiedad a nombre del Mandante."),
+      p("El Vendedor es el intermediario al que LUXCARS gira el precio completo con el Pago 1; el dealer es quien emite la factura o bill of sale y el documento de propiedad a nombre del Mandante."),
       tabla(["Campo", "Dato"], [
         ["Vendedor (broker): nombre o razón social", c.VENDEDOR_NOMBRE],
         ["Dirección del Vendedor", c.VENDEDOR_DIRECCION],
@@ -58,9 +58,9 @@ function construir(c: Campos): Estructura {
         ["Precio tope autorizado", `${c.MONEDA_COMPRA} ${c.PRECIO_TOPE}`],
         ["Equivalente en dólares americanos", `USD ${c.PRECIO_COMPRA_USD}`],
         ...(usado ? [["Inspección del vehículo usado (se paga con el Pago 1)", `USD ${c.COSTO_INSPECCION}`]] : []),
-        ["Pago 1 (hito H1)", `USD ${c.H1_MONTO}`],
+        ["Pago 1 de 5", `USD ${c.PAGO1_MONTO}`],
         ["Fecha límite para ejecutar la compra", c.FECHA_LIMITE_COMPRA],
-        ["Condición para pagar al Vendedor", "Contrato y LOA firmados y fondos del hito H1 acreditados en Fondos de Clientes"],
+        ["Condición para pagar al Vendedor", "Contrato y LOA firmados y Pago 1 acreditado en Fondos de Clientes"],
       ], [2, 3]),
 
       h2("4. Verificaciones realizadas antes de la aprobación"),
@@ -99,7 +99,7 @@ function construir(c: Campos): Estructura {
       ], [2, 3]),
 
       h2("6. Autorización de compra"),
-      p(`El Mandante autoriza a LUX CARS IMPORT S.A.C. a adquirir en su nombre y por su cuenta el vehículo descrito en este anexo hasta el precio tope indicado, a emitir al Vendedor y al dealer las instrucciones de compra y exportación y al forwarder las instrucciones de embarque, y a girar el precio al Vendedor con los fondos del hito H1 una vez acreditados. Esta autorización vence el ${c.FECHA_LIMITE_COMPRA} si la compra no se ha ejecutado.`),
+      p(`El Mandante autoriza a LUX CARS IMPORT S.A.C. a adquirir en su nombre y por su cuenta el vehículo descrito en este anexo hasta el precio tope indicado, a emitir al Vendedor y al dealer las instrucciones de compra y exportación y al forwarder las instrucciones de embarque, y a girar el precio al Vendedor con el Pago 1 una vez acreditado. Esta autorización vence el ${c.FECHA_LIMITE_COMPRA} si la compra no se ha ejecutado.`),
       nota("Este anexo se firma junto con el contrato: las firmas constan al final del contrato y en cada página foliada."),
     ],
   };
@@ -107,7 +107,7 @@ function construir(c: Campos): Estructura {
 
 export const anexoA: Plantilla = {
   tipo: "anexo_a",
-  version: "anexo_a@2026-11-27c",
+  version: "anexo_a@2026-11-27d",
   nombre: "Anexo A · Ficha del vehículo",
   idioma: "es",
   tarea: "luxcars.generar_contrato",

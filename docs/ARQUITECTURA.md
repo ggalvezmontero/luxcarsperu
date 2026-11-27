@@ -504,11 +504,13 @@ que daba `es_dueno_expediente()`, que sigue existiendo para las RPC).
 `verificar_banco_contraparte` (SECURITY INVOKER con `uid_sesion()`: aceptan al
 admin por la Data API o al servidor), y `cliente_accion_expediente` (DEFINER,
 valida propiedad; aprobar la unidad —en usados, también el informe de
-inspección—, elegir consolidado, confirmar cuentas, declarar un pago H1–H6 con
-comprobante —el Pago 4 en soles a la cuenta `directo`—, conformidad de la
-rendición). `registrar_movimiento` acepta `comision_bancaria_usd` en un pago
-desde Fondos de Clientes y registra el cargo del banco y la reposición de
-Luxcars juntos (el saldo del cliente no cambia); `registrar_documento`
+inspección—, elegir consolidado, confirmar cuentas, declarar un pago ("Pago N
+de 5") con comprobante —el Pago 4 en soles a la cuenta `directo`, los demás a
+Fondos de Clientes—, conformidad de la rendición). `registrar_movimiento`
+acepta `comision_bancaria_usd` en un pago desde Fondos de Clientes y registra
+el cargo del banco y la reposición de Luxcars juntos (el saldo del cliente no
+cambia), y `operacion` (`aplicar_honorarios` o `autodetraccion`, ver abajo);
+`registrar_documento`
 reemplaza solo el aviso de pago del mismo hito. Trigger
 `expedientes_cerrar_solicitud`: al abrir un expediente desde una
 `solicitudes_compra`, la solicitud queda `cerrada` con la respuesta visible al
@@ -543,8 +545,9 @@ embarques incompletos, un correo al equipo. Nunca escribe a clientes.
 
 **Datos de la empresa y regla "sin rayas"** (migración
 `20261127090000_configuracion_documentos.sql`): los parámetros de la empresa que
-van en los documentos (RUC, domicilio, partida, representante y DNI, cuentas de
-Operaciones / Fondos de Clientes / Detracciones, porcentaje de detracción,
+van en los documentos (RUC, domicilio, partida, representante y DNI, cuentas
+Fondos de Clientes y Detracciones —desde el 27 nov 2026 la cuenta de
+Operaciones no va en ningún documento—, porcentaje de detracción,
 ciudad de firma, días de espera en consolidado; `CAMPOS_EMPRESA` en
 `core/expedientes/campos.ts`) se fijan una vez en `/portal/configuracion`, que
 lee y escribe la tabla `configuracion_documentos` (una fila por campo, RLS solo
@@ -568,7 +571,7 @@ cliente, compuerta para pasar a contrato. El contrato se firma con la unidad ya
 elegida en una sola visita a la notaría: contrato con Anexos A–D (sin firma
 aparte), LOA y `poder_inmatriculacion`; a la entrega, una sola
 `acta_rendicion` (acta de entrega y rendición de cuentas) con firma simple, más
-la conformidad desde el portal. Cinco pagos, seis hitos, una cuenta por hito
+la conformidad desde el portal. Cinco pagos, seis hitos
 (`CUENTA_POR_HITO` en `core/expedientes/hitos.ts`): H1 precio (en usados, más
 la inspección), H2 flete y seguro + H3 primera mitad de honorarios, H4 gastos
 de aduana (reembolsables: el saldo se compensa en el H6), H5 tributos pagados
@@ -583,6 +586,39 @@ Resumen muestra "Datos que faltan para esta etapa y la siguiente"
 o compuerta lo pide y dónde se guarda, con un formulario que escribe por la
 Data API en el expediente, el cliente, el embarque o la contraparte; los de la
 empresa llevan a `/portal/configuracion`.
+
+**Una sola cuenta para el cliente y autodetracción** (segunda ronda del 27 nov
+2026, migración `20261127200000_expedientes_cuenta_unica.sql`): el cliente paga
+los Pagos 1, 2, 3 y 5 a Fondos de Clientes y solo el Pago 4 (tributos) directo
+a SUNAT (`CUENTA_POR_HITO`: todo `fondos_clientes` salvo H5 `directo`). El
+Pago 2 es una sola transferencia que se registra con el hito H2 y acredita H2 y
+H3 en orden (`acreditadoPorHito` y `estadoPagos` en el core, `hito_acreditado`
+en SQL); las tareas del pago (`cliente.depositar_h2`, `luxcars.confirmar_h2`)
+se cierran recién con el pago completo (`pago_acreditado`). Al emitir cada
+factura de honorarios, `registrar_movimiento` con `operacion =
+'aplicar_honorarios'` (factura 1 o 2 y su número) arma el par interno pago
+desde Fondos de Clientes + depósito en Operaciones, sin hito, y cierra
+`luxcars.factura_h3` / `_h6`; con `operacion = 'autodetraccion'` (número de la
+constancia del Banco de la Nación) arma el par pago desde Operaciones +
+depósito en `detracciones` y cierra `luxcars.autodetraccion_h3` / `_h6`. Esos
+asientos nunca acreditan un pago, no numeran constancias, no cuentan para la
+UIF (`esAsientoInterno`) y el cliente no ve Operaciones ni la cuenta de
+detracciones (vista `expediente_movimiento_cliente`); sí ve la factura
+aplicada en su cuenta Fondos de Clientes. Con cliente empresa, confirmar el
+pago que cubre una factura (Pago 2 o Pago 5) hace nacer la tarea de
+autodetracción a cinco días hábiles con los feriados nacionales de Perú
+(`tareasTrasConfirmar` en `core/expedientes/honorarios.ts`, `FERIADOS_PERU`
+2026–2027 en `hitos.ts`); la inserta el servidor
+(`lib/expedientes/servidor/tareasHonorarios.ts`) desde la ruta de movimientos,
+no nace si el cliente detrajo él mismo, y el cron la alerta vencida. El
+sobrante o faltante de aduana se compensa solo dentro de Fondos de Clientes: el
+cliente paga el Pago 5 neto y la factura 2 aplica la mitad completa. La
+pestaña Dinero tiene el panel "Honorarios y detracción" (aplicar factura,
+registrar autodetracción, vencimiento). Contrato (cláusula tercera), Anexo B,
+Anexo D, avisos, hoja de ruta y cuenta del cliente muestran la misma tabla de
+cinco filas (Pago, Cuándo, Qué cubre, Monto, Dónde pagas;
+`documentos/plantillas/calendario.ts`) y nunca códigos internos: siempre "Pago
+N de 5".
 
 **Variables de servidor**: `LUXCARS_DOCUMENTOS_JSON` (respaldo de los datos de
 la empresa; lo normal es `/portal/configuracion`),

@@ -5,28 +5,42 @@
  * fecha vienen del expediente; las tablas se llenan con TODO el libro
  * (`datosRendicion`): depósitos recibidos, pagos por cuenta del cliente, lo
  * pagado directo a SUNAT, el saldo de los gastos de aduana aplicado al Pago 5,
- * las comisiones bancarias repuestas por Luxcars, devoluciones y honorarios.
+ * las comisiones bancarias repuestas por Luxcars, devoluciones y los
+ * honorarios que LUXCARS tomó de Fondos de Clientes al emitir cada factura,
+ * con sus detracciones. Nombra los pagos "Pago N de 5", nunca con códigos H.
  * Debe cuadrar: el saldo de Fondos de Clientes menos lo devuelto = 0. La
  * conformidad también se registra desde el portal (`conformidad_rendicion`).
  */
 
 import type { Campos } from "../../campos";
 import { fechaEnLetras, monto } from "../../campos";
+import { etiquetaPago } from "../../hitos";
 import { datosRendicion, numeroConstancia } from "../../ledger";
-import type { ContextoExpediente } from "../../tipos";
+import type { ContextoExpediente, Movimiento, TipoHito } from "../../tipos";
+import { PAGO_POR_HITO } from "../../tipos";
 import { casillas, firmas, h2, p, tabla, type Estructura } from "../estructura";
 import { firmasLuxcarsYMandante, type Plantilla } from "./tipos";
+
+/** "Pago 2 de 5" para un movimiento con hito; "—" sin hito. */
+function pagoDe(hito: TipoHito | null): string {
+  return hito ? etiquetaPago(PAGO_POR_HITO[hito]) : "—";
+}
+
+/** El asiento de la factura `n` (por el texto "factura n" del concepto o, si no, por orden). */
+function deLaFactura(lista: readonly Movimiento[], n: 1 | 2): Movimiento | undefined {
+  return lista.find((m) => new RegExp(`factura ${n}\\b`, "i").test(m.concepto ?? "")) ?? lista[n - 1];
+}
 
 function construir(c: Campos, ctx: ContextoExpediente): Estructura {
   const r = datosRendicion(ctx);
   const usado = ctx.expediente.vehiculo.condicion === "usado";
   const h6Acreditado = Boolean(c.H6_ACREDITADO_FECHA) && c.H6_ACREDITADO_FECHA !== "pendiente";
   const recibidos = r.recibidos.length
-    ? r.recibidos.map((m) => [fechaEnLetras(m.fecha), m.hito ?? "—", `${c.EXPEDIENTE}-${numeroConstancia(m, ctx.movimientos)}`, monto(m.montoUsd)])
-    : [["", "H1", "", ""], ["", "H2", "", ""], ["", "H4", "", ""]];
+    ? r.recibidos.map((m) => [fechaEnLetras(m.fecha), pagoDe(m.hito), `${c.EXPEDIENTE}-${numeroConstancia(m, ctx.movimientos)}`, monto(m.montoUsd)])
+    : [["", "Pago 1 de 5", "", ""], ["", "Pago 2 de 5", "", ""], ["", "Pago 3 de 5", "", ""], ["", "Pago 5 de 5", "", ""]];
   const directos = r.directos.length
-    ? r.directos.map((d) => [fechaEnLetras(d.fecha), d.hito ?? "—", d.referencia || "Comprobante del Mandante", d.moneda === "PEN" ? `S/ ${monto(d.monto)}` : "", monto(d.montoUsd)])
-    : [["", "H5", "Pendiente de confirmar", "", ""]];
+    ? r.directos.map((d) => [fechaEnLetras(d.fecha), pagoDe(d.hito), d.referencia || "Comprobante del Mandante", d.moneda === "PEN" ? `S/ ${monto(d.monto)}` : "", monto(d.montoUsd)])
+    : [["", "Pago 4 de 5", "Pendiente de confirmar", "", ""]];
   const pagos = r.pagos.length
     ? r.pagos.map((l) => [fechaEnLetras(l.fecha), l.concepto, l.proveedor, l.documento, `${l.moneda} ${monto(l.monto)}`, l.moneda === "USD" ? "1" : String(l.tipoCambio), monto(l.montoUsd)])
     : [
@@ -38,7 +52,21 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
         ["", "Grúa del puerto", "", "Factura n.º", "", "", ""],
         ["", "Otros autorizados por el Mandante", "", "", "", "", ""],
       ];
-  const [f1, f2] = [r.honorarios.find((m) => m.hito === "H3"), r.honorarios.find((m) => m.hito === "H6")];
+  // Cada factura: lo aplicado desde Fondos de Clientes (o, en expedientes anteriores al 27 nov, el depósito directo) y su detracción.
+  const aplicada = (n: 1 | 2) => deLaFactura(r.aplicaciones, n) ?? r.honorarios.find((m) => m.hito === (n === 1 ? "H3" : "H6"));
+  const detraccion = (n: 1 | 2) => deLaFactura(r.detracciones, n);
+  const filaFactura = (n: 1 | 2) => {
+    const a = aplicada(n);
+    const d = detraccion(n);
+    return [
+      `Factura ${n} (50 %, ${n === 1 ? "al release" : "al levante"})`,
+      n === 1 ? "Pago 2 de 5" : "Pago 5 de 5",
+      a ? fechaEnLetras(a.fecha) : "",
+      c.COMISION_MITAD,
+      a ? monto(a.montoUsd) : "",
+      d ? `${monto(d.montoUsd)} · ${(d.documentoRef ?? "").trim() || "constancia por anotar"}` : "",
+    ];
+  };
   const saldoACargo = r.saldo < 0;
 
   return {
@@ -78,7 +106,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
       p("Fotos tomadas en el acto y enviadas a ambas partes: ______ (cantidad)."),
 
       h2("3. Fondos recibidos en la cuenta Fondos de Clientes"),
-      tabla(["Fecha", "Hito", "Constancia n.º", "USD"], [
+      tabla(["Fecha", "Pago", "Constancia n.º", "USD"], [
         ...recibidos,
         ["", "**Total recibido**", "", `**${c.TOTAL_RECIBIDO}**`],
       ], [2.2, 1.2, 2.4, 1.6]),
@@ -90,28 +118,31 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
       ], [1.6, 2.6, 2, 2.4, 1.6, 1.1, 1.5]),
 
       h2("5. Pagado directamente por el Mandante (Pago 4, tributos a SUNAT)"),
-      tabla(["Fecha", "Hito", "Comprobante", "Soles", "USD"], [
+      tabla(["Fecha", "Pago", "Comprobante", "Soles", "USD"], [
         ...directos,
         ["", "**Total pagado directo**", "", "", `**${c.TOTAL_DIRECTO}**`],
       ], [2, 1, 3, 1.6, 1.6]),
       p("No pasó por las cuentas de LUXCARS: se lista para que la rendición muestre el costo completo de la operación."),
 
-      h2("6. Gastos de aduana (Pago 3) y su saldo aplicado al Pago 5"),
+      h2("6. Gastos de aduana (Pago 3) y su ajuste en el Pago 5"),
       tabla(["Concepto", "USD"], [
         ["Gastos de aduana recibidos (Pago 3)", c.ADUANA_RECIBIDO],
         ["Gastos de aduana pagados (agente, almacén, grúa; en la sección 4)", c.ADUANA_PAGADO],
-        [r.aduana.saldo >= 0 ? "Sobrante aplicado al Pago 5 (se descontó de los honorarios)" : "Faltante cubierto con el Pago 5 (se sumó a los honorarios)", c.ADUANA_SALDO],
-        ["Pago 5 cobrado (segunda mitad de honorarios, ajustada)", c.PAGO5_NETO],
+        [r.aduana.saldo >= 0 ? "Sobrante: se restó del Pago 5" : "Faltante: se sumó al Pago 5", c.ADUANA_SALDO],
+        ["Pago 5 cobrado (segunda mitad de los honorarios, ajustada)", c.PAGO5_NETO],
       ], [4, 1.5]),
 
-      h2("7. Comisiones bancarias de los wires al exterior"),
-      p(`El banco debitó de Fondos de Clientes USD ${c.COMISIONES_BANCARIAS} por comisiones de las transferencias al exterior y LUXCARS las repuso el mismo día: son gasto de LUXCARS (cláusula 4.4 del contrato) y no cambian el saldo del Mandante.`),
+      h2("7. Comisiones bancarias de las transferencias al exterior"),
+      p(`El banco debitó de Fondos de Clientes USD ${c.COMISIONES_BANCARIAS} por comisiones de las transferencias al exterior y LUXCARS las repuso el mismo día: son gasto de LUXCARS (cláusula 5.4 del contrato) y no cambian el saldo del Mandante.`),
 
       h2("8. Saldo y devolución"),
       tabla(["Concepto", "USD"], [
         ["Total recibido en Fondos de Clientes (sección 3)", c.TOTAL_RECIBIDO],
         ["Total pagado a terceros (sección 4)", c.TOTAL_PAGADO],
-        ["Saldo de aduana aplicado al Pago 5 (sección 6)", r.sobranteAplicado > 0 ? `− ${monto(r.sobranteAplicado)}` : r.faltanteCubierto > 0 ? `+ ${monto(r.faltanteCubierto)}` : "0.00"],
+        ["Honorarios tomados de Fondos de Clientes al emitir cada factura (sección 9)", r.honorariosAplicados > 0 ? `− ${monto(r.honorariosAplicados)}` : "0.00"],
+        ...(r.sobranteAplicado > 0 || r.faltanteCubierto > 0
+          ? [["Saldo de aduana aplicado al Pago 5 (sección 6)", r.sobranteAplicado > 0 ? `− ${monto(r.sobranteAplicado)}` : `+ ${monto(r.faltanteCubierto)}`]]
+          : []),
         [saldoACargo ? "**Saldo a cargo del Mandante**" : "**Saldo a favor del Mandante**", `**${c.SALDO_RENDICION}**`],
         [`Devuelto el ${c.DEVOLUCION_FECHA} a la cuenta ${c.CLIENTE_BANCO_ORIGEN}, operación n.º ${c.NUMERO_OPERACION}`, c.DEVOLUCION_MONTO],
       ], [4, 1.5]),
@@ -119,14 +150,14 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
         ? `El saldo resulta a cargo del Mandante: USD ${monto(Math.abs(r.saldo))}, a depositar en Fondos de Clientes con el concepto "${c.EXPEDIENTE} saldo". Fecha en que lo depositó: ______________.`
         : "Si el saldo resultara a cargo del Mandante, se indica aquí el monto y la fecha en que lo depositó: ______________."),
 
-      h2("9. Honorarios de LUXCARS (facturados aparte; no salen de Fondos de Clientes salvo el saldo de aduana)"),
-      tabla(["Factura", "Hito", "Fecha", "Total USD", "Abonado USD", "Detracción depositada (constancia n.º)"], [
-        ["Factura 1 (50 %, al release)", "H3", f1 ? fechaEnLetras(f1.fecha) : "", c.COMISION_MITAD, f1 ? monto(f1.montoUsd) : "", ""],
-        ["Factura 2 (50 %, al levante)", "H6", f2 ? fechaEnLetras(f2.fecha) : "", c.COMISION_MITAD, f2 ? monto(f2.montoUsd) : "", ""],
+      h2("9. Honorarios de LUXCARS (tomados de Fondos de Clientes al emitir cada factura)"),
+      tabla(["Factura", "Se pagó con", "Fecha", "Total USD", "Tomado de Fondos de Clientes USD", "Detracción USD · constancia n.º"], [
+        filaFactura(1),
+        filaFactura(2),
         ["**Total honorarios**", "", "", `**${c.COMISION_TOTAL}** (base ${c.COMISION_BASE} + IGV ${c.COMISION_IGV})`, r.totalHonorarios > 0 ? `**${monto(r.totalHonorarios)}**` : "", ""],
-      ], [2.2, 0.8, 1.8, 2.4, 1.8, 2.2]),
-      p("Los honorarios incluyen la gestión registral: homologación o ficha técnica, inscripción en SUNARP, placas y tarjeta de identificación vehicular."),
-      p(`Hito H6: ${h6Acreditado ? "[X]" : "[ ]"} acreditado el ${h6Acreditado ? c.H6_ACREDITADO_FECHA : "______________"}   ${h6Acreditado ? "[ ]" : "[X]"} pendiente, el vehículo queda en custodia conforme a la cláusula décima tercera del contrato.`),
+      ], [2.2, 1.4, 1.8, 2.4, 1.8, 2.2]),
+      p("Los honorarios incluyen la gestión registral: homologación o ficha técnica, inscripción en SUNARP, placas y tarjeta de identificación vehicular. Con cliente empresa, LUXCARS depositó la detracción de cada factura en el Banco de la Nación (cláusula 5.3 del contrato); la constancia va en la carpeta."),
+      p(`Pago 5 de 5: ${h6Acreditado ? "[X]" : "[ ]"} acreditado el ${h6Acreditado ? c.H6_ACREDITADO_FECHA : "______________"}   ${h6Acreditado ? "[ ]" : "[X]"} pendiente, el vehículo queda en custodia conforme a la cláusula décima tercera del contrato.`),
 
       h2("10. Costo total de la operación para el Mandante"),
       tabla(["Concepto", "USD"], [
@@ -172,7 +203,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
 
 export const actaRendicion: Plantilla = {
   tipo: "acta_rendicion",
-  version: "acta_rendicion@2026-11-27b",
+  version: "acta_rendicion@2026-11-27c",
   nombre: "Acta de entrega y rendición de cuentas",
   idioma: "es",
   tarea: "luxcars.acta_rendicion",

@@ -202,7 +202,8 @@ function hoyLima(): string {
   return new Date(Date.now() - 5 * 3_600_000).toISOString().slice(0, 10);
 }
 
-const CUENTA_DEL_HITO: Record<HitoConAviso, string> = { H4: "fondos_clientes", H5: "directo", H6: "operaciones" };
+// Desde el 27 nov 2026 el cliente paga todo a Fondos de Clientes, salvo los tributos (directo a SUNAT).
+const CUENTA_DEL_HITO: Record<HitoConAviso, string> = { H4: "fondos_clientes", H5: "directo", H6: "fondos_clientes" };
 
 /**
  * Lo que cada tipo deja además del documento:

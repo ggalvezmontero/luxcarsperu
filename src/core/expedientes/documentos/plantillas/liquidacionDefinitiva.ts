@@ -55,7 +55,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
 
       h2("Saldo de los gastos de aduana"),
       tabla(["Concepto", "USD"], [
-        ["Recibido en el Pago 3 (H4)", c.ADUANA_RECIBIDO],
+        ["Recibido en el Pago 3", c.ADUANA_RECIBIDO],
         ["Pagado al agente, al almacén y a la grúa", c.ADUANA_PAGADO],
         [sobrante ? "**Sobrante a favor del Mandante: se descuenta del Pago 5**" : "**Faltante a cargo del Mandante: se suma al Pago 5**", `**${c.ADUANA_SALDO}**`],
         ["Pago 5 (segunda mitad de honorarios, ajustada)", c.PAGO5_NETO],
@@ -69,7 +69,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
 
 export const liquidacionDefinitiva: Plantilla = {
   tipo: "liquidacion_definitiva",
-  version: "liquidacion_definitiva@2026-11-27b",
+  version: "liquidacion_definitiva@2026-11-27c",
   nombre: "Liquidación definitiva de tributos y gastos de aduana",
   idioma: "es",
   tarea: "luxcars.liquidacion_definitiva",

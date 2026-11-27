@@ -50,7 +50,7 @@ function construir(c: Campos): Estructura {
       h2("4. Ownership documents"),
       ...(usado ? [] : [p("**New vehicle.** Original Manufacturer's Statement of Origin (MSO) or New Vehicle Information Statement, unregistered, assigned by the Dealer to the buyer of record. **Do not register, license or plate the vehicle in any state or province.** A registered vehicle is treated as used by Peruvian customs and the buyer's import taxes rise from 10 % to 40 % on one line alone. We check open recalls by VIN before payment; please confirm none are pending.")]),
       ...(usado ? [p("**Used vehicle.** Original certificate of title (or provincial registration or ownership) with the transfer portion completed to the buyer of record; a lien release or a signed statement that the vehicle is free of liens; an odometer statement. The vehicle was inspected by our inspector before our client approved it: please deliver it in the same condition, with every item listed in the inspection report.")] : []),
-      p(`**Both.** Two keys, owner's manual, printout showing no open recalls, service records if available, factory warranty documents if any. Hand the originals to our carrier at pickup against a signed receipt, or courier them to ${c.FORWARDER_NOMBRE}. Never leave documents or keys inside the vehicle.`),
+      p(`**Both.** Two keys, owner's manual, printout showing no open recalls, service records if available, factory warranty documents if any. Hand the originals to our carrier at pickup against a signed receipt, or courier them to ${c.FORWARDER_NOMBRE.replace(/\.+$/, "")}. Never leave documents or keys inside the vehicle.`),
 
       h2("5. Taxes"),
       vinetas([
@@ -83,7 +83,7 @@ function construir(c: Campos): Estructura {
 
 export const instruccionesVendedor: Plantilla = {
   tipo: "instrucciones_vendedor",
-  version: "instrucciones_vendedor@2026-11-27b",
+  version: "instrucciones_vendedor@2026-11-27c",
   nombre: "Purchase and Export Instructions (EN)",
   idioma: "en",
   tarea: "luxcars.instrucciones_vendedor",

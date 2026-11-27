@@ -22,18 +22,18 @@ const fuente = readFileSync(path.join(RAIZ, "src/lib/rutaAPedido.ts"), "utf8").r
 const js = ts.transpileModule(fuente, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
 const mod = { exports: {} };
 new Function("module", "exports", js)(mod, mod.exports);
-const { PASOS_RUTA, FIRMAS_RUTA, DINERO_RUTA, CUENTA_RUTA } = mod.exports;
+const { PASOS_RUTA, PAGOS_RUTA, CABECERA_PAGOS_RUTA, FIRMAS_RUTA, DINERO_RUTA, CUENTA_RUTA } = mod.exports;
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+// Cada paso nombra sus pagos con una etiqueta; el detalle está en la tabla de cinco pagos.
 const pasosHtml = PASOS_RUTA.map((p, i) => `
   <div class="paso">
     <div class="n">${String(i + 1).padStart(2, "0")}</div>
-    <div><h3>${esc(p.titulo)}</h3><p class="tu"><b>Tu parte:</b> ${esc(p.tuParte)}</p></div>
+    <div><h3>${esc(p.titulo)}</h3><p class="tu"><b>Tu parte:</b> ${esc(p.tuParte)} ${p.pagos?.length ? p.pagos.map((g) => `<span class="chip">Pago ${g.numero} de 5</span>`).join(" ") : `<span class="chip sin">Sin pago</span>`}</p></div>
     <p class="txt">${esc(p.texto)}</p>
-    ${p.pagos?.length
-      ? `<div class="pagos">${p.pagos.map((g) => `<div class="pago"><div class="lab">Pago ${g.numero}</div><b>${esc(g.titulo)}</b><span>${esc(g.detalle)}</span></div>`).join("")}</div>`
-      : `<div class="sinpago"><span class="lab">Sin pago</span>Buscar y cotizar no cuesta. Decidimos juntos si conviene traerlo.</div>`}
   </div>`).join("");
+// La tabla de cinco pagos, con las columnas del contrato y los montos descritos (sin cifras).
+const tablaPagosHtml = `<table class="tpagos"><thead><tr>${CABECERA_PAGOS_RUTA.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${PAGOS_RUTA.map((g) => `<tr><td><b>Pago ${g.numero} de 5</b></td><td>${esc(g.cuando)}</td><td>${esc(g.queCubre)}</td><td>${esc(g.monto)}</td><td>${esc(g.donde)}</td></tr>`).join("")}</tbody></table>`;
 const dineroHtml = DINERO_RUTA.map((d, i) => `<div class="card"><div class="ic">${i + 1}</div><div><h4>${esc(d.titulo)}</h4><p>${esc(d.texto)}</p></div></div>`).join("");
 const firmasHtml = FIRMAS_RUTA.map((f, i) => `<div class="card"><div class="ic">${i + 1}</div><div><h4>${esc(f.titulo)}</h4><p>${esc(f.texto)}</p></div></div>`).join("");
 const cuentaHtml = CUENTA_RUTA.map((c) => `<li>${esc(c)}</li>`).join("");
@@ -42,6 +42,7 @@ const logo = "data:image/svg+xml;base64," + readFileSync(path.join(RAIZ, "public
 const html = readFileSync(new URL("./plantilla.html", import.meta.url), "utf8")
   .replace("LOGO_SRC", logo)
   .replace("PASOS_HTML", pasosHtml)
+  .replace("PAGOS_HTML", tablaPagosHtml)
   .replace("DINERO_HTML", dineroHtml)
   .replace("FIRMAS_HTML", firmasHtml)
   .replace("CUENTA_HTML", cuentaHtml);

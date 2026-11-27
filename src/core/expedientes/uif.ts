@@ -18,6 +18,7 @@
  * `montoUsd` (el libro ya guarda la conversión al registrar).
  */
 
+import { esAsientoInterno } from "./ledger";
 import type { Cliente, CuentaMovimiento, Movimiento, TipoCliente, TipoMovimiento } from "./tipos";
 
 export type UmbralesUif = {
@@ -102,11 +103,14 @@ export function mesDe(fecha: string): string {
 
 /**
  * Solo las operaciones reales que pasan por Luxcars cuentan: ni declaradas sin
- * confirmar ni anuladas, nunca los ajustes contables y nunca lo que el cliente
- * pagó directo a SUNAT (cuenta `directo`, desde el 27 nov 2026).
+ * confirmar ni anuladas, nunca los ajustes contables, nunca lo que el cliente
+ * pagó directo a SUNAT (cuenta `directo`, desde el 27 nov 2026) y nunca los
+ * asientos internos entre cuentas de Luxcars (aplicación de honorarios,
+ * autodetracción, cargo y reposición de la comisión del banco): el dinero del
+ * cliente ya se contó al entrar.
  */
-export function cuentaParaUif(m: Pick<Movimiento, "estado" | "tipo"> & { cuenta?: Movimiento["cuenta"] }): boolean {
-  return m.estado === "confirmado" && m.tipo !== "ajuste" && m.cuenta !== "directo";
+export function cuentaParaUif(m: Pick<Movimiento, "estado" | "tipo"> & { cuenta?: Movimiento["cuenta"]; concepto?: Movimiento["concepto"] }): boolean {
+  return m.estado === "confirmado" && m.tipo !== "ajuste" && m.cuenta !== "directo" && !esAsientoInterno({ concepto: m.concepto ?? null });
 }
 
 function redondear2(n: number): number {

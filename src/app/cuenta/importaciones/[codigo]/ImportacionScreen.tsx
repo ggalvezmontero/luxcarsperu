@@ -5,8 +5,9 @@
  * la etapa, "Qué necesitamos de ti" con botones para las acciones del portal
  * (van a `cliente_accion_expediente`: aprobar la unidad, "Ya transferí" que
  * sube el comprobante y declara el depósito, "Ya pagué a SUNAT" para el Pago
- * 4), dinero (los cinco pagos con sus hitos y el estado de cuenta desde el
- * libro), documentos visibles (se bajan por
+ * 4), dinero (los cinco pagos en la misma tabla del contrato: Pago, Cuándo,
+ * Qué cubre, Monto y Dónde pagas, sin códigos internos, y el estado de su
+ * cuenta Fondos de Clientes desde el libro), documentos visibles (se bajan por
  * `/api/cuenta/expedientes/archivos`, que firma la URL), vehículo y embarque,
  * actividad visible y WhatsApp al asesor con el código del expediente.
  */
@@ -21,14 +22,14 @@ import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { accionDeTarea, definicionEtapa, hitoDeTarea, nombreEtapaCliente } from "@/core/expedientes/etapas";
-import { CUANDO_PAGO, NOMBRE_PAGO } from "@/core/expedientes/hitos";
-import { datosPago5, estadoHitos, ordenarLibro, saldoCuenta } from "@/core/expedientes/ledger";
-import type { ContextoExpediente, EtapaExpediente, Evento, Movimiento, Tarea, TipoAprobacion } from "@/core/expedientes/tipos";
-import { ETAPAS_CLIENTE, NUMEROS_PAGO, PAGO_POR_HITO } from "@/core/expedientes/tipos";
+import { etiquetaPago, queCubrePago } from "@/core/expedientes/hitos";
+import { conceptoDe, datosPago5, estadoPagos, ordenarLibro, saldoCuenta, type PagoDerivado } from "@/core/expedientes/ledger";
+import type { ContextoExpediente, EtapaExpediente, Evento, Movimiento, NumeroPago, Tarea, TipoAprobacion } from "@/core/expedientes/tipos";
+import { ETAPAS_CLIENTE, PAGO_POR_HITO } from "@/core/expedientes/tipos";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import { accionCliente, cargarMiImportacion, declararDeposito, urlDescargaComprobanteCliente, urlDescargaDocumentoCliente, type DeclaracionDeposito } from "@/lib/cuenta/expedientes";
 import { normalizarCodigo } from "@/core/expedientes/codigo";
-import { CONTENEDOR_LABEL, ESTADO_HITO_LABEL, HITO_LABEL, TIPO_DOCUMENTO_LABEL, autoDe, fecha, fechaHora, hoyIso, leerNumero, usd } from "@/lib/expedientes/formato";
+import { CONTENEDOR_LABEL, TIPO_DOCUMENTO_LABEL, autoDe, fecha, fechaHora, hoyIso, leerNumero, usd } from "@/lib/expedientes/formato";
 import { cn } from "@/lib/utils";
 
 export function ImportacionScreen({ codigo }: { codigo: string }) {
@@ -371,12 +372,13 @@ const ETIQUETA_ACCION: Record<TipoAprobacion, string> = {
 const CAMPO = "field-lux min-h-10 w-full py-1.5 text-sm";
 
 function YaTransferi({ tarea: t, ctx, onDeclarar }: { tarea: Tarea; ctx: ContextoExpediente; onDeclarar: (datos: DeclaracionDeposito) => Promise<void> }) {
+  // El primer hito del pago: el Pago 2 se declara como una sola transferencia (flete, seguro y primera mitad de los honorarios).
   const hito = hitoDeTarea(t.clave) ?? "H2";
+  const pago = PAGO_POR_HITO[hito];
   const directo = hito === "H5";
-  const estimado = ctx.hitos.find((h) => h.tipo === hito);
-  const derivado = useMemo(() => estadoHitos(ctx.hitos, ctx.movimientos).find((d) => d.hito.tipo === hito), [ctx.hitos, ctx.movimientos, hito]);
+  const derivado = useMemo(() => estadoPagos(ctx.hitos, ctx.movimientos).find((d) => d.pago === pago), [ctx.hitos, ctx.movimientos, pago]);
   const [abierto, setAbierto] = useState(false);
-  const [monto, setMonto] = useState(derivado && derivado.pendiente > 0 ? String(derivado.pendiente) : estimado ? String(estimado.montoEstimadoUsd) : "");
+  const [monto, setMonto] = useState(derivado ? String(derivado.pendiente > 0 ? derivado.pendiente : derivado.montoEstimadoUsd) : "");
   const [fechaDep, setFechaDep] = useState(hoyIso());
   const [banco, setBanco] = useState("");
   const [operacion, setOperacion] = useState("");
@@ -396,8 +398,11 @@ function YaTransferi({ tarea: t, ctx, onDeclarar }: { tarea: Tarea; ctx: Context
 
   return (
     <div className="mt-3">
-      {derivado && derivado.acreditado > 0 ? (
-        <p className="text-xs text-ink-3">Acreditado {usd(derivado.acreditado, 2)} de {usd(derivado.hito.montoEstimadoUsd, 2)}{derivado.pendiente > 0 ? ` · faltan ${usd(derivado.pendiente, 2)}` : ""}.</p>
+      {derivado ? (
+        <p className="text-xs text-ink-3">
+          {derivado.etiqueta}: {usd(derivado.montoEstimadoUsd, 2)}{derivado.directo ? " en soles, al tipo de cambio de SUNAT" : ""} · {derivado.donde}.
+          {derivado.acreditado > 0 ? ` Acreditado ${usd(derivado.acreditado, 2)}${derivado.pendiente > 0 ? `; faltan ${usd(derivado.pendiente, 2)}` : ""}.` : ""}
+        </p>
       ) : null}
       {porConfirmar > 0 ? (
         <p className="mt-1 rounded-2xl border border-warn/30 bg-warn/10 px-3 py-2 text-xs text-ink-2">
@@ -411,11 +416,11 @@ function YaTransferi({ tarea: t, ctx, onDeclarar }: { tarea: Tarea; ctx: Context
           <p className="text-sm text-ink-2">
             {directo
               ? "Cuéntanos cuánto pagaste a SUNAT con el número de liquidación y adjunta el comprobante. Lo revisamos y seguimos con el levante."
-              : "Cuéntanos qué transferiste y adjunta el comprobante. Quedará como pendiente hasta que lo veamos acreditado."}
+              : `Cuéntanos qué transferiste a la cuenta Fondos de Clientes y adjunta el comprobante.${pago === 2 ? " Es una sola transferencia por todo el Pago 2." : ""} Queda pendiente hasta que la veamos acreditada.`}
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-[11px] uppercase tracking-[0.12em] text-ink-4">
-              {directo ? "Tributos según la DAM (USD)" : "Monto (USD)"}
+              {directo ? "Tributos según la DAM (USD)" : "Monto transferido (USD)"}
               <input className={`${CAMPO} mt-1`} inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} />
             </label>
             {directo ? (
@@ -458,75 +463,120 @@ function YaTransferi({ tarea: t, ctx, onDeclarar }: { tarea: Tarea; ctx: Context
   );
 }
 
+const COLUMNAS_PAGOS = "sm:grid-cols-[6.5rem_minmax(0,1.1fr)_minmax(0,1.5fr)_7.5rem_minmax(0,1fr)]";
+
+/** Estado de un pago en palabras del cliente. */
+function EstadoPago({ p }: { p: PagoDerivado }) {
+  return (
+    <span className="mt-1 flex flex-wrap gap-1.5">
+      <Badge tone={p.estado === "acreditado" ? "ok" : p.estado === "parcial" ? "warn" : p.vencido ? "danger" : "neutral"} dot>
+        {p.estado === "acreditado" ? "Pagado" : p.estado === "parcial" ? `Parcial · ${usd(p.acreditado)}` : p.vencido ? "Vencido" : "Pendiente"}
+      </Badge>
+      {p.porConfirmar > 0 ? <Badge tone="warn">Por confirmar · {usd(p.porConfirmar)}</Badge> : null}
+    </span>
+  );
+}
+
+/** Nota del monto: exacto si ya hay aviso (Pagos 3 a 5) o si es el precio; estimado si no. */
+function notaMonto(ctx: ContextoExpediente, p: PagoDerivado): string {
+  if (p.pago === 1 || p.estado === "acreditado") return p.directo ? "en soles" : "";
+  const hito = p.hitos[p.hitos.length - 1]?.tipo;
+  const aviso = p.pago >= 3 ? ctx.documentos.find((d) => d.tipo === "aviso_h3" && d.hito === hito && d.estado !== "reemplazado" && d.estado !== "anulado") : undefined;
+  const base = aviso ? "exacto, según el aviso" : p.pago === 5 ? "antes del ajuste de aduana" : "estimado";
+  return p.directo ? `${base}; en soles` : base;
+}
+
 function Dinero({ ctx, hoy }: { ctx: ContextoExpediente; hoy: string }) {
-  const derivados = useMemo(() => estadoHitos(ctx.hitos, ctx.movimientos, hoy), [ctx.hitos, ctx.movimientos, hoy]);
+  const pagosCliente = useMemo(() => estadoPagos(ctx.hitos, ctx.movimientos, hoy), [ctx.hitos, ctx.movimientos, hoy]);
   const libro = useMemo(() => ordenarLibro(ctx.movimientos), [ctx.movimientos]);
   const confirmados = libro.filter((m) => m.estado === "confirmado");
-  const depositos = confirmados.filter((m) => m.tipo === "deposito");
+  const enFondos = confirmados.filter((m) => m.cuenta === "fondos_clientes");
+  const suma = (lista: Movimiento[]) => lista.reduce((s, m) => s + m.montoUsd, 0);
+  const depositos = enFondos.filter((m) => m.tipo === "deposito");
+  const honorarios = enFondos.filter((m) => m.tipo === "pago" && conceptoDe(m).clave === "aplicacion_honorarios");
+  const pagosTerceros = enFondos.filter((m) => m.tipo === "pago" && conceptoDe(m).clave !== "aplicacion_honorarios");
+  const devoluciones = enFondos.filter((m) => m.tipo === "devolucion");
+  const ajustes = enFondos.filter((m) => m.tipo === "ajuste");
+  const aSunat = confirmados.filter((m) => m.tipo === "deposito" && m.cuenta === "directo");
+  const detraccionCliente = confirmados.filter((m) => m.tipo === "deposito" && m.cuenta === "detracciones");
   const porConfirmar = libro.filter((m) => m.estado === "por_confirmar");
-  const pagos = confirmados.filter((m) => m.tipo === "pago");
-  const devoluciones = confirmados.filter((m) => m.tipo === "devolucion");
   const saldo = saldoCuenta(ctx.movimientos, "fondos_clientes");
   const hayLiquidacion = ctx.documentos.some((d) => d.tipo === "liquidacion_definitiva");
   const p5 = datosPago5(ctx);
+  const usado = ctx.expediente.vehiculo.condicion === "usado";
   if (ctx.hitos.length === 0 && libro.length === 0) return null;
 
   return (
     <article className="rounded-[22px] border border-line bg-surface p-6">
-      <h2 className="text-base font-semibold text-ink">Tus pagos</h2>
-      {derivados.length > 0 ? (
-        <ol className="mt-3 space-y-3">
-          {NUMEROS_PAGO.map((n) => {
-            const delPago = derivados.filter((d) => PAGO_POR_HITO[d.hito.tipo] === n);
-            if (delPago.length === 0) return null;
+      <h2 className="text-base font-semibold text-ink">Tus cinco pagos</h2>
+      <p className="mt-1 text-sm leading-relaxed text-ink-2">Pagas todo a una sola cuenta: Fondos de Clientes de LUXCARS. Solo el Pago 4 va directo a SUNAT.</p>
+      {pagosCliente.length > 0 ? (
+        <div role="table" aria-label="Calendario de pagos" className="mt-4 text-sm">
+          <div role="row" className={cn("hidden gap-3 border-b border-line pb-2 text-[11px] uppercase tracking-[0.12em] text-ink-4 sm:grid", COLUMNAS_PAGOS)}>
+            <span role="columnheader">Pago</span>
+            <span role="columnheader">Cuándo</span>
+            <span role="columnheader">Qué cubre</span>
+            <span role="columnheader" className="text-right">Monto</span>
+            <span role="columnheader">Dónde pagas</span>
+          </div>
+          {pagosCliente.map((p) => {
+            const nota = notaMonto(ctx, p);
             return (
-              <li key={n} className="rounded-2xl border border-line/70 p-3">
-                <p className="text-sm font-semibold text-ink">{NOMBRE_PAGO[n]}</p>
-                <p className="text-xs text-ink-4">{CUANDO_PAGO[n]}</p>
-                <ul className="mt-2 divide-y divide-line">
-                  {delPago.map((d) => (
-                    <li key={d.hito.tipo} className="py-2">
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <span className="text-ink-2">{HITO_LABEL[d.hito.tipo]}</span>
-                        <span className="font-semibold tabular-nums text-ink">{usd(d.hito.montoEstimadoUsd)}</span>
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-4">
-                        <span>{d.hito.fechaLimite ? `${d.vencido ? "Venció" : "Hasta"} el ${fecha(d.hito.fechaLimite)}` : d.hito.tipo === "H5" ? "Con la liquidación de SUNAT" : "Fecha por confirmar"}{d.hito.cuenta === "directo" ? " · directo a SUNAT" : ""}</span>
-                        <Badge tone={d.estado === "acreditado" ? "ok" : d.estado === "parcial" ? "warn" : d.vencido ? "danger" : "neutral"} dot>
-                          {d.hito.cuenta === "directo" && d.estado === "acreditado" ? "Pagado" : ESTADO_HITO_LABEL[d.estado]}{d.estado === "parcial" ? ` · ${usd(d.acreditado)}` : ""}
-                        </Badge>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </li>
+              <div role="row" key={p.pago} className={cn("grid gap-1.5 border-b border-line/70 py-3 sm:gap-3", COLUMNAS_PAGOS)}>
+                <div role="cell">
+                  <p className="font-semibold text-ink">{p.etiqueta}</p>
+                  <EstadoPago p={p} />
+                </div>
+                <div role="cell" className="text-ink-2">
+                  <span className="mr-1 text-[11px] uppercase tracking-[0.12em] text-ink-4 sm:hidden">Cuándo:</span>
+                  {p.cuando}
+                  {p.fechaLimite && p.estado !== "acreditado" ? <span className={cn("block text-xs", p.vencido ? "text-danger" : "text-ink-4")}>{p.vencido ? "Venció" : "Hasta"} el {fecha(p.fechaLimite)}</span> : null}
+                </div>
+                <div role="cell" className="text-ink-2">
+                  <span className="mr-1 text-[11px] uppercase tracking-[0.12em] text-ink-4 sm:hidden">Qué cubre:</span>
+                  {queCubrePago(p.pago as NumeroPago, usado)}
+                </div>
+                <div role="cell" className="sm:text-right">
+                  <span className="mr-1 text-[11px] uppercase tracking-[0.12em] text-ink-4 sm:hidden">Monto:</span>
+                  <span className="font-semibold tabular-nums text-ink">{usd(p.montoEstimadoUsd)}</span>
+                  {nota ? <span className="block text-xs text-ink-4">{nota}</span> : null}
+                </div>
+                <div role="cell" className="text-ink-2">
+                  <span className="mr-1 text-[11px] uppercase tracking-[0.12em] text-ink-4 sm:hidden">Dónde pagas:</span>
+                  {p.donde}
+                </div>
+              </div>
             );
           })}
-        </ol>
+        </div>
       ) : null}
-      <p className="mt-3 text-xs text-ink-4">Montos del Anexo B: el Pago 3 se fija con la pro forma del agente de aduana, el Pago 4 es la cifra exacta de SUNAT y el Pago 5 se ajusta con el saldo de aduana. Transfiere solo a las cuentas que confirmaste por teléfono.</p>
+      <p className="mt-3 text-xs leading-relaxed text-ink-4">Los montos exactos de los Pagos 3, 4 y 5 te llegan en un aviso: qué pago es, cuánto, dónde pagar y hasta cuándo. Transfiere solo a la cuenta Fondos de Clientes que confirmaste por teléfono.</p>
 
       {libro.length > 0 ? (
         <div className="mt-5 border-t border-line pt-4">
-          <h3 className="text-sm font-semibold text-ink">Estado de cuenta</h3>
+          <h3 className="text-sm font-semibold text-ink">Tu cuenta Fondos de Clientes</h3>
           <dl className="mt-2 grid gap-2 text-sm">
-            <Fila k="Depósitos confirmados" v={usd(depositos.reduce((s, m) => s + m.montoUsd, 0), 2)} />
-            {porConfirmar.length > 0 ? <Fila k="Depósitos por confirmar" v={<span className="text-warn">{usd(porConfirmar.reduce((s, m) => s + m.montoUsd, 0), 2)}</span>} /> : null}
-            <Fila k="Pagos hechos por tu cuenta" v={`− ${usd(pagos.reduce((s, m) => s + m.montoUsd, 0), 2)}`} />
-            {devoluciones.length > 0 ? <Fila k="Devuelto a tu cuenta" v={`− ${usd(devoluciones.reduce((s, m) => s + m.montoUsd, 0), 2)}`} /> : null}
-            <Fila k="Saldo en Fondos de Clientes" v={<span className={cn("font-semibold", saldo < -0.01 ? "text-danger" : "text-ink")}>{usd(saldo, 2)}</span>} />
+            <Fila k="Lo que depositaste" v={usd(suma(depositos), 2)} />
+            {porConfirmar.length > 0 ? <Fila k="Por confirmar" v={<span className="text-warn">{usd(suma(porConfirmar), 2)}</span>} /> : null}
+            <Fila k="Pagos a terceros por tu cuenta" v={`− ${usd(suma(pagosTerceros), 2)}`} />
+            {honorarios.length > 0 ? <Fila k="Honorarios de LUXCARS (facturas emitidas)" v={`− ${usd(suma(honorarios), 2)}`} /> : null}
+            {ajustes.length > 0 ? <Fila k="Reposiciones de LUXCARS" v={`+ ${usd(suma(ajustes), 2)}`} /> : null}
+            {devoluciones.length > 0 ? <Fila k="Devuelto a ti" v={`− ${usd(suma(devoluciones), 2)}`} /> : null}
+            <Fila k="Saldo" v={<span className={cn("font-semibold", saldo < -0.01 ? "text-danger" : "text-ink")}>{usd(saldo, 2)}</span>} />
+            {aSunat.length > 0 ? <Fila k="Pagado por ti directo a SUNAT" v={usd(suma(aSunat), 2)} /> : null}
+            {detraccionCliente.length > 0 ? <Fila k="Detracción que depositaste en el Banco de la Nación" v={usd(suma(detraccionCliente), 2)} /> : null}
           </dl>
           {hayLiquidacion && (p5.aduana.recibido > 0 || p5.aduana.pagado > 0) ? (
             <p className={cn("mt-3 rounded-2xl border px-3 py-2 text-xs text-ink-2", p5.aduana.saldo < -0.01 ? "border-warn/30 bg-warn/10" : "border-ok/30 bg-ok/10")}>
               {p5.aduana.saldo < -0.01
-                ? `Gastos de aduana: se pagaron ${usd(Math.abs(p5.aduana.saldo), 2)} más de lo que depositaste en el Pago 3; se suman al Pago 5 (${usd(p5.neto, 2)}).`
-                : `Gastos de aduana: sobraron ${usd(p5.aduana.saldo, 2)} del Pago 3; se descuentan del Pago 5 (${usd(p5.neto, 2)}).`}
+                ? `Gastos de aduana: se pagaron ${usd(Math.abs(p5.aduana.saldo), 2)} más de lo que depositaste en el Pago 3. Se suman al Pago 5, que queda en ${usd(p5.neto, 2)}.`
+                : `Gastos de aduana: sobraron ${usd(p5.aduana.saldo, 2)} del Pago 3. Se descuentan del Pago 5, que queda en ${usd(p5.neto, 2)}.`}
             </p>
           ) : null}
           <ol className="mt-3 divide-y divide-line">
             {[...libro].reverse().map((m) => <MovimientoCliente key={m.id} m={m} />)}
           </ol>
-          <p className="mt-3 text-xs text-ink-4">Cada pago a terceros va con el documento a tu nombre; los comprobantes se descargan con un enlace personal de cinco minutos.</p>
+          <p className="mt-3 text-xs text-ink-4">Cada pago a terceros va con el documento a tu nombre. Al emitir cada factura de honorarios tomamos su importe de esta cuenta. Los comprobantes se descargan con un enlace personal de cinco minutos.</p>
         </div>
       ) : null}
     </article>
@@ -535,10 +585,14 @@ function Dinero({ ctx, hoy }: { ctx: ContextoExpediente; hoy: string }) {
 
 function MovimientoCliente({ m }: { m: Movimiento }) {
   const resta = m.tipo === "pago" || m.tipo === "devolucion";
+  const delPago = m.hito ? ` · ${etiquetaPago(PAGO_POR_HITO[m.hito])}` : "";
+  const factura = /factura (\d)/i.exec(m.concepto ?? "")?.[1];
   const titulo =
-    m.tipo === "deposito" ? (m.cuenta === "directo" ? `Tu pago directo a SUNAT${m.hito ? ` · ${m.hito}` : ""}` : `Tu depósito${m.hito ? ` · ${m.hito}` : ""}`) :
-    m.tipo === "pago" ? `Pago por tu cuenta${m.concepto ? `: ${m.concepto}` : ""}` :
-    m.tipo === "devolucion" ? "Devolución a tu cuenta" : `Ajuste${m.concepto ? `: ${m.concepto}` : ""}`;
+    m.tipo === "deposito"
+      ? m.cuenta === "directo" ? `Tu pago directo a SUNAT${delPago}` : m.cuenta === "detracciones" ? `Tu depósito de la detracción${delPago}` : `Tu depósito${delPago}`
+      : m.tipo === "pago"
+        ? conceptoDe(m).clave === "aplicacion_honorarios" ? `Honorarios de LUXCARS${factura ? ` · factura ${factura}` : ""}` : `Pago por tu cuenta${m.concepto ? `: ${m.concepto}` : ""}`
+        : m.tipo === "devolucion" ? "Devolución a tu cuenta" : `Ajuste${m.concepto ? `: ${m.concepto}` : ""}`;
   return (
     <li className="flex flex-wrap items-start justify-between gap-2 py-2.5 text-sm">
       <div className="min-w-0">

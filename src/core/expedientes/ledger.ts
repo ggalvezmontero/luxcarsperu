@@ -24,12 +24,21 @@
  *   · La comisión bancaria del wire al exterior la debita el banco de Fondos de
  *     Clientes y Luxcars la repone el mismo día: un `pago` y un `ajuste` del
  *     mismo monto, que dejan el saldo del cliente igual (`comisionesBancarias`).
+ *   · UNA sola cuenta para el cliente: los Pagos 1, 2, 3 y 5 entran a Fondos de
+ *     Clientes. Al emitir cada factura de honorarios, Luxcars APLICA su importe
+ *     de Fondos de Clientes a Operaciones (un `pago` desde Fondos y un
+ *     `deposito` en Operaciones, sin hito) y desde Operaciones deposita la
+ *     detracción en su cuenta del Banco de la Nación (autodetracción: un
+ *     `pago` desde Operaciones y un `deposito` en detracciones, sin hito). Los
+ *     asientos internos no llevan hito, así que nunca acreditan un pago del
+ *     cliente. El sobrante o faltante de aduana se compensa solo: el cliente
+ *     deposita el Pago 5 neto y Luxcars aplica la mitad completa.
  *
  * TypeScript puro, sin fecha actual salvo la que se pase.
  */
 
 import { fechaEnLetras, monto, type CamposExtra } from "./campos";
-import { acreditadoPorHito, estadoHito, redondear, sumarDiasHabiles, DIAS_HABILES_PAGO_TRIBUTOS } from "./hitos";
+import { CUANDO_PAGO, DONDE_PAGA, acreditadoPorHito, acreditadoPorPago, etiquetaPago, estadoHito, hitosDelPago, redondear, sumarDiasHabiles, DIAS_HABILES_PAGO_TRIBUTOS } from "./hitos";
 import type {
   ContextoExpediente,
   CuentaMovimiento,
@@ -37,9 +46,11 @@ import type {
   FechaIso,
   Hito,
   Movimiento,
+  NumeroPago,
   TipoHito,
   TipoMovimiento,
 } from "./tipos";
+import { NUMEROS_PAGO, PAGO_POR_HITO as PAGO_POR_HITO_LEDGER } from "./tipos";
 
 export { acreditadoPorHito, estadoHito };
 
@@ -47,7 +58,13 @@ export { acreditadoPorHito, estadoHito };
 /* Conceptos de pago                                                          */
 /* -------------------------------------------------------------------------- */
 
-export type GrupoConcepto = "vehiculo" | "logistica" | "tributo" | "gasto" | "compensacion" | "comision" | "otro";
+/**
+ * `honorarios` y `detraccion` son asientos internos de Luxcars (aplicación de
+ * una factura desde Fondos de Clientes, autodetracción): no son pagos a
+ * terceros ni pagos del cliente. `detraccion_cliente` es la detracción que el
+ * cliente deposita él mismo (alternativa del contrato): sí es un pago suyo.
+ */
+export type GrupoConcepto = "vehiculo" | "logistica" | "tributo" | "gasto" | "compensacion" | "comision" | "honorarios" | "detraccion" | "otro";
 
 export type ConceptoPago = {
   clave: string;
@@ -86,11 +103,18 @@ export const CONCEPTOS_PAGO: readonly ConceptoPago[] = [
   { clave: "aduana_faltante", etiqueta: "Faltante de gastos de aduana cubierto con el Pago 5", grupo: "compensacion", hito: "H6", documento: "Liquidación definitiva" },
   { clave: "comision_wire", etiqueta: "Comisión bancaria del wire (cargo del banco)", grupo: "comision", hito: null, documento: "Estado de cuenta del banco" },
   { clave: "comision_reposicion", etiqueta: "Reposición de la comisión bancaria, por cuenta de Luxcars", grupo: "comision", hito: null, documento: "Transferencia de Luxcars" },
+  { clave: "aplicacion_honorarios", etiqueta: "Aplicación de honorarios desde Fondos de Clientes", grupo: "honorarios", hito: null, documento: "Factura de honorarios" },
+  { clave: "honorarios_recibidos", etiqueta: "Honorarios recibidos desde Fondos de Clientes", grupo: "honorarios", hito: null, documento: "Factura de honorarios" },
+  { clave: "autodetraccion", etiqueta: "Detracción depositada por Luxcars en el Banco de la Nación", grupo: "detraccion", hito: null, documento: "Constancia de depósito del Banco de la Nación" },
+  { clave: "detraccion_cliente", etiqueta: "Detracción depositada por el cliente en el Banco de la Nación", grupo: "detraccion", hito: null, documento: "Constancia de depósito del Banco de la Nación" },
   { clave: "otro", etiqueta: "Otros autorizados por el Mandante", grupo: "otro", hito: null, documento: "" },
 ];
 
-/** Los conceptos que el equipo elige al registrar un pago a un tercero (los de compensación y comisión los arma el sistema). */
-export const CONCEPTOS_PAGO_TERCEROS: readonly ConceptoPago[] = CONCEPTOS_PAGO.filter((c) => c.grupo !== "compensacion" && c.grupo !== "comision");
+/** Grupos de asientos que no son pagos a terceros (los arma el sistema). */
+const GRUPOS_INTERNOS: readonly GrupoConcepto[] = ["compensacion", "comision", "honorarios", "detraccion"];
+
+/** Los conceptos que el equipo elige al registrar un pago a un tercero (los de compensación, comisión, honorarios y detracción los arma el sistema). */
+export const CONCEPTOS_PAGO_TERCEROS: readonly ConceptoPago[] = CONCEPTOS_PAGO.filter((c) => !GRUPOS_INTERNOS.includes(c.grupo));
 
 const CONCEPTO_POR_ETIQUETA = new Map(CONCEPTOS_PAGO.map((c) => [c.etiqueta.toLowerCase(), c]));
 
@@ -100,6 +124,10 @@ export function conceptoDe(m: Pick<Movimiento, "concepto">): ConceptoPago {
   const exacto = CONCEPTO_POR_ETIQUETA.get(texto);
   if (exacto) return exacto;
   const reglas: [RegExp, string][] = [
+    [/aplicaci[oó]n de (los )?honorarios/, "aplicacion_honorarios"],
+    [/honorarios recibidos/, "honorarios_recibidos"],
+    [/detracci[oó]n.*cliente|cliente.*detracci[oó]n/, "detraccion_cliente"],
+    [/detracci[oó]n|autodetracci/, "autodetraccion"],
     [/reposici[oó]n de la comisi/, "comision_reposicion"],
     [/comisi[oó]n bancaria|cargo del banco/, "comision_wire"],
     [/sobrante.*aduana|aplicado al pago 5/, "aduana_sobrante"],
@@ -132,6 +160,12 @@ export function conceptoDe(m: Pick<Movimiento, "concepto">): ConceptoPago {
 
 export function esConfirmado(m: Pick<Movimiento, "estado">): boolean {
   return m.estado === "confirmado";
+}
+
+/** Asiento interno de Luxcars (comisión repuesta, aplicación de honorarios, autodetracción): no es un pago del cliente ni a un tercero. */
+export function esAsientoInterno(m: Pick<Movimiento, "concepto">): boolean {
+  const c = conceptoDe(m);
+  return c.grupo === "comision" || c.grupo === "honorarios" || c.clave === "autodetraccion";
 }
 
 /** Signo con que cada tipo entra al saldo. */
@@ -187,8 +221,8 @@ export type HitoDerivado = {
 /** Estado de todos los hitos, derivado del libro. `hoy` en ISO para decidir vencidos. */
 export function estadoHitos(hitos: readonly Hito[], movimientos: readonly Movimiento[], hoy?: FechaIso): HitoDerivado[] {
   return hitos.map((hito) => {
-    const acreditado = redondear(acreditadoPorHito(hito, movimientos));
-    const estado = estadoHito(hito, movimientos);
+    const acreditado = redondear(acreditadoPorHito(hito, movimientos, hitos));
+    const estado = estadoHito(hito, movimientos, hitos);
     return {
       hito,
       estado,
@@ -200,15 +234,69 @@ export function estadoHitos(hitos: readonly Hito[], movimientos: readonly Movimi
   });
 }
 
+/** Un pago tal como lo ve el cliente ("Pago 2 de 5"): la suma de sus hitos, un solo estado y una sola fecha. */
+export type PagoDerivado = {
+  pago: NumeroPago;
+  /** "Pago 2 de 5". */
+  etiqueta: string;
+  hitos: Hito[];
+  montoEstimadoUsd: number;
+  acreditado: number;
+  porConfirmar: number;
+  pendiente: number;
+  estado: EstadoHito;
+  fechaLimite: FechaIso | null;
+  vencido: boolean;
+  /** El cliente paga directo a SUNAT (Pago 4). */
+  directo: boolean;
+  cuando: string;
+  donde: string;
+};
+
+/** Los cinco pagos del cliente, derivados de los hitos y del libro (solo los que tienen hitos cargados). */
+export function estadoPagos(hitos: readonly Hito[], movimientos: readonly Movimiento[], hoy?: FechaIso): PagoDerivado[] {
+  const derivados = estadoHitos(hitos, movimientos, hoy);
+  return NUMEROS_PAGO.flatMap((pago) => {
+    const delPago = derivados.filter((d) => hitosDelPago(pago).includes(d.hito.tipo));
+    if (delPago.length === 0) return [];
+    const montoEstimadoUsd = redondear(delPago.reduce((s, d) => s + d.hito.montoEstimadoUsd, 0));
+    const acreditado = redondear(acreditadoPorPago(pago, movimientos));
+    const porConfirmar = redondear(
+      movimientos
+        .filter((m) => m.hito !== null && hitosDelPago(pago).includes(m.hito) && m.tipo === "deposito" && m.estado === "por_confirmar")
+        .reduce((s, m) => s + m.montoUsd, 0),
+    );
+    const estados = delPago.map((d) => d.estado);
+    const estado: EstadoHito = estados.every((e) => e === "acreditado") ? "acreditado" : acreditado > 0 ? "parcial" : "pendiente";
+    const fechas = delPago.map((d) => d.hito.fechaLimite).filter((f): f is FechaIso => Boolean(f)).sort();
+    const fechaLimite = fechas[0] ?? null;
+    return [{
+      pago,
+      etiqueta: etiquetaPago(pago),
+      hitos: delPago.map((d) => d.hito),
+      montoEstimadoUsd,
+      acreditado,
+      porConfirmar,
+      pendiente: estado === "acreditado" ? 0 : redondear(Math.max(0, montoEstimadoUsd - acreditado)),
+      estado,
+      fechaLimite,
+      vencido: Boolean(hoy && fechaLimite && fechaLimite < hoy && estado !== "acreditado"),
+      directo: delPago.some((d) => d.hito.cuenta === "directo"),
+      cuando: CUANDO_PAGO[pago],
+      donde: DONDE_PAGA[pago],
+    }];
+  });
+}
+
 export type PagoPorConcepto = { concepto: string; grupo: GrupoConcepto; montoUsd: number; cantidad: number };
 
-/** Pagos confirmados a terceros agrupados por concepto, en el orden del catálogo (sin compensaciones ni comisiones). */
+/** Pagos confirmados a terceros agrupados por concepto, en el orden del catálogo (sin compensaciones, comisiones, honorarios ni detracciones). */
 export function pagadoPorConcepto(movimientos: readonly Movimiento[]): PagoPorConcepto[] {
   const porClave = new Map<string, PagoPorConcepto>();
   for (const m of movimientos) {
     if (!esConfirmado(m) || m.tipo !== "pago") continue;
     const c = conceptoDe(m);
-    if (c.grupo === "compensacion" || c.grupo === "comision") continue;
+    if (GRUPOS_INTERNOS.includes(c.grupo)) continue;
     const llave = c.clave === "otro" ? `otro:${(m.concepto ?? "").trim()}` : c.clave;
     const actual = porClave.get(llave) ?? { concepto: c.clave === "otro" ? (m.concepto?.trim() || c.etiqueta) : c.etiqueta, grupo: c.grupo, montoUsd: 0, cantidad: 0 };
     actual.montoUsd = redondear(actual.montoUsd + m.montoUsd);
@@ -346,9 +434,9 @@ export function comisionesBancarias(movimientos: readonly Movimiento[]): Comisio
 /* Datos para los documentos que nacen del libro                              */
 /* -------------------------------------------------------------------------- */
 
-/** Número correlativo de la constancia dentro del expediente: F01, F02… según el orden de los depósitos confirmados en cuentas de Luxcars. */
+/** Número correlativo de la constancia dentro del expediente: F01, F02… según el orden de los depósitos confirmados del cliente en cuentas de Luxcars (sin asientos internos). */
 export function numeroConstancia(mov: Movimiento, movimientos: readonly Movimiento[]): string {
-  const depositos = ordenarLibro(movimientos).filter((m) => m.tipo === "deposito" && esConfirmado(m) && m.cuenta !== "directo");
+  const depositos = ordenarLibro(movimientos).filter((m) => m.tipo === "deposito" && esConfirmado(m) && m.cuenta !== "directo" && !esAsientoInterno(m));
   const i = depositos.findIndex((m) => m.id === mov.id);
   return `F${String((i >= 0 ? i : depositos.length) + 1).padStart(2, "0")}`;
 }
@@ -365,10 +453,12 @@ export function datosConstancia(mov: Movimiento, ctx: ContextoExpediente): Campo
   const previos = posicion >= 0 ? libro.slice(0, posicion) : libro.filter((m) => m.id !== mov.id);
   const saldoAnterior = redondear(previos.reduce((s, m) => s + signoDe(m.tipo) * m.montoUsd, 0));
   const saldoNuevo = redondear(saldoAnterior + signoDe(mov.tipo) * mov.montoUsd);
+  const pago = mov.hito ? PAGO_POR_HITO_LEDGER[mov.hito] : null;
   const salida: CamposExtra = {
     FECHA_DEPOSITO: fechaEnLetras(mov.fecha),
     MONTO_DEPOSITO: monto(mov.montoUsd),
     HITO: mov.hito ?? "",
+    PAGO_DEPOSITO: pago ? etiquetaPago(pago) : "",
     SALDO_ANTERIOR: monto(saldoAnterior),
     SALDO_NUEVO: monto(saldoNuevo),
     CONSTANCIA_NUMERO: numeroConstancia(mov, ctx.movimientos),
@@ -498,8 +588,13 @@ export type DatosRendicion = {
   /** Lo que el cliente pagó directo a SUNAT (Pago 4). */
   directos: PagoDirecto[];
   devoluciones: Movimiento[];
-  /** Depósitos confirmados en Operaciones (honorarios H3 y H6). */
+  /** Depósitos confirmados en Operaciones: los honorarios aplicados desde Fondos de Clientes al emitir cada factura (en expedientes anteriores al 27 nov, depositados directo). */
   honorarios: Movimiento[];
+  /** Aplicaciones de honorarios desde Fondos de Clientes, una por factura, en orden. */
+  aplicaciones: Movimiento[];
+  honorariosAplicados: number;
+  /** Detracciones de las facturas de honorarios en el Banco de la Nación: las de Luxcars (autodetracción) y las que depositó el cliente. */
+  detracciones: Movimiento[];
   aduana: SaldoAduana;
   pago5: DatosPago5;
   /** Sobrante de aduana pasado de Fondos de Clientes a los honorarios. */
@@ -515,7 +610,7 @@ export type DatosRendicion = {
   devuelto: number;
   /** Saldo menos devuelto. Cuadra a cero cuando el expediente se puede cerrar. */
   saldoFinal: number;
-  /** Honorarios cobrados: depósitos en Operaciones más el sobrante aplicado, menos el faltante repuesto. */
+  /** Honorarios cobrados: lo aplicado a Operaciones, más la detracción que depositó el cliente si la hizo él (más el sobrante aplicado y menos el faltante repuesto de expedientes anteriores). */
   totalHonorarios: number;
   /** Pagos a terceros, pagos directos y honorarios: costo total de la operación. */
   totalOperacion: number;
@@ -527,8 +622,13 @@ export type DatosRendicion = {
 export function datosRendicion(ctx: ContextoExpediente): DatosRendicion {
   const libro = ordenarLibro(ctx.movimientos).filter(esConfirmado);
   const fondos = libro.filter((m) => m.cuenta === "fondos_clientes");
-  const recibidos = fondos.filter((m) => m.tipo === "deposito" && conceptoDe(m).grupo !== "comision");
-  const ajustesOtros = fondos.filter((m) => m.tipo === "ajuste" && !["compensacion", "comision"].includes(conceptoDe(m).grupo));
+  const recibidos = fondos.filter((m) => m.tipo === "deposito" && !esAsientoInterno(m));
+  const ajustesOtros = fondos.filter((m) => m.tipo === "ajuste" && !["compensacion", "comision", "honorarios"].includes(conceptoDe(m).grupo));
+  const aplicaciones = fondos.filter((m) => m.tipo === "pago" && conceptoDe(m).clave === "aplicacion_honorarios");
+  const honorariosAplicados = redondear(aplicaciones.reduce((s, m) => s + m.montoUsd, 0));
+  const detracciones = libro.filter((m) => m.tipo === "deposito" && m.cuenta === "detracciones");
+  // La detracción que deposita el cliente es parte de lo que paga por honorarios; la de Luxcars sale de Operaciones.
+  const detraccionCliente = redondear(detracciones.filter((m) => conceptoDe(m).clave !== "autodetraccion").reduce((s, m) => s + m.montoUsd, 0));
   const pagos = lineasDePagos(ctx, ["vehiculo", "logistica", "tributo", "gasto", "otro"]);
   const directos = pagosDirectos(ctx.movimientos);
   const devoluciones = libro.filter((m) => m.tipo === "devolucion");
@@ -540,8 +640,8 @@ export function datosRendicion(ctx: ContextoExpediente): DatosRendicion {
   const totalPagado = redondear(pagos.reduce((s, l) => s + l.montoUsd, 0));
   const totalDirecto = redondear(directos.reduce((s, d) => s + d.montoUsd, 0));
   const devuelto = redondear(devoluciones.reduce((s, m) => s + m.montoUsd, 0));
-  const saldo = redondear(totalRecibido - totalPagado - sobranteAplicado + faltanteCubierto + comisiones.efecto);
-  const totalHonorarios = redondear(honorarios.reduce((s, m) => s + m.montoUsd, 0) + sobranteAplicado - faltanteCubierto);
+  const saldo = redondear(totalRecibido - totalPagado - honorariosAplicados - sobranteAplicado + faltanteCubierto + comisiones.efecto);
+  const totalHonorarios = redondear(honorarios.reduce((s, m) => s + m.montoUsd, 0) + detraccionCliente + sobranteAplicado - faltanteCubierto);
   const p = ctx.expediente.presupuesto;
   const creditoPagado = libro.filter((m) => m.tipo === "pago" && ["igv", "ipm", "percepcion"].includes(conceptoDe(m).clave)).reduce((s, m) => s + m.montoUsd, 0);
   // Pagados directo a SUNAT no traen el detalle por tributo: se toma el del Anexo B (el exacto está en la DAM).
@@ -552,6 +652,9 @@ export function datosRendicion(ctx: ContextoExpediente): DatosRendicion {
     directos,
     devoluciones,
     honorarios,
+    aplicaciones,
+    honorariosAplicados,
+    detracciones,
     aduana: saldoGastosAduana(ctx.movimientos),
     pago5: datosPago5(ctx),
     sobranteAplicado,
@@ -607,7 +710,7 @@ export function camposRendicion(ctx: ContextoExpediente): CamposExtra {
  */
 export function datosActa(ctx: ContextoExpediente): CamposExtra {
   const h6 = ctx.hitos.find((h) => h.tipo === "H6");
-  const acreditado = h6 ? estadoHito(h6, ctx.movimientos) === "acreditado" : false;
+  const acreditado = h6 ? estadoHito(h6, ctx.movimientos, ctx.hitos) === "acreditado" : false;
   const ultimo = ordenarLibro(ctx.movimientos).filter((m) => esConfirmado(m) && m.tipo === "deposito" && m.hito === "H6").pop();
   return {
     H6_ACREDITADO_FECHA: acreditado && ultimo ? fechaEnLetras(ultimo.fecha) : "pendiente",

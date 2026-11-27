@@ -10,6 +10,12 @@
  * nacen del libro: avisos de los Pagos 3, 4 y 5, liquidación definitiva y acta
  * de entrega y rendición.
  *
+ * Una sola cuenta para el cliente (27 nov 2026): todo lo que paga entra a
+ * Fondos de Clientes, salvo los tributos (directo a SUNAT). El panel
+ * "Honorarios y detracción" aplica cada factura de honorarios de Fondos de
+ * Clientes a Operaciones y registra la autodetracción (constancia del Banco de
+ * la Nación) dentro de los cinco días hábiles de recibido el pago.
+ *
  * Las reglas (saldo, estado de hitos, saldo de aduana y Pago 5 neto) las
  * calcula el core al leer (`ledger.ts`). Las escrituras van por la ruta
  * `/api/portal/expedientes/[id]/movimientos`, que llama a
@@ -23,8 +29,10 @@ import { Badge, Notice, PortalPanel, StatCard, StatGrid, TableScroll, Td, Th } f
 import { AreaTexto, Campo, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
 import { FICHA, fechaEnLetras, monto as montoTexto, type Campo as NombreCampo } from "@/core/expedientes/campos";
 import { plantillaDe } from "@/core/expedientes/documentos";
-import { CUENTA_POR_HITO, DIAS_HABILES_PAGO_TRIBUTOS, sumarDiasHabiles } from "@/core/expedientes/hitos";
-import { CONCEPTOS_PAGO_TERCEROS, comisionesBancarias, datosPago5, estadoHitos, ordenarLibro, saldoFondos, type HitoConAviso } from "@/core/expedientes/ledger";
+import { FACTURA_POR_HITO, HITOS_HONORARIOS, TAREA_AUTODETRACCION_POR_HITO, type HitoHonorarios } from "@/core/expedientes/etapas";
+import { detraccionSugerida, importeFactura, llevaDetraccion } from "@/core/expedientes/honorarios";
+import { CUENTA_POR_HITO, DIAS_HABILES_PAGO_TRIBUTOS, etiquetaPago, sumarDiasHabiles } from "@/core/expedientes/hitos";
+import { CONCEPTOS_PAGO_TERCEROS, comisionesBancarias, conceptoDe, datosPago5, estadoHitos, ordenarLibro, saldoFondos, type HitoConAviso } from "@/core/expedientes/ledger";
 import type { ContextoExpediente, CuentaMovimiento, Movimiento, TipoDocumento, TipoHito, TipoMovimiento } from "@/core/expedientes/tipos";
 import { CUENTAS_MOVIMIENTO, PAGO_POR_HITO, TIPOS_HITO, TIPOS_MOVIMIENTO } from "@/core/expedientes/tipos";
 import {
@@ -32,6 +40,7 @@ import {
   confirmarDeposito,
   emitirDocumentoDelLibro,
   registrarMovimiento,
+  registrarOperacionHonorarios,
   subirComprobanteMovimiento,
   urlDescargaComprobante,
   type DatosMovimiento,
@@ -68,6 +77,7 @@ export function PestanaDinero({ ctx, onResultado }: { client: PortalClient; ctx:
           <Libro ctx={ctx} onResultado={onResultado} />
         </div>
         <div className="space-y-6">
+          <HonorariosYDetraccion ctx={ctx} onResultado={onResultado} />
           <RegistrarMovimiento ctx={ctx} onResultado={onResultado} />
           <DocumentosDelLibro ctx={ctx} onResultado={onResultado} />
         </div>
@@ -91,7 +101,11 @@ function Hitos({ ctx }: { ctx: ContextoExpediente }) {
     <div className="space-y-4">
       <StatGrid>
         <StatCard label="Fondos de clientes" value={usd(saldo.fondos_clientes, 2)} hint="Depósitos menos pagos y devoluciones" tone={saldo.fondos_clientes < -0.01 ? "danger" : "accent"} />
-        <StatCard label="Operaciones" value={usd(saldo.operaciones, 2)} hint="Honorarios acreditados (H3 y H6)" />
+        <StatCard
+          label="Operaciones"
+          value={usd(saldo.operaciones, 2)}
+          hint={`Honorarios aplicados desde Fondos de Clientes, menos la detracción depositada${saldo.detracciones > 0.005 ? ` · detracciones ${usd(saldo.detracciones, 2)}` : ""}`}
+        />
         <StatCard label="Pagado directo a SUNAT" value={usd(saldo.directo, 2)} hint="Pago 4 (H5): no pasa por Luxcars" />
         <StatCard
           label="Saldo de aduana"
@@ -101,7 +115,7 @@ function Hitos({ ctx }: { ctx: ContextoExpediente }) {
         />
       </StatGrid>
 
-      <PortalPanel title="Pagos y hitos" description="Cinco pagos, seis hitos, una cuenta por hito. Estado derivado de los depósitos confirmados del libro; la tarea del cliente queda hecha al confirmar. El Pago 4 lo paga el cliente directo a SUNAT.">
+      <PortalPanel title="Pagos y hitos" description="Cinco pagos, seis hitos. El cliente paga todo a Fondos de Clientes, salvo el Pago 4, que paga directo a SUNAT. El Pago 2 es una sola transferencia (H2 + H3): se reparte primero al H2 y el resto al H3. Estado derivado de los depósitos confirmados; la tarea del cliente queda hecha al confirmar el pago completo.">
         {derivados.length === 0 ? (
           <p className="px-5 py-6 text-sm text-ink-3">Sin presupuesto: el expediente se abrió sin hitos.</p>
         ) : (
@@ -158,7 +172,7 @@ function Declarados({ ctx, declarados, onResultado }: { ctx: ContextoExpediente;
   return (
     <PortalPanel
       title={`Depósitos declarados por el cliente (${declarados.length})`}
-      description="El cliente los declaró desde su cuenta. Confirmar los acredita en el libro, cierra su tarea y emite la constancia de fondos visible para él. Anular exige un motivo que el cliente verá."
+      description="El cliente los declaró desde su cuenta. Confirmar los acredita en el libro, emite la constancia de fondos visible para él y, con el pago completo, cierra su tarea. Anular exige un motivo que el cliente verá."
     >
       <ul className="divide-y divide-line">
         {declarados.map((m) => (
@@ -376,6 +390,182 @@ function CeldaComprobante({ ctx, m, onResultado }: { ctx: ContextoExpediente; m:
 }
 
 /* -------------------------------------------------------------------------- */
+/* Honorarios y detracción                                                    */
+/* -------------------------------------------------------------------------- */
+
+/** Asientos internos confirmados de una factura (aplicación o autodetracción), por la marca "factura N" del concepto. */
+function asientosDeFactura(ctx: ContextoExpediente, clave: "aplicacion_honorarios" | "autodetraccion", factura: number): Movimiento[] {
+  const marca = new RegExp(`factura ${factura}\\b`, "i");
+  return ctx.movimientos.filter((m) => m.estado === "confirmado" && conceptoDe(m).clave === clave && marca.test(m.concepto ?? ""));
+}
+
+type Operacion = { hito: HitoHonorarios; tipo: "aplicar_honorarios" | "autodetraccion" };
+
+function HonorariosYDetraccion({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
+  const [abierta, setAbierta] = useState<Operacion | null>(null);
+  const conDetraccion = llevaDetraccion(ctx.cliente);
+  const importe = importeFactura(ctx);
+  const detraccionUsd = detraccionSugerida(ctx);
+  const hoy = hoyIso();
+
+  return (
+    <PortalPanel
+      title="Honorarios y detracción"
+      description={
+        conDetraccion
+          ? "El cliente paga todo a Fondos de Clientes. Al emitir cada factura, aplica su importe a Operaciones. Luego deposita la detracción en el Banco de la Nación dentro de cinco días hábiles de recibido el pago (autodetracción) y envía la constancia al cliente."
+          : "El cliente paga todo a Fondos de Clientes. Al emitir cada boleta o factura, aplica su importe a Operaciones. Persona natural con boleta: no hay detracción."
+      }
+    >
+      <ul className="divide-y divide-line">
+        {HITOS_HONORARIOS.map((h) => {
+          const factura = FACTURA_POR_HITO[h];
+          const pago = factura === 1 ? 2 : 5;
+          const aplicada = asientosDeFactura(ctx, "aplicacion_honorarios", factura).find((m) => m.tipo === "pago");
+          const detraida = asientosDeFactura(ctx, "autodetraccion", factura).find((m) => m.tipo === "deposito");
+          const clienteDetrajo = ctx.movimientos.some((m) => m.tipo === "deposito" && m.cuenta === "detracciones" && m.estado === "confirmado" && m.hito !== null && PAGO_POR_HITO[m.hito] === pago);
+          const tarea = ctx.tareas.find((t) => t.clave === TAREA_AUTODETRACCION_POR_HITO[h] && t.estado === "pendiente");
+          const vencida = Boolean(tarea?.venceEl && tarea.venceEl < hoy);
+          const esta = (tipo: Operacion["tipo"]) => abierta?.hito === h && abierta.tipo === tipo;
+          return (
+            <li key={h} className="px-5 py-4">
+              <p className="text-sm font-medium text-ink">Factura {factura} · con el {etiquetaPago(pago)}</p>
+              <p className="mt-0.5 text-xs text-ink-4">Importe {importe > 0 ? usd(importe, 2) : "sin honorarios en el expediente"} (la mitad, IGV incluido)</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                {aplicada ? (
+                  <Badge tone="ok">Aplicada el {fecha(aplicada.fecha)}{aplicada.documentoRef ? ` · ${aplicada.documentoRef}` : ""}</Badge>
+                ) : (
+                  <Badge tone="neutral">Sin aplicar</Badge>
+                )}
+                {!conDetraccion ? null : detraida ? (
+                  <Badge tone="ok">Detracción depositada el {fecha(detraida.fecha)}{detraida.documentoRef ? ` · ${detraida.documentoRef}` : ""}</Badge>
+                ) : clienteDetrajo ? (
+                  <Badge tone="info">El cliente depositó la detracción</Badge>
+                ) : tarea ? (
+                  <Badge tone={vencida ? "danger" : "warn"}>Detracción pendiente · vence el {fecha(tarea.venceEl)}</Badge>
+                ) : (
+                  <Badge tone="neutral">Detracción: nace al confirmar el {etiquetaPago(pago)}</Badge>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" variant={aplicada ? "ghost" : "secondary"} className={aplicada ? "border border-line" : ""} onClick={() => setAbierta(esta("aplicar_honorarios") ? null : { hito: h, tipo: "aplicar_honorarios" })}>
+                  {aplicada ? "Aplicar otra vez" : `Aplicar factura ${factura}`}
+                </Button>
+                {conDetraccion && !clienteDetrajo ? (
+                  <Button size="sm" variant={detraida ? "ghost" : "secondary"} className={detraida ? "border border-line" : ""} onClick={() => setAbierta(esta("autodetraccion") ? null : { hito: h, tipo: "autodetraccion" })}>
+                    {detraida ? "Registrar otra constancia" : "Registrar autodetracción"}
+                  </Button>
+                ) : null}
+              </div>
+              {esta("aplicar_honorarios") || esta("autodetraccion") ? (
+                <FormularioOperacion
+                  key={`${h}-${abierta?.tipo}`}
+                  ctx={ctx}
+                  operacion={abierta!}
+                  importe={importe}
+                  detraccionUsd={detraccionUsd}
+                  onCerrar={() => setAbierta(null)}
+                  onResultado={onResultado}
+                />
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </PortalPanel>
+  );
+}
+
+function FormularioOperacion({
+  ctx,
+  operacion,
+  importe,
+  detraccionUsd,
+  onCerrar,
+  onResultado,
+}: {
+  ctx: ContextoExpediente;
+  operacion: Operacion;
+  importe: number;
+  detraccionUsd: number;
+  onCerrar: () => void;
+  onResultado: (r: Resultado) => void;
+}) {
+  const aplicar = operacion.tipo === "aplicar_honorarios";
+  const factura = FACTURA_POR_HITO[operacion.hito];
+  // La detracción se deposita en soles en el Banco de la Nación; la factura suele estar en dólares.
+  const [moneda, setMoneda] = useState(aplicar ? "USD" : "PEN");
+  const [monto, setMonto] = useState(aplicar && importe > 0 ? importe.toFixed(2) : "");
+  const [tc, setTc] = useState("");
+  const [fechaOp, setFechaOp] = useState(hoyIso());
+  const [referencia, setReferencia] = useState("");
+  const [nota, setNota] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const n = leerNumero(monto);
+  const tcN = moneda === "USD" ? 1 : leerNumero(tc);
+  const montoUsd = n !== null && tcN !== null ? Math.round(n * tcN * 100) / 100 : null;
+
+  const enviar = async () => {
+    if (n === null || n <= 0) return onResultado({ ok: false, message: "Escribe un monto mayor que cero." });
+    if (moneda !== "USD" && (tcN === null || tcN <= 0)) return onResultado({ ok: false, message: `Falta el tipo de cambio ${moneda} → USD.` });
+    setBusy(true);
+    const r = await registrarOperacionHonorarios({
+      expedienteId: ctx.expediente.id,
+      operacion: {
+        operacion: operacion.tipo,
+        factura: factura as 1 | 2,
+        fecha: fechaOp,
+        moneda: moneda.toUpperCase(),
+        monto: n,
+        tipo_cambio: tcN,
+        monto_usd: montoUsd,
+        documento_ref: referencia.trim(),
+        nota_interna: nota.trim() || null,
+      },
+    });
+    setBusy(false);
+    if (r.ok) onCerrar();
+    onResultado(r);
+  };
+
+  return (
+    <div className="mt-3 rounded-lux border border-line bg-surface-2 p-4">
+      <p className="text-xs text-ink-3">
+        {aplicar
+          ? `Pasa el importe de la factura ${factura} de Fondos de Clientes a Operaciones, con fecha de emisión de la factura. El cliente lo ve como "Factura ${factura} de honorarios aplicada".`
+          : `Detracción de la factura ${factura}, depositada desde Operaciones en la cuenta de detracciones de LUXCARS en el Banco de la Nación.${detraccionUsd > 0 ? ` Referencia: ≈ ${usd(detraccionUsd, 2)} (${ctx.expediente.porcentajeDetraccion ?? 0} % de ${usd(importe, 2)}), en soles al tipo de cambio de la factura.` : " Sin porcentaje de detracción en el expediente: usa el que fije el contador."}`}
+      </p>
+      <div className="mt-3">
+        <Rejilla columnas={2}>
+          <Campo label={aplicar ? `Número de la factura ${factura}` : "Número de la constancia del Banco de la Nación"} requerido>
+            <Entrada value={referencia} onChange={(e) => setReferencia(e.target.value)} maxLength={120} placeholder={aplicar ? "ej. F001-000123" : "ej. 123456789"} />
+          </Campo>
+          <Campo label={aplicar ? "Fecha de emisión" : "Fecha del depósito"}><Entrada type="date" value={fechaOp} onChange={(e) => setFechaOp(e.target.value)} /></Campo>
+          <Campo label="Moneda"><Entrada value={moneda} maxLength={3} onChange={(e) => setMoneda(e.target.value.toUpperCase())} placeholder={aplicar ? "USD" : "PEN"} /></Campo>
+          <Campo label={`Monto en ${moneda || "USD"}`} requerido><Entrada inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0.00" /></Campo>
+          {moneda !== "USD" ? (
+            <Campo label={`Tipo de cambio (USD por 1 ${moneda})`} requerido hint={montoUsd !== null ? `= ${usd(montoUsd, 2)}` : undefined}>
+              <Entrada inputMode="decimal" value={tc} onChange={(e) => setTc(e.target.value)} placeholder="ej. 0.27" />
+            </Campo>
+          ) : null}
+        </Rejilla>
+      </div>
+      <div className="mt-3">
+        <Campo label="Nota interna (el cliente no la ve)"><AreaTexto value={nota} onChange={(e) => setNota(e.target.value)} maxLength={2000} /></Campo>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button size="sm" disabled={busy || n === null || !referencia.trim()} onClick={() => void enviar()}>
+          {busy ? "Registrando…" : aplicar ? `Aplicar factura ${factura}` : "Registrar autodetracción"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCerrar}>Cancelar</Button>
+        {montoUsd !== null ? <span className="text-xs text-ink-4">{usd(montoUsd, 2)} al libro</span> : null}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Registrar movimiento                                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -412,7 +602,7 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
   };
   const cambiarHito = (h: TipoHito | "") => {
     setHito(h);
-    // Una cuenta por hito: H3 y H6 a Operaciones, H5 directo a SUNAT, el resto a Fondos de Clientes.
+    // El cliente paga todo a Fondos de Clientes; el H5 (tributos) va directo a SUNAT.
     if (tipo === "deposito") setCuenta(h ? CUENTA_POR_HITO[h] : "fondos_clientes");
   };
   const cambiarConcepto = (clave: string) => {
@@ -465,7 +655,7 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
   };
 
   return (
-    <PortalPanel title="Registrar movimiento" description="Un depósito con hito emite la constancia de fondos y cierra la tarea del cliente (el pago directo a SUNAT, H5, no lleva constancia). Los pagos a terceros salen en la liquidación y la rendición por su concepto.">
+    <PortalPanel title="Registrar movimiento" description="Un depósito con hito en Fondos de Clientes emite la constancia de fondos y, con el pago completo, cierra la tarea del cliente (el pago directo a SUNAT, H5, no lleva constancia). Los pagos a terceros salen en la liquidación y la rendición por su concepto. La aplicación de honorarios y la autodetracción van en su panel.">
       <div className="space-y-4 px-5 py-4">
         <Rejilla columnas={2}>
           <Campo label="Tipo">
@@ -524,7 +714,7 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
             ) : null}
           </Rejilla>
         ) : (
-          <Campo label="Concepto (opcional)"><Entrada value={conceptoLibre} onChange={(e) => setConceptoLibre(e.target.value)} maxLength={200} placeholder={tipo === "deposito" ? "ej. Depósito H2 · BCP" : "ej. Devolución del saldo"} /></Campo>
+          <Campo label="Concepto (opcional)"><Entrada value={conceptoLibre} onChange={(e) => setConceptoLibre(e.target.value)} maxLength={200} placeholder={tipo === "deposito" ? "ej. Pago 2 · BCP" : "ej. Devolución del saldo"} /></Campo>
         )}
 
         <Rejilla columnas={2}>
@@ -576,7 +766,7 @@ type DocumentoLibro = {
 const DOCUMENTOS_LIBRO: DocumentoLibro[] = [
   { clave: "aviso_h4", tipo: "aviso_h3", hito: "H4", titulo: "Aviso del Pago 3 · gastos de aduana (H4)", etiqueta: "Emitir aviso del Pago 3", manuales: ["FECHA_AVISO", "MONTO_AVISO"], ayuda: "Con la pro forma del agente de aduana, antes del arribo. El monto del hito H4 pasa a ser el del aviso. Gasto reembolsable: el saldo se compensa en el Pago 5." },
   { clave: "aviso_h5", tipo: "aviso_h3", hito: "H5", titulo: "Aviso del Pago 4 · tributos a SUNAT (H5)", etiqueta: "Emitir aviso del Pago 4", manuales: ["FECHA_AVISO", "LIQUIDACION_NUMERO", "TRIBUTOS_USD", "TRIBUTOS_SOLES", "TC_REFERENCIAL"], ayuda: "Con la liquidación de SUNAT. El cliente paga directo a SUNAT dentro de dos días hábiles: la fecha límite del hito H5 y de su tarea se fija al emitir." },
-  { clave: "aviso_h6", tipo: "aviso_h3", hito: "H6", titulo: "Aviso del Pago 5 · honorarios netos (H6)", etiqueta: "Emitir aviso del Pago 5", manuales: ["FECHA_AVISO"], ayuda: "Con el levante. Segunda mitad de los honorarios menos el sobrante (o más el faltante) de los gastos de aduana del libro; el hito H6 queda por el neto." },
+  { clave: "aviso_h6", tipo: "aviso_h3", hito: "H6", titulo: "Aviso del Pago 5 · honorarios netos (H6)", etiqueta: "Emitir aviso del Pago 5", manuales: ["FECHA_AVISO"], ayuda: "Con el levante. Segunda mitad de los honorarios menos el sobrante (o más el faltante) de los gastos de aduana del libro, a Fondos de Clientes como siempre; el hito H6 queda por el neto." },
   { clave: "liquidacion", tipo: "liquidacion_definitiva", titulo: "Liquidación definitiva", etiqueta: "Emitir liquidación definitiva", manuales: [], ayuda: "Toma la DAM del expediente, los tributos pagados (directo por el cliente o por Luxcars) y los gastos de aduana del libro, con el saldo para el Pago 5. Visible para el cliente." },
   { clave: "acta", tipo: "acta_rendicion", titulo: "Acta de entrega y rendición de cuentas", etiqueta: "Emitir acta de entrega y rendición", manuales: [], ayuda: "Placa, TIVe, kilometraje y fecha de entrega del expediente; todo el libro, lo pagado directo a SUNAT, el saldo de aduana aplicado al Pago 5 y las comisiones repuestas. Se firma simple con el auto delante y abre la tarea de conformidad del cliente." },
 ];

@@ -36,7 +36,9 @@
   h2::before { content: ""; display: inline-block; width: 6mm; height: 1px; background: #9a9aa2; vertical-align: middle; margin-right: 2.5mm; }
 
   .pasos { border: 1px solid #dcdce1; border-radius: 3.5mm; overflow: hidden; }
-  .paso { display: grid; grid-template-columns: 7mm 40mm 1fr 60mm; gap: 3.5mm; padding: 2mm 4mm; border-top: 1px solid #e6e6ea; align-items: start; }
+  .paso { display: grid; grid-template-columns: 7mm 58mm 1fr; gap: 3.5mm; padding: 2mm 4mm; border-top: 1px solid #e6e6ea; align-items: start; }
+  .chip { display: inline-block; white-space: nowrap; font-size: 6.2pt; line-height: 1.25; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; color: #9a761f; border: 1px solid #d4af37; background: #fbf7ea; border-radius: 99px; padding: .1mm 1.6mm; }
+  .chip.sin { color: #8a8a92; border: 1px dashed #cfcfd5; background: none; }
   .paso:first-child { border-top: 0; }
   .n { font-family: "SF Mono", Menlo, monospace; font-size: 8.5pt; color: #8a8a92; padding-top: .6mm; }
   .paso h3 { font-size: 9.2pt; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; }
@@ -48,6 +50,11 @@
   .pago b { display: block; font-size: 8.4pt; font-weight: 600; margin-top: .8mm; }
   .pago span { display: block; font-size: 7pt; color: #5b5b63; margin-top: .6mm; }
   .pagos { display: grid; gap: 1.2mm; }
+  .tpagos { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #dcdce1; border-radius: 3mm; overflow: hidden; font-size: 7.2pt; }
+  .tpagos th { text-align: left; font-size: 6.6pt; letter-spacing: .12em; text-transform: uppercase; color: #6d6d72; font-weight: 600; background: #f6f6f8; padding: 1.4mm 2.4mm; }
+  .tpagos td { padding: 1.4mm 2.4mm; border-top: 1px solid #e6e6ea; color: #3a3a41; vertical-align: top; }
+  .tpagos td b { color: #9a761f; font-weight: 600; white-space: nowrap; }
+  .tpagos th:nth-child(1) { width: 19mm; } .tpagos th:nth-child(2) { width: 37mm; } .tpagos th:nth-child(4) { width: 40mm; } .tpagos th:nth-child(5) { width: 36mm; }
   .sinpago { border: 1px dashed #cfcfd5; border-radius: 2.5mm; padding: 2mm 2.8mm; color: #6d6d72; font-size: 7.2pt; }
   .sinpago .lab { font-size: 6.6pt; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: #8a8a92; display: block; margin-bottom: .8mm; }
 
@@ -78,7 +85,7 @@
         <img class="logo" src="LOGO_SRC" alt="Luxcars" />
         <p class="eyebrow" style="margin-top:4.5mm">Importación a pedido</p>
         <h1>Tu ruta, <em>paso a paso</em></h1>
-        <p class="lead">Cinco pasos, cinco pagos y una sola visita a la notaría. Tu dinero en una cuenta separada, los tributos directo a SUNAT y cada movimiento visible desde tu cuenta en luxcars.pe.</p>
+        <p class="lead">Cinco pasos, cinco pagos y una sola visita a la notaría. Pagas todo a una sola cuenta separada, salvo los tributos, que van directo a SUNAT, y ves cada movimiento desde tu cuenta en luxcars.pe.</p>
       </div>
       <div class="plazo">
         <b>30 a 60 días</b> desde Estados Unidos según el plan. Desde otros países, el plazo se fija al cotizar. El tramo marítimo depende del calendario de naves.
@@ -94,17 +101,24 @@
     </section>
 
     <section>
+      <h2>Tus cinco pagos</h2>
+      PAGOS_HTML
+    </section>
+
+    <section>
       <h2>Tu dinero</h2>
       <div class="cards c4">DINERO_HTML</div>
     </section>
-    <section>
-      <h2>Lo que firmas</h2>
-      <div class="cards c2">FIRMAS_HTML</div>
-    </section>
-    <section>
-      <h2>Tu cuenta en luxcars.pe</h2>
-      <ul class="lista l2">CUENTA_HTML</ul>
-    </section>
+    <div class="cols2">
+      <section>
+        <h2>Lo que firmas</h2>
+        <div class="cards">FIRMAS_HTML</div>
+      </section>
+      <section>
+        <h2>Tu cuenta en luxcars.pe</h2>
+        <ul class="lista">CUENTA_HTML</ul>
+      </section>
+    </div>
   </main>
 
   <footer>

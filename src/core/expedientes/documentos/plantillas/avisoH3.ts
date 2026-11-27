@@ -1,12 +1,16 @@
 /**
  * 6 · Aviso de pago de los hitos que se fijan durante la operación (calendario
  * del 27 nov 2026). Una plantilla, tres variantes según el campo HITO:
- *   · H4 · Pago 3 · gastos de aduana según la pro forma del agente, al arribo,
- *     a Fondos de Clientes. Gasto reembolsable: el saldo se compensa en el Pago 5.
- *   · H5 · Pago 4 · tributos exactos de la liquidación de SUNAT, en soles, que
- *     el cliente paga DIRECTAMENTE a SUNAT dentro de dos días hábiles.
- *   · H6 · Pago 5 · segunda mitad de los honorarios, neta del sobrante (o más
- *     el faltante) de los gastos de aduana, a Operaciones.
+ *   · H4 · Pago 3 de 5 · gastos de aduana según la pro forma del agente, al
+ *     arribo, a Fondos de Clientes. Reembolsable: el saldo se compensa en el
+ *     Pago 5.
+ *   · H5 · Pago 4 de 5 · tributos exactos de la liquidación de SUNAT, en soles,
+ *     que el cliente paga DIRECTAMENTE a SUNAT dentro de dos días hábiles.
+ *   · H6 · Pago 5 de 5 · segunda mitad de los honorarios, neta del sobrante (o
+ *     más el faltante) de los gastos de aduana, a Fondos de Clientes.
+ * Cada aviso dice qué pago es, el monto exacto, dónde pagar, la fecha límite y
+ * de dónde sale la cifra, y repite la tabla de los cinco pagos con este en
+ * negrita. El cliente nunca ve los códigos H.
  * Cada variante solo lee sus propios campos (regla "sin rayas").
  *
  * El tipo de documento conserva el valor viejo de la enum (`aviso_h3`): cambiar
@@ -15,6 +19,7 @@
 
 import type { Campos } from "../../campos";
 import { firmas, h2, p, tabla, vinetas, type Estructura } from "../estructura";
+import { tablaCalendario } from "./calendario";
 import type { Plantilla } from "./tipos";
 
 export function encabezadoLiquidacion(c: Campos): string {
@@ -24,71 +29,110 @@ export function encabezadoLiquidacion(c: Campos): string {
 export const TEXTO_TRIBUTOS_AVISO =
   "Los tributos de importación que liquide SUNAT, así como cualquier ajuste, diferencia, multa o reliquidación que la Administración Aduanera determine sobre la operación, son de cargo exclusivo del Mandante y serán asumidos por él (cláusula 8.4 del contrato).";
 
-function avisoGastosAduana(c: Campos): Estructura["bloques"] {
+/** La tabla corta con lo que el cliente necesita para pagar: qué pago es, cuánto, dónde, hasta cuándo y de dónde sale la cifra. */
+function resumen(filas: [string, string][]): Estructura["bloques"][number] {
+  return tabla(["", "Detalle"], filas.map(([k, v]) => [`**${k}**`, v]), [2.2, 6]);
+}
+
+function cuentaFondos(c: Campos, pago: number): string {
+  return `Cuenta Fondos de Clientes de LUXCARS · ${c.CTA_FONDOS_BANCO} ${c.CTA_FONDOS_NUMERO} · CCI ${c.CTA_FONDOS_CCI} · concepto "${c.EXPEDIENTE} Pago ${pago}"`;
+}
+
+function avisoGastosAduana(c: Campos, usado: boolean): Estructura["bloques"] {
   return [
-    h2("Pago 3 · Hito H4 · Gastos de aduana"),
-    p(`**Fecha del aviso: ${c.FECHA_AVISO} · Arribo estimado: ${c.FECHA_EST_ARRIBO} · Depósito a más tardar: ${c.FECHA_LIMITE_PAGO}**`),
-    p(`Tu vehículo está por llegar al ${c.PUERTO_DESTINO}. Según la pro forma del agente de aduana ${c.AGENTE_ADUANA}, los gastos de aduana (agente, almacenaje, visto bueno y grúa del puerto) suman lo siguiente:`),
-    tabla(["Concepto", "Detalle", "USD"], [
-      ["**Monto a depositar (H4, Pago 3)**", `Cuenta Fondos de Clientes · ${c.CTA_FONDOS_BANCO} ${c.CTA_FONDOS_NUMERO} · CCI ${c.CTA_FONDOS_CCI} · concepto "${c.EXPEDIENTE} H4"`, `**USD ${c.MONTO_AVISO}**`],
-    ], [2.4, 4, 1.6]),
-    vinetas([
-      "Es un gasto reembolsable: LUXCARS paga al agente, al almacén y a la grúa contra facturas a tu nombre y te los rinde uno por uno (cláusula 8.5 del contrato).",
-      "Si sobra, el sobrante se descuenta del Pago 5 (segunda mitad de los honorarios); si falta, se suma a ese pago.",
-      "Los tributos de importación no van en este pago: cuando SUNAT liquide la DAM te enviamos el aviso del Pago 4 para que los pagues directamente a SUNAT.",
+    h2("Pago 3 de 5: gastos de aduana"),
+    p(`Tu auto está por llegar al ${c.PUERTO_DESTINO}. Toca el Pago 3 de 5: los gastos de aduana (agente, almacén y grúa del puerto).`),
+    resumen([
+      ["Qué pago es", "Pago 3 de 5: gastos de aduana"],
+      ["Monto exacto", `**USD ${c.MONTO_AVISO}**`],
+      ["Dónde pagar", cuentaFondos(c, 3)],
+      ["Fecha límite", c.FECHA_LIMITE_PAGO],
+      ["De dónde sale la cifra", `De la pro forma del agente de aduana ${c.AGENTE_ADUANA.replace(/\.+$/, "")}. Arribo estimado: ${c.FECHA_EST_ARRIBO}.`],
     ]),
+    vinetas([
+      "Es un gasto reembolsable: pagamos al agente, al almacén y a la grúa con facturas a tu nombre y te rendimos cada una (cláusula 8.5 del contrato).",
+      "Si sobra, lo restamos del Pago 5. Si falta, se suma al Pago 5.",
+      "Los tributos no van en este pago: cuando SUNAT los calcule te enviamos el aviso del Pago 4 para que los pagues directo a SUNAT.",
+    ]),
+    h2("Tus cinco pagos"),
+    tablaCalendario(c, { usado, resaltar: 3, montoExacto: `USD ${c.MONTO_AVISO}` }),
   ];
 }
 
-function avisoTributos(c: Campos): Estructura["bloques"] {
+function avisoTributos(c: Campos, usado: boolean): Estructura["bloques"] {
   return [
-    h2("Pago 4 · Hito H5 · Tributos de importación"),
-    p(`**Fecha del aviso: ${c.FECHA_AVISO} · DAM n.º ${c.DAM_NUMERO} · Liquidación n.º ${c.LIQUIDACION_NUMERO} · Pago a más tardar: ${c.FECHA_LIMITE_PAGO}**`),
-    p("SUNAT liquidó la DAM de tu vehículo. Los tributos se pagan directamente a SUNAT, en soles, con el número de liquidación; no pasan por las cuentas de LUXCARS."),
-    tabla(["Concepto", "Detalle", "Monto"], [
-      ["Tributos según la DAM", "Ad valorem, ISC, IGV, IPM y percepción, expresados en dólares por SUNAT", `USD ${c.TRIBUTOS_USD}`],
-      ["**Monto a pagar en soles**", `Según la liquidación n.º ${c.LIQUIDACION_NUMERO}; referencia al tipo de cambio ${c.TC_REFERENCIAL}`, `**S/ ${c.TRIBUTOS_SOLES}**`],
-    ], [2.4, 4, 1.6]),
-    p("Cómo pagar:"),
+    h2("Pago 4 de 5: tributos, directo a SUNAT"),
+    p("SUNAT calculó los tributos de tu auto. Los pagas tú, directo a SUNAT, en soles. Este pago no pasa por las cuentas de LUXCARS."),
+    resumen([
+      ["Qué pago es", "Pago 4 de 5: tributos de importación"],
+      ["Monto exacto", `**S/ ${c.TRIBUTOS_SOLES}** (USD ${c.TRIBUTOS_USD} según la DAM)`],
+      ["Dónde pagar", `Directo a SUNAT, con el número de liquidación **${c.LIQUIDACION_NUMERO}**: con tu Clave SOL en SUNAT Operaciones en Línea o en la ventanilla de un banco autorizado (BCP, BBVA, Interbank, Scotiabank, Banco de la Nación)`],
+      ["Fecha límite", c.FECHA_LIMITE_PAGO],
+      ["De dónde sale la cifra", `De la liquidación de SUNAT n.º ${c.LIQUIDACION_NUMERO} de la DAM n.º ${c.DAM_NUMERO}. Referencia en dólares al tipo de cambio ${c.TC_REFERENCIAL}.`],
+    ]),
     vinetas([
-      "Con tu Clave SOL en SUNAT Operaciones en Línea (www.sunat.gob.pe), opción de pago de deudas aduaneras, con el número de liquidación; o",
-      "En ventanilla de un banco autorizado (BCP, BBVA, Interbank, Scotiabank, Banco de la Nación), indicando el número de liquidación.",
-      "El monto en soles se fija con el tipo de cambio venta SBS del día de pago: si pagas otro día, la cifra puede variar ligeramente.",
-      "Al pagar, entra a tu cuenta en luxcars.pe y declara «Ya pagué» con el comprobante. Confirmamos el pago y seguimos con el levante.",
+      "El monto en soles se fija con el tipo de cambio venta SBS del día de pago: si pagas otro día, puede variar un poco.",
+      "Al pagar, entra a tu cuenta en luxcars.pe y avísanos con «Ya pagué» y el comprobante. Con eso seguimos con el levante.",
       TEXTO_TRIBUTOS_AVISO,
     ]),
+    h2("Tus cinco pagos"),
+    tablaCalendario(c, { usado, resaltar: 4, montoExacto: `S/ ${c.TRIBUTOS_SOLES}` }),
   ];
 }
 
-function avisoHonorarios(c: Campos): Estructura["bloques"] {
+/** Cifra de un campo de monto ("2,300.00" → 2300). */
+function cifra(texto: string): number {
+  const n = Number(texto.replace(/,/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Fila del saldo de aduana con su signo: lo que sobró se resta, lo que faltó se suma. */
+function filaSaldoAduana(c: Campos): string[] {
+  const saldo = cifra(c.ADUANA_RECIBIDO) - cifra(c.ADUANA_PAGADO);
+  if (saldo > 0.005) return ["Lo que sobró de los gastos de aduana (se resta)", `− ${c.ADUANA_SALDO}`];
+  if (saldo < -0.005) return ["Lo que faltó de los gastos de aduana (se suma)", `+ ${c.ADUANA_SALDO}`];
+  return ["Diferencia de los gastos de aduana", "0.00"];
+}
+
+function avisoHonorarios(c: Campos, usado: boolean): Estructura["bloques"] {
   return [
-    h2("Pago 5 · Hito H6 · Segunda mitad de los honorarios"),
-    p(`**Fecha del aviso: ${c.FECHA_AVISO} · Levante: ${c.FECHA_LEVANTE} · Pago a más tardar: ${c.FECHA_LIMITE_PAGO}**`),
-    p("Tu vehículo quedó liberado de aduana. Toca la segunda mitad de los honorarios, ajustada con el saldo de los gastos de aduana que depositaste en el Pago 3 (cláusula 8.5 del contrato):"),
-    tabla(["Concepto", "USD"], [
+    h2("Pago 5 de 5: segunda mitad de los honorarios"),
+    p("Aduana entregó tu auto. Toca el último pago: la segunda mitad de nuestros honorarios, ajustada con lo que sobró o faltó de los gastos de aduana."),
+    resumen([
+      ["Qué pago es", "Pago 5 de 5: segunda mitad de los honorarios"],
+      ["Monto exacto", `**USD ${c.PAGO5_NETO}**`],
+      ["Dónde pagar", cuentaFondos(c, 5)],
+      ["Fecha límite", c.FECHA_LIMITE_PAGO],
+      ["De dónde sale la cifra", "La segunda mitad de los honorarios, menos lo que sobró de los gastos de aduana (o más lo que faltó). El detalle está en la tabla de abajo."],
+    ]),
+    tabla(["Cálculo", "USD"], [
       ["Segunda mitad de los honorarios (50 %, IGV incluido)", c.COMISION_MITAD],
-      ["Gastos de aduana recibidos (Pago 3)", c.ADUANA_RECIBIDO],
+      ["Gastos de aduana que depositaste (Pago 3)", c.ADUANA_RECIBIDO],
       ["Gastos de aduana pagados al agente, al almacén y a la grúa", c.ADUANA_PAGADO],
-      ["Saldo de aduana aplicado (sobrante se resta, faltante se suma)", c.ADUANA_SALDO],
-      ["**Monto a depositar (H6, Pago 5)**", `**${c.PAGO5_NETO}**`],
+      filaSaldoAduana(c),
+      ["**Pago 5 de 5**", `**${c.PAGO5_NETO}**`],
     ], [4, 1.5]),
     vinetas([
-      `Cuenta de Operaciones · ${c.CTA_OPER_BANCO} ${c.CTA_OPER_NUMERO} · CCI ${c.CTA_OPER_CCI} · concepto "${c.EXPEDIENTE} H6". La detracción de la factura 2 (${c.PORCENTAJE_DETRACCION} %) va a la cuenta del Banco de la Nación del Anexo D.`,
-      "Con este pago acreditado te entregamos el vehículo con placas, el acta de entrega y rendición de cuentas y la carpeta completa.",
+      `Paga el monto completo. Si eres empresa, nosotros depositamos la detracción de la factura (${c.PORCENTAJE_DETRACCION} %) en el Banco de la Nación y te enviamos la constancia (cláusula 5.3 del contrato).`,
+      "Con este pago te entregamos el auto con placas, el acta de entrega y rendición de cuentas y la carpeta completa.",
     ]),
+    h2("Tus cinco pagos"),
+    tablaCalendario(c, { usado, resaltar: 5, montoExacto: `USD ${c.PAGO5_NETO}` }),
   ];
 }
 
 function construir(c: Campos): Estructura {
   const hito = c.HITO || "H4";
-  const bloques = hito === "H5" ? avisoTributos(c) : hito === "H6" ? avisoHonorarios(c) : avisoGastosAduana(c);
-  const titulo = hito === "H5" ? "Aviso del Pago 4 · Tributos de importación" : hito === "H6" ? "Aviso del Pago 5 · Segunda mitad de los honorarios" : "Aviso del Pago 3 · Gastos de aduana";
+  const usado = c.VEH_CONDICION.toLowerCase().startsWith("usado");
+  const bloques = hito === "H5" ? avisoTributos(c, usado) : hito === "H6" ? avisoHonorarios(c, usado) : avisoGastosAduana(c, usado);
+  const titulo = hito === "H5" ? "Aviso de pago · Pago 4 de 5" : hito === "H6" ? "Aviso de pago · Pago 5 de 5" : "Aviso de pago · Pago 3 de 5";
   return {
     titulo,
     subtitulo: encabezadoLiquidacion(c),
     idioma: "es",
     codigoExpediente: c.EXPEDIENTE,
     bloques: [
+      p(`**Fecha del aviso: ${c.FECHA_AVISO}**`),
       ...bloques,
       firmas(["LUX CARS IMPORT S.A.C.", `${c.LUXCARS_REPRESENTANTE}, DNI ${c.LUXCARS_REP_DNI}`, `${c.CIUDAD_FIRMA}, ${c.FECHA_AVISO}`]),
     ],
@@ -97,7 +141,7 @@ function construir(c: Campos): Estructura {
 
 export const avisoPago: Plantilla = {
   tipo: "aviso_h3",
-  version: "aviso_pago@2026-11-27",
+  version: "aviso_pago@2026-11-27b",
   nombre: "Aviso de pago",
   idioma: "es",
   seFirma: false,

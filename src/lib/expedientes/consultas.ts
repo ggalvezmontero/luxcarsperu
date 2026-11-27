@@ -786,8 +786,23 @@ export type DatosMovimiento = {
   comision_bancaria_usd?: number | null;
 };
 
+/** Asiento interno de honorarios: `registrar_movimiento` arma el par (sin hito) a partir de esto. */
+export type DatosOperacionHonorarios = {
+  operacion: "aplicar_honorarios" | "autodetraccion";
+  /** Factura 1 (con el Pago 2) o 2 (con el Pago 5). */
+  factura: 1 | 2;
+  fecha: string;
+  moneda: string;
+  monto: number;
+  tipo_cambio?: number | null;
+  monto_usd?: number | null;
+  /** Número de la factura (aplicación) o de la constancia del Banco de la Nación (autodetracción). */
+  documento_ref: string;
+  nota_interna?: string | null;
+};
+
 export type ConstanciaEmitida = { documentoId: string; version: number; urls: { pdf: string | null; docx: string | null } };
-export type ResultadoMovimiento = Resultado & { movimientoId?: string; constancia?: ConstanciaEmitida; constanciaError?: string };
+export type ResultadoMovimiento = Resultado & { movimientoId?: string; constancia?: ConstanciaEmitida; constanciaError?: string; tareasNuevas?: string[] };
 
 async function llamarMovimientos(expedienteId: string, cuerpo: Record<string, unknown>, mensajeOk: string): Promise<ResultadoMovimiento> {
   try {
@@ -803,12 +818,15 @@ async function llamarMovimientos(expedienteId: string, cuerpo: Record<string, un
     }
     const constancia = datos.constancia as ConstanciaEmitida | undefined;
     const constanciaError = typeof datos.constanciaError === "string" ? datos.constanciaError : undefined;
+    const tareasNuevas = Array.isArray(datos.tareasNuevas) ? (datos.tareasNuevas as unknown[]).filter((t): t is string => typeof t === "string") : [];
+    const avisoTareas = tareasNuevas.some((t) => t.startsWith("luxcars.autodetraccion_")) ? " Nació la tarea de depositar la detracción (cinco días hábiles)." : "";
     return {
       ok: true,
-      message: constancia ? `${mensajeOk} Constancia emitida (versión ${constancia.version}), visible para el cliente.` : constanciaError ? `${mensajeOk} ${constanciaError}` : mensajeOk,
+      message: (constancia ? `${mensajeOk} Constancia emitida (versión ${constancia.version}), visible para el cliente.` : constanciaError ? `${mensajeOk} ${constanciaError}` : mensajeOk) + avisoTareas,
       movimientoId: typeof datos.movimientoId === "string" ? datos.movimientoId : undefined,
       constancia,
       constanciaError,
+      tareasNuevas,
     };
   } catch {
     return { ok: false, message: MSG_RED };
@@ -819,6 +837,23 @@ async function llamarMovimientos(expedienteId: string, cuerpo: Record<string, un
 export async function registrarMovimiento(input: { expedienteId: string; movimiento: DatosMovimiento; constancia?: boolean }): Promise<ResultadoMovimiento> {
   if (!(input.movimiento.monto > 0)) return { ok: false, message: "El monto debe ser mayor que cero." };
   return llamarMovimientos(input.expedienteId, { accion: "registrar", movimiento: limpiar(input.movimiento as unknown as Record<string, unknown>), constancia: input.constancia ?? true }, "Movimiento registrado.");
+}
+
+/**
+ * Aplica la factura de honorarios (pasa su importe de Fondos de Clientes a
+ * Operaciones) o registra la autodetracción (de Operaciones a la cuenta de
+ * detracciones del Banco de la Nación). Son asientos internos: el cliente no
+ * los ve como pagos suyos.
+ */
+export async function registrarOperacionHonorarios(input: { expedienteId: string; operacion: DatosOperacionHonorarios }): Promise<ResultadoMovimiento> {
+  const op = input.operacion;
+  if (!(op.monto > 0)) return { ok: false, message: "El monto debe ser mayor que cero." };
+  if (!op.documento_ref.trim()) return { ok: false, message: op.operacion === "aplicar_honorarios" ? "Escribe el número de la factura." : "Escribe el número de la constancia del Banco de la Nación." };
+  return llamarMovimientos(
+    input.expedienteId,
+    { accion: "registrar", movimiento: limpiar(op as unknown as Record<string, unknown>), constancia: false },
+    op.operacion === "aplicar_honorarios" ? `Factura ${op.factura} de honorarios aplicada desde Fondos de Clientes.` : `Detracción de la factura ${op.factura} registrada.`,
+  );
 }
 
 /** Confirma un depósito declarado por el cliente (admite corregir monto, fecha y tipo de cambio) y emite la constancia. */

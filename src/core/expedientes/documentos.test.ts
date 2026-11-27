@@ -113,9 +113,6 @@ const FIJOS = {
   LUXCARS_REP_DNI: "40000000",
   LUXCARS_CORREO: "info@luxcars.pe",
   LUXCARS_TELEFONO: "+51 980 794 348",
-  CTA_OPER_BANCO: "BCP",
-  CTA_OPER_NUMERO: "194-0000000-1-00",
-  CTA_OPER_CCI: "002-194-000000000000-00",
   CTA_FONDOS_BANCO: "BCP",
   CTA_FONDOS_NUMERO: "194-0000000-1-01",
   CTA_FONDOS_CCI: "002-194-000000000000-01",
@@ -287,8 +284,11 @@ describe("camposPlantilla", () => {
     expect(campos.AGENTE_ADUANA_RUC).toBe("20999999999");
     expect(campos.PRECIO_TOPE).toBe("100,000.00");
     expect(campos.PRECIO_COMPRA_USD).toBe("70,920.00");
-    expect(campos.H1_MONTO).toBe("70,920.00");
-    expect(campos.H5_MONTO).toBe(monto(ctxH(contexto(), "H5")));
+    // Los montos de los cinco pagos: el Pago 2 junta el H2 y el H3; el Pago 4 es el H5.
+    expect(campos.PAGO1_MONTO).toBe("70,920.00");
+    expect(campos.PAGO2_MONTO).toBe(monto(ctxH(contexto(), "H2") + ctxH(contexto(), "H3")));
+    expect(campos.PAGO4_MONTO).toBe(monto(ctxH(contexto(), "H5")));
+    expect(campos.PAGO5_MONTO).toBe(monto(ctxH(contexto(), "H6")));
     expect(campos.COMISION_MITAD).not.toBe("");
     expect(campos.TASA_PERCEPCION).toBe("10 %");
     expect(campos.LUXCARS_RUC).toBe(FIJOS.LUXCARS_RUC);
@@ -303,7 +303,7 @@ describe("camposPlantilla", () => {
     const ctx = contexto();
     ctx.cliente = { ...ctx.cliente!, ruc: null, domicilio: null };
     const r = camposPlantilla(ctx, {});
-    expect(r.faltantes).toEqual(expect.arrayContaining(["CLIENTE_RUC", "CLIENTE_DOMICILIO", "LUXCARS_RUC", "CTA_OPER_NUMERO", "DIAS_ESPERA_MAX", "TC_REFERENCIAL", "CIUDAD_FIRMA"]));
+    expect(r.faltantes).toEqual(expect.arrayContaining(["CLIENTE_RUC", "CLIENTE_DOMICILIO", "LUXCARS_RUC", "CTA_FONDOS_NUMERO", "DIAS_ESPERA_MAX", "TC_REFERENCIAL", "CIUDAD_FIRMA"]));
     expect(Object.values(r.campos).some((v) => v.includes("______"))).toBe(false);
     expect("manualesVacios" in r).toBe(false);
   });
@@ -377,7 +377,7 @@ describe("camposPlantilla", () => {
   it("CAMPOS_EMPRESA son los de Luxcars y sus cuentas (menos correo y teléfono) más detracción, ciudad y días de espera", () => {
     expect(CAMPOS_EMPRESA).toEqual([
       "LUXCARS_RUC", "LUXCARS_DOMICILIO", "LUXCARS_PARTIDA", "LUXCARS_REPRESENTANTE", "LUXCARS_REP_DNI",
-      "CTA_OPER_BANCO", "CTA_OPER_NUMERO", "CTA_OPER_CCI", "CTA_FONDOS_BANCO", "CTA_FONDOS_NUMERO", "CTA_FONDOS_CCI", "CTA_DETRACCION_NUMERO",
+      "CTA_FONDOS_BANCO", "CTA_FONDOS_NUMERO", "CTA_FONDOS_CCI", "CTA_DETRACCION_NUMERO",
       "PORCENTAJE_DETRACCION", "CIUDAD_FIRMA", "DIAS_ESPERA_MAX",
     ]);
     expect(esCampoEmpresa("LUXCARS_RUC")).toBe(true);
@@ -412,23 +412,34 @@ describe("plantillas", () => {
     }
     const contratoTexto = textoDeEstructura(construirDocumento(plantillaDe("contrato")!, ctx, {}, FIJOS).estructura);
     expect(contratoTexto).toContain("Se pagan en dos mitades iguales");
-    expect(contratoTexto).toContain("cinco momentos");
-    expect(contratoTexto).toContain("seis hitos");
+    // El calendario de pagos va al inicio, en la tercera cláusula, con la tabla de cinco filas; las demás se remiten a ella.
+    expect(contratoTexto).toMatch(/Segunda: Objeto[\s\S]*Tercera: Calendario de pagos\n3\.1 El Mandante hace cinco pagos/);
+    expect(contratoTexto).toContain("Pago\nCuándo\nQué cubre\nMonto\nDónde pagas\nPago 1 de 5");
+    expect(contratoTexto).toContain(
+      "3.2 Todos los pagos del Mandante a LUXCARS se realizan en la cuenta Fondos de Clientes indicada en el Anexo D. LUXCARS aplica de esos fondos el importe de cada factura de honorarios en la fecha de su emisión y destina el resto exclusivamente a los pagos por cuenta del Mandante.",
+    );
     expect(contratoTexto).toContain("acta de entrega y rendición de cuentas");
     expect(contratoTexto).toContain("poder especial");
     expect(contratoTexto).toContain("Example Auto Brokers LLC");
-    // 4.4: la gestión registral está dentro de los honorarios; 5.6: alternativa para los tributos; 5.8: comisión del wire.
-    expect(contratoTexto).toMatch(/4\.4 Los honorarios comprenden[^\n]*homologación o ficha técnica[^\n]*SUNARP[^\n]*placas[^\n]*tarjeta/);
-    expect(contratoTexto).toContain("5.6 Los tributos de importación los paga el Mandante directamente a SUNAT");
-    expect(contratoTexto).toContain("5.8 Si el banco debita de la cuenta Fondos de Clientes una comisión");
+    // 5.3: autodetracción por defecto y, como alternativa, que el Mandante detraiga.
+    expect(contratoTexto).toMatch(/5\.3 [^\n]*paga siempre el importe completo de cada factura[^\n]*LUXCARS deposita la detracción en su propia cuenta de detracciones del Banco de la Nación dentro de los cinco días hábiles[^\n]*Si el Mandante prefiere detraer él mismo/);
+    // 5.4: la gestión registral está dentro de los honorarios; 6.6: alternativa para los tributos; 6.8: comisión del wire.
+    expect(contratoTexto).toMatch(/5\.4 Los honorarios comprenden[^\n]*homologación o ficha técnica[^\n]*SUNARP[^\n]*placas[^\n]*tarjeta/);
+    expect(contratoTexto).toContain("6.6 Los tributos de importación los paga el Mandante directamente a SUNAT");
+    expect(contratoTexto).toContain("6.8 Si el banco debita de la cuenta Fondos de Clientes una comisión");
     expect(contratoTexto).toContain("son de cargo exclusivo del Mandante y serán asumidos por él");
     expect(contratoTexto).toContain("dentro de los dos días hábiles del aviso");
     const anexoBTexto = textoDeEstructura(construirDocumento(plantillaDe("anexo_b")!, ctx, {}, FIJOS).estructura);
-    expect(anexoBTexto).toContain("cinco pagos, seis hitos");
+    expect(anexoBTexto).toContain("Calendario de pagos: cinco pagos");
+    expect(anexoBTexto).toContain("Pago\nCuándo\nQué cubre\nMonto\nDónde pagas\nPago 1 de 5");
     expect(anexoBTexto).toContain("Flete (traslado al puerto y marítimo)");
     expect(anexoBTexto).toContain("son de cargo exclusivo del Mandante y serán asumidos por él");
     expect(anexoBTexto).toContain("El sobrante se descuenta del Pago 5");
-    expect(anexoBTexto).toMatch(/H6/);
+    // Sin códigos internos: el cliente solo ve "Pago 1 de 5" … "Pago 5 de 5".
+    expect(anexoBTexto).not.toMatch(/\bH[1-6]\b/);
+    // La fila de tributos del costo y el Pago 4 del calendario cuadran al centavo.
+    const tributosFila = /Tributos de importación \(Pago 4, directo a SUNAT\)\n[^\n]*\n([\d,.]+)/.exec(anexoBTexto)?.[1];
+    expect(anexoBTexto).toContain(`USD ${tributosFila} (estimado; se paga en soles)`);
     const poder = textoDeEstructura(construirDocumento(plantillaDe("poder_inmatriculacion")!, ctx, {}, FIJOS).estructura);
     expect(poder).toContain("CONFIRMAR con el notario");
     expect(poder).toContain("inmatriculación");
@@ -544,7 +555,13 @@ function mov(cambios: Partial<Movimiento> & Pick<Movimiento, "id" | "tipo" | "mo
   };
 }
 
-/** Un expediente ya liberado con el libro completo: Pagos 1 a 4, el wire al broker con su comisión repuesta, flete, seguro, gastos de aduana y los tributos pagados directo a SUNAT. */
+/**
+ * Un expediente ya liberado con el libro completo y una sola cuenta para el
+ * cliente: Pagos 1 a 4 (el Pago 2 en una sola transferencia), la factura 1
+ * aplicada desde Fondos de Clientes con su autodetracción, el wire al broker
+ * con su comisión repuesta, flete, seguro, gastos de aduana y los tributos
+ * pagados directo a SUNAT.
+ */
 function contextoConLibro(): ContextoExpediente {
   const ctx = contexto({}, { etapa: "placas", damNumero: "118-2027-10-000001", damFecha: "2027-02-09", damCanal: "verde", damFactorConversion: 0.7212, damTcSbs: 3.762, levanteEn: "2027-02-12", placa: "BXX-000", tiveNumero: "T-123", kmEntrega: 1260, fechaEntrega: "2027-03-05" });
   const p = ctx.expediente.presupuesto!;
@@ -555,8 +572,12 @@ function contextoConLibro(): ContextoExpediente {
     mov({ id: "p1", tipo: "pago", hito: "H1", montoUsd: 70_920, moneda: "CAD", monto: 98_500, tipoCambio: 0.72, concepto: "Precio del vehículo (wire al broker)", contraparteId: "k1", documentoRef: "Bill of sale 4411, SWIFT 77", fecha: "2026-12-03" }),
     mov({ id: "c1", tipo: "pago", montoUsd: 45, concepto: "Comisión bancaria del wire (cargo del banco)", fecha: "2026-12-03" }),
     mov({ id: "c2", tipo: "ajuste", montoUsd: 45, concepto: "Reposición de la comisión bancaria, por cuenta de Luxcars", fecha: "2026-12-03" }),
-    mov({ id: "d2", tipo: "deposito", hito: "H2", montoUsd: h("H2"), fecha: "2026-12-18" }),
-    mov({ id: "d3", tipo: "deposito", hito: "H3", cuenta: "operaciones", montoUsd: h("H3"), fecha: "2026-12-18" }),
+    mov({ id: "d2", tipo: "deposito", hito: "H2", montoUsd: Math.round((h("H2") + h("H3")) * 100) / 100, fecha: "2026-12-18" }),
+    // Factura 1: su importe pasa de Fondos de Clientes a Operaciones el día que se emite; la detracción va al Banco de la Nación.
+    mov({ id: "a1", tipo: "pago", montoUsd: h("H3"), concepto: "Aplicación de honorarios · factura 1 F001-000101", documentoRef: "F001-000101", fecha: "2026-12-18" }),
+    mov({ id: "a2", tipo: "deposito", cuenta: "operaciones", montoUsd: h("H3"), concepto: "Honorarios recibidos desde Fondos de Clientes · factura 1 F001-000101", documentoRef: "F001-000101", fecha: "2026-12-18" }),
+    mov({ id: "r1", tipo: "pago", cuenta: "operaciones", montoUsd: 561.08, moneda: "PEN", monto: 2_110, tipoCambio: 0.26591, concepto: "Detracción de la factura 1 depositada en el Banco de la Nación (autodetracción)", documentoRef: "BN 123456789", fecha: "2026-12-22" }),
+    mov({ id: "r2", tipo: "deposito", cuenta: "detracciones", montoUsd: 561.08, moneda: "PEN", monto: 2_110, tipoCambio: 0.26591, concepto: "Detracción de la factura 1 (autodetracción)", documentoRef: "BN 123456789", fecha: "2026-12-22" }),
     // El flete real sale USD 100 por debajo del estimado: ese saldo queda a favor del cliente.
     mov({ id: "p3", tipo: "pago", hito: "H2", montoUsd: Math.round((h("H2") - 390.5 - 100) * 100) / 100, concepto: "Flete (traslado al puerto y marítimo)", contraparteId: "f1", fecha: "2027-01-09" }),
     mov({ id: "p4", tipo: "pago", hito: "H2", montoUsd: 390.5, concepto: "Seguro de transporte", fecha: "2027-01-09" }),
@@ -575,13 +596,14 @@ describe("plantillas que nacen del libro", () => {
     const ctx = contextoConLibro();
     const deposito = ctx.movimientos.find((m) => m.id === "d1")!;
     const campos = datosConstancia(deposito, ctx);
-    expect(campos).toMatchObject({ FECHA_DEPOSITO: "1 de diciembre de 2026", HITO: "H1", SALDO_ANTERIOR: "0.00", CONSTANCIA_NUMERO: "F01", CLIENTE_BANCO_ORIGEN: "BCP", NUMERO_OPERACION: "00123456" });
+    expect(campos).toMatchObject({ FECHA_DEPOSITO: "1 de diciembre de 2026", HITO: "H1", PAGO_DEPOSITO: "Pago 1 de 5", SALDO_ANTERIOR: "0.00", CONSTANCIA_NUMERO: "F01", CLIENTE_BANCO_ORIGEN: "BCP", NUMERO_OPERACION: "00123456" });
     expect(campos.SALDO_NUEVO).toBe(campos.MONTO_DEPOSITO);
     const doc = construirDocumento(plantillaDe("constancia_fondos")!, ctx, campos, FIJOS);
     expect(doc.faltantes).toEqual([]);
     const texto = textoDeEstructura(doc.estructura);
     expect(texto).toContain("Constancia n.º LC-2026-011-F01");
-    expect(texto).toContain("[X] H1 (Pago 1): precio del vehículo");
+    expect(texto).toContain("Pago al que corresponde\nPago 1 de 5");
+    expect(texto).toContain("[X] Pago 1 de 5: el precio del auto");
     // El destino del H1 es el broker.
     expect(texto).toContain("Example Auto Brokers LLC");
     expect(texto).toContain("BCP");
@@ -597,9 +619,14 @@ describe("plantillas que nacen del libro", () => {
     const doc = construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...campos, FECHA_AVISO: "2 de febrero de 2027" }, FIJOS);
     expect(doc.faltantes).toEqual([]);
     const texto = textoDeEstructura(doc.estructura);
-    expect(texto).toContain("Depósito a más tardar: 10 de febrero de 2027");
-    expect(texto).toContain("USD 2,450.00");
-    expect(texto).toContain('concepto "LC-2026-011 H4"');
+    // Qué pago es, cuánto, dónde, hasta cuándo y de dónde sale la cifra; sin códigos internos.
+    expect(texto).toContain("Qué pago es\nPago 3 de 5: gastos de aduana");
+    expect(texto).toContain("Monto exacto\nUSD 2,450.00");
+    expect(texto).toContain('Cuenta Fondos de Clientes de LUXCARS · BCP 194-0000000-1-01');
+    expect(texto).toContain('concepto "LC-2026-011 Pago 3"');
+    expect(texto).toContain("Fecha límite\n10 de febrero de 2027");
+    expect(texto).toContain("De la pro forma del agente de aduana Agencia Prueba S.A. Arribo estimado");
+    expect(texto).not.toMatch(/\bH[1-6]\b/);
   });
 
   it("aviso del Pago 4 (H5): tributos exactos de la liquidación, que el cliente paga directo a SUNAT dentro de dos días hábiles", () => {
@@ -612,9 +639,10 @@ describe("plantillas que nacen del libro", () => {
     const doc = construirDocumento(plantillaDe("aviso_h3")!, ctx, extra, FIJOS);
     expect(doc.faltantes).toEqual([]);
     const texto = textoDeEstructura(doc.estructura);
-    expect(texto).toContain("Liquidación n.º 118-2027-0001234");
-    expect(texto).toContain("S/ 103,785.55");
-    expect(texto).toContain("directamente a SUNAT");
+    expect(texto).toContain("De la liquidación de SUNAT n.º 118-2027-0001234");
+    expect(texto).toContain("Monto exacto\nS/ 103,785.55");
+    expect(texto).toContain("Directo a SUNAT, con el número de liquidación 118-2027-0001234");
+    expect(texto).toContain("Fecha límite\n15 de febrero de 2027");
     expect(texto).toContain("Clave SOL");
     expect(texto).toContain("son de cargo exclusivo del Mandante y serán asumidos por él");
     // No se deposita a Luxcars: el aviso no trae la cuenta de Fondos de Clientes.
@@ -635,7 +663,13 @@ describe("plantillas que nacen del libro", () => {
     expect(montoDelAviso(ctx, "H6", campos)).toBe(p5.neto);
     const doc = construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...campos, FECHA_AVISO: "13 de febrero de 2027" }, FIJOS);
     expect(doc.faltantes).toEqual([]);
-    expect(textoDeEstructura(doc.estructura)).toContain(monto(p5.neto));
+    const texto = textoDeEstructura(doc.estructura);
+    expect(texto).toContain(`Monto exacto\nUSD ${monto(p5.neto)}`);
+    // El Pago 5 va a la misma cuenta de siempre; lo que sobró de aduana se resta con su signo.
+    expect(texto).toContain('concepto "LC-2026-011 Pago 5"');
+    expect(texto).toContain("Lo que sobró de los gastos de aduana (se resta)\n− 150.00");
+    expect(texto).toContain("nosotros depositamos la detracción de la factura (12 %) en el Banco de la Nación");
+    expect(texto).not.toMatch(/\bH[1-6]\b/);
   });
 
   it("la liquidación definitiva lista los tributos pagados directo, los gastos de aduana y el saldo que pasa al Pago 5", () => {
@@ -659,7 +693,7 @@ describe("plantillas que nacen del libro", () => {
     expect(texto).not.toContain("999.00");
   });
 
-  it("el acta de entrega y rendición marca el H6 acreditado solo cuando el libro lo tiene, vuelca todo el libro y cuadra con Fondos de Clientes", () => {
+  it("el acta de entrega y rendición: Pago 5 acreditado solo con el libro, las dos facturas tomadas de Fondos de Clientes con su detracción, y cuadra con Fondos de Clientes", () => {
     const ctx = contextoConLibro();
     const sin = construirDocumento(plantillaDe("acta_rendicion")!, ctx, camposActaRendicion(ctx), FIJOS);
     expect(sin.faltantes).toEqual([]);
@@ -667,20 +701,22 @@ describe("plantillas que nacen del libro", () => {
     expect(sin.campos.H6_ACREDITADO_FECHA).toBe("pendiente");
     expect(datosActa(ctx).H6_ACREDITADO_FECHA).toBe("pendiente");
     expect(textoDeEstructura(sin.estructura)).toContain("Placa\nBXX-000");
-    // Pago 5: el aviso deja el H6 en el neto; el sobrante de aduana pasa a honorarios y el cliente deposita el neto.
+    // Pago 5: el aviso deja el H6 en el neto y el cliente lo deposita en Fondos de Clientes; con la factura 2 se aplica la mitad completa.
+    // El sobrante de aduana se compensa solo, en la misma cuenta: no hay asiento de compensación.
     const p5 = datosPago5(ctx);
     ctx.hitos = ctx.hitos.map((x) => (x.tipo === "H6" ? { ...x, montoEstimadoUsd: p5.neto } : x));
     ctx.movimientos.push(
-      mov({ id: "s1", tipo: "pago", montoUsd: 150, concepto: "Sobrante de gastos de aduana aplicado al Pago 5", fecha: "2027-03-05" }),
-      mov({ id: "d6", tipo: "deposito", hito: "H6", cuenta: "operaciones", montoUsd: p5.neto, fecha: "2027-03-05" }),
+      mov({ id: "d6", tipo: "deposito", hito: "H6", montoUsd: p5.neto, fecha: "2027-03-05" }),
+      mov({ id: "a3", tipo: "pago", montoUsd: p5.honorarios, concepto: "Aplicación de honorarios · factura 2 F001-000187", documentoRef: "F001-000187", fecha: "2027-03-05" }),
+      mov({ id: "a4", tipo: "deposito", cuenta: "operaciones", montoUsd: p5.honorarios, concepto: "Honorarios recibidos desde Fondos de Clientes · factura 2 F001-000187", documentoRef: "F001-000187", fecha: "2027-03-05" }),
     );
     const sinDevolver = camposActaRendicion(ctx);
     expect(sinDevolver.H6_ACREDITADO_FECHA).toBe("5 de marzo de 2027");
-    // Recibido (H1 + H2 + H4) menos lo pagado a terceros menos el sobrante aplicado; la comisión del wire se repuso.
-    const recibido = (["H1", "H2", "H4"] as const).reduce((s, t) => s + ctxH(ctx, t), 0);
+    // Recibido (los cuatro pagos a Fondos de Clientes) menos lo pagado a terceros menos las dos facturas; la comisión del wire se repuso.
+    const recibido = (["H1", "H2", "H3", "H4"] as const).reduce((s, t) => s + ctxH(ctx, t), 0) + p5.neto;
     const flete = ctx.movimientos.find((m) => m.id === "p3")!.montoUsd;
     const pagado = 70_920 + flete + 390.5 + 2_000 + 150;
-    const saldo = Math.round((recibido - pagado - 150) * 100) / 100;
+    const saldo = Math.round((recibido - pagado - ctxH(ctx, "H3") - p5.honorarios) * 100) / 100;
     expect(saldo).toBe(100);
     expect(sinDevolver.SALDO_RENDICION).toBe(monto(saldo));
     expect(saldoCuenta(ctx.movimientos)).toBe(saldo);
@@ -703,13 +739,41 @@ describe("plantillas que nacen del libro", () => {
     expect(texto).toContain("Example Auto Brokers LLC");
     expect(texto).toContain("Bill of sale 4411, SWIFT 77");
     expect(texto).toContain("LC-2026-011-F01");
+    // Lo recibido: el Pago 2 en una sola transferencia; los asientos internos no aparecen como depósitos del cliente.
+    expect(texto).toContain(`Pago 2 de 5\nLC-2026-011-F02\n${monto(ctxH(ctx, "H2") + ctxH(ctx, "H3"))}`);
+    expect(texto).not.toContain("Honorarios recibidos desde Fondos de Clientes");
     expect(texto).toContain("Pagado directamente por el Mandante (Pago 4, tributos a SUNAT)");
     expect(texto).toContain("Gastos de aduana recibidos (Pago 3)");
-    expect(texto).toContain("Sobrante aplicado al Pago 5");
-    expect(texto).toContain("Comisiones bancarias de los wires al exterior");
+    expect(texto).toContain("Sobrante: se restó del Pago 5");
+    expect(texto).toContain("Comisiones bancarias de las transferencias al exterior");
+    expect(texto).toContain(`Honorarios tomados de Fondos de Clientes al emitir cada factura (sección 9)\n− ${monto(ctxH(ctx, "H3") + p5.honorarios)}`);
     expect(texto).toContain("Total pagado por el Mandante");
-    expect(texto).toContain("[X] acreditado el 5 de marzo de 2027");
-    expect(texto).toContain("Factura 1 (50 %, al release)");
+    expect(texto).toContain("Pago 5 de 5: [X] acreditado el 5 de marzo de 2027");
+    // Las dos facturas: fecha de emisión, lo tomado de Fondos de Clientes y la constancia de la detracción.
+    expect(texto).toContain(`Factura 1 (50 %, al release)\nPago 2 de 5\n18 de diciembre de 2026\n${monto(p5.honorarios)}\n${monto(ctxH(ctx, "H3"))}\n561.08 · BN 123456789`);
+    expect(texto).toContain(`Factura 2 (50 %, al levante)\nPago 5 de 5\n5 de marzo de 2027\n${monto(p5.honorarios)}\n${monto(p5.honorarios)}`);
+    expect(texto).not.toMatch(/\bH[1-6]\b/);
+  });
+
+  it("ningún documento muestra códigos internos ni la cuenta de Operaciones; el cliente siempre lee Pago N de 5", () => {
+    const ctx = contextoConLibro();
+    const extra = { ...A_MANO, LIQUIDACION_NUMERO: "118-2027-0001234", TRIBUTOS_USD: "27,587.85", TRIBUTOS_SOLES: "103,785.55" };
+    const docs = [
+      ...PLANTILLAS.filter((p) => !TIPOS_DESDE_LIBRO.includes(p.tipo)).map((p) => construirDocumento(p, contexto(), A_MANO, FIJOS)),
+      construirDocumento(plantillaDe("constancia_fondos")!, ctx, datosConstancia(ctx.movimientos.find((m) => m.id === "d2")!, ctx), FIJOS),
+      ...(["H4", "H5", "H6"] as const).map((h) => construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...extra, ...datosAvisoPago(ctx, h, {}, "2027-02-11") }, FIJOS)),
+      construirDocumento(plantillaDe("liquidacion_definitiva")!, ctx, datosLiquidacion(ctx), FIJOS),
+      construirDocumento(plantillaDe("acta_rendicion")!, ctx, camposActaRendicion(ctx), FIJOS),
+    ];
+    for (const d of docs) {
+      const texto = textoDeEstructura(d.estructura);
+      expect(texto, d.plantilla.tipo).not.toMatch(/\bH[1-6]\b/);
+      expect(texto, d.plantilla.tipo).not.toMatch(/Operaciones(?! en Línea)/);
+      expect(texto, d.plantilla.tipo).not.toMatch(/CTA_OPER/);
+    }
+    // La constancia del Pago 2 lo nombra entero: flete, seguro y primera mitad de los honorarios.
+    const constancia = textoDeEstructura(docs.find((d) => d.plantilla.tipo === "constancia_fondos")!.estructura);
+    expect(constancia).toContain("[X] Pago 2 de 5: flete, seguro y primera mitad de los honorarios");
   });
 
   it("sin libro, las cuatro plantillas del libro no lanzan pero declaran faltantes: no se emiten con rayas", () => {
@@ -790,7 +854,8 @@ describe("datos por etapa", () => {
     expect(por.FECHA_FIRMA.origen.tipo).toBe("fecha");
     // Los faltantes de la empresa van aparte, a Configuración.
     const sinEmpresa = datosPorEtapa(ctx, {});
-    expect(sinEmpresa.empresa).toEqual(expect.arrayContaining(["LUXCARS_RUC", "CTA_FONDOS_NUMERO", "CTA_OPER_NUMERO"]));
+    expect(sinEmpresa.empresa).toEqual(expect.arrayContaining(["LUXCARS_RUC", "CTA_FONDOS_NUMERO"]));
+    expect(sinEmpresa.empresa.some((k) => k.startsWith("CTA_OPER"))).toBe(false);
     expect(sinEmpresa.faltantes.map((f) => f.campo)).not.toContain("LUXCARS_RUC");
   });
 

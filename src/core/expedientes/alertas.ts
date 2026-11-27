@@ -5,7 +5,7 @@
 
 import { oldestImportableModelYear } from "../pricing/pricingConfig";
 import { TAREA_LUXCARS_POR_HITO, anioDeNumeracion, definicionEtapa, esEtapaTerminal } from "./etapas";
-import { estadoHito } from "./hitos";
+import { estadoHito, etiquetaPago, pagoDeHito } from "./hitos";
 import type { Alerta, ContextoExpediente, TipoDocumento } from "./tipos";
 
 /** Días desde que se generó un documento sin marcarse firmado antes de avisar. */
@@ -41,14 +41,14 @@ export function alertas(ctx: ContextoExpediente, hoy: Date = new Date()): Alerta
   for (const hito of ctx.hitos) {
     if (!hito.fechaLimite || hito.fechaLimite >= hoyIso) continue;
     const acreditado =
-      (ctx.movimientos.length > 0 && estadoHito(hito, ctx.movimientos) === "acreditado") ||
+      (ctx.movimientos.length > 0 && estadoHito(hito, ctx.movimientos, ctx.hitos) === "acreditado") ||
       ctx.tareas.some((t) => t.clave === TAREA_LUXCARS_POR_HITO[hito.tipo] && t.estado === "hecha");
     if (acreditado) continue;
     salida.push({
       clave: `hito_vencido_${hito.tipo}`,
       nivel: "alta",
-      titulo: `${hito.tipo} vencido sin acreditar`,
-      detalle: `La fecha límite era el ${hito.fechaLimite} y el depósito no está acreditado.`,
+      titulo: `${etiquetaPago(pagoDeHito(hito.tipo))} (${hito.tipo}) vencido sin acreditar`,
+      detalle: `La fecha límite era el ${hito.fechaLimite} y el pago no está acreditado.`,
     });
   }
 
@@ -66,8 +66,20 @@ export function alertas(ctx: ContextoExpediente, hoy: Date = new Date()): Alerta
     }
   }
 
-  // Tareas vencidas.
-  const vencidas = ctx.tareas.filter((t) => t.estado === "pendiente" && t.venceEl && t.venceEl < hoyIso);
+  // Autodetracción vencida: la detracción de una factura de honorarios se deposita
+  // dentro de los cinco días hábiles de recibido el pago (cláusula 5.3).
+  const autodetracciones = ctx.tareas.filter((t) => t.estado === "pendiente" && t.clave.startsWith("luxcars.autodetraccion_") && t.venceEl && t.venceEl < hoyIso);
+  for (const t of autodetracciones) {
+    salida.push({
+      clave: `autodetraccion_vencida_${t.clave.slice("luxcars.autodetraccion_".length)}`,
+      nivel: "alta",
+      titulo: `Detracción sin depositar: ${t.titulo}`,
+      detalle: `Vencía el ${t.venceEl}. Deposítala en la cuenta de detracciones del Banco de la Nación y registra la constancia en la pestaña Dinero.`,
+    });
+  }
+
+  // Tareas vencidas (las de autodetracción ya tienen su alerta).
+  const vencidas = ctx.tareas.filter((t) => t.estado === "pendiente" && t.venceEl && t.venceEl < hoyIso && !t.clave.startsWith("luxcars.autodetraccion_"));
   for (const t of vencidas) {
     salida.push({
       clave: `tarea_vencida_${t.clave}`,
@@ -77,11 +89,11 @@ export function alertas(ctx: ContextoExpediente, hoy: Date = new Date()): Alerta
     });
   }
 
-  // Saldo negativo del expediente (solo con libro).
+  // Saldo negativo de Fondos de Clientes (solo con libro).
   if (ctx.movimientos.length > 0) {
     let saldo = 0;
     for (const m of ctx.movimientos) {
-      if (m.estado !== "confirmado") continue;
+      if (m.estado !== "confirmado" || m.cuenta !== "fondos_clientes") continue;
       saldo += m.tipo === "deposito" || m.tipo === "ajuste" ? m.montoUsd : -m.montoUsd;
     }
     if (saldo < -0.01) {
@@ -129,16 +141,17 @@ export function alertas(ctx: ContextoExpediente, hoy: Date = new Date()): Alerta
   }
 
   // Pago 4 (tributos directo a SUNAT): avisado y sin pagar a la fecha límite ya lo cubre "hito vencido".
-  // Saldo de aduana sin aplicar: en placas o después, con el H6 ya acreditado y Fondos de Clientes ≠ 0.
+  // Saldo por aplicar: en placas o después, con el Pago 5 acreditado y Fondos de Clientes ≠ 0
+  // (falta aplicar la factura 2 de honorarios o devolver el saldo).
   if (orden >= ordenEtapaDe("placas")) {
     const h6 = ctx.hitos.find((h) => h.tipo === "H6");
     const fondos = ctx.movimientos.filter((m) => m.estado === "confirmado" && m.cuenta === "fondos_clientes").reduce((s, m) => s + (m.tipo === "pago" || m.tipo === "devolucion" ? -m.montoUsd : m.montoUsd), 0);
-    if (h6 && estadoHito(h6, ctx.movimientos) === "acreditado" && Math.abs(fondos) > 0.01) {
+    if (h6 && estadoHito(h6, ctx.movimientos, ctx.hitos) === "acreditado" && Math.abs(fondos) > 0.01) {
       salida.push({
         clave: "saldo_aduana_sin_aplicar",
         nivel: "media",
         titulo: "Saldo de Fondos de Clientes por aplicar o devolver",
-        detalle: `El Pago 5 ya está acreditado y quedan USD ${fondos.toFixed(2)} en Fondos de Clientes: registra el sobrante de aduana aplicado al Pago 5 (o el faltante cubierto) y la devolución.`,
+        detalle: `El Pago 5 ya está acreditado y quedan USD ${fondos.toFixed(2)} en Fondos de Clientes: aplica la factura 2 de honorarios si falta y devuelve el saldo con la rendición.`,
       });
     }
   }

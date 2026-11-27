@@ -17,8 +17,13 @@
  *
  * Un pago desde Fondos de Clientes puede traer `comision_bancaria_usd`: la
  * función SQL registra además el cargo del banco y la reposición de Luxcars.
- * Lo que el cliente pagó directo a SUNAT (cuenta `directo`) se confirma sin
- * constancia de fondos.
+ * Con `operacion` = "aplicar_honorarios" (al emitir la factura 1 o 2, pasa su
+ * importe de Fondos de Clientes a Operaciones) o "autodetraccion" (deposita
+ * la detracción de la factura en el Banco de la Nación) la función arma el par
+ * interno, sin hito. Solo los depósitos en Fondos de Clientes llevan
+ * constancia: lo pagado directo a SUNAT o a la cuenta de detracciones no. Al
+ * confirmar el pago que cubre una factura de un cliente empresa nace la tarea
+ * de autodetracción (cinco días hábiles, feriados de Perú incluidos).
  *
  * Responde { ok, movimientoId, constancia?: { documentoId, version, urls }, aviso? }.
  * Si la constancia falla, el movimiento ya quedó registrado y se avisa en
@@ -36,6 +41,7 @@ import { getSql } from "@/lib/db/client";
 import { cargarContextoServidor, esUuid } from "@/lib/expedientes/servidor/contexto";
 import { camposFijosLuxcars } from "@/lib/expedientes/servidor/datosFijos";
 import { emitirDocumento } from "@/lib/expedientes/servidor/emitirDocumento";
+import { crearTareasTrasConfirmar } from "@/lib/expedientes/servidor/tareasHonorarios";
 import { avisarPorCorreoSiHayCorreo } from "@/lib/expedientes/servidor/notificar";
 import { verificarSesionPortal } from "@/lib/portal/authServer";
 import { isStorageWriteConfigured } from "@/lib/portal/objectStorage";
@@ -51,6 +57,9 @@ const CAMPOS_MOVIMIENTO = new Set([
   "contraparte_id", "concepto", "documento_ref", "comprobante_path", "nota_interna", "estado",
   // Pago al exterior desde Fondos de Clientes: la comisión que debita el banco, que Luxcars repone el mismo día.
   "comision_bancaria_usd",
+  // Asientos internos de honorarios: "aplicar_honorarios" o "autodetraccion", con la factura 1 o 2.
+  "operacion",
+  "factura",
 ]);
 
 /** Solo las llaves conocidas, con los tipos que la función SQL espera (texto o número). */
@@ -115,8 +124,9 @@ export async function POST(request: Request, { params }: Contexto) {
     resultadoId = fila.id;
   } catch (error) {
     const m = error instanceof Error ? error.message : "";
-    return fallo(409, /[áéíóúñ]|movimiento|expediente|monto|motivo|administrador/i.test(m) ? m : "La base de datos rechazó el movimiento.");
+    return fallo(409, /[áéíóúñ]|movimiento|expediente|monto|motivo|administrador|factura|constancia/i.test(m) ? m : "La base de datos rechazó el movimiento.");
   }
+  if (datos.operacion) return NextResponse.json({ ok: true, movimientoId: resultadoId });
 
   // Constancia: al confirmar o registrar un DEPÓSITO con hito, si hay almacenamiento.
   // Y el aviso al cliente por correo (fase 4), si tiene correo: nunca frena la respuesta.
@@ -131,10 +141,12 @@ export async function POST(request: Request, { params }: Contexto) {
     if (!ctx || !movimiento || movimiento.tipo !== "deposito" || movimiento.estado !== "confirmado") {
       return NextResponse.json({ ok: true, movimientoId: resultadoId, constanciaError });
     }
+    // Con cliente empresa, el pago que cubre una factura de honorarios hace nacer la tarea de autodetracción.
+    const tareasNuevas = await crearTareasTrasConfirmar(ctx, movimiento);
     let constancia: { documentoId: string; version: number; urls: { pdf: string | null; docx: string | null } } | undefined;
     let errorConstancia = constanciaError;
-    // Lo pagado directo a SUNAT (cuenta `directo`) no pasó por Luxcars: no lleva constancia de fondos.
-    if (quiereConstancia && movimiento.cuenta !== "directo") {
+    // Solo lo que entra a Fondos de Clientes lleva constancia: lo pagado directo a SUNAT o a detracciones no pasó por esa cuenta.
+    if (quiereConstancia && movimiento.cuenta === "fondos_clientes") {
       const r = await emitirDocumento(plantillaDe("constancia_fondos")!, ctx, {
         actorId: sesion.userId,
         extra: {},
@@ -144,7 +156,7 @@ export async function POST(request: Request, { params }: Contexto) {
       });
       if (r.ok) constancia = { documentoId: r.documentoId, version: r.version, urls: r.urls };
       else errorConstancia = r.mensaje;
-    } else if (movimiento.cuenta === "directo") {
+    } else if (movimiento.cuenta !== "fondos_clientes") {
       errorConstancia = undefined;
     }
     const aviso = await avisarPorCorreoSiHayCorreo(
@@ -158,6 +170,7 @@ export async function POST(request: Request, { params }: Contexto) {
       movimientoId: resultadoId,
       constancia,
       constanciaError: errorConstancia,
+      tareasNuevas,
       aviso: aviso ? { estado: aviso.estado, destinatario: aviso.destinatario, error: aviso.error } : null,
     });
   } catch (error) {

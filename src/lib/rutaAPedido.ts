@@ -6,15 +6,30 @@
  *
  * No son las nueve etapas internas del expediente: son los cinco momentos que
  * el cliente vive, con sus cinco pagos y sus dos momentos de firma. Cuadra con
- * los hitos del core (`src/core/expedientes/hitos.ts`, calendario del 27 nov
- * 2026): Pago 1 = H1 precio del auto al firmar; Pago 2 = H2 flete y seguro +
- * H3 50 % de honorarios al release; Pago 3 = H4 gastos de aduana al arribo;
- * Pago 4 = H5 tributos directo a SUNAT; Pago 5 = H6 50 % de honorarios al
- * levante, ajustado con el saldo de aduana.
+ * el calendario del core (`src/core/expedientes/hitos.ts`, 27 nov 2026): una
+ * sola cuenta para el cliente (Fondos de Clientes) salvo los tributos, que se
+ * pagan directo a SUNAT; el Pago 2 es una sola transferencia (flete, seguro y
+ * primera mitad de los honorarios); el Pago 5 es la segunda mitad, ajustada con
+ * el saldo de aduana. La tabla de pagos tiene las mismas columnas y los mismos
+ * textos que el contrato, los anexos, los avisos y la cuenta del cliente
+ * (Pago, Cuándo, Qué cubre, Monto, Dónde pagas; lo comprueba
+ * `rutaAPedido.test.ts`), pero el monto se describe sin cifras: es una página
+ * pública. Este módulo no importa nada en tiempo de ejecución porque el
+ * generador del PDF lo transpila solo.
  */
 import type { IconName } from "@/components/ui/Icon";
 
-export type PagoRuta = { numero: 1 | 2 | 3 | 4 | 5; titulo: string; detalle: string };
+export type PagoRuta = {
+  numero: 1 | 2 | 3 | 4 | 5;
+  /** Título corto, para la tarjeta del paso. */
+  titulo: string;
+  /** Las columnas de la tabla de cinco pagos: los textos de `CUANDO_PAGO`, `QUE_CUBRE_PAGO` y `DONDE_PAGA` del core. */
+  cuando: string;
+  queCubre: string;
+  /** Sin cifras (página pública): de dónde sale el monto. */
+  monto: string;
+  donde: string;
+};
 
 export type PasoRuta = {
   icon: IconName;
@@ -25,6 +40,11 @@ export type PasoRuta = {
   /** Pagos que se disparan en ese paso (ninguno en la búsqueda). */
   pagos?: PagoRuta[];
 };
+
+/** Cabecera de la tabla de pagos, igual que en el contrato y los anexos. */
+export const CABECERA_PAGOS_RUTA = ["Pago", "Cuándo", "Qué cubre", "Monto", "Dónde pagas"] as const;
+
+const FONDOS = "Cuenta Fondos de Clientes de LUXCARS";
 
 export const PASOS_RUTA: PasoRuta[] = [
   {
@@ -44,7 +64,10 @@ export const PASOS_RUTA: PasoRuta[] = [
       {
         numero: 1,
         titulo: "Precio del auto",
-        detalle: "Al firmar, según la pro forma del vendedor (en usados, más la inspección). Va a Fondos de Clientes.",
+        cuando: "Al firmar el contrato",
+        queCubre: "El precio del auto, según la pro forma del vendedor",
+        monto: "El de la pro forma; en usados, más la inspección",
+        donde: FONDOS,
       },
     ],
   },
@@ -53,12 +76,15 @@ export const PASOS_RUTA: PasoRuta[] = [
     titulo: "Compramos y embarcamos",
     texto:
       "Pagamos al vendedor a tu nombre: la factura y el título salen a tu nombre desde el primer día. Cuando el auto está listo para embarcar, viaja asegurado al Callao y sigues su posición desde tu cuenta.",
-    tuParte: "Hacer el Pago 2 cuando el auto está listo para embarcar.",
+    tuParte: "Hacer el Pago 2, en una sola transferencia, cuando el auto está listo para embarcar.",
     pagos: [
       {
         numero: 2,
-        titulo: "Flete, seguro y 50 % de honorarios",
-        detalle: "Flete (traslado al puerto y marítimo) y seguro, a Fondos de Clientes; la primera mitad de los honorarios, a Luxcars con factura.",
+        titulo: "Flete, seguro y primera mitad de los honorarios",
+        cuando: "Cuando el auto está listo para embarcar",
+        queCubre: "El flete hasta el Callao, el seguro y la primera mitad de nuestros honorarios",
+        monto: "El de tu presupuesto, en una sola transferencia",
+        donde: FONDOS,
       },
     ],
   },
@@ -72,12 +98,18 @@ export const PASOS_RUTA: PasoRuta[] = [
       {
         numero: 3,
         titulo: "Gastos de aduana",
-        detalle: "Agente, almacenaje y grúa del puerto, según la pro forma del agente. Se rinde factura por factura.",
+        cuando: "Cuando el auto llega al Callao",
+        queCubre: "Los gastos de aduana: agente, almacén y grúa del puerto",
+        monto: "El exacto llega en un aviso, según el agente",
+        donde: FONDOS,
       },
       {
         numero: 4,
         titulo: "Tributos, directo a SUNAT",
-        detalle: "La cifra exacta de la liquidación, en soles. No pasa por nuestras cuentas.",
+        cuando: "Cuando SUNAT calcula los tributos (tienes dos días hábiles)",
+        queCubre: "Los tributos de importación, la cifra exacta que fija SUNAT",
+        monto: "El exacto llega en un aviso, en soles",
+        donde: "Directo a SUNAT, con el número de liquidación",
       },
     ],
   },
@@ -90,8 +122,11 @@ export const PASOS_RUTA: PasoRuta[] = [
     pagos: [
       {
         numero: 5,
-        titulo: "50 % restante de los honorarios",
-        detalle: "Al levante, ajustado con el saldo de los gastos de aduana.",
+        titulo: "Segunda mitad de los honorarios",
+        cuando: "Cuando aduana entrega el auto (levante)",
+        queCubre: "La segunda mitad de nuestros honorarios, menos lo que sobró de los gastos de aduana o más lo que faltó",
+        monto: "El exacto llega en un aviso, con el ajuste",
+        donde: FONDOS,
       },
     ],
   },
@@ -109,16 +144,16 @@ export const FIRMAS_RUTA: { titulo: string; texto: string }[] = [
 ];
 
 export const DINERO_RUTA: { icon: IconName; titulo: string; texto: string }[] = [
-  { icon: "shield", titulo: "Cuenta separada", texto: "El precio, el flete y los gastos de aduana van a Fondos de Clientes, nunca a la cuenta de operación de Luxcars." },
+  { icon: "shield", titulo: "Una sola cuenta", texto: "Todo va a Fondos de Clientes, separada de la nuestra. De ahí solo tomamos cada factura de honorarios, al emitirla." },
   { icon: "building", titulo: "Tributos directo a SUNAT", texto: "Los pagas tú con el número de liquidación: la cifra exacta, sin márgenes ni intermediarios." },
   { icon: "eye", titulo: "Estado de cuenta en vivo", texto: "Cada depósito con su constancia y cada pago a terceros con su comprobante, desde tu cuenta." },
-  { icon: "percent", titulo: "Honorarios publicados", texto: "Por tramos sobre el costo puesto en Lima, IGV y placas incluidos, en dos mitades." },
+  { icon: "percent", titulo: "Honorarios publicados", texto: "Por tramos sobre el costo puesto en Lima, IGV y placas incluidos. Si eres empresa, la detracción la depositamos nosotros." },
 ];
 
 export const CUENTA_RUTA: string[] = [
   "Barra de avance con la etapa actual y las fechas estimadas",
   "Qué necesitamos de ti, con botón para aprobar o declarar un pago",
-  "Tus cinco pagos con su monto, fecha límite y estado",
+  "Tus cinco pagos: cuándo, qué cubren, cuánto, dónde pagar y su estado",
   "Documentos del expediente para descargar",
   "Datos del embarque: nave, zarpe y arribo estimado",
   "WhatsApp directo con tu asesor, con el código del expediente",

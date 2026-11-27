@@ -9,6 +9,7 @@
 
 import type { Campos } from "../../campos";
 import { h2, nota, p, tabla, type Estructura } from "../estructura";
+import { tablaCalendario } from "./calendario";
 import type { Plantilla } from "./tipos";
 
 export const TEXTO_TRIBUTOS =
@@ -46,18 +47,12 @@ function construir(c: Campos): Estructura {
       ], [0.6, 3, 4, 1.8]),
       p("El IGV, el IPM y la percepción son crédito fiscal del Mandante como importador, así que el costo neto para la empresa es menor que el total. El uso de ese crédito y la deducibilidad del vehículo dependen de la situación tributaria del Mandante: consultarlas con su contador."),
 
-      h2("2. Calendario de pagos: cinco pagos, seis hitos"),
-      tabla(["Pago", "Hito", "Cuándo", "Qué cubre", "USD", "A dónde"], [
-        ["1", "H1", "A la firma del contrato", usado ? "Precio del vehículo e inspección del usado" : "Precio del vehículo", c.H1_MONTO, "Fondos de Clientes"],
-        ["2", "H2", `Con el vehículo listo para embarcar (release), a más tardar el ${c.FECHA_LIMITE_H2}`, "Flete (traslado al puerto y marítimo) y seguro (estimado)", c.H2_MONTO, "Fondos de Clientes"],
-        ["2", "H3", "Mismo momento que H2", "Primera mitad de los honorarios (50 %, fijo)", c.COMISION_MITAD, "Operaciones; la detracción al Banco de la Nación"],
-        ["3", "H4", "Al arribo al Callao", "Gastos de aduana según la pro forma del agente (estimado)", c.H4_MONTO, "Fondos de Clientes"],
-        ["4", "H5", "Dentro de los dos días hábiles del aviso con la liquidación de SUNAT", "Tributos de importación exactos de la liquidación, en soles (estimado)", c.H5_MONTO, "Directo a SUNAT, con Clave SOL o en ventanilla bancaria"],
-        ["5", "H6", "Con el levante del vehículo", "Segunda mitad de los honorarios (50 %), menos el sobrante o más el faltante de los gastos de aduana", c.COMISION_MITAD, "Operaciones; la detracción al Banco de la Nación"],
-      ], [0.7, 0.7, 3, 3, 1.5, 2.4]),
+      h2("2. Calendario de pagos: cinco pagos"),
+      p("Los Pagos 1, 2, 3 y 5 van a la cuenta Fondos de Clientes del Anexo D; el Pago 4 se paga directo a SUNAT. El Pago 2 y el Pago 5 son una sola transferencia cada uno."),
+      tablaCalendario(c, { usado }),
       p(TEXTO_TRIBUTOS),
       p(TEXTO_ADUANA),
-      p("El saldo que quede en Fondos de Clientes después de pagar todo se devuelve con el acta de entrega y rendición de cuentas. Las comisiones bancarias de los wires al exterior las asume LUXCARS."),
+      p("De la cuenta Fondos de Clientes, LUXCARS toma solo el importe de cada factura de honorarios, al emitirla. El saldo que quede después de pagar todo se devuelve con el acta de entrega y rendición de cuentas. Las comisiones bancarias de las transferencias al exterior las asume LUXCARS."),
 
       h2("3. Qué puede mover estos números"),
       tabla(["Variable", "Efecto", "Quién lo asume"], [
@@ -70,7 +65,7 @@ function construir(c: Campos): Estructura {
         ["Preferencia arancelaria acreditada con certificado de origen", "Ad valorem baja a 0 %", "A favor del Mandante"],
         ["Unidad nueva registrada por el dealer antes de exportar", "El ISC pasa de 10 % a 40 % y la unidad se trata como usada", "Se decide por escrito antes de continuar"],
         ["Impuestos del país de origen que el Vendedor no exonere", "Precio del vehículo sube", "Mandante"],
-        ["Demora del Mandante en acreditar un hito o pagar los tributos", "Almacenaje, cambio de reserva, sobreestadía", "Mandante"],
+        ["Demora del Mandante en hacer un pago o en pagar los tributos", "Almacenaje, cambio de reserva, sobreestadía", "Mandante"],
       ], [3, 3, 2]),
 
       nota("Este anexo se firma junto con el contrato: las firmas constan al final del contrato y en cada página foliada."),
@@ -80,7 +75,7 @@ function construir(c: Campos): Estructura {
 
 export const anexoB: Plantilla = {
   tipo: "anexo_b",
-  version: "anexo_b@2026-11-27b",
+  version: "anexo_b@2026-11-27c",
   nombre: "Anexo B · Presupuesto estimado",
   idioma: "es",
   tarea: "luxcars.presupuesto_definitivo",

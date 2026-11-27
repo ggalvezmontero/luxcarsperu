@@ -117,7 +117,7 @@ describe.skipIf(!ACTIVA)("fase 2 de punta a punta (base y bucket reales)", () =>
 
     const fijos = {
       LUXCARS_RUC: "20600000001", LUXCARS_DOMICILIO: "Calle Prueba 184, San Isidro, Lima", LUXCARS_PARTIDA: "14000000", LUXCARS_REPRESENTANTE: "Representante Prueba", LUXCARS_REP_DNI: "40000000",
-      LUXCARS_CORREO: "info@luxcars.pe", LUXCARS_TELEFONO: "+51 980 794 348", CTA_OPER_BANCO: "BCP", CTA_OPER_NUMERO: "1", CTA_OPER_CCI: "1", CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "2", CTA_FONDOS_CCI: "2", CTA_DETRACCION_NUMERO: "3",
+      LUXCARS_CORREO: "info@luxcars.pe", LUXCARS_TELEFONO: "+51 980 794 348", CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "2", CTA_FONDOS_CCI: "2", CTA_DETRACCION_NUMERO: "3",
       PORCENTAJE_DETRACCION: "10", CIUDAD_FIRMA: "Lima", DIAS_ESPERA_MAX: "15",
     };
     const plantilla = plantillaDe("contrato")!;

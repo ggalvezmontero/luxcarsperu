@@ -63,6 +63,9 @@ export type DatosNotificacion = {
   /** deposito_confirmado · aviso_pago */
   montoUsd?: number | null;
   hito?: TipoHito | null;
+  /** aviso_pago del Pago 4: número de liquidación de SUNAT y monto exacto en soles (texto ya formateado). */
+  liquidacion?: string | null;
+  montoSoles?: string | null;
   fecha?: string | null;
   fechaLimite?: string | null;
   /** deposito_confirmado: si la constancia ya está en la cuenta. */
@@ -107,31 +110,43 @@ export function fechaLarga(iso: string | null | undefined): string {
   return new Intl.DateTimeFormat("es-PE", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(d);
 }
 
+/** Cómo se nombra al cliente el pago de cada hito: "Pago 2 de 5 (…)", nunca el código interno. */
 const NOMBRE_HITO: Record<TipoHito, string> = {
-  H1: "H1 (Pago 1: precio del vehículo)",
-  H2: "H2 (Pago 2: flete y seguro)",
-  H3: "H3 (Pago 2: primera mitad de honorarios)",
-  H4: "H4 (Pago 3: gastos de aduana)",
-  H5: "H5 (Pago 4: tributos a SUNAT)",
-  H6: "H6 (Pago 5: segunda mitad de honorarios)",
+  H1: "Pago 1 de 5 (el precio del auto)",
+  H2: "Pago 2 de 5 (flete, seguro y primera mitad de los honorarios)",
+  H3: "Pago 2 de 5 (flete, seguro y primera mitad de los honorarios)",
+  H4: "Pago 3 de 5 (gastos de aduana)",
+  H5: "Pago 4 de 5 (tributos a SUNAT)",
+  H6: "Pago 5 de 5 (segunda mitad de los honorarios)",
 };
 
 /** Texto de cada aviso de pago, por hito. */
-const AVISO_POR_HITO: Partial<Record<TipoHito, { asunto: string; intro: (auto: string) => string; cierre: string }>> = {
+/**
+ * Aviso de pago por correo: frases cortas con lo mismo que el documento —qué
+ * pago es, el monto exacto, dónde pagar, la fecha límite y de dónde sale la
+ * cifra—, sin códigos internos.
+ */
+const AVISO_POR_HITO: Partial<Record<TipoHito, { asunto: string; intro: (auto: string) => string; donde: (codigo: string, liquidacion?: string | null) => string; origen: string; cierre: string }>> = {
   H4: {
-    asunto: "Aviso del Pago 3: gastos de aduana",
-    intro: (auto) => `Tu ${auto} está por llegar al Callao y toca el Pago 3: los gastos de aduana (agente, almacenaje y grúa del puerto), según la pro forma del agente.`,
-    cierre: "Es un gasto reembolsable: si sobra, lo descontamos del Pago 5; si falta, se suma a ese pago. El aviso con las cuentas está en tu cuenta, en Documentos.",
+    asunto: "Pago 3 de 5: gastos de aduana",
+    intro: (auto) => `Tu ${auto} está por llegar al Callao. Toca el Pago 3 de 5: los gastos de aduana (agente, almacén y grúa del puerto).`,
+    donde: (codigo) => `la cuenta Fondos de Clientes de LUXCARS, la misma de tus pagos anteriores (Anexo D), con el concepto "${codigo} Pago 3"`,
+    origen: "de la pro forma del agente de aduana",
+    cierre: "Es un gasto reembolsable: si sobra, lo restamos del Pago 5; si falta, se suma a ese pago. El aviso con el detalle está en tu cuenta, en Documentos.",
   },
   H5: {
-    asunto: "Aviso del Pago 4: tributos a SUNAT",
-    intro: (auto) => `SUNAT liquidó la DAM de tu ${auto}. Toca el Pago 4: los tributos de importación, que pagas directamente a SUNAT, en soles, con el número de liquidación.`,
-    cierre: "Puedes pagar con tu Clave SOL o en ventanilla bancaria. El aviso con el número de liquidación está en tu cuenta, en Documentos; al pagar, declara «Ya pagué» con el comprobante.",
+    asunto: "Pago 4 de 5: tributos a SUNAT",
+    intro: (auto) => `SUNAT calculó los tributos de tu ${auto}. Toca el Pago 4 de 5. Lo pagas tú, directo a SUNAT, en soles.`,
+    donde: (_codigo, liquidacion) => `directo a SUNAT, con ${liquidacion ? `el número de liquidación ${liquidacion}` : "el número de liquidación del aviso"}, con tu Clave SOL o en la ventanilla de un banco`,
+    origen: "de la liquidación de SUNAT",
+    cierre: "Al pagar, avísanos en tu cuenta con «Ya pagué» y el comprobante. El aviso está en tu cuenta, en Documentos.",
   },
   H6: {
-    asunto: "Aviso del Pago 5: segunda mitad de honorarios",
-    intro: (auto) => `Tu ${auto} quedó liberado de aduana. Toca el Pago 5: la segunda mitad de nuestros honorarios, ya ajustada con el saldo de los gastos de aduana.`,
-    cierre: "Con este pago acreditado coordinamos la entrega con placas. El aviso con el detalle está en tu cuenta, en Documentos.",
+    asunto: "Pago 5 de 5: segunda mitad de los honorarios",
+    intro: (auto) => `Aduana entregó tu ${auto}. Toca el Pago 5 de 5, el último.`,
+    donde: (codigo) => `la cuenta Fondos de Clientes de LUXCARS, la misma de tus pagos anteriores (Anexo D), con el concepto "${codigo} Pago 5"`,
+    origen: "es la segunda mitad de nuestros honorarios, menos lo que sobró de los gastos de aduana (o más lo que faltó)",
+    cierre: "Con este pago coordinamos la entrega con placas. El aviso con el cálculo está en tu cuenta, en Documentos.",
   },
 };
 
@@ -187,7 +202,7 @@ export function construirNotificacion(plantilla: PlantillaNotificacion, ctx: Con
       ], datos.nota);
     case "deposito_confirmado":
       return armar(plantilla, ctx, `Depósito confirmado · ${ctx.codigo}`, [
-        `Confirmamos la recepción de tu depósito${datos.montoUsd ? ` de ${montoUsd(datos.montoUsd)}` : ""}${datos.hito ? ` para el hito ${NOMBRE_HITO[datos.hito]}` : ""}${datos.fecha ? `, acreditado el ${fechaLarga(datos.fecha)}` : ""}.`,
+        `Confirmamos la recepción de tu depósito${datos.montoUsd ? ` de ${montoUsd(datos.montoUsd)}` : ""}${datos.hito ? ` del ${NOMBRE_HITO[datos.hito]}` : ""}${datos.fecha ? `, acreditado el ${fechaLarga(datos.fecha)}` : ""}.`,
         datos.conConstancia === false
           ? "La constancia de recepción de fondos quedará disponible en tu cuenta en breve."
           : "La constancia de recepción de fondos ya está en tu cuenta, en la sección Documentos.",
@@ -200,10 +215,15 @@ export function construirNotificacion(plantilla: PlantillaNotificacion, ctx: Con
       ], datos.nota);
     case "aviso_pago": {
       const aviso = (datos.hito && AVISO_POR_HITO[datos.hito]) || AVISO_POR_HITO.H4!;
+      const montoTexto = datos.montoSoles?.trim()
+        ? `S/ ${datos.montoSoles.trim()}${datos.montoUsd ? ` (${montoUsd(datos.montoUsd)} según la DAM)` : ""}`
+        : datos.montoUsd ? montoUsd(datos.montoUsd) : null;
       return armar(plantilla, ctx, `${aviso.asunto} · ${ctx.codigo}`, [
         aviso.intro(ctx.auto),
-        datos.montoUsd ? `Monto: ${montoUsd(datos.montoUsd)}.` : null,
+        montoTexto ? `Monto exacto: ${montoTexto}.` : null,
+        `Dónde pagar: ${aviso.donde(ctx.codigo, datos.liquidacion)}.`,
         datos.fechaLimite ? `Fecha límite: ${fechaLarga(datos.fechaLimite)}.` : null,
+        `De dónde sale la cifra: ${aviso.origen}.`,
         aviso.cierre,
       ], datos.nota);
     }

@@ -7,11 +7,16 @@
  *     un nuevo el contrato no la menciona (MSO sin matricular y recalls).
  *   · El broker figura como Vendedor (recibe el precio completo) y el dealer
  *     emite la factura y el MSO a nombre del Mandante.
- *   · Cinco pagos, seis hitos (cláusula sexta): H1 al firmar; H2 y H3 al
- *     release; H4 al arribo (gastos de aduana, reembolsables y compensados en
- *     el Pago 5); H5 tributos pagados directo a SUNAT; H6 al levante.
- *   · Honorarios 50/50 (cláusula cuarta) que incluyen la gestión registral
- *     (homologación, SUNARP, placas y tarjeta) y las comisiones bancarias.
+ *   · Cinco pagos en una tabla simple al principio (cláusula tercera, la misma
+ *     del Anexo B, el Anexo D y los avisos): Pago 1 al firmar; Pago 2 al
+ *     release (una transferencia: flete, seguro y la mitad de los honorarios);
+ *     Pago 3 al arribo (gastos de aduana, reembolsables y compensados en el
+ *     Pago 5); Pago 4 tributos directo a SUNAT; Pago 5 al levante. Nunca los
+ *     códigos internos H1 a H6. Todo pago a LUXCARS va a Fondos de Clientes, y
+ *     LUXCARS aplica de ahí cada factura de honorarios al emitirla.
+ *   · Honorarios 50/50 (cláusula quinta) que incluyen la gestión registral
+ *     (homologación, SUNARP, placas y tarjeta) y las comisiones bancarias, con
+ *     autodetracción por defecto (5.3).
  *   · Una sola firma en notaría (contrato con anexos, LOA y poder para la
  *     inmatriculación) y un solo documento a la entrega (acta de entrega y
  *     rendición de cuentas).
@@ -20,7 +25,8 @@
  */
 
 import type { Campos } from "../../campos";
-import { firmas, h2, lista, p, tabla, type Estructura } from "../estructura";
+import { firmas, h2, lista, p, type Estructura } from "../estructura";
+import { tablaCalendario } from "./calendario";
 import type { Plantilla } from "./tipos";
 
 function construir(c: Campos): Estructura {
@@ -49,7 +55,7 @@ function construir(c: Campos): Estructura {
         usado
           ? "b) Verificar antes del pago el historial (CarFax) y los gravámenes de la unidad e inspeccionarla, y entregar al Mandante el informe de inspección para su aprobación."
           : "b) Verificar antes del pago que la unidad tenga su MSO sin matricular y que no registre llamados a revisión pendientes según el VIN.",
-        "c) Pagar al Vendedor el precio con los fondos que el Mandante provea conforme a la cláusula quinta.",
+        "c) Pagar al Vendedor el precio con los fondos que el Mandante provea conforme a la cláusula sexta.",
         "d) Contratar el traslado al puerto, la consolidación cuando corresponda, el flete internacional y el seguro de transporte, de modo que el documento de transporte designe al Mandante como consignatario y la póliza lo designe como asegurado.",
         "e) Coordinar las formalidades de exportación en origen.",
         "f) Designar al agente de aduana indicado en el Anexo A y coordinar con él la declaración aduanera de mercancías (DAM) a nombre del Mandante.",
@@ -60,61 +66,52 @@ function construir(c: Campos): Estructura {
       ]),
       p("2.2 LUXCARS actúa dentro de los límites de este Contrato y del Anexo A, en particular del precio tope autorizado y de los conceptos de gasto autorizados. Cualquier acto fuera de esos límites requiere la aprobación previa del Mandante por los medios de la cláusula décima octava."),
 
-      h2("Tercera: Calidad de importador y propietario"),
-      p("3.1 El Mandante es el comprador, el propietario y el importador del Vehículo. Adquiere la propiedad cuando el vendedor del exterior la transfiere a su nombre y figura como dueño o consignatario ante la Administración Aduanera."),
-      p("3.2 LUXCARS no adquiere en ningún momento la propiedad ni la posesión a título propio del Vehículo ni de los fondos del Mandante; actúa en todo como mandatario. Los comprobantes de pago de terceros (dealer, Vendedor, transportista, aseguradora, agente de aduana, depósito temporal) se emiten a nombre del Mandante."),
-      p("3.3 El IGV y el IPM pagados en la importación y la percepción del IGV corresponden al Mandante conforme a la legislación tributaria; su uso como crédito fiscal es de su exclusiva responsabilidad. LUXCARS no emite comprobante alguno por esos conceptos ni por el precio del Vehículo."),
-      p("3.4 El Mandante otorga el mandato al agente de aduana designado, por mandato electrónico a través de SUNAT Operaciones en Línea o por endoso del documento de transporte, dentro de los dos días hábiles siguientes a la solicitud de LUXCARS. Los documentos de la inmatriculación los suscribe LUXCARS con el poder especial otorgado por el Mandante en la misma fecha de este Contrato."),
+      h2("Tercera: Calendario de pagos"),
+      p("3.1 El Mandante hace cinco pagos, en los momentos y por los montos de esta tabla. Todos los pagos a LUXCARS van a una sola cuenta, Fondos de Clientes; los tributos se pagan directo a SUNAT. Las demás cláusulas se remiten a esta tabla."),
+      tablaCalendario(c, { usado }),
+      p("3.2 Todos los pagos del Mandante a LUXCARS se realizan en la cuenta Fondos de Clientes indicada en el Anexo D. LUXCARS aplica de esos fondos el importe de cada factura de honorarios en la fecha de su emisión y destina el resto exclusivamente a los pagos por cuenta del Mandante."),
+      p("3.3 El Pago 2 y el Pago 5 son una sola transferencia cada uno. El Pago 2 junta el flete, el seguro y la primera mitad de los honorarios. El Pago 5 es la segunda mitad de los honorarios, ajustada con el saldo de los gastos de aduana (numeral 8.5)."),
+      p("3.4 Los montos de los Pagos 2, 3 y 4 son estimados según el Anexo B: el Pago 2 se ajusta con el flete real, el Pago 3 se fija con la pro forma del agente de aduana y el Pago 4 es la cifra exacta de la liquidación de SUNAT. El Pago 1 es el precio de la pro forma del Vendedor y solo cambia por el tipo de cambio (numeral 7.2). Las dos mitades de los honorarios son fijas, salvo el ajuste del numeral 8.5 en el Pago 5."),
+      p("3.5 Para los Pagos 3, 4 y 5, LUXCARS envía antes un aviso escrito que dice qué pago es, el monto exacto, dónde pagar, la fecha límite y de dónde sale la cifra. El Vehículo se embarca una vez acreditado el Pago 2 y se entrega una vez acreditado el Pago 5. Si el Pago 5 no se acredita dentro de los cinco días hábiles siguientes al aviso de disponibilidad, se aplica la custodia de la cláusula décima tercera, sin perjuicio de los intereses de la cláusula décima quinta."),
 
-      h2("Cuarta: Honorarios"),
-      p(`4.1 Los honorarios de LUXCARS por todos los actos de la cláusula segunda ascienden a USD ${c.COMISION_TOTAL} (base imponible USD ${c.COMISION_BASE} más IGV USD ${c.COMISION_IGV}). El monto incluye el IGV.`),
-      p(`4.2 Se pagan en dos mitades iguales de USD ${c.COMISION_MITAD} (50 % cada una): la primera cuando el Vehículo queda listo para embarcar en origen (hito H3, en el Pago 2, junto con el flete y el seguro) y la segunda cuando la Administración Aduanera autoriza el levante del Vehículo (hito H6, Pago 5). El pago de la segunda mitad se ajusta con el saldo de los gastos de aduana conforme al numeral 8.5. Por cada mitad LUXCARS emite factura electrónica con la glosa "Honorarios por servicio de intermediación e importación por mandato, vehículo VIN ${c.VEH_VIN}, expediente ${c.EXPEDIENTE}".`),
-      p(`4.3 Las facturas están sujetas al Sistema de Pago de Obligaciones Tributarias (detracción). El Mandante deposita el ${c.PORCENTAJE_DETRACCION} % de cada factura en la cuenta de detracciones de LUXCARS indicada en el Anexo D y el saldo en la cuenta de Operaciones, dentro del plazo legal. Si el Mandante prefiere pagar el importe total de la factura a la cuenta de Operaciones, LUXCARS efectúa por su cuenta el depósito de la detracción en su propia cuenta del Banco de la Nación dentro de los cinco días hábiles siguientes de recibido el pago y remite al Mandante la constancia del depósito. [CONFIRMAR con el contador el porcentaje aplicable antes del primer uso]`),
+      h2("Cuarta: Calidad de importador y propietario"),
+      p("4.1 El Mandante es el comprador, el propietario y el importador del Vehículo. Adquiere la propiedad cuando el vendedor del exterior la transfiere a su nombre y figura como dueño o consignatario ante la Administración Aduanera."),
+      p("4.2 LUXCARS no adquiere en ningún momento la propiedad ni la posesión a título propio del Vehículo ni de los fondos del Mandante; actúa en todo como mandatario. Los comprobantes de pago de terceros (dealer, Vendedor, transportista, aseguradora, agente de aduana, depósito temporal) se emiten a nombre del Mandante."),
+      p("4.3 El IGV y el IPM pagados en la importación y la percepción del IGV corresponden al Mandante conforme a la legislación tributaria; su uso como crédito fiscal es de su exclusiva responsabilidad. LUXCARS no emite comprobante alguno por esos conceptos ni por el precio del Vehículo."),
+      p("4.4 El Mandante otorga el mandato al agente de aduana designado, por mandato electrónico a través de SUNAT Operaciones en Línea o por endoso del documento de transporte, dentro de los dos días hábiles siguientes a la solicitud de LUXCARS. Los documentos de la inmatriculación los suscribe LUXCARS con el poder especial otorgado por el Mandante en la misma fecha de este Contrato."),
+
+      h2("Quinta: Honorarios"),
+      p(`5.1 Los honorarios de LUXCARS por todos los actos de la cláusula segunda ascienden a USD ${c.COMISION_TOTAL} (base imponible USD ${c.COMISION_BASE} más IGV USD ${c.COMISION_IGV}). El monto incluye el IGV.`),
+      p(`5.2 Se pagan en dos mitades iguales de USD ${c.COMISION_MITAD} (50 % cada una), dentro del calendario de la cláusula tercera: la primera con el Pago 2, cuando el Vehículo queda listo para embarcar, y la segunda con el Pago 5, cuando la Administración Aduanera autoriza el levante. El Pago 5 se ajusta con el saldo de los gastos de aduana conforme al numeral 8.5. Por cada mitad LUXCARS emite factura electrónica con la glosa "Honorarios por servicio de intermediación e importación por mandato, vehículo VIN ${c.VEH_VIN}, expediente ${c.EXPEDIENTE}".`),
+      p(`5.3 Las facturas a una empresa están sujetas al Sistema de Pago de Obligaciones Tributarias (detracción) del ${c.PORCENTAJE_DETRACCION} %. El Mandante paga siempre el importe completo de cada factura, dentro de su pago, en la cuenta Fondos de Clientes, y LUXCARS deposita la detracción en su propia cuenta de detracciones del Banco de la Nación dentro de los cinco días hábiles siguientes de recibido el pago y le envía la constancia del depósito. Si el Mandante prefiere detraer él mismo, deposita la detracción en esa cuenta, indicada en el Anexo D, la descuenta de su pago y envía la constancia a LUXCARS. Si el Mandante es una persona natural que recibe boleta de venta, no hay detracción. [CONFIRMAR con el contador el porcentaje aplicable antes del primer uso]`),
       p(
-        `4.4 Los honorarios comprenden: la búsqueda y la verificación de la unidad (sin costo para el Mandante hasta su elección), la gestión integral de la operación, la gestión registral completa (homologación o ficha técnica ante el MTC, inscripción en la SUNARP, placas y tarjeta de identificación vehicular, con sus tasas y derechos), las comisiones bancarias de las transferencias al exterior (las que el banco debite de la cuenta Fondos de Clientes las repone LUXCARS el mismo día), el traslado en grúa dentro de Lima hasta la entrega y el tiempo de LUXCARS. No comprenden ningún pago a terceros: precio del Vehículo, ${usado ? "inspección del vehículo usado (Anexo B), " : ""}impuestos del país de origen, flete, seguro, tributos de importación, gastos de aduana (agente de aduana, almacenaje, visto bueno y grúa del puerto), SOAT, ni gastos extraordinarios (almacenaje o sobreestadía por demora del Mandante, reclamos a terceros, reexportación).`,
+        `5.4 Los honorarios comprenden: la búsqueda y la verificación de la unidad (sin costo para el Mandante hasta su elección), la gestión integral de la operación, la gestión registral completa (homologación o ficha técnica ante el MTC, inscripción en la SUNARP, placas y tarjeta de identificación vehicular, con sus tasas y derechos), las comisiones bancarias de las transferencias al exterior (las que el banco debite de la cuenta Fondos de Clientes las repone LUXCARS el mismo día), el traslado en grúa dentro de Lima hasta la entrega y el tiempo de LUXCARS. No comprenden ningún pago a terceros: precio del Vehículo, ${usado ? "inspección del vehículo usado (Anexo B), " : ""}impuestos del país de origen, flete, seguro, tributos de importación, gastos de aduana (agente de aduana, almacenaje, visto bueno y grúa del puerto), SOAT, ni gastos extraordinarios (almacenaje o sobreestadía por demora del Mandante, reclamos a terceros, reexportación).`,
       ),
-      p("4.5 Los honorarios se pagan en dólares americanos o, a elección del Mandante, en soles al tipo de cambio venta publicado por la SBS en la fecha de pago."),
+      p("5.5 Los honorarios se pagan en dólares americanos o, a elección del Mandante, en soles al tipo de cambio venta publicado por la SBS en la fecha de pago."),
 
-      h2("Quinta: Fondos del Mandante y cuenta Fondos de Clientes"),
-      p(`5.1 Todo importe destinado a pagos a terceros que LUXCARS hace por cuenta del Mandante se deposita en la cuenta denominada "Fondos de Clientes" indicada en el Anexo D, con el código ${c.EXPEDIENTE} en el concepto de la transferencia. LUXCARS no acepta efectivo ni transferencias desde cuentas que no sean del Mandante.`),
-      p("5.2 Los fondos depositados pertenecen al Mandante. LUXCARS los registra en un libro individual por expediente, los aplica únicamente a los conceptos de este Contrato y de los Anexos A y B, no los destina a fines propios, no los compensa con sus honorarios salvo el saldo de los gastos de aduana conforme al numeral 8.5 y no reconoce intereses sobre ellos."),
-      p("5.3 Dentro de un día hábil de cada depósito acreditado, LUXCARS entrega al Mandante una constancia de recepción con el saldo del expediente."),
-      p("5.4 LUXCARS ordena cada pago a terceros contra un documento emitido a nombre del Mandante (pro forma o factura del Vendedor, factura del transportista, póliza, factura del agente de aduana, del depósito temporal o de la grúa) y remite copia del comprobante de pago dentro de un día hábil de ejecutado. El precio del Vehículo se gira completo al Vendedor, que paga al dealer; la factura o bill of sale y el documento de propiedad los emite el dealer a nombre del Mandante."),
-      p("5.5 El saldo no aplicado se devuelve al Mandante, a la cuenta desde la que depositó, dentro de los cinco días hábiles siguientes a la entrega del Vehículo, junto con la rendición de cuentas."),
-      p("5.6 Los tributos de importación los paga el Mandante directamente a SUNAT (numeral 8.4). Si el Mandante prefiere que LUXCARS los pague por su cuenta, lo pide por escrito y deposita antes su importe en Fondos de Clientes. El Mandante puede también pagar directamente al Vendedor, previa coordinación con LUXCARS y entregando el comprobante; en ese caso el monto del hito correspondiente se reduce en lo pagado directamente."),
-      p("5.7 Un depósito se considera acreditado cuando está disponible en la cuenta, no cuando está en tránsito. Ninguna obligación de LUXCARS frente a terceros nace antes de la acreditación de los fondos del hito respectivo."),
-      p("5.8 Si el banco debita de la cuenta Fondos de Clientes una comisión por la transferencia al exterior, LUXCARS la repone en la misma cuenta el mismo día (numeral 4.4); el saldo del Mandante no cambia y la rendición de cuentas muestra el cargo y la reposición."),
-
-      h2("Sexta: Calendario de pagos"),
-      p("6.1 El Mandante paga en cinco momentos, conforme al siguiente calendario de seis hitos (una cuenta por hito):"),
-      tabla(
-        ["Pago", "Hito", "Oportunidad", "Concepto", "Monto", "Cuenta"],
-        [
-          ["1", "H1", "A la firma de este Contrato", usado ? "Precio del Vehículo según la pro forma del Vendedor, más la inspección del vehículo usado" : "Precio del Vehículo según la pro forma del Vendedor", `USD ${c.H1_MONTO}`, "Fondos de Clientes"],
-          ["2", "H2", `Cuando el Vehículo queda listo para embarcar (release), a más tardar el ${c.FECHA_LIMITE_H2}`, "Flete (traslado al puerto y marítimo) en la proporción pactada y seguro de transporte", `USD ${c.H2_MONTO} (estimado)`, "Fondos de Clientes"],
-          ["2", "H3", "Mismo momento que H2", "Primera mitad de los honorarios (50 %)", `USD ${c.COMISION_MITAD} (fijo)`, "Operaciones y detracciones"],
-          ["3", "H4", "Al arribo del Vehículo al Callao", "Gastos de aduana según la pro forma del agente de aduana: agente, almacenaje, visto bueno y grúa del puerto (numeral 8.5)", `USD ${c.H4_MONTO} (estimado)`, "Fondos de Clientes"],
-          ["4", "H5", "Dentro de los dos días hábiles siguientes al aviso con la liquidación de SUNAT", "Tributos de importación exactos según la liquidación, en soles al tipo de cambio del día de pago (numeral 8.4)", `USD ${c.H5_MONTO} (estimado)`, "Directo a SUNAT"],
-          ["5", "H6", "Cuando la Administración Aduanera autoriza el levante", "Segunda mitad de los honorarios (50 %), menos el sobrante o más el faltante de los gastos de aduana (numeral 8.5)", `USD ${c.COMISION_MITAD} antes del ajuste`, "Operaciones y detracciones"],
-        ],
-        [0.8, 0.8, 3.4, 3.8, 2.2, 2],
-      ),
-      p("6.2 Los montos de H2, H4 y H5 son estimados conforme al Anexo B: el de H2 se ajusta con el flete real, el de H4 con la pro forma del agente de aduana y el de H5 es la cifra exacta de la liquidación de SUNAT. El monto de H1 es el de la pro forma del Vendedor y se ajusta solo por el tipo de cambio conforme al numeral 7.2. Los montos de H3 y H6 son fijos, salvo el ajuste del numeral 8.5 en el H6."),
-      p("6.3 El Vehículo se embarca una vez acreditados H2 y H3, y se entrega una vez acreditado H6. Si H6 no se acredita dentro de los cinco días hábiles siguientes al aviso de disponibilidad, se aplica la custodia de la cláusula décima tercera, sin perjuicio de los intereses de la cláusula décima quinta."),
+      h2("Sexta: Fondos del Mandante y cuenta Fondos de Clientes"),
+      p(`6.1 Todos los pagos del Mandante a LUXCARS (Pagos 1, 2, 3 y 5 de la cláusula tercera) se depositan en la cuenta denominada "Fondos de Clientes" indicada en el Anexo D, con el código ${c.EXPEDIENTE} y el número de pago en el concepto de la transferencia. LUXCARS no acepta efectivo ni transferencias desde cuentas que no sean del Mandante.`),
+      p("6.2 Los fondos depositados pertenecen al Mandante. LUXCARS los registra en un libro individual por expediente, los aplica únicamente a los conceptos de este Contrato y de los Anexos A y B, no los destina a fines propios y no reconoce intereses sobre ellos. De esos fondos LUXCARS solo toma para sí el importe de cada factura de honorarios, en la fecha de su emisión (numeral 3.2), y lo muestra en el libro y en la rendición de cuentas."),
+      p("6.3 Dentro de un día hábil de cada depósito acreditado, LUXCARS entrega al Mandante una constancia de recepción con el saldo del expediente."),
+      p("6.4 LUXCARS ordena cada pago a terceros contra un documento emitido a nombre del Mandante (pro forma o factura del Vendedor, factura del transportista, póliza, factura del agente de aduana, del depósito temporal o de la grúa) y remite copia del comprobante de pago dentro de un día hábil de ejecutado. El precio del Vehículo se gira completo al Vendedor, que paga al dealer; la factura o bill of sale y el documento de propiedad los emite el dealer a nombre del Mandante."),
+      p("6.5 El saldo no aplicado se devuelve al Mandante, a la cuenta desde la que depositó, dentro de los cinco días hábiles siguientes a la entrega del Vehículo, junto con la rendición de cuentas."),
+      p("6.6 Los tributos de importación los paga el Mandante directamente a SUNAT (Pago 4, numeral 8.4). Si el Mandante prefiere que LUXCARS los pague por su cuenta, lo pide por escrito y deposita antes su importe en Fondos de Clientes. El Mandante puede también pagar directamente al Vendedor, previa coordinación con LUXCARS y entregando el comprobante; en ese caso el monto del pago correspondiente se reduce en lo pagado directamente."),
+      p("6.7 Un depósito se considera acreditado cuando está disponible en la cuenta, no cuando está en tránsito. Ninguna obligación de LUXCARS frente a terceros nace antes de la acreditación del pago respectivo."),
+      p("6.8 Si el banco debita de la cuenta Fondos de Clientes una comisión por la transferencia al exterior, LUXCARS la repone en la misma cuenta el mismo día (numeral 5.4); el saldo del Mandante no cambia y la rendición de cuentas muestra el cargo y la reposición."),
 
       h2("Séptima: Precio del Vehículo, moneda y tipo de cambio"),
       p(`7.1 El Mandante aprobó la unidad y su precio de ${c.MONEDA_COMPRA} ${c.PRECIO_COMPRA} según la pro forma del Vendedor, y autoriza la compra hasta el precio tope de ${c.MONEDA_COMPRA} ${c.PRECIO_TOPE}. Un precio mayor requiere su aprobación expresa.`),
       p(`7.2 El pago al Vendedor se realiza en la moneda que este exija (${c.MONEDA_COMPRA}). Si los fondos se depositan en dólares americanos y el pago se ejecuta en otra moneda, se aplica el tipo de cambio que el banco de LUXCARS ofrezca el día de la operación. LUXCARS informa el tipo de cambio aplicable antes de ejecutar. Si el saldo del expediente resulta insuficiente, el Mandante deposita la diferencia dentro de un día hábil; si resulta excedente, queda a su favor en el expediente.`),
       p("7.3 Los impuestos del país de origen que el Vendedor o el dealer no exoneren por tratarse de una venta para exportación son de cargo del Mandante y se informan antes del pago."),
-      p("7.4 Las comisiones bancarias de la transferencia al Vendedor son de cargo de LUXCARS (numerales 4.4 y 5.8). Las que cobren el banco del Vendedor o los bancos intermediarios, si las hubiera, se incluyen en el monto a transferir."),
+      p("7.4 Las comisiones bancarias de la transferencia al Vendedor son de cargo de LUXCARS (numerales 5.4 y 6.8). Las que cobren el banco del Vendedor o los bancos intermediarios, si las hubiera, se incluyen en el monto a transferir."),
 
       h2("Octava: Tributos de importación y gastos de aduana"),
       p("8.1 Los tributos de importación (ad valorem, impuesto selectivo al consumo, IGV, IPM y percepción del IGV) y los gastos de aduana (agente de aduana, almacenaje en el depósito temporal, visto bueno y grúa del puerto) son de cargo del Mandante en su calidad de importador."),
       p("8.2 El Anexo B contiene una estimación en dólares americanos de esos conceptos, calculada con las tasas vigentes a la fecha de este Contrato y con valores estimados de flete y seguro. Es una estimación, no una liquidación."),
       p("8.3 La liquidación definitiva la determina la Administración Aduanera al numerar la DAM. El valor en aduana expresado en una moneda distinta al dólar americano se convierte con el factor de conversión monetaria que publica SUNAT vigente a la fecha de numeración. Los tributos se expresan en dólares americanos y se cancelan en soles al tipo de cambio venta publicado por la SBS vigente a la fecha de pago, conforme a la Ley General de Aduanas."),
-      p("8.4 Los tributos de importación que liquide SUNAT, así como cualquier ajuste, diferencia, multa o reliquidación que la Administración Aduanera determine sobre la operación, son de cargo exclusivo del Mandante y serán asumidos por él. Numerada la DAM, LUXCARS le envía el aviso de pago con el número de liquidación y el monto exacto, y el Mandante los paga directamente a SUNAT, en soles, con su Clave SOL o en ventanilla bancaria, dentro de los dos días hábiles del aviso (hito H5), y remite el comprobante por su cuenta en el portal de LUXCARS. Si el Mandante lo pide conforme al numeral 5.6, LUXCARS los paga por su cuenta con los fondos del expediente y, si no alcanzan, el Mandante completa la diferencia dentro de los dos días hábiles del aviso."),
-      p("8.5 Al arribo del Vehículo, el Mandante deposita en Fondos de Clientes los gastos de aduana según la pro forma del agente de aduana (hito H4). LUXCARS paga con ellos al agente de aduana, al depósito temporal y a la grúa del puerto contra facturas a nombre del Mandante y los rinde uno por uno. Es un gasto reembolsable: el sobrante se descuenta del pago de la segunda mitad de los honorarios (hito H6) y el faltante se suma a ese pago; si el sobrante supera esa mitad, la diferencia se devuelve con la rendición de cuentas."),
-      p("8.6 Son también de cargo del Mandante el almacenaje o la sobreestadía generados por su demora en acreditar un hito o en pagar los tributos, y las multas derivadas de datos proporcionados por el Mandante o por el Vendedor. LUXCARS asiste en la respuesta a cualquier requerimiento aduanero."),
+      p("8.4 Los tributos de importación que liquide SUNAT, así como cualquier ajuste, diferencia, multa o reliquidación que la Administración Aduanera determine sobre la operación, son de cargo exclusivo del Mandante y serán asumidos por él. Numerada la DAM, LUXCARS le envía el aviso de pago con el número de liquidación y el monto exacto, y el Mandante los paga directamente a SUNAT, en soles, con su Clave SOL o en ventanilla bancaria, dentro de los dos días hábiles del aviso (Pago 4), y remite el comprobante por su cuenta en el portal de LUXCARS. Si el Mandante lo pide conforme al numeral 6.6, LUXCARS los paga por su cuenta con los fondos del expediente y, si no alcanzan, el Mandante completa la diferencia dentro de los dos días hábiles del aviso."),
+      p("8.5 Al arribo del Vehículo, el Mandante deposita en Fondos de Clientes los gastos de aduana según la pro forma del agente de aduana (Pago 3). LUXCARS paga con ellos al agente de aduana, al depósito temporal y a la grúa del puerto contra facturas a nombre del Mandante y los rinde uno por uno. Es un gasto reembolsable: el sobrante se descuenta del Pago 5 y el faltante se suma a ese pago; si el sobrante supera la segunda mitad de los honorarios, la diferencia se devuelve con la rendición de cuentas."),
+      p("8.6 Son también de cargo del Mandante el almacenaje o la sobreestadía generados por su demora en hacer un pago o en pagar los tributos, y las multas derivadas de datos proporcionados por el Mandante o por el Vendedor. LUXCARS asiste en la respuesta a cualquier requerimiento aduanero."),
       p("8.7 La percepción del IGV es un pago adelantado del impuesto a favor del Mandante y no un costo; su recuperación depende de la situación tributaria del Mandante. LUXCARS no garantiza su recuperación ni el tratamiento tributario o contable del Vehículo en los libros del Mandante."),
       p("8.8 Si el canal de control asignado por la Administración Aduanera implica reconocimiento físico, los gastos y la demora resultantes no son imputables a LUXCARS."),
 
@@ -148,15 +145,15 @@ function construir(c: Campos): Estructura {
       p("11.5 Riesgo. Desde que el dealer entrega el Vehículo al transportista, el riesgo de pérdida o daño es del Mandante como propietario y se cubre con la póliza contratada a su nombre por el 110 % del valor CIF, con cobertura todo riesgo, de almacén a almacén. LUXCARS gestiona el reclamo ante la aseguradora por cuenta del Mandante; los deducibles y las exclusiones de la póliza son de cargo del Mandante."),
 
       h2("Duodécima: Plazos"),
-      p(`12.1 El plazo estimado desde la acreditación del hito H1 hasta la entrega del Vehículo con placas es de ${c.SEMANAS_ESTIMADAS} semanas, con release estimado el ${c.FECHA_RELEASE}, zarpe estimado el ${c.FECHA_EST_EMBARQUE}, arribo estimado el ${c.FECHA_EST_ARRIBO} y entrega estimada el ${c.FECHA_EST_ENTREGA}.`),
+      p(`12.1 El plazo estimado desde la acreditación del Pago 1 hasta la entrega del Vehículo con placas es de ${c.SEMANAS_ESTIMADAS} semanas, con release estimado el ${c.FECHA_RELEASE}, zarpe estimado el ${c.FECHA_EST_EMBARQUE}, arribo estimado el ${c.FECHA_EST_ARRIBO} y entrega estimada el ${c.FECHA_EST_ENTREGA}.`),
       p("12.2 Los plazos son estimados. No son imputables a LUXCARS las demoras del Vendedor, del dealer, del transportista, de la naviera o de los puertos, de la Administración Aduanera (canal de control, reconocimiento físico, requerimientos), del MTC, de la SUNARP o de la entidad que fabrica las placas, las de fuerza mayor ni las causadas por el Mandante."),
-      p("12.3 LUXCARS informa al Mandante el avance en cada hito (compra, embarque, zarpe, arribo, numeración de la DAM, levante, inmatriculación, placas) y responde sus consultas dentro de un día hábil."),
+      p("12.3 LUXCARS informa al Mandante el avance en cada etapa (compra, embarque, zarpe, arribo, numeración de la DAM, levante, inmatriculación, placas) y responde sus consultas dentro de un día hábil."),
 
       h2("Décima tercera: Obligaciones del Mandante"),
       lista([
-        "a) Acreditar los fondos de cada hito en la oportunidad pactada y pagar los tributos directamente a SUNAT dentro del plazo del numeral 8.4.",
+        "a) Hacer cada pago de la cláusula tercera en la oportunidad pactada y pagar los tributos directamente a SUNAT dentro del plazo del numeral 8.4.",
         "b) Entregar información y documentos veraces y vigentes: vigencia de poder, DNI del representante, ficha RUC, declaración de origen de fondos (Anexo C) y los que requiera la Administración Aduanera.",
-        "c) Otorgar el mandato al agente de aduana (numeral 3.4) y mantener vigente el poder especial para la inmatriculación otorgado a LUXCARS; si la SUNARP exigiera la firma directa del propietario en algún documento, firmarlo dentro de los dos días hábiles de ser requerido.",
+        "c) Otorgar el mandato al agente de aduana (numeral 4.4) y mantener vigente el poder especial para la inmatriculación otorgado a LUXCARS; si la SUNARP exigiera la firma directa del propietario en algún documento, firmarlo dentro de los dos días hábiles de ser requerido.",
         `d) Recibir el Vehículo dentro de los cinco días hábiles siguientes al aviso de disponibilidad. Vencido ese plazo, el Vehículo queda en custodia a razón de USD ${c.TARIFA_CUSTODIA} por día calendario, pagaderos antes de la entrega.`,
         "e) Contratar el SOAT y el seguro vehicular desde la asignación de placas.",
         "f) Cumplir sus obligaciones tributarias como importador.",
@@ -168,8 +165,8 @@ function construir(c: Campos): Estructura {
       lista([
         "a) Actuar con la diligencia de un ordenado comerciante y dentro de los límites del mandato.",
         "b) Aplicar los fondos del Mandante únicamente a los fines de este Contrato, llevar el libro del expediente y conservar la documentación durante cinco años.",
-        "c) Informar el avance en cada hito y toda circunstancia que afecte el plazo, el costo o la viabilidad de la operación, dentro de un día hábil de conocida.",
-        "d) Entregar las constancias de recepción de fondos, los comprobantes de pago a terceros y los avisos de pago de los hitos H4 (gastos de aduana), H5 (liquidación de tributos) y H6 (honorarios netos del saldo de aduana).",
+        "c) Informar el avance en cada etapa y toda circunstancia que afecte el plazo, el costo o la viabilidad de la operación, dentro de un día hábil de conocida.",
+        "d) Entregar las constancias de recepción de fondos, los comprobantes de pago a terceros, los avisos de los Pagos 3 (gastos de aduana), 4 (tributos) y 5 (honorarios netos del saldo de aduana) y las constancias de las detracciones que deposite.",
         "e) Rendir cuentas al término del mandato conforme al artículo 1793 del Código Civil, con el acta de entrega y rendición de cuentas y la carpeta de documentos de la cláusula vigésima.",
         "f) Guardar reserva sobre la información del Mandante y usar sus datos personales solo para este Contrato.",
         "g) Mantener vigentes su RUC, sus poderes y su inscripción como sujeto obligado ante la UIF-Perú.",
@@ -178,12 +175,12 @@ function construir(c: Campos): Estructura {
       h2("Décima quinta: Desistimiento, incumplimiento y resolución"),
       p(
         usado
-          ? `15.1 Desistimiento antes del pago al Vendedor. El Mandante puede desistir sin expresión de causa comunicándolo por escrito antes de que LUXCARS gire el precio al Vendedor. En ese caso LUXCARS devuelve los fondos del hito H1 que estuvieran acreditados dentro de cinco días hábiles, menos el costo de la inspección del vehículo usado ya realizada (USD ${c.COSTO_INSPECCION}), y no se devenga honorario alguno.`
-          : "15.1 Desistimiento antes del pago al Vendedor. El Mandante puede desistir sin expresión de causa comunicándolo por escrito antes de que LUXCARS gire el precio al Vendedor. En ese caso LUXCARS devuelve íntegros los fondos del hito H1 que estuvieran acreditados dentro de cinco días hábiles y no se devenga honorario alguno: la búsqueda y la verificación previas no tienen costo para el Mandante.",
+          ? `15.1 Desistimiento antes del pago al Vendedor. El Mandante puede desistir sin expresión de causa comunicándolo por escrito antes de que LUXCARS gire el precio al Vendedor. En ese caso LUXCARS devuelve el Pago 1 que estuviera acreditado dentro de cinco días hábiles, menos el costo de la inspección del vehículo usado ya realizada (USD ${c.COSTO_INSPECCION}), y no se devenga honorario alguno.`
+          : "15.1 Desistimiento antes del pago al Vendedor. El Mandante puede desistir sin expresión de causa comunicándolo por escrito antes de que LUXCARS gire el precio al Vendedor. En ese caso LUXCARS devuelve íntegro el Pago 1 que estuviera acreditado dentro de cinco días hábiles y no se devenga honorario alguno: la búsqueda y la verificación previas no tienen costo para el Mandante.",
       ),
-      p("15.2 Desistimiento después del pago al Vendedor. El Vehículo es del Mandante y no cabe desistimiento frente a LUXCARS. Si el Mandante decide no continuar, puede instruir a LUXCARS la reventa o la reexportación por cuenta y costo del Mandante, con honorarios adicionales por acordar. En ese caso se devengan los honorarios de este Contrato en la siguiente proporción: 50 % si la decisión se comunica antes del embarque y 100 % después del embarque. Lo pagado en H3 se imputa a ese monto."),
-      p("15.3 Resolución por LUXCARS. LUXCARS puede resolver el Contrato mediante comunicación escrita si el Mandante: no acredita un hito o no paga los tributos dentro de los diez días hábiles siguientes al requerimiento; entrega información falsa o incompleta en el Anexo C, o se niega a ampliar la información que la normativa de prevención de lavado de activos exija; o impide con sus actos u omisiones que el Vehículo cumpla los requisitos de importación. Resuelto el Contrato, el Vehículo queda a disposición del Mandante en el lugar en que se encuentre, con los costos de almacenaje, gestión y entrega de documentos de su cargo, y LUXCARS devuelve los fondos no aplicados, deducidos los honorarios devengados conforme al numeral 15.2 y los gastos acreditados."),
-      p("15.4 Resolución por el Mandante. El Mandante puede resolver el Contrato si LUXCARS: aplica los fondos a fines distintos de este Contrato; no paga al Vendedor dentro de los tres días hábiles siguientes a la acreditación de H1, sin causa justificada; o no rinde cuentas ni informa pese a requerimiento escrito. Lo comunica por escrito dando cinco días hábiles para subsanar, salvo en el primer caso, en que la resolución es inmediata. Resuelto el Contrato, LUXCARS devuelve los fondos no aplicados y los honorarios no devengados dentro de cinco días hábiles y entrega toda la documentación del expediente."),
+      p("15.2 Desistimiento después del pago al Vendedor. El Vehículo es del Mandante y no cabe desistimiento frente a LUXCARS. Si el Mandante decide no continuar, puede instruir a LUXCARS la reventa o la reexportación por cuenta y costo del Mandante, con honorarios adicionales por acordar. En ese caso se devengan los honorarios de este Contrato en la siguiente proporción: 50 % si la decisión se comunica antes del embarque y 100 % después del embarque. La mitad de los honorarios ya pagada con el Pago 2 se imputa a ese monto."),
+      p("15.3 Resolución por LUXCARS. LUXCARS puede resolver el Contrato mediante comunicación escrita si el Mandante: no hace un pago de la cláusula tercera o no paga los tributos dentro de los diez días hábiles siguientes al requerimiento; entrega información falsa o incompleta en el Anexo C, o se niega a ampliar la información que la normativa de prevención de lavado de activos exija; o impide con sus actos u omisiones que el Vehículo cumpla los requisitos de importación. Resuelto el Contrato, el Vehículo queda a disposición del Mandante en el lugar en que se encuentre, con los costos de almacenaje, gestión y entrega de documentos de su cargo, y LUXCARS devuelve los fondos no aplicados, deducidos los honorarios devengados conforme al numeral 15.2 y los gastos acreditados."),
+      p("15.4 Resolución por el Mandante. El Mandante puede resolver el Contrato si LUXCARS: aplica los fondos a fines distintos de este Contrato; no paga al Vendedor dentro de los tres días hábiles siguientes a la acreditación del Pago 1, sin causa justificada; o no rinde cuentas ni informa pese a requerimiento escrito. Lo comunica por escrito dando cinco días hábiles para subsanar, salvo en el primer caso, en que la resolución es inmediata. Resuelto el Contrato, LUXCARS devuelve los fondos no aplicados y los honorarios no devengados dentro de cinco días hábiles y entrega toda la documentación del expediente."),
       p("15.5 Intereses. Toda suma que el Mandante no pague en la oportunidad pactada devenga el interés moratorio máximo permitido por ley desde el vencimiento hasta el pago."),
 
       h2("Décima sexta: Responsabilidad"),
@@ -227,7 +224,7 @@ function construir(c: Campos): Estructura {
 
 export const contrato: Plantilla = {
   tipo: "contrato",
-  version: "contrato@2026-11-27c",
+  version: "contrato@2026-11-27d",
   nombre: "Contrato de mandato",
   idioma: "es",
   tarea: "luxcars.generar_contrato",

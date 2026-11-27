@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { LUXCARS_CONFIG } from "@/lib/config";
 import {
+  CABECERA_PAGOS_RUTA,
   CUENTA_RUTA,
   DINERO_RUTA,
   FIRMAS_RUTA,
@@ -67,8 +68,8 @@ export default function RutaAPedidoPage() {
               </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
-              Cinco pasos, cinco pagos y una sola visita a la notaría. Tu dinero en una cuenta
-              separada, los tributos directo a SUNAT y cada movimiento visible desde tu cuenta en luxcars.pe.
+              Cinco pasos, cinco pagos y una sola visita a la notaría. Pagas todo a una sola cuenta
+              separada, salvo los tributos, que van directo a SUNAT, y ves cada movimiento desde tu cuenta en luxcars.pe.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button href={PDF_RUTA} variant="accent" size="lg" data-ga-cta="ruta_pdf">
@@ -124,9 +125,9 @@ export default function RutaAPedidoPage() {
                   {p.pagos?.length ? (
                     p.pagos.map((pago) => (
                       <div key={pago.numero} className="rounded-2xl border border-gold-dim/60 bg-void/40 p-4">
-                        <p className="eyebrow text-gold!">Pago {pago.numero}</p>
+                        <p className="eyebrow text-gold!">Pago {pago.numero} de 5</p>
                         <p className="mt-2 text-base font-semibold text-ink">{pago.titulo}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-ink-3">{pago.detalle}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-ink-3">{pago.monto}. {pago.donde}.</p>
                       </div>
                     ))
                   ) : (
@@ -150,36 +151,54 @@ export default function RutaAPedidoPage() {
           <SectionHeader
             eyebrow="Tu dinero"
             title="Cinco pagos, una cuenta separada"
-            description="Pagas cuando cada cosa toca, nunca mezclamos tu dinero con el nuestro y los tributos los pagas directo a SUNAT."
+            description="Todos tus pagos van a una sola cuenta, Fondos de Clientes, separada de la nuestra. Solo los tributos se pagan directo a SUNAT. Es la misma tabla de tu contrato."
           />
-          <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <ol className="grid gap-3">
-              {PAGOS_RUTA.map((pago) => (
-                <li key={pago.numero} className="panel-lux flex items-start gap-4 p-5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold-dim/70 font-mono text-sm text-gold">
+          {/* La tabla del contrato (Pago, Cuándo, Qué cubre, Monto, Dónde pagas), sin cifras: es una página pública. */}
+          <div role="table" aria-label="Tus cinco pagos" className="mt-10 overflow-hidden rounded-[22px] border border-line bg-surface text-sm">
+            <div role="row" className="hidden gap-4 border-b border-line px-5 py-3 text-[11px] uppercase tracking-[0.14em] text-ink-4 lg:grid lg:grid-cols-[7rem_minmax(0,1.1fr)_minmax(0,1.6fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
+              {CABECERA_PAGOS_RUTA.map((c) => (
+                <span key={c} role="columnheader">{c}</span>
+              ))}
+            </div>
+            {PAGOS_RUTA.map((pago) => (
+              <div
+                key={pago.numero}
+                role="row"
+                className="grid gap-2 border-b border-line/70 px-5 py-4 last:border-b-0 lg:grid-cols-[7rem_minmax(0,1.1fr)_minmax(0,1.6fr)_minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-4"
+              >
+                <p role="cell" className="flex items-center gap-3 font-semibold text-ink lg:block">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gold-dim/70 font-mono text-xs text-gold lg:hidden">
                     {pago.numero}
                   </span>
-                  <div>
-                    <h3 className="text-base font-semibold text-ink">{pago.titulo}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-3">{pago.detalle}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            <ul className="grid gap-px overflow-hidden rounded-[22px] border border-line bg-line sm:grid-cols-2">
-              {DINERO_RUTA.map((d) => (
-                <li key={d.titulo} className="flex items-start gap-4 bg-surface p-5">
-                  <span className="icon-lux">
-                    <Icon name={d.icon} size={20} />
-                  </span>
-                  <span>
-                    <h3 className="text-sm font-semibold text-ink">{d.titulo}</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-ink-3">{d.texto}</p>
-                  </span>
-                </li>
-              ))}
-            </ul>
+                  Pago {pago.numero} de 5
+                </p>
+                {[
+                  [CABECERA_PAGOS_RUTA[1], pago.cuando],
+                  [CABECERA_PAGOS_RUTA[2], pago.queCubre],
+                  [CABECERA_PAGOS_RUTA[3], pago.monto],
+                  [CABECERA_PAGOS_RUTA[4], pago.donde],
+                ].map(([etiqueta, texto]) => (
+                  <p key={etiqueta} role="cell" className="leading-relaxed text-ink-2">
+                    <span className="mr-1.5 text-[11px] uppercase tracking-[0.12em] text-ink-4 lg:hidden">{etiqueta}:</span>
+                    {texto}
+                  </p>
+                ))}
+              </div>
+            ))}
           </div>
+          <ul className="mt-8 grid gap-px overflow-hidden rounded-[22px] border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
+            {DINERO_RUTA.map((d) => (
+              <li key={d.titulo} className="flex items-start gap-4 bg-surface p-5">
+                <span className="icon-lux">
+                  <Icon name={d.icon} size={20} />
+                </span>
+                <span>
+                  <h3 className="text-sm font-semibold text-ink">{d.titulo}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-3">{d.texto}</p>
+                </span>
+              </li>
+            ))}
+          </ul>
           <p className="mt-6 text-sm text-ink-3">
             Los honorarios y cada tributo están explicados en la{" "}
             <Link href="/calculadora" className="font-medium text-ink underline underline-offset-4">

@@ -138,7 +138,15 @@ export async function POST(request: Request, { params }: Contexto) {
         ctx,
         plantillaAviso,
         plantillaAviso === "aviso_pago"
-          ? { hito: hitoAviso, montoUsd: h?.montoEstimadoUsd ?? null, fechaLimite: h?.fechaLimite ?? null, documento: filas[0].titulo }
+          ? {
+              hito: hitoAviso,
+              montoUsd: h?.montoEstimadoUsd ?? null,
+              fechaLimite: h?.fechaLimite ?? null,
+              documento: filas[0].titulo,
+              // Pago 4: el correo nombra la liquidación y el monto exacto en soles, como el aviso.
+              liquidacion: hitoAviso === "H5" ? (extra.LIQUIDACION_NUMERO ?? "").trim() || null : null,
+              montoSoles: hitoAviso === "H5" ? (extra.TRIBUTOS_SOLES ?? "").trim() || null : null,
+            }
           : { documento: filas[0].titulo },
         sesion.userId,
       );

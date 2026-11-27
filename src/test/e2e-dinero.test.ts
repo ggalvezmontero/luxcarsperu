@@ -14,6 +14,14 @@
  * broker con `comision_bancaria_usd` deja el cargo y la reposición sin mover el
  * saldo; el Pago 4 (H5) se declara en soles a la cuenta `directo` y queda
  * acreditado con el pago confirmado aunque la cifra difiera del estimado.
+ *
+ * Una sola cuenta (27 nov 2026): el Pago 2 es una sola transferencia a Fondos
+ * de Clientes que cubre el H2 y el H3; las tareas del pago se cierran recién
+ * con el pago completo; con cliente empresa nace la tarea de autodetracción a
+ * cinco días hábiles (la crea el servidor con la regla del core); la factura
+ * se aplica de Fondos de Clientes a Operaciones y la detracción se deposita en
+ * el Banco de la Nación con asientos internos sin hito, que el cliente no ve
+ * como pagos suyos y que no acreditan ningún pago.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -52,14 +60,27 @@ async function seq(): Promise<{ last_value: number; is_called: boolean }> {
 
 const claims = (sub: string) => JSON.stringify({ sub, role: "authenticated" });
 type Tx = NeonQueryFunctionInTransaction<false, false>;
-/** Corre una consulta como un usuario de la Data API: primero el rol, DESPUÉS los claims (el orden importa). */
-async function comoUsuario(sub: string, consulta: (tx: Tx) => NeonQueryInTransaction) {
-  const r = await sql.transaction((tx) => [
-    tx`set local role authenticated`,
-    tx`select set_config('request.jwt.claims', ${claims(sub)}, true)`,
-    consulta(tx),
-  ]);
-  return r[2] as unknown as Record<string, unknown>[];
+/**
+ * Corre una consulta como un usuario de la Data API: primero el rol, DESPUÉS los claims (el orden importa).
+ * Esta suplantación por HTTP a veces no ve los claims justo después de consultas del dueño
+ * (`auth.uid()` llega nulo y la función responde "Tu sesión no está activa"); en producción la
+ * Data API firma cada petición. Por eso, solo ante ese error, se reintenta una vez.
+ */
+async function comoUsuario(sub: string, consulta: (tx: Tx) => NeonQueryInTransaction, intento = 1): Promise<Record<string, unknown>[]> {
+  try {
+    const r = await sql.transaction((tx) => [
+      tx`set local role authenticated`,
+      tx`select set_config('request.jwt.claims', ${claims(sub)}, true)`,
+      consulta(tx),
+    ]);
+    return r[2] as unknown as Record<string, unknown>[];
+  } catch (error) {
+    if (intento === 1 && error instanceof Error && /Tu sesión no está activa/.test(error.message)) {
+      await new Promise((listo) => setTimeout(listo, 500));
+      return comoUsuario(sub, consulta, 2);
+    }
+    throw error;
+  }
 }
 
 describe.skipIf(!ACTIVA)("fase 3 de punta a punta (base y bucket reales)", () => {
@@ -105,7 +126,10 @@ describe.skipIf(!ACTIVA)("fase 3 de punta a punta (base y bucket reales)", () =>
       (${expedienteId}::uuid, 'contrato', 'luxcars.confirmar_h1', 'Confirmar H1 y emitir la constancia de fondos', 'luxcars', false),
       (${expedienteId}::uuid, 'contrato', 'cliente.firmar_contrato_loa', 'Firmar en notaría', 'cliente', true),
       (${expedienteId}::uuid, 'contrato', 'cliente.depositar_h5', 'Pago 4: pagar los tributos directamente a SUNAT (hito H5)', 'cliente', true),
-      (${expedienteId}::uuid, 'contrato', 'luxcars.confirmar_h5', 'Confirmar el pago de tributos', 'luxcars', false)`;
+      (${expedienteId}::uuid, 'contrato', 'luxcars.confirmar_h5', 'Confirmar el pago de tributos', 'luxcars', false),
+      (${expedienteId}::uuid, 'contrato', 'cliente.depositar_h2', 'Pago 2 de 5: flete, seguro y primera mitad de los honorarios', 'cliente', true),
+      (${expedienteId}::uuid, 'contrato', 'luxcars.confirmar_h2', 'Confirmar el Pago 2 y emitir la constancia', 'luxcars', false),
+      (${expedienteId}::uuid, 'contrato', 'luxcars.factura_h3', 'Emitir la factura 1 de honorarios y aplicarla desde Fondos de Clientes', 'luxcars', false)`;
   }, 60_000);
 
   afterAll(async () => {
@@ -152,7 +176,7 @@ describe.skipIf(!ACTIVA)("fase 3 de punta a punta (base y bucket reales)", () =>
 
     const movs = (await sql`select id, tipo, cuenta, hito, estado, moneda, monto::float8 as monto, monto_usd::float8 as monto_usd, concepto, documento_ref, comprobante_path, declarado_por_cliente from public.expediente_movimientos where expediente_id = ${expedienteId}::uuid`) as unknown as Record<string, unknown>[];
     expect(movs).toHaveLength(1);
-    expect(movs[0]).toMatchObject({ tipo: "deposito", cuenta: "fondos_clientes", hito: "H1", estado: "por_confirmar", moneda: "USD", monto: 70920, monto_usd: 70920, concepto: "Depósito H1 declarado por el cliente", documento_ref: "BCP · op. 00123456", comprobante_path: comprobante, declarado_por_cliente: true });
+    expect(movs[0]).toMatchObject({ tipo: "deposito", cuenta: "fondos_clientes", hito: "H1", estado: "por_confirmar", moneda: "USD", monto: 70920, monto_usd: 70920, concepto: "Pago 1 de 5 declarado por el cliente", documento_ref: "BCP · op. 00123456", comprobante_path: comprobante, declarado_por_cliente: true });
     declaradoId = movs[0].id as string;
 
     const [tarea] = (await sql`select estado from public.expediente_tareas where expediente_id = ${expedienteId}::uuid and clave = 'cliente.depositar_h1'`) as unknown as { estado: string }[];
@@ -161,7 +185,7 @@ describe.skipIf(!ACTIVA)("fase 3 de punta a punta (base y bucket reales)", () =>
     expect(aprobaciones).toHaveLength(1);
     expect(aprobaciones[0].payload.movimiento_id).toBe(declaradoId);
     const eventos = (await sql`select titulo, visible_cliente, movimiento_id from public.expediente_eventos where expediente_id = ${expedienteId}::uuid order by created_at`) as unknown as { titulo: string; visible_cliente: boolean; movimiento_id: string }[];
-    expect(eventos.at(-1)).toMatchObject({ titulo: "Declaraste un depósito del hito H1", visible_cliente: true, movimiento_id: declaradoId });
+    expect(eventos.at(-1)).toMatchObject({ titulo: "Declaraste el Pago 1 de 5", visible_cliente: true, movimiento_id: declaradoId });
 
     // Un segundo depósito parcial se puede declarar mientras la tarea siga pendiente.
     await comoUsuario(CLIENTE_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'declarar_deposito', ${JSON.stringify({ hito: "H1", monto: 500, fecha: "2026-11-21", banco: "Interbank" })}::jsonb)`);
@@ -205,7 +229,7 @@ describe.skipIf(!ACTIVA)("fase 3 de punta a punta (base y bucket reales)", () =>
     expect(confirmado.notaInterna).toBe("Llegaron 0.50 menos por comisión del banco.");
     expect(estadoHito(ctx.hitos.find((h) => h.tipo === "H1")!, ctx.movimientos)).toBe("acreditado");
 
-    const fijos = { LUXCARS_RUC: "20600000001", LUXCARS_DOMICILIO: "Calle Prueba 184", LUXCARS_PARTIDA: "1", LUXCARS_REPRESENTANTE: "Representante Prueba", LUXCARS_REP_DNI: "40000000", LUXCARS_CORREO: "info@luxcars.pe", LUXCARS_TELEFONO: "+51 980 794 348", CTA_OPER_BANCO: "BCP", CTA_OPER_NUMERO: "1", CTA_OPER_CCI: "1", CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "2", CTA_FONDOS_CCI: "2", CTA_DETRACCION_NUMERO: "3", PORCENTAJE_DETRACCION: "12", CIUDAD_FIRMA: "Lima", DIAS_ESPERA_MAX: "15" };
+    const fijos = { LUXCARS_RUC: "20600000001", LUXCARS_DOMICILIO: "Calle Prueba 184", LUXCARS_PARTIDA: "1", LUXCARS_REPRESENTANTE: "Representante Prueba", LUXCARS_REP_DNI: "40000000", LUXCARS_CORREO: "info@luxcars.pe", LUXCARS_TELEFONO: "+51 980 794 348", CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "2", CTA_FONDOS_CCI: "2", CTA_DETRACCION_NUMERO: "3", PORCENTAJE_DETRACCION: "12", CIUDAD_FIRMA: "Lima", DIAS_ESPERA_MAX: "15" };
     const r = await emitirDocumento(plantillaDe("constancia_fondos")!, ctx, { actorId: ADMIN, extra: {}, porDefecto: fijos, visibleCliente: true, movimiento: confirmado });
     expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
     if (!r.ok) return;
@@ -254,9 +278,9 @@ describe.skipIf(!ACTIVA)("fase 3 de punta a punta (base y bucket reales)", () =>
     ).rejects.toThrow(/soles debe ser mayor que cero/);
     await comoUsuario(CLIENTE_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'declarar_deposito', ${JSON.stringify({ hito: "H5", monto: 27587.85, soles: 103920.02, fecha: "2026-11-23", banco: "Clave SOL", operacion: "Liquidación 118-2026-0001234" })}::jsonb)`);
     const [m] = (await sql`select id, cuenta, moneda, monto::float8 as monto, tipo_cambio::float8 as tipo_cambio, monto_usd::float8 as monto_usd, concepto, documento_ref, estado from public.expediente_movimientos where expediente_id = ${expedienteId}::uuid and hito = 'H5'`) as unknown as Record<string, unknown>[];
-    expect(m).toMatchObject({ cuenta: "directo", moneda: "PEN", monto: 103920.02, tipo_cambio: 0.2655, monto_usd: 27587.85, concepto: "Pago directo a SUNAT (H5) declarado por el cliente", documento_ref: "Clave SOL · Liquidación 118-2026-0001234", estado: "por_confirmar" });
+    expect(m).toMatchObject({ cuenta: "directo", moneda: "PEN", monto: 103920.02, tipo_cambio: 0.2655, monto_usd: 27587.85, concepto: "Pago 4 de 5 pagado directo a SUNAT, declarado por el cliente", documento_ref: "Clave SOL · Liquidación 118-2026-0001234", estado: "por_confirmar" });
     const [declarado] = (await sql`select titulo, detalle from public.expediente_eventos where expediente_id = ${expedienteId}::uuid and movimiento_id = ${m.id as string}::uuid order by created_at`) as unknown as { titulo: string; detalle: string }[];
-    expect(declarado.titulo).toBe("Declaraste el pago de tributos a SUNAT (H5)");
+    expect(declarado.titulo).toBe("Declaraste el Pago 4 de 5: tributos pagados a SUNAT");
     expect(declarado.detalle).toContain("S/ 103,920.02 (USD 27,587.85) pagados a SUNAT");
 
     // El equipo confirma: mantiene los dólares de la DAM y el H5 queda acreditado aunque el estimado era 30,000.
@@ -266,7 +290,7 @@ describe.skipIf(!ACTIVA)("fase 3 de punta a punta (base y bucket reales)", () =>
     const tareas = (await sql`select clave, estado from public.expediente_tareas where expediente_id = ${expedienteId}::uuid and clave in ('cliente.depositar_h5', 'luxcars.confirmar_h5') order by clave`) as unknown as { clave: string; estado: string }[];
     expect(tareas).toEqual([{ clave: "cliente.depositar_h5", estado: "hecha" }, { clave: "luxcars.confirmar_h5", estado: "hecha" }]);
     const [confirmado] = (await sql`select titulo from public.expediente_eventos where expediente_id = ${expedienteId}::uuid and movimiento_id = ${m.id as string}::uuid order by created_at desc limit 1`) as unknown as { titulo: string }[];
-    expect(confirmado.titulo).toBe("Pago a SUNAT confirmado · H5");
+    expect(confirmado.titulo).toBe("Pago 4 de 5 confirmado: tributos pagados a SUNAT");
 
     const { cargarContextoServidor } = await import("@/lib/expedientes/servidor/contexto");
     const { estadoHito } = await import("@/core/expedientes/hitos");
@@ -280,4 +304,88 @@ describe.skipIf(!ACTIVA)("fase 3 de punta a punta (base y bucket reales)", () =>
     const vista = await comoUsuario(CLIENTE_USER, (tx) => tx`select cuenta, moneda, monto_usd::float8 as monto_usd from public.expediente_movimiento_cliente where expediente_id = ${expedienteId}::uuid and hito = 'H5'`);
     expect(vista).toEqual([{ cuenta: "directo", moneda: "PEN", monto_usd: 27587.85 }]);
   }, 120_000);
+
+  it("el Pago 2 es una sola transferencia; con el pago completo nace la autodetracción, se aplica la factura 1 y se deposita la detracción", async () => {
+    const { cargarContextoServidor } = await import("@/lib/expedientes/servidor/contexto");
+    const { crearTareasTrasConfirmar } = await import("@/lib/expedientes/servidor/tareasHonorarios");
+    const { sumarDiasHabiles } = await import("@/core/expedientes/hitos");
+    const { estadoPagos, saldoFondos } = await import("@/core/expedientes/ledger");
+    const { alertas } = await import("@/core/expedientes/alertas");
+    const ctx0 = (await cargarContextoServidor(expedienteId))!;
+    const h2 = ctx0.hitos.find((h) => h.tipo === "H2")!.montoEstimadoUsd;
+    const h3 = ctx0.hitos.find((h) => h.tipo === "H3")!.montoEstimadoUsd;
+    const total = Math.round((h2 + h3) * 100) / 100;
+    const tareasDe = async () => Object.fromEntries(((await sql`select clave, estado, vence_el::text as vence_el from public.expediente_tareas where expediente_id = ${expedienteId}::uuid`) as unknown as { clave: string; estado: string; vence_el: string | null }[]).map((t) => [t.clave, t]));
+
+    // Una primera transferencia que solo cubre el flete y el seguro: el H2 queda acreditado pero el pago no, y sus tareas siguen pendientes.
+    await sql`select public.registrar_movimiento(${JSON.stringify({ expediente_id: expedienteId, tipo: "deposito", cuenta: "fondos_clientes", hito: "H2", fecha: "2026-12-03", monto: h2, documento_ref: "BCP · op. 1" })}::jsonb, ${ADMIN}::uuid)`;
+    let t = await tareasDe();
+    expect(t["cliente.depositar_h2"].estado).toBe("pendiente");
+    expect(t["luxcars.confirmar_h2"].estado).toBe("pendiente");
+    const ctx1 = (await cargarContextoServidor(expedienteId))!;
+    expect(estadoPagos(ctx1.hitos, ctx1.movimientos).find((p) => p.pago === 2)).toMatchObject({ estado: "parcial", pendiente: h3 });
+    // Sin el pago completo no nace la autodetracción.
+    expect(await crearTareasTrasConfirmar(ctx1, ctx1.movimientos.find((m) => m.hito === "H2" && m.tipo === "deposito")!)).toEqual([]);
+
+    // El resto lo declara el cliente como Pago 2 (cuenta Fondos de Clientes) y el equipo lo confirma: el pago queda completo.
+    await comoUsuario(CLIENTE_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'declarar_deposito', ${JSON.stringify({ hito: "H2", monto: h3, fecha: "2026-11-26", banco: "BCP" })}::jsonb)`);
+    const [resto] = (await sql`select id, cuenta, concepto from public.expediente_movimientos where expediente_id = ${expedienteId}::uuid and hito = 'H2' and estado = 'por_confirmar'`) as unknown as { id: string; cuenta: string; concepto: string }[];
+    expect(resto).toMatchObject({ cuenta: "fondos_clientes", concepto: "Pago 2 de 5 declarado por el cliente" });
+    // El equipo lo confirma con la fecha en que se acreditó (viernes 4 de diciembre).
+    await sql`select public.registrar_movimiento(${JSON.stringify({ id: resto.id, estado: "confirmado", fecha: "2026-12-04" })}::jsonb, ${ADMIN}::uuid)`;
+    t = await tareasDe();
+    expect(t["cliente.depositar_h2"].estado).toBe("hecha");
+    expect(t["luxcars.confirmar_h2"].estado).toBe("hecha");
+    const [titulo] = (await sql`select titulo from public.expediente_eventos where movimiento_id = ${resto.id}::uuid order by created_at desc limit 1`) as unknown as { titulo: string }[];
+    expect(titulo.titulo).toBe("Pago 2 de 5 confirmado");
+
+    // Cliente empresa: la confirmación hace nacer la autodetracción a cinco días hábiles (viernes 4 + 5, con el 8 y el 9 de diciembre feriados).
+    const ctx2 = (await cargarContextoServidor(expedienteId))!;
+    expect(estadoPagos(ctx2.hitos, ctx2.movimientos).find((p) => p.pago === 2)).toMatchObject({ estado: "acreditado", acreditado: total });
+    const confirmado = ctx2.movimientos.find((m) => m.id === resto.id)!;
+    expect(await crearTareasTrasConfirmar(ctx2, confirmado)).toEqual(["luxcars.autodetraccion_h3"]);
+    t = await tareasDe();
+    expect(t["luxcars.autodetraccion_h3"]).toMatchObject({ estado: "pendiente", vence_el: sumarDiasHabiles("2026-12-04", 5) });
+    expect(t["luxcars.autodetraccion_h3"].vence_el).toBe("2026-12-15");
+    // No se repite.
+    const ctx3 = (await cargarContextoServidor(expedienteId))!;
+    expect(await crearTareasTrasConfirmar(ctx3, confirmado)).toEqual([]);
+    // Vencida, el cron la alerta.
+    expect(alertas(ctx3, new Date("2026-12-16T15:00:00Z")).map((a) => a.clave)).toContain("autodetraccion_vencida_h3");
+
+    // Aplicar la factura 1: exige número y factura válida; arma el par interno y cierra la tarea de la factura.
+    await expect(sql`select public.registrar_movimiento(${JSON.stringify({ expediente_id: expedienteId, operacion: "aplicar_honorarios", factura: 1, monto: h3, fecha: "2026-12-04" })}::jsonb, ${ADMIN}::uuid)`).rejects.toThrow(/número de la factura/);
+    await expect(sql`select public.registrar_movimiento(${JSON.stringify({ expediente_id: expedienteId, operacion: "aplicar_honorarios", factura: 3, monto: h3, documento_ref: "F001-1" })}::jsonb, ${ADMIN}::uuid)`).rejects.toThrow(/factura de honorarios: 1/);
+    await sql`select public.registrar_movimiento(${JSON.stringify({ expediente_id: expedienteId, operacion: "aplicar_honorarios", factura: 1, monto: h3, fecha: "2026-12-04", documento_ref: "F001-000101" })}::jsonb, ${ADMIN}::uuid)`;
+    // Autodetracción en soles, con la constancia del Banco de la Nación.
+    await expect(sql`select public.registrar_movimiento(${JSON.stringify({ expediente_id: expedienteId, operacion: "autodetraccion", factura: 1, moneda: "PEN", monto: 2110, fecha: "2026-12-10" })}::jsonb, ${ADMIN}::uuid)`).rejects.toThrow(/tipo de cambio/);
+    await sql`select public.registrar_movimiento(${JSON.stringify({ expediente_id: expedienteId, operacion: "autodetraccion", factura: 1, moneda: "PEN", monto: 2110, tipo_cambio: 0.2659, fecha: "2026-12-10", documento_ref: "BN 123456789" })}::jsonb, ${ADMIN}::uuid)`;
+    t = await tareasDe();
+    expect(t["luxcars.factura_h3"].estado).toBe("hecha");
+    expect(t["luxcars.autodetraccion_h3"].estado).toBe("hecha");
+    // Cada par nace en la misma transacción: el pago (sale) y el depósito (entra); en la enum el depósito va primero, por eso `tipo desc`.
+    const internos = (await sql`select tipo, cuenta, hito, monto_usd::float8 as monto_usd, concepto, documento_ref from public.expediente_movimientos where expediente_id = ${expedienteId}::uuid and hito is null and (concepto like 'Aplicación%' or concepto like 'Honorarios recibidos%' or concepto like 'Detracción%') order by created_at, tipo desc`) as unknown as Record<string, unknown>[];
+    expect(internos).toEqual([
+      { tipo: "pago", cuenta: "fondos_clientes", hito: null, monto_usd: h3, concepto: "Aplicación de honorarios · factura 1 F001-000101", documento_ref: "F001-000101" },
+      { tipo: "deposito", cuenta: "operaciones", hito: null, monto_usd: h3, concepto: "Honorarios recibidos desde Fondos de Clientes · factura 1 F001-000101", documento_ref: "F001-000101" },
+      { tipo: "pago", cuenta: "operaciones", hito: null, monto_usd: 561.05, concepto: "Detracción de la factura 1 depositada en el Banco de la Nación (autodetracción)", documento_ref: "BN 123456789" },
+      { tipo: "deposito", cuenta: "detracciones", hito: null, monto_usd: 561.05, concepto: "Detracción de la factura 1 (autodetracción)", documento_ref: "BN 123456789" },
+    ]);
+
+    // Saldos: la factura salió de Fondos de Clientes; Operaciones queda con los honorarios menos la detracción; el Pago 2 sigue igual.
+    const ctx4 = (await cargarContextoServidor(expedienteId))!;
+    const saldo = saldoFondos(ctx4.movimientos);
+    expect(saldo.operaciones).toBe(Math.round((h3 - 561.05) * 100) / 100);
+    expect(saldo.detracciones).toBe(561.05);
+    expect(saldo.fondos_clientes).toBe(Math.round((saldoFondos(ctx2.movimientos).fondos_clientes - h3) * 100) / 100);
+    expect(estadoPagos(ctx4.hitos, ctx4.movimientos).find((p) => p.pago === 2)!.acreditado).toBe(total);
+    expect(estadoPagos(ctx4.hitos, ctx4.movimientos).find((p) => p.pago === 5)!.acreditado).toBe(0);
+
+    // El cliente ve la factura aplicada en su cuenta Fondos de Clientes y los avisos; no ve Operaciones ni la cuenta de detracciones.
+    const vista = await comoUsuario(CLIENTE_USER, (tx) => tx`select cuenta, tipo, concepto from public.expediente_movimiento_cliente where expediente_id = ${expedienteId}::uuid and hito is null`);
+    expect(vista.some((v) => v.cuenta === "operaciones" || v.cuenta === "detracciones")).toBe(false);
+    expect(vista).toContainEqual({ cuenta: "fondos_clientes", tipo: "pago", concepto: "Aplicación de honorarios · factura 1 F001-000101" });
+    const eventos = await comoUsuario(CLIENTE_USER, (tx) => tx`select titulo from public.expediente_evento_cliente where expediente_id = ${expedienteId}::uuid`);
+    expect(eventos.map((e) => e.titulo)).toEqual(expect.arrayContaining(["Factura 1 de honorarios aplicada", "Detracción de la factura 1 depositada"]));
+  }, 180_000);
 });

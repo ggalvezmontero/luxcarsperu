@@ -213,11 +213,11 @@ describe("presupuesto", () => {
     expect(p.lineas.find((l) => l.clave === "honorarios")?.concepto).toMatch(/gestión registral y placas incluidas/);
     expect(p.honorariosBase + p.honorariosIgv).toBeCloseTo(p.honorarios, 1);
     expect(p.honorariosBase).toBeCloseTo(p.honorarios / (1 + IGV_HONORARIOS), 1);
-    // Una cuenta por hito: Fondos de Clientes, Operaciones (honorarios) y directo a SUNAT (tributos).
+    // Una sola cuenta para el cliente (27 nov 2026): todo a Fondos de Clientes, salvo los tributos (directo a SUNAT).
     for (const x of p.hitos) expect(x.cuenta).toBe(CUENTA_POR_HITO[x.tipo]);
-    expect(p.hitos.filter((x) => x.cuenta === "operaciones").map((x) => x.tipo)).toEqual(["H3", "H6"]);
+    expect(p.hitos.filter((x) => x.cuenta === "operaciones")).toEqual([]);
     expect(p.hitos.filter((x) => x.cuenta === "directo").map((x) => x.tipo)).toEqual(["H5"]);
-    expect(p.hitos.filter((x) => x.cuenta === "fondos_clientes").map((x) => x.tipo)).toEqual(["H1", "H2", "H4"]);
+    expect(p.hitos.filter((x) => x.cuenta === "fondos_clientes").map((x) => x.tipo)).toEqual(["H1", "H2", "H3", "H4", "H6"]);
   });
 
   it("la inspección solo existe en usados: en un nuevo no hay línea ni costo aunque llegue un monto", () => {
@@ -286,10 +286,10 @@ describe("hitos", () => {
     expect(por.H6.fechaLimite).toBe("2027-02-25");
     expect(por.H1.cuenta).toBe("fondos_clientes");
     expect(por.H2.cuenta).toBe("fondos_clientes");
-    expect(por.H3.cuenta).toBe("operaciones");
+    expect(por.H3.cuenta).toBe("fondos_clientes");
     expect(por.H4.cuenta).toBe("fondos_clientes");
     expect(por.H5.cuenta).toBe("directo");
-    expect(por.H6.cuenta).toBe("operaciones");
+    expect(por.H6.cuenta).toBe("fondos_clientes");
     // Una fecha límite explícita del Pago 2 manda sobre el release; el levante estimado manda sobre arribo + 10.
     const con = Object.fromEntries(hitosDesde(p, { fechaLimitePago2: "2026-12-10", fechaReleaseEst: "2026-12-18", fechaEstArribo: "2027-02-15", fechaEstLevante: "2027-02-20" }).map((h) => [h.tipo, h.fechaLimite]));
     expect(con.H2).toBe("2026-12-10");
@@ -358,8 +358,14 @@ describe("etapas", () => {
     // El depósito del cliente nace en la etapa que corresponde a cada pago.
     const etapaDe = (clave: string) => ETAPAS.find((e) => e.tareas.some((t) => t.clave === clave))!.clave;
     expect(etapaDe("cliente.depositar_h1")).toBe("contrato");
+    // El Pago 2 (H2 + H3) es una sola transferencia: una sola tarea del cliente y una de confirmación.
     expect(etapaDe("cliente.depositar_h2")).toBe("embarque");
-    expect(etapaDe("cliente.depositar_h3")).toBe("embarque");
+    expect(TAREA_CLIENTE_POR_HITO.H3).toBe("cliente.depositar_h2");
+    expect(TAREA_LUXCARS_POR_HITO.H3).toBe("luxcars.confirmar_h2");
+    expect(claves.has("cliente.depositar_h3")).toBe(false);
+    // Las facturas de honorarios: la 1 al embarcar, la 2 en placas.
+    expect(etapaDe("luxcars.factura_h3")).toBe("embarque");
+    expect(etapaDe("luxcars.factura_h6")).toBe("placas");
     expect(etapaDe("cliente.depositar_h4")).toBe("transito");
     expect(etapaDe("cliente.depositar_h5")).toBe("aduana");
     expect(etapaDe("cliente.depositar_h6")).toBe("placas");
@@ -538,7 +544,8 @@ describe("avance", () => {
     expect(tareasParaEtapa("embarque", ctx).map((t) => t.clave)).toContain("cliente.elegir_consolidado");
     const embarque = tareasParaEtapa("embarque", ctx);
     expect(embarque.find((t) => t.clave === "cliente.depositar_h2")?.venceEl).toBe("2026-12-15");
-    expect(embarque.find((t) => t.clave === "cliente.depositar_h3")?.venceEl).toBe("2026-12-15");
+    expect(embarque.find((t) => t.clave === "cliente.depositar_h2")?.titulo).toBe("Pago 2 de 5: flete, seguro y primera mitad de los honorarios");
+    expect(embarque.some((t) => t.clave === "cliente.depositar_h3")).toBe(false);
     const contrato = tareasParaEtapa("contrato", ctx);
     expect(contrato.find((t) => t.clave === "cliente.depositar_h1")?.venceEl).toBe("2026-12-01");
     expect(contrato.find((t) => t.clave === "sistema.abrir_libro")?.estado).toBe("hecha");
@@ -549,7 +556,7 @@ describe("avance", () => {
     expect(tareasParaEtapa("aduana", ctx).find((t) => t.clave === "cliente.depositar_h5")?.venceEl).toBeNull();
     ctx.hitos = [
       { tipo: "H5", montoEstimadoUsd: 1, fechaLimite: "2027-02-16", cuenta: "directo", nota: null },
-      { tipo: "H6", montoEstimadoUsd: 1, fechaLimite: "2027-02-20", cuenta: "operaciones", nota: null },
+      { tipo: "H6", montoEstimadoUsd: 1, fechaLimite: "2027-02-20", cuenta: "fondos_clientes", nota: null },
     ];
     expect(tareasParaEtapa("aduana", ctx).find((t) => t.clave === "cliente.depositar_h5")?.venceEl).toBe("2027-02-16");
     // Placas: el Pago 5 (H6) vence en la fecha del hito.

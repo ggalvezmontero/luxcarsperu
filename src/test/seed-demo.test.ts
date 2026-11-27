@@ -6,10 +6,14 @@
  * cuenta del cliente en una reunión, con el flujo del 27 nov 2026: búsqueda sin
  * costo y aprobación de la unidad, una sola firma en notaría (contrato, anexos,
  * LOA y poder), Pago 1 (precio) con su constancia, wire al broker con la
- * comisión del banco repuesta por Luxcars, Pago 2 (flete y seguro + 50 % de
- * honorarios) y el aviso del Pago 3 (gastos de aduana) emitido con el botón
- * "Ya transferí" pendiente. Hace lo mismo que haría el equipo desde el portal,
- * con las mismas funciones SQL y el mismo generador de documentos.
+ * comisión del banco repuesta por Luxcars, Pago 2 en una sola transferencia a
+ * Fondos de Clientes (flete, seguro y primera mitad de los honorarios), la
+ * factura 1 aplicada desde Fondos de Clientes con su autodetracción en el
+ * Banco de la Nación (una sola cuenta para el cliente, 27 nov 2026) y el aviso
+ * del Pago 3 (gastos de aduana) emitido con el botón "Ya transferí"
+ * pendiente. Hace lo mismo que haría el equipo desde el portal, con las mismas
+ * funciones SQL, el mismo generador de documentos y la misma regla del core
+ * para la tarea de autodetracción.
  *
  *   SEED_DEMO=1 npx vitest run src/test/seed-demo.test.ts
  *   SEED_DEMO=1 SEED_DEMO_RESET=1 npx vitest run src/test/seed-demo.test.ts   (borra la demo anterior y la rehace)
@@ -74,6 +78,7 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
     const { entradaPorDefecto, presupuestar } = await import("@/core/expedientes/presupuesto");
     const { hitosDesde } = await import("@/core/expedientes/hitos");
     const { monto } = await import("@/core/expedientes/campos");
+    const { crearTareasTrasConfirmar } = await import("@/lib/expedientes/servidor/tareasHonorarios");
     const { EXPEDIENTES_BUCKET, subirObjeto, listarObjetos, borrarObjeto } = await import("@/lib/portal/objectStorage");
 
     // ── La cuenta demo tiene que existir (la crea el dueño o Neon) ────────────
@@ -161,7 +166,6 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
     const fijos = {
       LUXCARS_PARTIDA: "(por confirmar)", LUXCARS_REP_DNI: "(por confirmar)", LUXCARS_REPRESENTANTE: "Gianfranco Gálvez Montero",
       LUXCARS_RUC: "20615410935", LUXCARS_DOMICILIO: "Calle Dionisio Derteano 184, Of. 1102, San Isidro, Lima",
-      CTA_OPER_BANCO: "BCP", CTA_OPER_NUMERO: "(por confirmar)", CTA_OPER_CCI: "(por confirmar)",
       CTA_FONDOS_BANCO: "BCP", CTA_FONDOS_NUMERO: "(por confirmar)", CTA_FONDOS_CCI: "(por confirmar)", CTA_DETRACCION_NUMERO: "(por confirmar)",
       PORCENTAJE_DETRACCION: "12", DIAS_ESPERA_MAX: "15", CIUDAD_FIRMA: "Lima", TC_REFERENCIAL: "3.7500",
       ...(await camposFijosLuxcars()),
@@ -196,13 +200,19 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
       return r.id as string;
     };
     const movimiento = async (id: string) => (await cargarContextoServidor(expedienteId))!.movimientos.find((m) => m.id === id)!;
-    /** El cliente declara desde su cuenta y el equipo confirma: como en la vida real. */
-    const depositoDelCliente = async (h: string, fecha: string, operacion: string) => {
-      await comoUsuario(DEMO_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'declarar_deposito', ${JSON.stringify({ hito: h, monto: hito(h).montoEstimadoUsd, fecha, banco: "BCP", operacion })}::jsonb)`);
+    /**
+     * El cliente declara el pago completo desde su cuenta y el equipo confirma:
+     * como en la vida real. El Pago 2 es una sola transferencia (H2 + H3). Al
+     * confirmar, la ruta de movimientos emite la constancia y crea las tareas
+     * que nacen del pago (la autodetracción con cliente empresa).
+     */
+    const depositoDelCliente = async (h: string, fecha: string, operacion: string, montoPago = hito(h).montoEstimadoUsd) => {
+      await comoUsuario(DEMO_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'declarar_deposito', ${JSON.stringify({ hito: h, monto: montoPago, fecha, banco: "BCP", operacion })}::jsonb)`);
       const declarado = await uno(sql`select id from public.expediente_movimientos where expediente_id = ${expedienteId}::uuid and hito = ${h}::public.tipo_hito and estado = 'por_confirmar'`);
       const id = declarado.id as string;
       await mover({ id, estado: "confirmado", fecha });
       await emitir("constancia_fondos", true, {}, await movimiento(id));
+      await crearTareasTrasConfirmar((await cargarContextoServidor(expedienteId))!, await movimiento(id));
       return id;
     };
 
@@ -236,9 +246,17 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
     for (const clave of ["luxcars.wire_vendedor", "luxcars.bill_of_sale", "luxcars.doc_propiedad_forwarder", "luxcars.coordinar_release"]) await completar(expedienteId, clave);
     await avanzar("embarque");
 
-    // ── EMBARQUE: Pago 2 (flete y seguro + 50 % de honorarios) ────────────────
-    await depositoDelCliente("H2", "2026-11-17", "0458810");
-    await depositoDelCliente("H3", "2026-11-17", "0458811");
+    // ── EMBARQUE: Pago 2 en una sola transferencia (flete, seguro y 50 % de honorarios) ──
+    const pago2 = Math.round((hito("H2").montoEstimadoUsd + hito("H3").montoEstimadoUsd) * 100) / 100;
+    await depositoDelCliente("H2", "2026-11-17", "0458810", pago2);
+    const tareaDetraccion = await uno(sql`select estado, vence_el::text as vence_el from public.expediente_tareas where expediente_id = ${expedienteId}::uuid and clave = 'luxcars.autodetraccion_h3'`);
+    // Martes 17 de noviembre + cinco días hábiles.
+    expect(tareaDetraccion).toEqual({ estado: "pendiente", vence_el: "2026-11-24" });
+    // Factura 1: su importe pasa de Fondos de Clientes a Operaciones el día de su emisión.
+    await mover({ operacion: "aplicar_honorarios", factura: 1, monto: hito("H3").montoEstimadoUsd, fecha: "2026-11-17", documento_ref: "F001-00000101" });
+    // Autodetracción: el 12 % de la factura, en soles redondeados, al Banco de la Nación dentro de los cinco días hábiles.
+    const detraccionSoles = Math.round(hito("H3").montoEstimadoUsd * 0.12 * 3.75);
+    await mover({ operacion: "autodetraccion", factura: 1, moneda: "PEN", monto: detraccionSoles, tipo_cambio: 1 / 3.75, monto_usd: Math.round((detraccionSoles / 3.75) * 100) / 100, fecha: "2026-11-19", documento_ref: "BN 000184522 (DEMO)" });
     await mover({ tipo: "pago", cuenta: "fondos_clientes", hito: "H2", fecha: "2026-11-20", moneda: "USD", monto: presupuesto.flete, contraparte_id: forwarder.id, concepto: "Flete (traslado al puerto y marítimo)", documento_ref: "Factura ACL-10467" });
     await mover({ tipo: "pago", cuenta: "fondos_clientes", hito: "H2", fecha: "2026-11-20", moneda: "USD", monto: presupuesto.seguro, contraparte_id: forwarder.id, concepto: "Seguro de transporte", documento_ref: "Póliza MAR-26-55821" });
     for (const clave of ["luxcars.poliza", "tercero.acta_carga", "luxcars.borrador_bl", "tercero.declaracion_exportacion"]) await completar(expedienteId, clave);
@@ -259,15 +277,24 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
     expect(vista[0]?.etapa).toBe("transito");
     expect(tareasCliente.map((t) => t.clave)).toContain("cliente.depositar_h4");
 
-    // El libro cuadra con el core: H1, H2 y H3 acreditados, H4 pendiente, la comisión no movió el saldo.
+    // El libro cuadra con el core: Pagos 1 y 2 acreditados, Pago 3 pendiente, la comisión no movió el saldo,
+    // la factura 1 salió de Fondos de Clientes y su detracción está depositada (tareas cerradas).
     const { estadoHito } = await import("@/core/expedientes/hitos");
-    const { comisionesBancarias, saldoCuenta } = await import("@/core/expedientes/ledger");
+    const { comisionesBancarias, estadoPagos, saldoCuenta, saldoFondos } = await import("@/core/expedientes/ledger");
     const ctx = (await cargarContextoServidor(expedienteId))!;
-    const estados = Object.fromEntries(ctx.hitos.map((h) => [h.tipo, estadoHito(h, ctx.movimientos)]));
+    const estados = Object.fromEntries(ctx.hitos.map((h) => [h.tipo, estadoHito(h, ctx.movimientos, ctx.hitos)]));
     expect(estados).toMatchObject({ H1: "acreditado", H2: "acreditado", H3: "acreditado", H4: "pendiente", H5: "pendiente", H6: "pendiente" });
+    expect(estadoPagos(ctx.hitos, ctx.movimientos).map((p) => [p.etiqueta, p.estado])).toEqual([
+      ["Pago 1 de 5", "acreditado"], ["Pago 2 de 5", "acreditado"], ["Pago 3 de 5", "pendiente"], ["Pago 4 de 5", "pendiente"], ["Pago 5 de 5", "pendiente"],
+    ]);
     expect(comisionesBancarias(ctx.movimientos)).toEqual({ cargadas: 45, repuestas: 45, efecto: 0 });
     const esperado = Math.round((hito("H1").montoEstimadoUsd - 78500 + hito("H2").montoEstimadoUsd - presupuesto.flete - presupuesto.seguro) * 100) / 100;
     expect(saldoCuenta(ctx.movimientos)).toBeCloseTo(esperado, 1);
+    expect(saldoFondos(ctx.movimientos).detracciones).toBeCloseTo(Math.round((detraccionSoles / 3.75) * 100) / 100, 2);
+    const cerradas = Object.fromEntries(ctx.tareas.filter((t) => ["luxcars.factura_h3", "luxcars.autodetraccion_h3", "cliente.depositar_h2", "luxcars.confirmar_h2"].includes(t.clave)).map((t) => [t.clave, t.estado]));
+    expect(cerradas).toEqual({ "luxcars.factura_h3": "hecha", "luxcars.autodetraccion_h3": "hecha", "cliente.depositar_h2": "hecha", "luxcars.confirmar_h2": "hecha" });
+    // El cliente no ve Operaciones ni la cuenta de detracciones.
+    expect(movs.some((m) => m.cuenta === "operaciones" || m.cuenta === "detracciones")).toBe(false);
     expect(ctx.hitos.find((h) => h.tipo === "H4")?.montoEstimadoUsd).toBe(presupuesto.gastosAduana);
   }, 600_000);
 });

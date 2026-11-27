@@ -138,11 +138,11 @@ export const HITO_LABEL: Record<TipoHito, string> = {
 
 /** Los cinco pagos que ve el cliente; el Pago 2 agrupa H2 y H3. */
 export const PAGO_LABEL: Record<NumeroPago, string> = {
-  1: "Pago 1 · El auto (al firmar)",
-  2: "Pago 2 · Flete, seguro y primera mitad de honorarios (al embarcar)",
-  3: "Pago 3 · Gastos de aduana (al arribo)",
-  4: "Pago 4 · Tributos, directo a SUNAT (con la liquidación)",
-  5: "Pago 5 · Segunda mitad de honorarios (con el levante)",
+  1: "Pago 1 de 5 · El auto (al firmar)",
+  2: "Pago 2 de 5 · Flete, seguro y primera mitad de honorarios (al embarcar)",
+  3: "Pago 3 de 5 · Gastos de aduana (al arribo)",
+  4: "Pago 4 de 5 · Tributos, directo a SUNAT (con la liquidación)",
+  5: "Pago 5 de 5 · Segunda mitad de honorarios (con el levante)",
 };
 
 export const TIPO_MOVIMIENTO_LABEL: Record<TipoMovimiento, string> = {
