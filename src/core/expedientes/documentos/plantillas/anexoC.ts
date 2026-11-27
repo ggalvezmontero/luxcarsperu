@@ -83,10 +83,10 @@ function construir(c: Campos): Estructura {
 
 export const anexoC: Plantilla = {
   tipo: "anexo_c",
-  version: "anexo_c@2026-11-25",
+  version: "anexo_c@2026-11-27",
   nombre: "Anexo C · Origen de fondos (KYC)",
   idioma: "es",
   tarea: "luxcars.generar_contrato",
-  seFirma: true,
+  seFirma: false,
   construir,
 };

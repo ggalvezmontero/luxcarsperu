@@ -1,14 +1,17 @@
 "use client";
 
 /**
- * Dinero del expediente: hitos con su estado derivado del libro, depósitos
- * declarados por el cliente (confirmar emite la constancia; anular exige
- * motivo), el libro por fecha con filtro por cuenta, el formulario para
- * registrar un movimiento (con comprobante) y los documentos que nacen del
- * libro: aviso H3, liquidación definitiva, acta de entrega y rendición.
+ * Dinero del expediente: los seis hitos agrupados en los cinco pagos con su
+ * estado derivado del libro, depósitos declarados por el cliente (confirmar
+ * emite la constancia; el pago directo a SUNAT se confirma sin constancia;
+ * anular exige motivo), el libro por fecha con filtro por cuenta, el
+ * formulario para registrar un movimiento (con comprobante y, en pagos al
+ * exterior, la comisión bancaria que repone Luxcars) y los documentos que
+ * nacen del libro: avisos de los Pagos 3, 4 y 5, liquidación definitiva y acta
+ * de entrega y rendición.
  *
- * Las reglas (saldo, estado de hitos, diferencia H3) las calcula el core al
- * leer (`ledger.ts`). Las escrituras van por la ruta
+ * Las reglas (saldo, estado de hitos, saldo de aduana y Pago 5 neto) las
+ * calcula el core al leer (`ledger.ts`). Las escrituras van por la ruta
  * `/api/portal/expedientes/[id]/movimientos`, que llama a
  * `registrar_movimiento` y emite la constancia; los documentos por
  * `/api/portal/expedientes/[id]/documentos`.
@@ -18,11 +21,12 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { Badge, Notice, PortalPanel, StatCard, StatGrid, TableScroll, Td, Th } from "@/components/portal/CrmUI";
 import { AreaTexto, Campo, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
-import { FICHA, type Campo as NombreCampo } from "@/core/expedientes/campos";
+import { FICHA, fechaEnLetras, monto as montoTexto, type Campo as NombreCampo } from "@/core/expedientes/campos";
 import { plantillaDe } from "@/core/expedientes/documentos";
-import { CONCEPTOS_PAGO, diferenciaH3, estadoHitos, ordenarLibro, saldoFondos } from "@/core/expedientes/ledger";
+import { CUENTA_POR_HITO, DIAS_HABILES_PAGO_TRIBUTOS, sumarDiasHabiles } from "@/core/expedientes/hitos";
+import { CONCEPTOS_PAGO_TERCEROS, comisionesBancarias, datosPago5, estadoHitos, ordenarLibro, saldoFondos, type HitoConAviso } from "@/core/expedientes/ledger";
 import type { ContextoExpediente, CuentaMovimiento, Movimiento, TipoDocumento, TipoHito, TipoMovimiento } from "@/core/expedientes/tipos";
-import { CUENTAS_MOVIMIENTO, TIPOS_HITO, TIPOS_MOVIMIENTO } from "@/core/expedientes/tipos";
+import { CUENTAS_MOVIMIENTO, PAGO_POR_HITO, TIPOS_HITO, TIPOS_MOVIMIENTO } from "@/core/expedientes/tipos";
 import {
   anularDeposito,
   confirmarDeposito,
@@ -39,6 +43,7 @@ import {
   ESTADO_MOVIMIENTO_LABEL,
   ESTADO_MOVIMIENTO_TONE,
   HITO_LABEL,
+  PAGO_LABEL,
   TIPO_DOCUMENTO_LABEL,
   TIPO_MOVIMIENTO_LABEL,
   dinero,
@@ -79,24 +84,24 @@ function Hitos({ ctx }: { ctx: ContextoExpediente }) {
   const hoy = hoyIso();
   const derivados = useMemo(() => estadoHitos(ctx.hitos, ctx.movimientos, hoy), [ctx.hitos, ctx.movimientos, hoy]);
   const saldo = useMemo(() => saldoFondos(ctx.movimientos), [ctx.movimientos]);
-  const h3 = useMemo(() => diferenciaH3(ctx.hitos.find((h) => h.tipo === "H3") ?? null, ctx.movimientos), [ctx.hitos, ctx.movimientos]);
-  const hayLiquidacion = ctx.documentos.some((d) => d.tipo === "liquidacion_definitiva" && d.estado !== "reemplazado" && d.estado !== "anulado");
+  const p5 = useMemo(() => datosPago5(ctx), [ctx]);
+  const comisiones = useMemo(() => comisionesBancarias(ctx.movimientos), [ctx.movimientos]);
 
   return (
     <div className="space-y-4">
       <StatGrid>
         <StatCard label="Fondos de clientes" value={usd(saldo.fondos_clientes, 2)} hint="Depósitos menos pagos y devoluciones" tone={saldo.fondos_clientes < -0.01 ? "danger" : "accent"} />
-        <StatCard label="Operaciones" value={usd(saldo.operaciones, 2)} hint="Honorarios acreditados (H1 y H4)" />
-        <StatCard label="Detracciones" value={usd(saldo.detracciones, 2)} hint="Banco de la Nación" />
+        <StatCard label="Operaciones" value={usd(saldo.operaciones, 2)} hint="Honorarios acreditados (H3 y H6)" />
+        <StatCard label="Pagado directo a SUNAT" value={usd(saldo.directo, 2)} hint="Pago 4 (H5): no pasa por Luxcars" />
         <StatCard
-          label="Diferencia H3"
-          value={h3.depositado > 0 || h3.pagado > 0 ? `${h3.diferencia < 0 ? "−" : ""}${usd(Math.abs(h3.diferencia), 2)}` : "—"}
-          hint={h3.diferencia < 0 ? "A cargo del cliente" : hayLiquidacion ? "A favor del cliente: va en la rendición" : "Depositado menos tributos y gastos pagados"}
-          tone={h3.diferencia < -0.01 ? "warn" : "default"}
+          label="Saldo de aduana"
+          value={p5.aduana.recibido > 0 || p5.aduana.pagado > 0 ? `${p5.aduana.saldo < 0 ? "−" : ""}${usd(Math.abs(p5.aduana.saldo), 2)}` : "—"}
+          hint={`Pago 3 recibido menos pagado; Pago 5 neto ${usd(p5.neto, 2)}${comisiones.cargadas > 0 ? ` · comisiones repuestas ${usd(comisiones.repuestas, 2)} de ${usd(comisiones.cargadas, 2)}` : ""}`}
+          tone={p5.aduana.saldo < -0.01 || Math.abs(comisiones.efecto) > 0.01 ? "warn" : "default"}
         />
       </StatGrid>
 
-      <PortalPanel title="Hitos de pago" description="Estado derivado de los depósitos confirmados del libro. La tarea del cliente queda hecha al confirmar.">
+      <PortalPanel title="Pagos y hitos" description="Cinco pagos, seis hitos, una cuenta por hito. Estado derivado de los depósitos confirmados del libro; la tarea del cliente queda hecha al confirmar. El Pago 4 lo paga el cliente directo a SUNAT.">
         {derivados.length === 0 ? (
           <p className="px-5 py-6 text-sm text-ink-3">Sin presupuesto: el expediente se abrió sin hitos.</p>
         ) : (
@@ -104,6 +109,7 @@ function Hitos({ ctx }: { ctx: ContextoExpediente }) {
             <table className="w-full min-w-[720px] border-collapse">
               <thead className="border-b border-line">
                 <tr>
+                  <Th>Pago</Th>
                   <Th>Hito</Th>
                   <Th>Cuenta</Th>
                   <Th>Fecha límite</Th>
@@ -116,6 +122,7 @@ function Hitos({ ctx }: { ctx: ContextoExpediente }) {
               <tbody className="divide-y divide-line">
                 {derivados.map((d) => (
                   <tr key={d.hito.tipo}>
+                    <Td><span className="whitespace-nowrap text-xs text-ink-3">{PAGO_LABEL[PAGO_POR_HITO[d.hito.tipo]].split(" · ")[0]}</span></Td>
                     <Td>
                       <p className="text-ink">{HITO_LABEL[d.hito.tipo]}</p>
                       {d.hito.nota ? <p className="mt-0.5 text-xs text-ink-4">{d.hito.nota}</p> : null}
@@ -170,11 +177,14 @@ function Declarado({ ctx, m, onResultado }: { ctx: ContextoExpediente; m: Movimi
   const [motivo, setMotivo] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const directo = m.cuenta === "directo";
   const confirmar = async () => {
     const n = leerNumero(monto);
     if (n === null || n <= 0) return onResultado({ ok: false, message: "El monto debe ser mayor que cero." });
     setBusy(true);
-    const r = await confirmarDeposito({ expedienteId: ctx.expediente.id, movimientoId: m.id, cambios: { monto: n, fecha: fechaMov, hito: hito || null } });
+    // Pago directo a SUNAT: el monto del movimiento es el de soles; se corrige solo el equivalente en USD.
+    const cambios = directo ? { monto_usd: n, fecha: fechaMov, hito: hito || null } : { monto: n, fecha: fechaMov, hito: hito || null };
+    const r = await confirmarDeposito({ expedienteId: ctx.expediente.id, movimientoId: m.id, cambios });
     setBusy(false);
     if (r.ok) setModo("ninguno");
     onResultado(r);
@@ -193,6 +203,7 @@ function Declarado({ ctx, m, onResultado }: { ctx: ContextoExpediente; m: Movimi
         <div>
           <p className="text-sm font-medium text-ink">
             {usd(m.montoUsd, 2)} · {m.hito ? HITO_LABEL[m.hito] : "Sin hito"}
+            {directo ? <Badge tone="info" className="ml-2">Pagado directo a SUNAT{m.moneda === "PEN" && m.monto ? ` · S/ ${m.monto.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : ""}</Badge> : null}
           </p>
           <p className="mt-0.5 text-xs text-ink-4">
             Transferido el {fecha(m.fecha)}{m.documentoRef ? ` · ${m.documentoRef}` : ""} · declarado {fecha(m.createdAt)}
@@ -206,10 +217,10 @@ function Declarado({ ctx, m, onResultado }: { ctx: ContextoExpediente; m: Movimi
       </div>
       {modo === "confirmar" ? (
         <div className="mt-3 rounded-lux border border-line bg-surface-2 p-4">
-          <p className="text-xs text-ink-3">Corrige el monto o la fecha con lo que realmente llegó a la cuenta. Al confirmar se emite la constancia.</p>
+          <p className="text-xs text-ink-3">{directo ? "Revisa el comprobante de SUNAT o del banco. El monto es el equivalente en USD según la DAM; no se emite constancia (no pasó por Luxcars)." : "Corrige el monto o la fecha con lo que realmente llegó a la cuenta. Al confirmar se emite la constancia."}</p>
           <div className="mt-3">
             <Rejilla columnas={3}>
-              <Campo label="Monto acreditado (USD)"><Entrada inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} /></Campo>
+              <Campo label={directo ? "Monto según la DAM (USD)" : "Monto acreditado (USD)"}><Entrada inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} /></Campo>
               <Campo label="Fecha de acreditación"><Entrada type="date" value={fechaMov} onChange={(e) => setFechaMov(e.target.value)} /></Campo>
               <Campo label="Hito">
                 <Selector value={hito} onChange={(e) => setHito(e.target.value as TipoHito | "")}>
@@ -220,7 +231,7 @@ function Declarado({ ctx, m, onResultado }: { ctx: ContextoExpediente; m: Movimi
             </Rejilla>
           </div>
           <div className="mt-3 flex gap-2">
-            <Button size="sm" disabled={busy} onClick={() => void confirmar()}>{busy ? "Confirmando…" : "Confirmar y emitir constancia"}</Button>
+            <Button size="sm" disabled={busy} onClick={() => void confirmar()}>{busy ? "Confirmando…" : directo ? "Confirmar el pago a SUNAT" : "Confirmar y emitir constancia"}</Button>
             <Button size="sm" variant="ghost" onClick={() => setModo("ninguno")}>Cancelar</Button>
           </div>
         </div>
@@ -368,13 +379,14 @@ function CeldaComprobante({ ctx, m, onResultado }: { ctx: ContextoExpediente; m:
 /* Registrar movimiento                                                       */
 /* -------------------------------------------------------------------------- */
 
-const HITO_POR_DEFECTO: Record<TipoMovimiento, TipoHito | ""> = { deposito: "H2", pago: "H2", devolucion: "", ajuste: "" };
+const HITO_POR_DEFECTO: Record<TipoMovimiento, TipoHito | ""> = { deposito: "H1", pago: "H1", devolucion: "", ajuste: "" };
 
 function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
   const terceros = ctx.contrapartes ?? [];
   const [tipo, setTipo] = useState<TipoMovimiento>("deposito");
   const [cuenta, setCuenta] = useState<CuentaMovimiento>("fondos_clientes");
-  const [hito, setHito] = useState<TipoHito | "">("H2");
+  const [hito, setHito] = useState<TipoHito | "">("H1");
+  const [comision, setComision] = useState("");
   const [fechaMov, setFechaMov] = useState(hoyIso());
   const [moneda, setMoneda] = useState("USD");
   const [monto, setMonto] = useState("");
@@ -393,17 +405,19 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
     setHito(HITO_POR_DEFECTO[t]);
     if (t === "deposito") setCuenta("fondos_clientes");
     if (t === "pago") {
-      const c = CONCEPTOS_PAGO.find((x) => x.clave === conceptoClave);
+      const c = CONCEPTOS_PAGO_TERCEROS.find((x) => x.clave === conceptoClave);
       setHito(c?.hito ?? "");
+      setCuenta("fondos_clientes");
     }
   };
   const cambiarHito = (h: TipoHito | "") => {
     setHito(h);
-    if (tipo === "deposito") setCuenta(h === "H1" || h === "H4" ? "operaciones" : "fondos_clientes");
+    // Una cuenta por hito: H3 y H6 a Operaciones, H5 directo a SUNAT, el resto a Fondos de Clientes.
+    if (tipo === "deposito") setCuenta(h ? CUENTA_POR_HITO[h] : "fondos_clientes");
   };
   const cambiarConcepto = (clave: string) => {
     setConceptoClave(clave);
-    const c = CONCEPTOS_PAGO.find((x) => x.clave === clave);
+    const c = CONCEPTOS_PAGO_TERCEROS.find((x) => x.clave === clave);
     if (c && c.hito) setHito(c.hito);
   };
 
@@ -415,8 +429,9 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
     if (n === null || n <= 0) return onResultado({ ok: false, message: "Escribe un monto mayor que cero." });
     if (moneda !== "USD" && (tcN === null || tcN <= 0)) return onResultado({ ok: false, message: `Falta el tipo de cambio ${moneda} → USD.` });
     const concepto = tipo === "pago"
-      ? conceptoClave === "otro" ? conceptoLibre.trim() || "Otros autorizados por el Mandante" : CONCEPTOS_PAGO.find((c) => c.clave === conceptoClave)?.etiqueta ?? null
+      ? conceptoClave === "otro" ? conceptoLibre.trim() || "Otros autorizados por el Mandante" : CONCEPTOS_PAGO_TERCEROS.find((c) => c.clave === conceptoClave)?.etiqueta ?? null
       : conceptoLibre.trim() || null;
+    const comisionN = leerNumero(comision);
     const datos: DatosMovimiento = {
       tipo,
       cuenta,
@@ -429,6 +444,7 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
       concepto,
       documento_ref: referencia.trim() || null,
       nota_interna: nota.trim() || null,
+      comision_bancaria_usd: tipo === "pago" && cuenta === "fondos_clientes" && comisionN !== null && comisionN > 0 ? comisionN : null,
     };
     setBusy(true);
     const r = await registrarMovimiento({ expedienteId: ctx.expediente.id, movimiento: datos });
@@ -441,6 +457,7 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
       setMonto("");
       setReferencia("");
       setNota("");
+      setComision("");
       setArchivo(null);
       setEmitido(r.constancia ? { pdf: r.constancia.urls.pdf, version: r.constancia.version } : null);
     }
@@ -448,7 +465,7 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
   };
 
   return (
-    <PortalPanel title="Registrar movimiento" description="Un depósito con hito emite la constancia de fondos y cierra la tarea del cliente. Los pagos a terceros salen en la liquidación y la rendición por su concepto.">
+    <PortalPanel title="Registrar movimiento" description="Un depósito con hito emite la constancia de fondos y cierra la tarea del cliente (el pago directo a SUNAT, H5, no lleva constancia). Los pagos a terceros salen en la liquidación y la rendición por su concepto.">
       <div className="space-y-4 px-5 py-4">
         <Rejilla columnas={2}>
           <Campo label="Tipo">
@@ -461,7 +478,7 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
               {CUENTAS_MOVIMIENTO.map((c) => <option key={c} value={c}>{CUENTA_LABEL[c]}</option>)}
             </Selector>
           </Campo>
-          <Campo label="Hito" hint={tipo === "pago" ? "H2 compra y logística · H3 tributos y gastos" : undefined}>
+          <Campo label="Hito" hint={tipo === "pago" ? "H1 precio · H2 flete y seguro · H4 gastos de aduana · H5 tributos (si Luxcars los paga)" : undefined}>
             <Selector value={hito} onChange={(e) => cambiarHito(e.target.value as TipoHito | "")}>
               <option value="">Sin hito</option>
               {TIPOS_HITO.map((h) => <option key={h} value={h}>{HITO_LABEL[h]}</option>)}
@@ -481,7 +498,7 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
           <Rejilla columnas={2}>
             <Campo label="Concepto">
               <Selector value={conceptoClave} onChange={(e) => cambiarConcepto(e.target.value)}>
-                {CONCEPTOS_PAGO.map((c) => <option key={c.clave} value={c.clave}>{c.etiqueta}</option>)}
+                {CONCEPTOS_PAGO_TERCEROS.map((c) => <option key={c.clave} value={c.clave}>{c.etiqueta}</option>)}
               </Selector>
             </Campo>
             <Campo label="Beneficiario (contraparte)">
@@ -499,6 +516,11 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
             ) : null}
             {conceptoClave === "otro" ? (
               <Campo label="Detalle del concepto" className="sm:col-span-2"><Entrada value={conceptoLibre} onChange={(e) => setConceptoLibre(e.target.value)} maxLength={200} /></Campo>
+            ) : null}
+            {cuenta === "fondos_clientes" ? (
+              <Campo label="Comisión bancaria (la repone Luxcars)" hint="Lo que el banco debitó de Fondos de Clientes por este wire. Se registran el cargo y la reposición: el saldo del cliente no cambia." className="sm:col-span-2">
+                <Entrada inputMode="decimal" value={comision} onChange={(e) => setComision(e.target.value)} placeholder="ej. 45.00 (USD)" />
+              </Campo>
             ) : null}
           </Rejilla>
         ) : (
@@ -540,50 +562,82 @@ function RegistrarMovimiento({ ctx, onResultado }: { ctx: ContextoExpediente; on
 /* Documentos que nacen del libro                                             */
 /* -------------------------------------------------------------------------- */
 
-const DOCUMENTOS_LIBRO: { tipo: TipoDocumento; etiqueta: string; manuales: NombreCampo[]; ayuda: string }[] = [
-  { tipo: "aviso_h3", etiqueta: "Emitir aviso H3", manuales: ["FECHA_AVISO", "TC_REFERENCIAL"], ayuda: "Recalcula el presupuesto con el precio, el flete y el transporte interno reales; el monto del hito H3 pasa a ser el del aviso." },
-  { tipo: "liquidacion_definitiva", etiqueta: "Emitir liquidación definitiva", manuales: [], ayuda: "Toma la DAM del expediente (número, fecha, canal, factor, TC SBS, levante) y los pagos de tributos y gastos del libro. Visible para el cliente." },
-  { tipo: "acta_entrega", etiqueta: "Emitir acta de entrega", manuales: [], ayuda: "Placa, TIVe, kilometraje y fecha de entrega del expediente; marca el H4 si está acreditado. Se firma en la entrega." },
-  { tipo: "rendicion", etiqueta: "Emitir rendición", manuales: ["FECHA_RENDICION"], ayuda: "Todo el libro: depósitos, pagos, devolución y honorarios. Visible para el cliente y abre su tarea de conformidad." },
+type DocumentoLibro = {
+  clave: string;
+  tipo: TipoDocumento;
+  /** Aviso de pago: de qué hito (el documento guarda `hito`). */
+  hito?: HitoConAviso;
+  etiqueta: string;
+  titulo: string;
+  manuales: NombreCampo[];
+  ayuda: string;
+};
+
+const DOCUMENTOS_LIBRO: DocumentoLibro[] = [
+  { clave: "aviso_h4", tipo: "aviso_h3", hito: "H4", titulo: "Aviso del Pago 3 · gastos de aduana (H4)", etiqueta: "Emitir aviso del Pago 3", manuales: ["FECHA_AVISO", "MONTO_AVISO"], ayuda: "Con la pro forma del agente de aduana, antes del arribo. El monto del hito H4 pasa a ser el del aviso. Gasto reembolsable: el saldo se compensa en el Pago 5." },
+  { clave: "aviso_h5", tipo: "aviso_h3", hito: "H5", titulo: "Aviso del Pago 4 · tributos a SUNAT (H5)", etiqueta: "Emitir aviso del Pago 4", manuales: ["FECHA_AVISO", "LIQUIDACION_NUMERO", "TRIBUTOS_USD", "TRIBUTOS_SOLES", "TC_REFERENCIAL"], ayuda: "Con la liquidación de SUNAT. El cliente paga directo a SUNAT dentro de dos días hábiles: la fecha límite del hito H5 y de su tarea se fija al emitir." },
+  { clave: "aviso_h6", tipo: "aviso_h3", hito: "H6", titulo: "Aviso del Pago 5 · honorarios netos (H6)", etiqueta: "Emitir aviso del Pago 5", manuales: ["FECHA_AVISO"], ayuda: "Con el levante. Segunda mitad de los honorarios menos el sobrante (o más el faltante) de los gastos de aduana del libro; el hito H6 queda por el neto." },
+  { clave: "liquidacion", tipo: "liquidacion_definitiva", titulo: "Liquidación definitiva", etiqueta: "Emitir liquidación definitiva", manuales: [], ayuda: "Toma la DAM del expediente, los tributos pagados (directo por el cliente o por Luxcars) y los gastos de aduana del libro, con el saldo para el Pago 5. Visible para el cliente." },
+  { clave: "acta", tipo: "acta_rendicion", titulo: "Acta de entrega y rendición de cuentas", etiqueta: "Emitir acta de entrega y rendición", manuales: [], ayuda: "Placa, TIVe, kilometraje y fecha de entrega del expediente; todo el libro, lo pagado directo a SUNAT, el saldo de aduana aplicado al Pago 5 y las comisiones repuestas. Se firma simple con el auto delante y abre la tarea de conformidad del cliente." },
 ];
 
-function DocumentosDelLibro({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
-  const [abierto, setAbierto] = useState<TipoDocumento | null>(null);
-  const [extra, setExtra] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<TipoDocumento | null>(null);
-  const [faltantes, setFaltantes] = useState<string[]>([]);
-  const [emitido, setEmitido] = useState<{ tipo: TipoDocumento; pdf: string | null; version: number } | null>(null);
+/** Valores que el formulario propone para cada aviso (se pueden corregir). */
+function propuestos(ctx: ContextoExpediente, d: DocumentoLibro): Record<string, string> {
+  const hoy = hoyIso();
+  if (!d.hito) return {};
+  const base: Record<string, string> = { FECHA_AVISO: fechaEnLetras(hoy) };
+  if (d.hito === "H4") {
+    const h4 = ctx.hitos.find((h) => h.tipo === "H4");
+    if (h4) base.MONTO_AVISO = montoTexto(h4.montoEstimadoUsd);
+  }
+  if (d.hito === "H5") base.FECHA_LIMITE_PAGO = fechaEnLetras(sumarDiasHabiles(hoy, DIAS_HABILES_PAGO_TRIBUTOS));
+  return base;
+}
 
-  const emitir = async (tipo: TipoDocumento) => {
-    setBusy(tipo);
+function DocumentosDelLibro({ ctx, onResultado }: { ctx: ContextoExpediente; onResultado: (r: Resultado) => void }) {
+  const [abierto, setAbierto] = useState<string | null>(null);
+  const [extra, setExtra] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [faltantes, setFaltantes] = useState<string[]>([]);
+  const [emitido, setEmitido] = useState<{ clave: string; pdf: string | null; version: number } | null>(null);
+
+  const abrir = (d: DocumentoLibro) => {
+    if (abierto === d.clave) return setAbierto(null);
+    setAbierto(d.clave);
     setFaltantes([]);
-    const r = await emitirDocumentoDelLibro({ expedienteId: ctx.expediente.id, tipo, extra });
+    setExtra(propuestos(ctx, d));
+  };
+
+  const emitir = async (d: DocumentoLibro) => {
+    setBusy(d.clave);
+    setFaltantes([]);
+    const r = await emitirDocumentoDelLibro({ expedienteId: ctx.expediente.id, tipo: d.tipo, extra: d.hito ? { ...extra, HITO: d.hito } : extra });
     setBusy(null);
     if (r.ok) {
-      setEmitido({ tipo, pdf: r.urls.pdf, version: r.version });
+      setEmitido({ clave: d.clave, pdf: r.urls.pdf, version: r.version });
       setAbierto(null);
     } else if (r.faltantes) {
       setFaltantes(r.faltantes);
-      setAbierto(tipo);
+      setAbierto(d.clave);
     }
     onResultado(r);
   };
 
   return (
-    <PortalPanel title="Documentos del libro" description="Se arman con el libro y el expediente, no con un formulario. Regenerar crea una versión nueva.">
+    <PortalPanel title="Documentos del libro" description="Se arman con el libro y el expediente. Regenerar crea una versión nueva (cada aviso de pago se versiona por su hito).">
       <ul className="divide-y divide-line">
         {DOCUMENTOS_LIBRO.map((d) => {
-          const vigente = ctx.documentos.find((x) => x.tipo === d.tipo && x.estado !== "reemplazado" && x.estado !== "anulado");
+          const vigente = ctx.documentos.find((x) => x.tipo === d.tipo && x.estado !== "reemplazado" && x.estado !== "anulado" && (!d.hito || x.hito === d.hito));
           const plantilla = plantillaDe(d.tipo);
-          const esteAbierto = abierto === d.tipo;
+          const esteAbierto = abierto === d.clave;
           return (
-            <li key={d.tipo} className="px-5 py-3">
+            <li key={d.clave} className="px-5 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm text-ink">{TIPO_DOCUMENTO_LABEL[d.tipo]}</p>
+                  <p className="text-sm text-ink">{d.titulo ?? TIPO_DOCUMENTO_LABEL[d.tipo]}</p>
                   <p className="text-xs text-ink-4">{vigente ? `Versión ${vigente.version} · ${fecha(vigente.emitidoEn ?? vigente.createdAt)}` : "Sin emitir"}</p>
                 </div>
-                <Button size="sm" variant={vigente ? "ghost" : "secondary"} className={vigente ? "border border-line" : ""} onClick={() => setAbierto(esteAbierto ? null : d.tipo)}>
+                <Button size="sm" variant={vigente ? "ghost" : "secondary"} className={vigente ? "border border-line" : ""} onClick={() => abrir(d)}>
                   {vigente ? "Nueva versión" : d.etiqueta}
                 </Button>
               </div>
@@ -607,15 +661,15 @@ function DocumentosDelLibro({ ctx, onResultado }: { ctx: ContextoExpediente; onR
                     </div>
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Button size="sm" disabled={busy !== null} onClick={() => void emitir(d.tipo)}>
-                      {busy === d.tipo ? "Emitiendo…" : vigente ? `Emitir versión ${vigente.version + 1}` : "Emitir PDF y DOCX"}
+                    <Button size="sm" disabled={busy !== null} onClick={() => void emitir(d)}>
+                      {busy === d.clave ? "Emitiendo…" : vigente ? `Emitir versión ${vigente.version + 1}` : "Emitir PDF y DOCX"}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setAbierto(null)}>Cerrar</Button>
                     {plantilla?.seFirma ? <span className="self-center text-xs text-ink-4">Se firma: súbelo firmado desde Documentos.</span> : null}
                   </div>
                 </div>
               ) : null}
-              {emitido?.tipo === d.tipo && emitido.pdf ? (
+              {emitido?.clave === d.clave && emitido.pdf ? (
                 <p className="mt-2 text-xs text-ink-3">
                   Versión {emitido.version} emitida. <a className="underline text-silver-bright" href={emitido.pdf} target="_blank" rel="noopener noreferrer">Abrir PDF</a> (cinco minutos).
                 </p>

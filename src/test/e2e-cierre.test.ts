@@ -90,7 +90,7 @@ describe.skipIf(!ACTIVA)("fase 5 de punta a punta (base real)", () => {
   it("crear_expediente desde la solicitud la enlaza, la cierra y le deja la respuesta con el código", async () => {
     const datos = {
       cliente_id: clienteId,
-      etapa: "contrato",
+      etapa: "busqueda",
       origen_solicitud_id: solicitudId,
       veh_marca: "Toyota",
       veh_modelo: "Sequoia",
@@ -102,6 +102,8 @@ describe.skipIf(!ACTIVA)("fase 5 de punta a punta (base real)", () => {
       hitos: [],
       tareas: [],
     };
+    // Desde el 27 nov 2026 un expediente nace en prospecto o en búsqueda: el contrato se firma con la unidad ya elegida.
+    await expect(comoUsuario(ADMIN, (tx) => tx`select public.crear_expediente(${JSON.stringify({ ...datos, etapa: "contrato" })}::jsonb) as id`)).rejects.toThrow(/prospecto o en búsqueda/);
     const [{ id }] = (await comoUsuario(ADMIN, (tx) => tx`select public.crear_expediente(${JSON.stringify(datos)}::jsonb) as id`)) as { id: string }[];
     expedienteId = id;
 
@@ -129,7 +131,7 @@ describe.skipIf(!ACTIVA)("fase 5 de punta a punta (base real)", () => {
 
     const vista = await comoUsuario(CLIENTE_USER, (tx) => tx`select id, codigo, etapa from public.expediente_cliente where id = ${expedienteId}::uuid`);
     expect(vista).toHaveLength(1);
-    expect(vista[0].etapa).toBe("contrato");
+    expect(vista[0].etapa).toBe("busqueda");
 
     const base = await comoUsuario(CLIENTE_USER, (tx) => tx`select id from public.expedientes where id = ${expedienteId}::uuid`);
     expect(base).toEqual([]);
@@ -138,7 +140,7 @@ describe.skipIf(!ACTIVA)("fase 5 de punta a punta (base real)", () => {
     expect(admin).toHaveLength(1);
 
     const etapasAdmin = await comoUsuario(ADMIN, (tx) => tx`select etapa from public.expediente_etapas where expediente_id = ${expedienteId}::uuid`);
-    expect(etapasAdmin.map((r) => r.etapa)).toEqual(["contrato"]);
+    expect(etapasAdmin.map((r) => r.etapa)).toEqual(["busqueda"]);
   }, 60_000);
 
   it("cancelar fija cerrado_en y el expediente sale del tablero y entra al archivo", async () => {

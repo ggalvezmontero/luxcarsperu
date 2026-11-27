@@ -19,8 +19,7 @@ export const PLANTILLAS_NOTIFICACION = [
   "tarea_pendiente",
   "deposito_confirmado",
   "documento_disponible",
-  "aviso_h3",
-  "diferencia_h3",
+  "aviso_pago",
   "auto_listo",
 ] as const;
 
@@ -31,8 +30,7 @@ export const PLANTILLA_NOTIFICACION_LABEL: Record<PlantillaNotificacion, string>
   tarea_pendiente: "Tarea pendiente del cliente",
   deposito_confirmado: "Depósito confirmado (con constancia)",
   documento_disponible: "Documento disponible",
-  aviso_h3: "Aviso de pago H3",
-  diferencia_h3: "Diferencia por depositar",
+  aviso_pago: "Aviso de pago (Pagos 3, 4 y 5)",
   auto_listo: "Auto listo para entrega",
 };
 
@@ -62,7 +60,7 @@ export type DatosNotificacion = {
   tarea?: string;
   venceEl?: string | null;
   instrucciones?: string | null;
-  /** deposito_confirmado · aviso_h3 · diferencia_h3 */
+  /** deposito_confirmado · aviso_pago */
   montoUsd?: number | null;
   hito?: TipoHito | null;
   fecha?: string | null;
@@ -110,10 +108,31 @@ export function fechaLarga(iso: string | null | undefined): string {
 }
 
 const NOMBRE_HITO: Record<TipoHito, string> = {
-  H1: "H1 (honorarios iniciales)",
-  H2: "H2 (compra y flete)",
-  H3: "H3 (tributos y gastos de aduana)",
-  H4: "H4 (saldo de honorarios)",
+  H1: "H1 (Pago 1: precio del vehículo)",
+  H2: "H2 (Pago 2: flete y seguro)",
+  H3: "H3 (Pago 2: primera mitad de honorarios)",
+  H4: "H4 (Pago 3: gastos de aduana)",
+  H5: "H5 (Pago 4: tributos a SUNAT)",
+  H6: "H6 (Pago 5: segunda mitad de honorarios)",
+};
+
+/** Texto de cada aviso de pago, por hito. */
+const AVISO_POR_HITO: Partial<Record<TipoHito, { asunto: string; intro: (auto: string) => string; cierre: string }>> = {
+  H4: {
+    asunto: "Aviso del Pago 3: gastos de aduana",
+    intro: (auto) => `Tu ${auto} está por llegar al Callao y toca el Pago 3: los gastos de aduana (agente, almacenaje y grúa del puerto), según la pro forma del agente.`,
+    cierre: "Es un gasto reembolsable: si sobra, lo descontamos del Pago 5; si falta, se suma a ese pago. El aviso con las cuentas está en tu cuenta, en Documentos.",
+  },
+  H5: {
+    asunto: "Aviso del Pago 4: tributos a SUNAT",
+    intro: (auto) => `SUNAT liquidó la DAM de tu ${auto}. Toca el Pago 4: los tributos de importación, que pagas directamente a SUNAT, en soles, con el número de liquidación.`,
+    cierre: "Puedes pagar con tu Clave SOL o en ventanilla bancaria. El aviso con el número de liquidación está en tu cuenta, en Documentos; al pagar, declara «Ya pagué» con el comprobante.",
+  },
+  H6: {
+    asunto: "Aviso del Pago 5: segunda mitad de honorarios",
+    intro: (auto) => `Tu ${auto} quedó liberado de aduana. Toca el Pago 5: la segunda mitad de nuestros honorarios, ya ajustada con el saldo de los gastos de aduana.`,
+    cierre: "Con este pago acreditado coordinamos la entrega con placas. El aviso con el detalle está en tu cuenta, en Documentos.",
+  },
 };
 
 /** "Hola Ana," para personas; "Hola," para razones sociales (S.A.C., S.A., E.I.R.L., Ltd…). */
@@ -179,26 +198,21 @@ export function construirNotificacion(plantilla: PlantillaNotificacion, ctx: Con
         `Ya puedes descargar "${datos.documento ?? "el documento"}" desde tu cuenta, en la sección Documentos.`,
         `Referencia: ${ref}.`,
       ], datos.nota);
-    case "aviso_h3":
-      return armar(plantilla, ctx, `Aviso de pago H3: tributos y gastos de aduana · ${ctx.codigo}`, [
-        `Tu ${ctx.auto} está por llegar y toca el tercer hito: los tributos y gastos de aduana.`,
-        datos.montoUsd ? `Monto a depositar: ${montoUsd(datos.montoUsd)}.` : null,
-        datos.fechaLimite ? `Fecha límite: ${fechaLarga(datos.fechaLimite)}. Sin este depósito no se puede numerar la DAM y el auto genera almacenaje en el puerto.` : "Sin este depósito no se puede numerar la DAM y el auto genera almacenaje en el puerto.",
-        "El aviso con el detalle y las cuentas está en tu cuenta, en Documentos. Cuando transfieras, decláralo desde ahí con el comprobante.",
+    case "aviso_pago": {
+      const aviso = (datos.hito && AVISO_POR_HITO[datos.hito]) || AVISO_POR_HITO.H4!;
+      return armar(plantilla, ctx, `${aviso.asunto} · ${ctx.codigo}`, [
+        aviso.intro(ctx.auto),
+        datos.montoUsd ? `Monto: ${montoUsd(datos.montoUsd)}.` : null,
+        datos.fechaLimite ? `Fecha límite: ${fechaLarga(datos.fechaLimite)}.` : null,
+        aviso.cierre,
       ], datos.nota);
-    case "diferencia_h3":
-      return armar(plantilla, ctx, `Diferencia por depositar · ${ctx.codigo}`, [
-        `La liquidación definitiva de aduana de tu ${ctx.auto} salió ${datos.montoUsd ? `${montoUsd(datos.montoUsd)} ` : ""}por encima de lo depositado para el hito H3.`,
-        datos.montoUsd ? `Monto por depositar: ${montoUsd(datos.montoUsd)}.` : null,
-        datos.fechaLimite ? `Te pedimos cubrirlo antes del ${fechaLarga(datos.fechaLimite)} para no detener el despacho.` : "Te pedimos cubrirlo a la brevedad para no detener el despacho.",
-        "La liquidación con el detalle está en tu cuenta, en Documentos.",
-      ], datos.nota);
+    }
     case "auto_listo":
       return armar(plantilla, ctx, `Tu ${ctx.auto} está listo para la entrega · ${ctx.codigo}`, [
         `Tu ${ctx.auto} ya tiene placa y está listo para que lo recojas.`,
         datos.lugar ? `Lugar de entrega: ${datos.lugar}.` : null,
         datos.fecha ? `Fecha propuesta: ${fechaLarga(datos.fecha)}.` : "Escríbenos para coordinar el día y la hora.",
-        "El día de la entrega firmamos el acta y te llevas la documentación completa.",
+        "El día de la entrega firmas el acta de entrega y rendición de cuentas, con el auto delante, y te llevas la documentación completa.",
       ], datos.nota);
   }
 }
@@ -206,20 +220,20 @@ export function construirNotificacion(plantilla: PlantillaNotificacion, ctx: Con
 /** Una línea que explica al cliente qué pasa en cada etapa. */
 export function textoEtapa(etapa: EtapaExpediente): string | null {
   switch (etapa) {
-    case "contrato":
-      return "Estamos preparando el contrato y sus anexos para la firma.";
     case "busqueda":
-      return "Ya buscamos tu unidad con el presupuesto aprobado. Te avisaremos cuando tengamos una opción para inspeccionar.";
+      return "Estamos buscando tu unidad: revisamos su historial y, si es usada, la inspeccionamos antes de pagar. Cuando tengamos la pro forma a tu nombre te la mandamos para que apruebes la unidad y el precio desde tu cuenta.";
+    case "contrato":
+      return "Estamos preparando el contrato con sus anexos, la carta de autorización y el poder para la firma en notaría. Con la firma toca el Pago 1.";
     case "compra":
-      return "Vamos a cerrar la compra con el vendedor. En tu cuenta verás el hito de pago que corresponde.";
+      return "Giramos el precio al broker y la factura sale a tu nombre. Te avisaremos cuando el auto esté listo para embarcar.";
     case "embarque":
-      return "El auto va camino al puerto de origen. Te avisaremos la fecha de zarpe.";
+      return "El auto está listo para embarcar: en tu cuenta verás el Pago 2 (flete, seguro y primera mitad de honorarios). Te avisaremos la fecha de zarpe.";
     case "transito":
-      return "El auto va en la nave rumbo al Callao. Te avisaremos cuando arribe.";
+      return "El auto va en la nave rumbo al Callao. Antes del arribo te enviamos el aviso del Pago 3 (gastos de aduana).";
     case "aduana":
-      return "El auto llegó y está en despacho aduanero. Pronto te enviaremos la liquidación de tributos.";
+      return "El auto llegó y está en despacho aduanero. Cuando SUNAT liquide la DAM te enviamos el aviso del Pago 4 para que pagues los tributos directamente a SUNAT.";
     case "placas":
-      return "Trámite de placa y tarjeta de propiedad en curso.";
+      return "El auto quedó liberado: toca el Pago 5 y tramitamos la ficha técnica, la inscripción en SUNARP y las placas.";
     case "entrega":
       return "Todo listo: coordinemos la entrega.";
     case "cerrado":

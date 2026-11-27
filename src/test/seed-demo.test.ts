@@ -3,10 +3,13 @@
  *
  * Siembra en la base y el bucket REALES un expediente ficticio, completo hasta
  * la etapa "tránsito", a nombre de la cuenta contacto@luxcars.pe, para enseñar la
- * cuenta del cliente en una reunión: avance, documentos firmados, estado de
- * cuenta con constancias, aprobación de la inspección y el botón "Ya transferí"
- * del hito H3. Hace lo mismo que haría el equipo desde el portal, con las
- * mismas funciones SQL y el mismo generador de documentos.
+ * cuenta del cliente en una reunión, con el flujo del 27 nov 2026: búsqueda sin
+ * costo y aprobación de la unidad, una sola firma en notaría (contrato, anexos,
+ * LOA y poder), Pago 1 (precio) con su constancia, wire al broker con la
+ * comisión del banco repuesta por Luxcars, Pago 2 (flete y seguro + 50 % de
+ * honorarios) y el aviso del Pago 3 (gastos de aduana) emitido con el botón
+ * "Ya transferí" pendiente. Hace lo mismo que haría el equipo desde el portal,
+ * con las mismas funciones SQL y el mismo generador de documentos.
  *
  *   SEED_DEMO=1 npx vitest run src/test/seed-demo.test.ts
  *   SEED_DEMO=1 SEED_DEMO_RESET=1 npx vitest run src/test/seed-demo.test.ts   (borra la demo anterior y la rehace)
@@ -70,6 +73,7 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
     const { tareasAJson } = await import("@/lib/expedientes/consultas");
     const { entradaPorDefecto, presupuestar } = await import("@/core/expedientes/presupuesto");
     const { hitosDesde } = await import("@/core/expedientes/hitos");
+    const { monto } = await import("@/core/expedientes/campos");
     const { EXPEDIENTES_BUCKET, subirObjeto, listarObjetos, borrarObjeto } = await import("@/lib/portal/objectStorage");
 
     // ── La cuenta demo tiene que existir (la crea el dueño o Neon) ────────────
@@ -95,23 +99,23 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
       await sql`delete from public.contrapartes where notas = 'DEMO'`;
     }
 
-    // ── Terceros ──────────────────────────────────────────────────────────────
-    const vendedor = await uno(sql`
+    // ── Terceros: el dealer emite factura y MSO; el broker recibe el precio ───
+    const dealer = await uno(sql`
+      insert into public.contrapartes (tipo, nombre, pais, direccion, contacto, email, telefono, ruc_o_tax_id, notas)
+      values ('vendedor', 'Sunrise Toyota of Miami (DEMO)', 'Estados Unidos', '9800 NW 12th St, Doral, FL 33172', 'Daniel Ortega', 'fleet@sunrisetoyota.example', '+1 305 555 0148', '59-1234567', 'DEMO')
+      returning id`);
+    const broker = await uno(sql`
       insert into public.contrapartes (tipo, nombre, pais, direccion, contacto, email, telefono, ruc_o_tax_id, datos_bancarios, banco_verificado_en, banco_verificado_por, notas)
-      values ('vendedor', 'Sunrise Toyota of Miami', 'Estados Unidos', '9800 NW 12th St, Doral, FL 33172', 'Daniel Ortega', 'fleet@sunrisetoyota.example', '+1 305 555 0148', '59-1234567',
-        '{"banco":"Bank of America","titular":"Sunrise Toyota of Miami LLC","cuenta":"XXXX-4471","aba":"026009593","swift":"BOFAUS3N","moneda":"USD"}'::jsonb, '2026-11-07T15:20:00-05:00', ${ADMIN}::uuid, 'DEMO')
+      values ('broker', 'Atlantic Auto Export LLC (DEMO)', 'Estados Unidos', '2600 NW 87th Ave, Doral, FL 33172', 'Sofía Herrera', 'deals@atlanticautoexport.example', '+1 305 555 0177', '65-7654321',
+        '{"banco":"Bank of America","titular":"Atlantic Auto Export LLC","cuenta":"XXXX-8812","aba":"026009593","swift":"BOFAUS3N","moneda":"USD"}'::jsonb, '2026-11-04T15:20:00-05:00', ${ADMIN}::uuid, 'DEMO')
       returning id`);
     const forwarder = await uno(sql`
       insert into public.contrapartes (tipo, nombre, pais, direccion, contacto, email, telefono, notas)
-      values ('forwarder', 'Andes Cargo Logistics', 'Estados Unidos', '8700 NW 107th Ave, Miami, FL', 'Karen Ruiz', 'ops@andescargo.example', '+1 305 555 0192', 'DEMO')
+      values ('forwarder', 'Andes Cargo Logistics (DEMO)', 'Estados Unidos', '8700 NW 107th Ave, Miami, FL', 'Karen Ruiz', 'ops@andescargo.example', '+1 305 555 0192', 'DEMO')
       returning id`);
     const agente = await uno(sql`
       insert into public.contrapartes (tipo, nombre, pais, direccion, contacto, email, telefono, ruc_o_tax_id, notas)
-      values ('agente_aduana', 'Agencia de Aduana Pacífico S.A.', 'Perú', 'Av. Argentina 2020, Callao', 'Rosa Medina', 'despachos@pacifico.example', '+51 1 555 0120', '20555555551', 'DEMO')
-      returning id`);
-    const inspector = await uno(sql`
-      insert into public.contrapartes (tipo, nombre, pais, contacto, email, telefono, notas)
-      values ('inspector', 'Lemon Squad Vehicle Inspections', 'Estados Unidos', 'Mike Carter', 'book@lemonsquad.example', '+1 888 555 0100', 'DEMO')
+      values ('agente_aduana', 'Agencia de Aduana Pacífico S.A. (DEMO)', 'Perú', 'Av. Argentina 2020, Callao', 'Rosa Medina', 'despachos@pacifico.example', '+51 1 555 0120', '20555555551', 'DEMO')
       returning id`);
 
     // ── Cliente ───────────────────────────────────────────────────────────────
@@ -121,23 +125,26 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
       returning id`);
     const clienteId = cliente.id as string;
 
-    // ── Presupuesto con el motor real ─────────────────────────────────────────
-    const presupuesto = presupuestar(entradaPorDefecto({ precio: 78500, vehicleType: "hev", condition: "nuevo", origin: "originario-usa", cylinderCapacityCc: 3445, inland: 650, margenH3: 0.03 }));
-    const fechas = { fechaFirma: "2026-11-03", fechaLimiteH2: "2026-11-14", fechaEstArribo: "2026-12-15", fechaEstEntrega: "2027-01-08" };
+    // ── Presupuesto con el motor real (auto nuevo: sin inspección) ────────────
+    const presupuesto = presupuestar(entradaPorDefecto({ precio: 78500, vehicleType: "hev", condition: "nuevo", origin: "originario-usa", cylinderCapacityCc: 3445 }));
+    const fechas = { fechaFirma: "2026-11-05", fechaLimitePago2: "2026-11-18", fechaReleaseEst: "2026-11-18", fechaEstArribo: "2026-12-15", fechaEstLevante: "2026-12-22" };
     const hitos = hitosDesde(presupuesto, fechas);
+    const hito = (t: string) => hitos.find((h) => h.tipo === t)!;
 
     const datos = {
       cliente_id: clienteId,
-      etapa: "contrato",
-      embarque_nuevo: { modalidad: "exclusivo", contenedor: "c40hc", puerto_origen: "Miami", puerto_destino: "Callao", fecha_release_est: "2026-11-18", fecha_zarpe_est: "2026-11-22", fecha_arribo_est: "2026-12-15" },
+      etapa: "busqueda",
+      embarque_nuevo: { modalidad: "exclusivo", contenedor: "c40hc", puerto_origen: "Miami", puerto_destino: "Callao", fecha_release_est: "2026-11-18", fecha_zarpe_est: "2026-11-22", fecha_arribo_est: "2026-12-15", almacen_consolidacion: "Andes Cargo Logistics, 8700 NW 107th Ave, Medley, FL 33178" },
       proporcion_flete: 1,
       veh_marca: "Toyota", veh_modelo: "Sequoia", veh_version: "TRD Pro i-FORCE MAX", veh_anio: 2026, veh_vin: "7SVAAABA5SX123456", veh_color: "Wind Chill Pearl",
       veh_km: 12, veh_combustible: "Híbrido (gasolina)", veh_cilindrada_cc: 3445, veh_transmision: "Automática de 10 velocidades",
-      veh_condicion: "nuevo", veh_categoria: "hev", veh_clase: "M1", veh_origen: "originario-usa", veh_pais_ensamblaje: "Estados Unidos (San Antonio, TX)", veh_doc_propiedad: "MSO (Manufacturer Statement of Origin)",
+      veh_condicion: "nuevo", veh_categoria: "hev", veh_clase: "M1", veh_origen: "originario-usa", veh_pais_ensamblaje: "Estados Unidos (San Antonio, TX)", veh_doc_propiedad: "MSO (Manufacturer Statement of Origin)", veh_peso_kg: 2760, veh_medidas: "5.29 × 2.02 × 1.89 m",
       moneda_compra: "USD", precio_compra: 78500, precio_compra_usd: 78500, precio_tope: 82000, fecha_limite_compra: "2026-11-12", pais_origen: "Estados Unidos", puerto_origen: "Miami",
-      presupuesto, honorarios_usd: presupuesto.honorarios, honorarios_base_usd: presupuesto.honorariosBase, honorarios_igv_usd: presupuesto.honorariosIgv, margen_h3: presupuesto.margenH3,
-      fecha_firma: fechas.fechaFirma, fecha_limite_h2: fechas.fechaLimiteH2, fecha_est_embarque: "2026-11-21", fecha_est_arribo: fechas.fechaEstArribo, fecha_est_entrega: fechas.fechaEstEntrega,
-      semanas_estimadas: "9 a 10 semanas", loa_vence: "2027-05-03", tarifa_custodia_usd: 25, costo_inspeccion_usd: 350, vendedor_id: vendedor.id, inspector_id: inspector.id, agente_aduana_id: agente.id,
+      fecha_release: "2026-11-18",
+      presupuesto, honorarios_usd: presupuesto.honorarios, honorarios_base_usd: presupuesto.honorariosBase, honorarios_igv_usd: presupuesto.honorariosIgv,
+      fecha_firma: fechas.fechaFirma, fecha_limite_h2: fechas.fechaLimitePago2, fecha_est_embarque: "2026-11-21", fecha_est_arribo: fechas.fechaEstArribo, fecha_est_entrega: "2027-01-08",
+      semanas_estimadas: "9 a 10 semanas", loa_vence: "2027-05-05", tarifa_custodia_usd: 25,
+      vendedor_id: dealer.id, broker_id: broker.id, agente_aduana_id: agente.id,
       notas_internas: "DEMO para citas: datos ficticios.",
       hitos: hitos.map((h) => ({ tipo: h.tipo, monto_estimado_usd: h.montoEstimadoUsd, fecha_limite: h.fechaLimite, cuenta: h.cuenta, nota: h.nota })),
       tareas: [],
@@ -147,7 +154,7 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
     await sql`update public.embarques set forwarder_id = ${forwarder.id as string}::uuid where id = (select embarque_id from public.expedientes where id = ${expedienteId}::uuid)`;
 
     const ctx0 = (await cargarContextoServidor(expedienteId))!;
-    await sql`select public.insertar_tareas_expediente(${expedienteId}::uuid, 'contrato', ${JSON.stringify(tareasAJson(tareasParaEtapa("contrato", ctx0)))}::jsonb)`;
+    await sql`select public.insertar_tareas_expediente(${expedienteId}::uuid, 'busqueda', ${JSON.stringify(tareasAJson(tareasParaEtapa("busqueda", ctx0)))}::jsonb)`;
 
     // ── Parámetros de la empresa para los documentos: los de /portal/configuracion (o la variable) si están; si no, marcadores ──
     // Ningún campo puede quedar vacío (regla "sin rayas"): lo que la empresa no tenga configurado sale como "(por confirmar)".
@@ -180,86 +187,87 @@ describe.skipIf(!ACTIVA)("expediente de demostración", () => {
       const ctx = (await cargarContextoServidor(expedienteId))!;
       const ev = evaluarAvance(ctx, destino as never, new Date("2026-11-26T12:00:00-05:00"));
       const tareas = tareasAJson(tareasParaEtapa(destino as never, ctx));
-      const forzado = !ev.permitido;
-      if (forzado) console.log(`avance a ${destino} forzado; faltaban:`, ev.faltantes.map((f) => f.clave));
-      await comoUsuario(ADMIN, (tx) => tx`select public.avanzar_expediente(${expedienteId}::uuid, ${destino}::public.etapa_expediente, ${JSON.stringify(tareas)}::jsonb, ${forzado}, ${forzado ? "Demo: etapa cargada de una vez." : null})`);
+      // La demo debe pasar cada compuerta por las buenas: si algo falta, es un error del flujo.
+      expect(ev.faltantes.map((f) => f.clave), `compuerta de ${destino}`).toEqual([]);
+      await comoUsuario(ADMIN, (tx) => tx`select public.avanzar_expediente(${expedienteId}::uuid, ${destino}::public.etapa_expediente, ${JSON.stringify(tareas)}::jsonb, false, null)`);
     };
     const mover = async (mov: Record<string, unknown>) => {
       const r = await uno(sql`select public.registrar_movimiento(${JSON.stringify({ expediente_id: expedienteId, ...mov })}::jsonb, ${ADMIN}::uuid) as id`);
       return r.id as string;
     };
     const movimiento = async (id: string) => (await cargarContextoServidor(expedienteId))!.movimientos.find((m) => m.id === id)!;
+    /** El cliente declara desde su cuenta y el equipo confirma: como en la vida real. */
+    const depositoDelCliente = async (h: string, fecha: string, operacion: string) => {
+      await comoUsuario(DEMO_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'declarar_deposito', ${JSON.stringify({ hito: h, monto: hito(h).montoEstimadoUsd, fecha, banco: "BCP", operacion })}::jsonb)`);
+      const declarado = await uno(sql`select id from public.expediente_movimientos where expediente_id = ${expedienteId}::uuid and hito = ${h}::public.tipo_hito and estado = 'por_confirmar'`);
+      const id = declarado.id as string;
+      await mover({ id, estado: "confirmado", fecha });
+      await emitir("constancia_fondos", true, {}, await movimiento(id));
+      return id;
+    };
 
-    // Antes de emitir nada: qué le falta a cada plantilla del contrato (de una vez).
-    {
-      const { construirDocumento } = await import("@/core/expedientes/documentos");
-      const ctx = (await cargarContextoServidor(expedienteId))!;
-      const faltas: Record<string, string[]> = {};
-      for (const tipo of ["contrato", "anexo_a", "anexo_b", "anexo_c", "anexo_d", "loa", "instrucciones_vendedor", "instrucciones_forwarder"]) {
-        const d = construirDocumento(plantillaDe(tipo as never)!, ctx, {}, fijos);
-        if (d.faltantes.length) faltas[tipo] = d.faltantes;
-      }
-      if (Object.keys(faltas).length) console.log("faltantes por plantilla (antes de avanzar):", JSON.stringify(faltas));
-    }
+    // ── BÚSQUEDA (sin costo) ──────────────────────────────────────────────────
+    await sql`update public.expedientes set historial_ref = 'MSO sin matricular · recalls por VIN: ninguno pendiente (NHTSA, 2026-11-04)' where id = ${expedienteId}::uuid`;
+    for (const clave of ["luxcars.buscar_unidades", "luxcars.proforma", "luxcars.verificar_nuevo", "luxcars.verificar_cuenta_vendedor"]) await completar(expedienteId, clave);
+    await emitir("anexo_a", true);
+    await emitir("anexo_b", true);
+    await comoUsuario(DEMO_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'aprobar_unidad', '{"comentario":"Conforme con la unidad y el presupuesto."}'::jsonb)`);
+    await avanzar("contrato");
 
-    // ── CONTRATO ──────────────────────────────────────────────────────────────
+    // ── CONTRATO: una sola visita a la notaría y el Pago 1 ───────────────────
     await completar(expedienteId, "luxcars.kyc");
     const contrato = await emitir("contrato", true);
     await emitir("anexo_c", true);
     await emitir("anexo_d", true);
     const loa = await emitir("loa", true);
+    const poder = await emitir("poder_inmatriculacion", true);
     await firmar(contrato.documentoId, "2026-11-05");
     await firmar(loa.documentoId, "2026-11-05");
+    await firmar(poder.documentoId, "2026-11-05");
     await completar(expedienteId, "cliente.firmar_contrato_loa", contrato.documentoId);
     await comoUsuario(DEMO_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'confirmar_cuentas', '{}'::jsonb)`);
-    await avanzar("busqueda");
-
-    // ── BÚSQUEDA ──────────────────────────────────────────────────────────────
-    await sql`update public.expedientes set fecha_inspeccion = '2026-11-08', historial_ref = 'CarFax 7SVAAABA5SX123456 · sin siniestros · 1 dueño (dealer)' where id = ${expedienteId}::uuid`;
-    for (const clave of ["luxcars.buscar_unidades", "luxcars.historial", "luxcars.inspeccion", "luxcars.proforma", "luxcars.verificar_cuenta_vendedor"]) await completar(expedienteId, clave);
-    const anexoA = await emitir("anexo_a", true);
-    await emitir("anexo_b", true);
-    await firmar(anexoA.documentoId, "2026-11-10");
     await emitir("instrucciones_vendedor", false);
-    await comoUsuario(DEMO_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'aprobar_inspeccion', '{"comentario":"Conforme con el informe y el precio."}'::jsonb)`);
-    const h1 = hitos.find((h) => h.tipo === "H1")!;
-    const h1Id = await mover({ tipo: "deposito", cuenta: "operaciones", hito: "H1", fecha: "2026-11-10", moneda: "USD", monto: h1.montoEstimadoUsd, concepto: "Honorarios 30 % (hito H1)", documento_ref: "BCP · op. 0451122" });
-    await emitir("constancia_fondos", true, {}, await movimiento(h1Id));
-    const pagoH1 = await uno(sql`select id from public.expediente_tareas where expediente_id = ${expedienteId}::uuid and clave = 'cliente.pagar_h1'`);
-    if (pagoH1) await comoUsuario(ADMIN, (tx) => tx`select public.completar_tarea(${pagoH1.id as string}::uuid, null, 'hecha')`);
+    await depositoDelCliente("H1", "2026-11-06", "0451122");
     await avanzar("compra");
 
-    // ── COMPRA ────────────────────────────────────────────────────────────────
-    const h2 = hitos.find((h) => h.tipo === "H2")!;
-    await comoUsuario(DEMO_USER, (tx) => tx`select public.cliente_accion_expediente(${expedienteId}::uuid, 'declarar_deposito', ${JSON.stringify({ hito: "H2", monto: h2.montoEstimadoUsd, fecha: "2026-11-12", banco: "BCP", operacion: "0458810" })}::jsonb)`);
-    const declarado = await uno(sql`select id from public.expediente_movimientos where expediente_id = ${expedienteId}::uuid and hito = 'H2' and estado = 'por_confirmar'`);
-    const h2Id = declarado.id as string;
-    await mover({ id: h2Id, estado: "confirmado", fecha: "2026-11-12" });
-    await emitir("constancia_fondos", true, {}, await movimiento(h2Id));
-    await mover({ tipo: "pago", cuenta: "fondos_clientes", hito: "H2", fecha: "2026-11-13", moneda: "USD", monto: 78500, contraparte_id: vendedor.id, concepto: "Precio del vehículo", documento_ref: "SWIFT BOFAUS3N 2026-11-13" });
-    await mover({ tipo: "pago", cuenta: "fondos_clientes", hito: "H2", fecha: "2026-11-18", moneda: "USD", monto: 650, contraparte_id: forwarder.id, concepto: "Transporte interno", documento_ref: "Factura ACL-10422" });
+    // ── COMPRA: wire al broker con la comisión del banco repuesta ─────────────
+    await mover({ tipo: "pago", cuenta: "fondos_clientes", hito: "H1", fecha: "2026-11-09", moneda: "USD", monto: 78500, contraparte_id: broker.id, concepto: "Precio del vehículo (wire al broker)", documento_ref: "SWIFT BOFAUS3N 2026-11-09 · bill of sale SUN-26-0912", comision_bancaria_usd: 45 });
+    await emitir("instrucciones_forwarder", false);
     for (const clave of ["luxcars.wire_vendedor", "luxcars.bill_of_sale", "luxcars.doc_propiedad_forwarder", "luxcars.coordinar_release"]) await completar(expedienteId, clave);
     await avanzar("embarque");
 
-    // ── EMBARQUE ──────────────────────────────────────────────────────────────
-    await emitir("instrucciones_forwarder", false);
-    await mover({ tipo: "pago", cuenta: "fondos_clientes", hito: "H2", fecha: "2026-11-20", moneda: "USD", monto: presupuesto.flete + presupuesto.seguro, contraparte_id: forwarder.id, concepto: "Flete y seguro", documento_ref: "Factura ACL-10467" });
-    for (const clave of ["luxcars.poliza", "tercero.inland_acta_carga", "luxcars.borrador_bl", "tercero.declaracion_exportacion"]) await completar(expedienteId, clave);
+    // ── EMBARQUE: Pago 2 (flete y seguro + 50 % de honorarios) ────────────────
+    await depositoDelCliente("H2", "2026-11-17", "0458810");
+    await depositoDelCliente("H3", "2026-11-17", "0458811");
+    await mover({ tipo: "pago", cuenta: "fondos_clientes", hito: "H2", fecha: "2026-11-20", moneda: "USD", monto: presupuesto.flete, contraparte_id: forwarder.id, concepto: "Flete (traslado al puerto y marítimo)", documento_ref: "Factura ACL-10467" });
+    await mover({ tipo: "pago", cuenta: "fondos_clientes", hito: "H2", fecha: "2026-11-20", moneda: "USD", monto: presupuesto.seguro, contraparte_id: forwarder.id, concepto: "Seguro de transporte", documento_ref: "Póliza MAR-26-55821" });
+    for (const clave of ["luxcars.poliza", "tercero.acta_carga", "luxcars.borrador_bl", "tercero.declaracion_exportacion"]) await completar(expedienteId, clave);
     const emb = await uno(sql`select embarque_id from public.expedientes where id = ${expedienteId}::uuid`);
     await comoUsuario(ADMIN, (tx) => tx`select public.registrar_zarpe_arribo(${emb.embarque_id as string}::uuid, ${JSON.stringify({ fecha_carga: "2026-11-19", fecha_zarpe_real: "2026-11-22", fecha_arribo_est: "2026-12-15", nave: "MSC Ilona V.246S", master_bl: "MEDUMI2611042" })}::jsonb, ${ADMIN}::uuid)`);
     await avanzar("transito");
 
-    // ── TRÁNSITO (estado actual de la demo) ───────────────────────────────────
+    // ── TRÁNSITO (estado actual de la demo): aviso del Pago 3 emitido, H4 pendiente ──
     await completar(expedienteId, "luxcars.docs_agente");
-    await emitir("aviso_h3", true);
+    await emitir("aviso_h3", true, { HITO: "H4", MONTO_AVISO: monto(presupuesto.gastosAduana), FECHA_AVISO: "26 de noviembre de 2026" });
 
     // ── Lo que ve el cliente ──────────────────────────────────────────────────
     const vista = await comoUsuario(DEMO_USER, (tx) => tx`select codigo, etapa from public.expediente_cliente where id = ${expedienteId}::uuid`);
     const tareasCliente = await comoUsuario(DEMO_USER, (tx) => tx`select clave, estado from public.expediente_tarea_cliente where expediente_id = ${expedienteId}::uuid and estado = 'pendiente' order by clave`);
     const docs = await comoUsuario(DEMO_USER, (tx) => tx`select tipo, estado from public.expediente_documento_cliente where expediente_id = ${expedienteId}::uuid order by tipo`);
-    const movs = await comoUsuario(DEMO_USER, (tx) => tx`select tipo, hito, estado, monto_usd from public.expediente_movimiento_cliente where expediente_id = ${expedienteId}::uuid order by fecha`);
+    const movs = await comoUsuario(DEMO_USER, (tx) => tx`select tipo, cuenta, hito, estado, monto_usd, concepto from public.expediente_movimiento_cliente where expediente_id = ${expedienteId}::uuid order by fecha, created_at`);
     console.log(JSON.stringify({ expedienteId, vista, tareasCliente, docs, movs }, null, 1));
     expect(vista[0]?.etapa).toBe("transito");
-    expect(tareasCliente.map((t) => t.clave)).toContain("cliente.depositar_h3");
+    expect(tareasCliente.map((t) => t.clave)).toContain("cliente.depositar_h4");
+
+    // El libro cuadra con el core: H1, H2 y H3 acreditados, H4 pendiente, la comisión no movió el saldo.
+    const { estadoHito } = await import("@/core/expedientes/hitos");
+    const { comisionesBancarias, saldoCuenta } = await import("@/core/expedientes/ledger");
+    const ctx = (await cargarContextoServidor(expedienteId))!;
+    const estados = Object.fromEntries(ctx.hitos.map((h) => [h.tipo, estadoHito(h, ctx.movimientos)]));
+    expect(estados).toMatchObject({ H1: "acreditado", H2: "acreditado", H3: "acreditado", H4: "pendiente", H5: "pendiente", H6: "pendiente" });
+    expect(comisionesBancarias(ctx.movimientos)).toEqual({ cargadas: 45, repuestas: 45, efecto: 0 });
+    const esperado = Math.round((hito("H1").montoEstimadoUsd - 78500 + hito("H2").montoEstimadoUsd - presupuesto.flete - presupuesto.seguro) * 100) / 100;
+    expect(saldoCuenta(ctx.movimientos)).toBeCloseTo(esperado, 1);
+    expect(ctx.hitos.find((h) => h.tipo === "H4")?.montoEstimadoUsd).toBe(presupuesto.gastosAduana);
   }, 600_000);
 });

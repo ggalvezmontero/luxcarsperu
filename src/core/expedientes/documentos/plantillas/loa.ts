@@ -1,4 +1,4 @@
-/** 2 · Letter of Authorization and Limited Power of Attorney (inglés). Transcrito del paquete. */
+/** 2 · Letter of Authorization and Limited Power of Attorney (inglés). Transcrito del paquete; broker como Seller y dealer como emisor de factura y MSO (27 nov 2026). */
 
 import type { Campos } from "../../campos";
 import { firmas, h2, nota, numerada, p, tabla, vinetas, type Estructura } from "../estructura";
@@ -22,16 +22,17 @@ function construir(c: Campos): Estructura {
         ["VIN", c.VEH_VIN],
         ["Color", c.VEH_COLOR],
         ["Odometer", c.VEH_KM],
-        ["Seller", `${c.VENDEDOR_NOMBRE}, ${c.VENDEDOR_DIRECCION}`],
+        ["Seller (broker receiving payment)", `${c.VENDEDOR_NOMBRE}, ${c.VENDEDOR_DIRECCION}`],
+        ["Dealer issuing the invoice and the ownership document", `${c.DEALER_NOMBRE}, ${c.DEALER_DIRECCION}`],
       ], [2, 3]),
 
       h2("2. Authorized acts"),
       numerada([
-        `Negotiate the purchase of the Vehicle with the Seller and sign on the Principal's behalf the purchase agreement, bill of sale, odometer statement and any related purchase documents, up to a maximum price of ${c.MONEDA_COMPRA} ${c.PRECIO_TOPE}.`,
-        "Pay the purchase price to the Seller on the Principal's behalf. The funds originate from the Principal and are remitted through the Agent's client funds account. Payment by the Agent does not make the Agent the buyer or the owner of the Vehicle.",
-        "Receive from the Seller the original ownership documents (New Vehicle Information Statement, Manufacturer's Statement of Origin, provincial registration or ownership, or certificate of title, as applicable), the bill of sale, keys and manuals, and hold them for the Principal.",
-        "Arrange and sign for the pickup, inland transportation, storage, consolidation, loading, marine insurance and ocean shipment of the Vehicle to Callao, Peru, acting as shipper or exporter of record where the freight forwarder requires it, always naming the Principal as consignee.",
-        `Complete and sign the export documentation and declarations required by the authorities of ${c.PAIS_ORIGEN}, and provide the information required by the Seller, the carrier or the forwarder.`,
+        `Complete the purchase of the Vehicle, already selected and approved by the Principal, with the Seller and the Dealer, and sign on the Principal's behalf the purchase agreement, bill of sale, odometer statement and any related purchase documents, up to a maximum price of ${c.MONEDA_COMPRA} ${c.PRECIO_TOPE}.`,
+        "Pay the full purchase price to the Seller (broker) on the Principal's behalf, who in turn pays the Dealer. The funds originate from the Principal and are remitted through the Agent's client funds account. Payment by the Agent does not make the Agent the buyer or the owner of the Vehicle.",
+        "Receive from the Dealer or the Seller the original ownership documents (Manufacturer's Statement of Origin, New Vehicle Information Statement, provincial registration or ownership, or certificate of title, as applicable), issued in the Principal's name, the bill of sale, keys and manuals, and hold them for the Principal.",
+        "Arrange and sign for the pickup, storage, consolidation, loading, marine insurance and ocean shipment of the Vehicle to Callao, Peru, acting as shipper or exporter of record where the freight forwarder requires it, always naming the Principal as consignee.",
+        `Complete and sign the export documentation and declarations required by the authorities of ${c.PAIS_ORIGEN}, and provide the information required by the Seller, the Dealer, the carrier or the forwarder.`,
         "Request and receive confirmations, invoices and receipts, all of which shall be issued in the Principal's name.",
       ]),
 
@@ -46,20 +47,20 @@ function construir(c: Campos): Estructura {
       p(`This authorization is valid from the date above until ${c.LOA_VENCIMIENTO} or until the Vehicle is delivered to the ocean carrier for export, whichever comes first, unless revoked earlier in writing.`),
 
       h2("5. Reliance"),
-      p(`The Seller, the freight forwarder, the carrier and any other third party may rely on this authorization and on the Agent's instructions given within its scope. Questions about this authorization may be directed to the Principal at ${c.CLIENTE_CORREO} or ${c.CLIENTE_TELEFONO}.`),
+      p(`The Seller, the Dealer, the freight forwarder, the carrier and any other third party may rely on this authorization and on the Agent's instructions given within its scope. Questions about this authorization may be directed to the Principal at ${c.CLIENTE_CORREO} or ${c.CLIENTE_TELEFONO}.`),
       p(`This authorization is governed by the laws of the Republic of Peru. Signed in ${c.CIUDAD_FIRMA}, Peru, on ${c.FECHA_FIRMA}.`),
       firmas(
         ["For the Principal", c.CLIENTE_RAZON_SOCIAL, `${c.CLIENTE_REPRESENTANTE}, ${c.CLIENTE_REP_CARGO}`, `DNI No. ${c.CLIENTE_REP_DNI}`, "Signature certified by a Peruvian notary public"],
         ["Accepted by the Agent", "LUX CARS IMPORT S.A.C.", `${c.LUXCARS_REPRESENTANTE}, General Manager`, `DNI No. ${c.LUXCARS_REP_DNI}`],
       ),
-      nota("*Nota de uso, no imprimir: la firma del cliente se legaliza ante notario. La apostilla (Ministerio de Relaciones Exteriores) solo se tramita si el vendedor o el forwarder la exigen; la mayoría de dealers acepta la carta notarizada con copia del DNI y de la vigencia de poder.*"),
+      nota("*Nota de uso, no imprimir: la firma del cliente se legaliza ante notario en la misma visita en que firma el contrato y el poder para la inmatriculación. La apostilla (Ministerio de Relaciones Exteriores) solo se tramita si el broker, el dealer o el forwarder la exigen; la mayoría acepta la carta notarizada con copia del DNI y de la vigencia de poder.*"),
     ],
   };
 }
 
 export const loa: Plantilla = {
   tipo: "loa",
-  version: "loa@2026-11-25",
+  version: "loa@2026-11-27",
   nombre: "Letter of Authorization (EN)",
   idioma: "en",
   tarea: "luxcars.generar_contrato",

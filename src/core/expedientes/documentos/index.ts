@@ -7,26 +7,31 @@
 import { camposPlantilla, espiarCampos, type Campo, type Campos, type CamposExtra } from "../campos";
 import type { ContextoExpediente, TipoDocumento } from "../tipos";
 import type { Estructura } from "./estructura";
-import { actaEntrega } from "./plantillas/actaEntrega";
+import { actaRendicion } from "./plantillas/actaRendicion";
 import { anexoA } from "./plantillas/anexoA";
 import { anexoB } from "./plantillas/anexoB";
 import { anexoC } from "./plantillas/anexoC";
 import { anexoD } from "./plantillas/anexoD";
-import { avisoH3 } from "./plantillas/avisoH3";
+import { avisoPago } from "./plantillas/avisoH3";
 import { constanciaFondos } from "./plantillas/constanciaFondos";
 import { contrato } from "./plantillas/contrato";
 import { instruccionesForwarder } from "./plantillas/instruccionesForwarder";
 import { instruccionesVendedor } from "./plantillas/instruccionesVendedor";
 import { liquidacionDefinitiva } from "./plantillas/liquidacionDefinitiva";
 import { loa } from "./plantillas/loa";
-import { rendicion } from "./plantillas/rendicion";
+import { poderInmatriculacion } from "./plantillas/poderInmatriculacion";
 import type { Plantilla } from "./plantillas/tipos";
 
 export type { Plantilla } from "./plantillas/tipos";
 export * from "./estructura";
 export { renderHtml, inlineHtml } from "./renderHtml";
 
-/** Las plantillas, en el orden del paquete: las de firma (fase 2) y las que nacen del libro (fase 3). */
+/**
+ * Las plantillas, en el orden del paquete: las del acto de firma en notaría
+ * (contrato con sus anexos, LOA y poder), las instrucciones a terceros y las
+ * que nacen del libro (constancia, aviso de tributos, liquidación definitiva,
+ * acta de entrega y rendición).
+ */
 export const PLANTILLAS: readonly Plantilla[] = [
   contrato,
   anexoA,
@@ -34,13 +39,13 @@ export const PLANTILLAS: readonly Plantilla[] = [
   anexoC,
   anexoD,
   loa,
+  poderInmatriculacion,
   instruccionesVendedor,
   instruccionesForwarder,
   constanciaFondos,
-  avisoH3,
+  avisoPago,
   liquidacionDefinitiva,
-  actaEntrega,
-  rendicion,
+  actaRendicion,
 ];
 
 /**
@@ -48,7 +53,7 @@ export const PLANTILLAS: readonly Plantilla[] = [
  * el formulario. El generador de la pestaña Documentos no los ofrece; se
  * emiten desde la pestaña Dinero.
  */
-export const TIPOS_DESDE_LIBRO: readonly TipoDocumento[] = ["constancia_fondos", "aviso_h3", "liquidacion_definitiva", "acta_entrega", "rendicion"];
+export const TIPOS_DESDE_LIBRO: readonly TipoDocumento[] = ["constancia_fondos", "aviso_h3", "liquidacion_definitiva", "acta_rendicion"];
 
 export function esPlantillaDelLibro(tipo: TipoDocumento): boolean {
   return TIPOS_DESDE_LIBRO.includes(tipo);

@@ -12,11 +12,15 @@ import type { ImporterProfile, VehicleCondition, VehicleOrigin } from "../pricin
 
 export type { VehicleCategoryId, VehicleCondition, VehicleOrigin, ImporterProfile };
 
-/** `public.etapa_expediente`. El orden operativo está en `ETAPAS_ORDEN`. */
+/**
+ * `public.etapa_expediente`. El orden operativo está en `ETAPAS_ORDEN`. Desde el
+ * 27 nov 2026 primero se busca y se elige el auto (sin costo) y el contrato se
+ * firma con la unidad ya elegida: `busqueda` va antes de `contrato`.
+ */
 export type EtapaExpediente =
   | "prospecto"
-  | "contrato"
   | "busqueda"
+  | "contrato"
   | "compra"
   | "embarque"
   | "transito"
@@ -29,8 +33,8 @@ export type EtapaExpediente =
 /** Las etapas en línea, de la apertura al cierre. `cancelado` queda fuera: es terminal desde cualquiera. */
 export const ETAPAS_ORDEN: readonly EtapaExpediente[] = [
   "prospecto",
-  "contrato",
   "busqueda",
+  "contrato",
   "compra",
   "embarque",
   "transito",
@@ -53,10 +57,36 @@ export const MODALIDADES_EMBARQUE: readonly ModalidadEmbarque[] = ["consolidado"
 export type TipoContenedor = "c20" | "c40" | "c40hc" | "roro";
 export const TIPOS_CONTENEDOR: readonly TipoContenedor[] = ["c20", "c40", "c40hc", "roro"];
 
-export type TipoHito = "H1" | "H2" | "H3" | "H4";
-export const TIPOS_HITO: readonly TipoHito[] = ["H1", "H2", "H3", "H4"];
+/**
+ * Calendario definitivo del dueño (27 nov 2026): cinco pagos, seis hitos, una
+ * cuenta por hito.
+ *   Pago 1 · H1 · al firmar el contrato · precio del vehículo (pro forma del broker; en
+ *            usados, más la inspección) → Fondos de Clientes
+ *   Pago 2 · H2 · release · flete (traslado al puerto y marítimo) y seguro → Fondos de Clientes
+ *          · H3 · release · 50 % de los honorarios → Operaciones (detracción al Banco de la Nación)
+ *   Pago 3 · H4 · al arribo · gastos de aduana (agente, almacenaje, grúa) según la pro forma
+ *            del agente → Fondos de Clientes; gasto reembolsable: el sobrante o faltante se
+ *            compensa en el Pago 5
+ *   Pago 4 · H5 · cuando SUNAT liquida la DAM · tributos exactos de la liquidación, en soles;
+ *            por defecto los paga el cliente DIRECTAMENTE a SUNAT → cuenta `directo`
+ *   Pago 5 · H6 · con el levante · 50 % restante de los honorarios, neto del saldo de aduana
+ *            → Operaciones
+ */
+export type TipoHito = "H1" | "H2" | "H3" | "H4" | "H5" | "H6";
+export const TIPOS_HITO: readonly TipoHito[] = ["H1", "H2", "H3", "H4", "H5", "H6"];
 
-export type CuentaMovimiento = "fondos_clientes" | "operaciones" | "detracciones";
+/** Pago que ve el cliente (1 a 5) al que pertenece cada hito. */
+export type NumeroPago = 1 | 2 | 3 | 4 | 5;
+export const PAGO_POR_HITO: Record<TipoHito, NumeroPago> = { H1: 1, H2: 2, H3: 2, H4: 3, H5: 4, H6: 5 };
+export const NUMEROS_PAGO: readonly NumeroPago[] = [1, 2, 3, 4, 5];
+
+/**
+ * `directo` no es una cuenta de Luxcars: marca lo que el cliente paga
+ * directamente a un tercero (los tributos a SUNAT, hito H5). Se registra para
+ * que el hito quede acreditado y la rendición lo liste, pero no entra en el
+ * saldo de Fondos de Clientes.
+ */
+export type CuentaMovimiento = "fondos_clientes" | "operaciones" | "detracciones" | "directo";
 
 export type ResponsableTarea = "luxcars" | "cliente" | "tercero";
 export const RESPONSABLES_TAREA: readonly ResponsableTarea[] = ["luxcars", "cliente", "tercero"];
@@ -74,15 +104,19 @@ export type TipoEvento =
   | "notificacion"
   | "alerta";
 
+/** `aprobar_inspeccion` queda en la enum por las filas viejas; desde el 27 nov 2026 la acción es `aprobar_unidad`. */
 export type TipoAprobacion =
+  | "aprobar_unidad"
   | "aprobar_inspeccion"
   | "elegir_consolidado"
   | "declarar_deposito"
   | "conformidad_rendicion"
   | "confirmar_cuentas";
 
+/** `vendedor` es el DEALER que emite la factura y el MSO a nombre del cliente; `broker` el intermediario al que se gira el precio. */
 export type TipoContraparte =
   | "vendedor"
+  | "broker"
   | "forwarder"
   | "agente_aduana"
   | "aseguradora"
@@ -93,6 +127,7 @@ export type TipoContraparte =
   | "otro";
 export const TIPOS_CONTRAPARTE: readonly TipoContraparte[] = [
   "vendedor",
+  "broker",
   "forwarder",
   "agente_aduana",
   "aseguradora",
@@ -117,10 +152,22 @@ export type TipoDocumento =
   | "instrucciones_vendedor"
   | "instrucciones_forwarder"
   | "constancia_fondos"
+  /**
+   * Aviso de pago de los hitos que se fijan durante la operación: H4 (gastos de
+   * aduana, Pago 3), H5 (tributos de la liquidación de SUNAT, Pago 4) y H6
+   * (honorarios netos, Pago 5). La columna `hito` del documento dice cuál. El
+   * valor de la enum conserva el nombre viejo `aviso_h3`: renombrar un valor de
+   * enum en Postgres costaba más que documentarlo.
+   */
   | "aviso_h3"
   | "liquidacion_definitiva"
+  /** En desuso desde el 27 nov 2026: los reemplaza `acta_rendicion`. Quedan por las filas viejas. */
   | "acta_entrega"
   | "rendicion"
+  /** Acta de entrega y rendición de cuentas: un solo documento que el cliente firma simple con el auto delante. */
+  | "acta_rendicion"
+  /** Poder especial para la inmatriculación en SUNARP, placas y tarjeta (firma en la misma visita a la notaría). */
+  | "poder_inmatriculacion"
   | "factura_honorarios"
   | "bill_of_sale"
   | "documento_propiedad"
@@ -149,6 +196,8 @@ export const TIPOS_DOCUMENTO: readonly TipoDocumento[] = [
   "liquidacion_definitiva",
   "acta_entrega",
   "rendicion",
+  "acta_rendicion",
+  "poder_inmatriculacion",
   "factura_honorarios",
   "bill_of_sale",
   "documento_propiedad",
@@ -317,7 +366,11 @@ export type UnidadDelEmbarque = {
 export type ExpedienteReservado = {
   precioTope: number | null;
   tcCompraRef: number | null;
+  /** Dealer: emite la factura o bill of sale y el MSO a nombre del cliente. */
   vendedorId: string | null;
+  /** Broker al que se gira el precio completo y que paga al dealer. Sin broker, el dealer cobra directo. */
+  brokerId: string | null;
+  /** Solo usados: quién inspecciona la unidad antes de que el cliente la apruebe. */
   inspectorId: string | null;
   agenteAduanaId: string | null;
   notasInternas: string | null;
@@ -337,7 +390,9 @@ export type Expediente = {
   precioCompra: number | null;
   precioCompraUsd: number | null;
   fechaLimiteCompra: FechaIso | null;
+  /** Solo usados: fecha de la inspección física. */
   fechaInspeccion: FechaIso | null;
+  /** CarFax (usado) o MSO sin matricular y consulta de recalls por VIN (nuevo). */
   historialRef: string | null;
   fechaRelease: FechaIso | null;
   paisOrigen: string | null;
@@ -347,12 +402,12 @@ export type Expediente = {
   honorariosBaseUsd: number | null;
   honorariosIgvUsd: number | null;
   porcentajeDetraccion: number | null;
-  margenH3: number;
   /** USD por día de custodia si el cliente no recoge el auto (cláusula 13.d). */
   tarifaCustodiaUsd: number | null;
-  /** Gasto de inspección que se retiene si el cliente desiste antes de la compra (cláusula 15.1). */
+  /** Solo usados: costo de la inspección (se cobra con el Pago 1; en nuevos es cero y no aparece). */
   costoInspeccionUsd: number | null;
   fechaFirma: FechaIso | null;
+  /** Fecha límite del Pago 2 (H2 flete y seguro + H3 primera mitad de honorarios); por defecto el release estimado. Columna `fecha_limite_h2`. */
   fechaLimiteH2: FechaIso | null;
   fechaEstEmbarque: FechaIso | null;
   fechaEstArribo: FechaIso | null;
@@ -410,7 +465,7 @@ export const TIPOS_MOVIMIENTO: readonly TipoMovimiento[] = ["deposito", "pago", 
 export type EstadoMovimiento = "por_confirmar" | "confirmado" | "anulado";
 export const ESTADOS_MOVIMIENTO: readonly EstadoMovimiento[] = ["por_confirmar", "confirmado", "anulado"];
 
-export const CUENTAS_MOVIMIENTO: readonly CuentaMovimiento[] = ["fondos_clientes", "operaciones", "detracciones"];
+export const CUENTAS_MOVIMIENTO: readonly CuentaMovimiento[] = ["fondos_clientes", "operaciones", "detracciones", "directo"];
 
 /**
  * Asiento del libro (`expediente_movimientos`). Solo los `confirmado` cuentan
@@ -466,7 +521,7 @@ export type Documento = {
   createdAt: string;
   /** Constancia de fondos: el depósito que la originó. */
   movimientoId?: string | null;
-  /** Aviso H3: el hito al que se refiere. */
+  /** Aviso de pago: el hito al que se refiere (H4, H5 o H6). */
   hito?: TipoHito | null;
 };
 
@@ -513,7 +568,7 @@ export type ContextoExpediente = {
   movimientos: Movimiento[];
   documentos: Documento[];
   /**
-   * Terceros del expediente (vendedor, forwarder, agente, inspector), solo
+   * Terceros del expediente (dealer, broker, forwarder, agente de aduana), solo
    * para el equipo: las plantillas de documentos los nombran. El cliente no
    * los recibe (sus datos salen en el Anexo A ya generado).
    */
@@ -566,8 +621,10 @@ export type SnapshotTasas = {
 export type Presupuesto = {
   motorVersion: string;
   entrada: EntradaPresupuesto;
+  /** Precio del vehículo según la pro forma del broker. */
   precioUsd: number;
-  inland: number;
+  /** Solo usados: inspección (hito H1). Cero en nuevos. */
+  costoInspeccion: number;
   fleteBase: number;
   proporcionFlete: number;
   flete: number;
@@ -580,12 +637,10 @@ export type Presupuesto = {
   percepcion: number;
   tributos: number;
   gastosAduana: number;
-  gastosRegistrales: number;
   costoPuestoEnLima: number;
   honorarios: number;
   honorariosBase: number;
   honorariosIgv: number;
-  margenH3: number;
   /** Costo total para el cliente sin la percepción (que es recuperable). */
   totalSinPercepcion: number;
   /** Efectivo total que el cliente pone, percepción incluida. */
@@ -606,16 +661,16 @@ export type EntradaPresupuesto = {
   origin: VehicleOrigin;
   cylinderCapacityCc?: number | null;
   importerProfile: ImporterProfile;
-  inland: number;
-  /** Flete del contenedor completo. Por defecto el del motor público. */
+  /** Flete del contenedor completo, traslado al puerto incluido. Por defecto el del motor público. */
   fleteBase: number;
   /** 1 exclusivo · 0.5 consolidado a dos. */
   proporcionFlete: number;
+  /** Agente de aduana, almacenaje y grúa del puerto (hito H4). */
   gastosAduana: number;
-  gastosRegistrales: number;
-  margenH3: number;
-  /** Si la percepción se incluye en H3 (el cliente la pone al numerar la DAM). Por defecto sí. */
-  percepcionEnH3?: boolean;
+  /** Solo usados: costo de la inspección en USD. Se ignora si el vehículo es nuevo. */
+  costoInspeccion?: number;
+  /** Si la percepción se suma a los tributos del Pago 4 (se paga con la DAM). Por defecto sí. */
+  percepcionEnTributos?: boolean;
 };
 
 /* -------------------------------------------------------------------------- */

@@ -53,16 +53,32 @@ describe("plantillas de notificación", () => {
   it("depósito confirmado nombra monto, hito y fecha", () => {
     const n = construirNotificacion("deposito_confirmado", ctx, { montoUsd: 73410.5, hito: "H2", fecha: "2026-11-21" });
     expect(n.texto).toContain("USD 73,410.50");
-    expect(n.texto).toContain("H2 (compra y flete)");
+    expect(n.texto).toContain("H2 (Pago 2: flete y seguro)");
     expect(n.texto).toContain("21 de noviembre de 2026");
     expect(n.texto).toContain("Documentos");
   });
 
   it("lo opcional se omite sin romper el texto", () => {
-    const n = construirNotificacion("aviso_h3", ctx, {});
+    const n = construirNotificacion("aviso_pago", ctx, {});
     expect(n.texto).not.toContain("undefined");
     expect(n.texto).not.toContain("null");
-    expect(n.texto).toMatch(/Sin este depósito/);
+    expect(n.texto).toMatch(/Pago 3/);
+  });
+
+  it("el aviso de pago cambia por hito: Pago 3 aduana, Pago 4 directo a SUNAT, Pago 5 honorarios netos", () => {
+    const p3 = construirNotificacion("aviso_pago", ctx, { hito: "H4", montoUsd: 2500, fechaLimite: "2027-02-15" });
+    expect(p3.asunto).toMatch(/Pago 3/);
+    expect(p3.texto).toContain("USD 2,500.00");
+    expect(p3.texto).toContain("15 de febrero de 2027");
+    expect(p3.texto).toMatch(/Pago 5/);
+    const p4 = construirNotificacion("aviso_pago", ctx, { hito: "H5", montoUsd: 27587.85, fechaLimite: "2027-02-16" });
+    expect(p4.asunto).toMatch(/Pago 4: tributos a SUNAT/);
+    expect(p4.texto).toMatch(/directamente a SUNAT/);
+    expect(p4.texto).toMatch(/Clave SOL/);
+    expect(p4.texto).toMatch(/Ya pagué/);
+    const p5 = construirNotificacion("aviso_pago", ctx, { hito: "H6", montoUsd: 4086.57 });
+    expect(p5.asunto).toMatch(/Pago 5/);
+    expect(p5.texto).toMatch(/saldo de los gastos de aduana/);
   });
 
   it("escapa HTML en lo que viene del expediente", () => {
@@ -85,7 +101,8 @@ describe("plantillas de notificación", () => {
   });
 
   it("reconoce las plantillas válidas", () => {
-    expect(esPlantillaNotificacion("aviso_h3")).toBe(true);
+    expect(esPlantillaNotificacion("aviso_pago")).toBe(true);
+    expect(esPlantillaNotificacion("aviso_tributos")).toBe(false);
     expect(esPlantillaNotificacion("spam")).toBe(false);
     expect(esPlantillaNotificacion(3)).toBe(false);
   });

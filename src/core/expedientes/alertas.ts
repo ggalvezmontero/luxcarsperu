@@ -4,16 +4,16 @@
  */
 
 import { oldestImportableModelYear } from "../pricing/pricingConfig";
-import { anioDeNumeracion, definicionEtapa, esEtapaTerminal } from "./etapas";
+import { TAREA_LUXCARS_POR_HITO, anioDeNumeracion, definicionEtapa, esEtapaTerminal } from "./etapas";
 import { estadoHito } from "./hitos";
-import type { Alerta, ContextoExpediente, TipoDocumento, TipoHito } from "./tipos";
+import type { Alerta, ContextoExpediente, TipoDocumento } from "./tipos";
 
 /** Días desde que se generó un documento sin marcarse firmado antes de avisar. */
 export const DIAS_DOCUMENTO_SIN_FIRMA = 10;
 /** Días antes del vencimiento de la LOA en que empieza el aviso. */
 export const DIAS_AVISO_LOA = 30;
-/** Los documentos que vuelven firmados; las instrucciones y el Anexo B no. */
-const DOCUMENTOS_QUE_SE_FIRMAN = new Set<TipoDocumento>(["contrato", "anexo_a", "anexo_c", "anexo_d", "loa", "acta_entrega"]);
+/** Los documentos que vuelven firmados; los anexos van dentro del contrato y las instrucciones no se firman. */
+const DOCUMENTOS_QUE_SE_FIRMAN = new Set<TipoDocumento>(["contrato", "loa", "poder_inmatriculacion", "acta_rendicion"]);
 
 function ordenEtapaDe(etapa: ContextoExpediente["expediente"]["etapa"]): number {
   return definicionEtapa(etapa).orden;
@@ -36,20 +36,13 @@ export function alertas(ctx: ContextoExpediente, hoy: Date = new Date()): Alerta
   const hoyIso = fechaIsoDe(hoy);
   const orden = ordenEtapaDe(e.etapa);
 
-  // Hitos H2/H3 vencidos sin acreditar. Sin libro (fase 3) se usan las tareas
-  // de confirmación como evidencia, igual que las compuertas.
-  const confirmacion: Record<TipoHito, string> = {
-    H1: "cliente.pagar_h1",
-    H2: "luxcars.confirmar_h2",
-    H3: "luxcars.confirmar_h3",
-    H4: "cliente.pagar_h4",
-  };
+  // Hitos vencidos sin acreditar (los cinco). Sin libro se usan las tareas
+  // de confirmación del equipo como evidencia, igual que las compuertas.
   for (const hito of ctx.hitos) {
-    if (hito.tipo !== "H2" && hito.tipo !== "H3") continue;
     if (!hito.fechaLimite || hito.fechaLimite >= hoyIso) continue;
     const acreditado =
       (ctx.movimientos.length > 0 && estadoHito(hito, ctx.movimientos) === "acreditado") ||
-      ctx.tareas.some((t) => t.clave === confirmacion[hito.tipo] && t.estado === "hecha");
+      ctx.tareas.some((t) => t.clave === TAREA_LUXCARS_POR_HITO[hito.tipo] && t.estado === "hecha");
     if (acreditado) continue;
     salida.push({
       clave: `hito_vencido_${hito.tipo}`,
@@ -135,15 +128,17 @@ export function alertas(ctx: ContextoExpediente, hoy: Date = new Date()): Alerta
     }
   }
 
-  // Diferencia H3 pendiente de cobrar: la tarea queda abierta en aduana o después.
-  if (orden >= ordenEtapaDe("aduana")) {
-    const dif = ctx.tareas.find((t) => t.clave === "luxcars.diferencia_h3");
-    if (dif && dif.estado === "pendiente" && orden > ordenEtapaDe("aduana")) {
+  // Pago 4 (tributos directo a SUNAT): avisado y sin pagar a la fecha límite ya lo cubre "hito vencido".
+  // Saldo de aduana sin aplicar: en placas o después, con el H6 ya acreditado y Fondos de Clientes ≠ 0.
+  if (orden >= ordenEtapaDe("placas")) {
+    const h6 = ctx.hitos.find((h) => h.tipo === "H6");
+    const fondos = ctx.movimientos.filter((m) => m.estado === "confirmado" && m.cuenta === "fondos_clientes").reduce((s, m) => s + (m.tipo === "pago" || m.tipo === "devolucion" ? -m.montoUsd : m.montoUsd), 0);
+    if (h6 && estadoHito(h6, ctx.movimientos) === "acreditado" && Math.abs(fondos) > 0.01) {
       salida.push({
-        clave: "diferencia_h3",
+        clave: "saldo_aduana_sin_aplicar",
         nivel: "media",
-        titulo: "Diferencia de H3 pendiente",
-        detalle: "La liquidación definitiva ya debería estar comparada contra lo depositado y la diferencia cobrada o acreditada.",
+        titulo: "Saldo de Fondos de Clientes por aplicar o devolver",
+        detalle: `El Pago 5 ya está acreditado y quedan USD ${fondos.toFixed(2)} en Fondos de Clientes: registra el sobrante de aduana aplicado al Pago 5 (o el faltante cubierto) y la devolución.`,
       });
     }
   }

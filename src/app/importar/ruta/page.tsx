@@ -12,6 +12,7 @@ import {
   CUENTA_RUTA,
   DINERO_RUTA,
   FIRMAS_RUTA,
+  PAGOS_RUTA,
   PASOS_RUTA,
   PDF_RUTA,
 } from "@/lib/rutaAPedido";
@@ -27,7 +28,7 @@ import { OG_DEFAULTS, twitterCard } from "@/lib/seo";
    ------------------------------------------------------------------------- */
 const TITULO = "Importación a pedido: pasos, pagos y firmas";
 const DESCRIPCION =
-  "Lo que vive el cliente que importa un auto con Luxcars: cinco pasos, cuatro pagos, tres firmas, una cuenta separada para su dinero y el seguimiento desde su cuenta en luxcars.pe.";
+  "Lo que vive el cliente que importa un auto con Luxcars: cinco pasos, cinco pagos, una sola visita a la notaría, una cuenta separada para su dinero y el seguimiento desde su cuenta en luxcars.pe.";
 const OG_TITLE = `${TITULO} | ${LUXCARS_CONFIG.brandName}`;
 const { deliveryWindows, contact } = LUXCARS_CONFIG;
 
@@ -45,7 +46,6 @@ export const metadata: Metadata = {
   twitter: twitterCard(OG_TITLE, DESCRIPCION),
 };
 
-const PAGOS = PASOS_RUTA.flatMap((p) => (p.pago ? [p.pago] : []));
 
 export default function RutaAPedidoPage() {
   return (
@@ -67,8 +67,8 @@ export default function RutaAPedidoPage() {
               </span>
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
-              Cinco pasos, cuatro pagos y tres firmas. Tu dinero en una cuenta separada y cada
-              movimiento visible desde tu cuenta en luxcars.pe.
+              Cinco pasos, cinco pagos y una sola visita a la notaría. Tu dinero en una cuenta
+              separada, los tributos directo a SUNAT y cada movimiento visible desde tu cuenta en luxcars.pe.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button href={PDF_RUTA} variant="accent" size="lg" data-ga-cta="ruta_pdf">
@@ -83,8 +83,8 @@ export default function RutaAPedidoPage() {
             <ul className="mt-8 grid max-w-2xl grid-cols-3 gap-3 text-center sm:text-left">
               {[
                 [`${deliveryWindows.fastTrack.days[0]}–${deliveryWindows.standard.days[1]}`, "días desde EE.UU."],
-                ["4", "pagos, cada uno con su constancia"],
-                ["3", "firmas en total"],
+                [String(PAGOS_RUTA.length), "pagos, cada uno con su comprobante"],
+                ["1", "visita a la notaría"],
               ].map(([n, l]) => (
                 <li key={l} className="rounded-2xl border border-line/80 bg-void/60 p-3 sm:p-4">
                   <p className="whitespace-nowrap text-lg font-semibold tabular-nums text-ink sm:text-2xl">{n}</p>
@@ -95,7 +95,7 @@ export default function RutaAPedidoPage() {
           </div>
         </section>
 
-        {/* Los cinco pasos, con lo que hace el cliente y el pago que dispara cada uno. */}
+        {/* Los cinco pasos, con lo que hace el cliente y los pagos que dispara cada uno. */}
         <Section tone="bg">
           <SectionHeader
             eyebrow="Los cinco pasos"
@@ -120,17 +120,19 @@ export default function RutaAPedidoPage() {
                     <span className="font-semibold text-ink">Tu parte:</span> {p.tuParte}
                   </p>
                 </div>
-                <div>
-                  {p.pago ? (
-                    <div className="rounded-2xl border border-gold-dim/60 bg-void/40 p-4">
-                      <p className="eyebrow text-gold!">Pago {p.pago.numero}</p>
-                      <p className="mt-2 text-base font-semibold text-ink">{p.pago.titulo}</p>
-                      <p className="mt-1 text-xs leading-relaxed text-ink-3">{p.pago.detalle}</p>
-                    </div>
+                <div className="grid content-start gap-3">
+                  {p.pagos?.length ? (
+                    p.pagos.map((pago) => (
+                      <div key={pago.numero} className="rounded-2xl border border-gold-dim/60 bg-void/40 p-4">
+                        <p className="eyebrow text-gold!">Pago {pago.numero}</p>
+                        <p className="mt-2 text-base font-semibold text-ink">{pago.titulo}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-ink-3">{pago.detalle}</p>
+                      </div>
+                    ))
                   ) : (
                     <div className="rounded-2xl border border-line/70 p-4">
                       <p className="eyebrow">Sin pago</p>
-                      <p className="mt-2 text-sm text-ink-3">Cotizar no cuesta. Decidimos juntos si conviene traerlo.</p>
+                      <p className="mt-2 text-sm text-ink-3">Buscar y cotizar no cuesta. Decidimos juntos si conviene traerlo.</p>
                     </div>
                   )}
                 </div>
@@ -147,12 +149,12 @@ export default function RutaAPedidoPage() {
         <Section tone="void">
           <SectionHeader
             eyebrow="Tu dinero"
-            title="Cuatro pagos, una cuenta separada"
-            description="Pagas por hitos, cuando cada cosa toca, y nunca mezclamos tu dinero con el nuestro."
+            title="Cinco pagos, una cuenta separada"
+            description="Pagas cuando cada cosa toca, nunca mezclamos tu dinero con el nuestro y los tributos los pagas directo a SUNAT."
           />
           <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <ol className="grid gap-3">
-              {PAGOS.map((pago) => (
+              {PAGOS_RUTA.map((pago) => (
                 <li key={pago.numero} className="panel-lux flex items-start gap-4 p-5">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold-dim/70 font-mono text-sm text-gold">
                     {pago.numero}
@@ -191,7 +193,7 @@ export default function RutaAPedidoPage() {
         <Section tone="bg">
           <div className="grid gap-10 lg:grid-cols-2">
             <div>
-              <SectionHeader eyebrow="Lo que firmas" title="Tres firmas en todo el proceso" />
+              <SectionHeader eyebrow="Lo que firmas" title="Dos momentos de firma en todo el proceso" />
               <ol className="mt-8 grid gap-px overflow-hidden rounded-[22px] border border-line bg-line">
                 {FIRMAS_RUTA.map((f, i) => (
                   <li key={f.titulo} className="flex items-start gap-4 bg-surface p-5">

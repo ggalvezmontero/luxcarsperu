@@ -1,10 +1,11 @@
 /**
- * Líneas del Anexo B y los cuatro hitos, tal como los devuelve `presupuestar()`.
+ * Líneas del Anexo B y los seis hitos en cinco pagos, tal como los devuelve `presupuestar()`.
  */
 
 import { PortalPanel, TableScroll, Td, Th } from "@/components/portal/CrmUI";
 import type { Presupuesto } from "@/core/expedientes/tipos";
-import { HITO_LABEL, usd } from "@/lib/expedientes/formato";
+import { PAGO_POR_HITO } from "@/core/expedientes/tipos";
+import { CUENTA_LABEL, HITO_LABEL, PAGO_LABEL, usd } from "@/lib/expedientes/formato";
 import { cn } from "@/lib/utils";
 
 export function TablaPresupuesto({ presupuesto: p }: { presupuesto: Presupuesto }) {
@@ -42,11 +43,12 @@ export function TablaPresupuesto({ presupuesto: p }: { presupuesto: Presupuesto 
         </PortalPanel>
       </div>
       <div className="lg:col-span-2">
-        <PortalPanel title="Hitos de pago" description="Lo que el cliente deposita y cuándo.">
+        <PortalPanel title="Pagos y hitos" description="Cinco pagos, seis hitos: lo que el cliente paga, cuándo y a dónde.">
           <ul className="divide-y divide-line">
             {p.hitos.map((h) => (
               <li key={h.tipo} className="flex items-start justify-between gap-3 px-5 py-3">
                 <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-ink-4">{PAGO_LABEL[PAGO_POR_HITO[h.tipo]].split(" · ")[0]} · {CUENTA_LABEL[h.cuenta]}</p>
                   <p className="text-sm font-medium text-ink">{HITO_LABEL[h.tipo]}</p>
                   <p className="text-xs text-ink-4">{h.descripcion}</p>
                 </div>

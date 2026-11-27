@@ -15,6 +15,11 @@
  * (`verificarSesionPortal`) y recién entonces escribe con `DATABASE_URL`,
  * pasando el usuario verificado como `p_actor`.
  *
+ * Un pago desde Fondos de Clientes puede traer `comision_bancaria_usd`: la
+ * función SQL registra además el cargo del banco y la reposición de Luxcars.
+ * Lo que el cliente pagó directo a SUNAT (cuenta `directo`) se confirma sin
+ * constancia de fondos.
+ *
  * Responde { ok, movimientoId, constancia?: { documentoId, version, urls }, aviso? }.
  * Si la constancia falla, el movimiento ya quedó registrado y se avisa en
  * `constanciaError` para emitirla después desde la pestaña Dinero. Al
@@ -44,6 +49,8 @@ type Contexto = { params: Promise<{ id: string }> };
 const CAMPOS_MOVIMIENTO = new Set([
   "tipo", "cuenta", "hito", "fecha", "moneda", "monto", "tipo_cambio", "monto_usd",
   "contraparte_id", "concepto", "documento_ref", "comprobante_path", "nota_interna", "estado",
+  // Pago al exterior desde Fondos de Clientes: la comisión que debita el banco, que Luxcars repone el mismo día.
+  "comision_bancaria_usd",
 ]);
 
 /** Solo las llaves conocidas, con los tipos que la función SQL espera (texto o número). */
@@ -126,7 +133,8 @@ export async function POST(request: Request, { params }: Contexto) {
     }
     let constancia: { documentoId: string; version: number; urls: { pdf: string | null; docx: string | null } } | undefined;
     let errorConstancia = constanciaError;
-    if (quiereConstancia) {
+    // Lo pagado directo a SUNAT (cuenta `directo`) no pasó por Luxcars: no lleva constancia de fondos.
+    if (quiereConstancia && movimiento.cuenta !== "directo") {
       const r = await emitirDocumento(plantillaDe("constancia_fondos")!, ctx, {
         actorId: sesion.userId,
         extra: {},
@@ -136,6 +144,8 @@ export async function POST(request: Request, { params }: Contexto) {
       });
       if (r.ok) constancia = { documentoId: r.documentoId, version: r.version, urls: r.urls };
       else errorConstancia = r.mensaje;
+    } else if (movimiento.cuenta === "directo") {
+      errorConstancia = undefined;
     }
     const aviso = await avisarPorCorreoSiHayCorreo(
       ctx,

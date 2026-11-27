@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { CAMPOS, CAMPOS_EMPRESA, FICHA, camposPlantilla, esCampo, esCampoEmpresa, fechaEnLetras, monto, porcentaje } from "./campos";
 import { PLANTILLAS, TIPOS_DESDE_LIBRO, construirDocumento, nombreArchivo, plantillaDe, textoDeEstructura } from "./documentos";
-import { camposRendicion, datosActa, datosAvisoH3, datosConstancia, datosLiquidacion } from "./ledger";
+import { camposActaRendicion, datosActa, datosAvisoPago, datosConstancia, datosLiquidacion, datosPago5, montoDelAviso, saldoCuenta } from "./ledger";
+import { COLUMNAS_COMPUERTA, ORIGEN_CAMPO, PLANTILLAS_POR_ETAPA, datosPorEtapa, plantillasDelMapaExisten } from "./datosPorEtapa";
 import { partirInline } from "./documentos/estructura";
 import { renderHtml } from "./documentos/renderHtml";
 import { evaluarAvance } from "./avance";
@@ -22,10 +23,7 @@ function expediente(cambios: Partial<Expediente> = {}): Expediente {
       origin: "otro",
       cylinderCapacityCc: 3445,
       importerProfile: "primera-importacion",
-      inland: 450,
       proporcionFlete: 0.5,
-      gastosRegistrales: 180,
-      margenH3: 0.03,
     }),
   );
   return {
@@ -61,8 +59,8 @@ function expediente(cambios: Partial<Expediente> = {}): Expediente {
     precioCompra: 98_500,
     precioCompraUsd: presupuesto.precioUsd,
     fechaLimiteCompra: "2026-12-15",
-    fechaInspeccion: "2026-12-04",
-    historialRef: "CARFAX Canada n.º 123",
+    fechaInspeccion: null,
+    historialRef: "MSO sin matricular · recalls por VIN: ninguno",
     fechaRelease: "2026-12-18",
     paisOrigen: "Canadá",
     puertoOrigen: "Vancouver",
@@ -71,9 +69,8 @@ function expediente(cambios: Partial<Expediente> = {}): Expediente {
     honorariosBaseUsd: presupuesto.honorariosBase,
     honorariosIgvUsd: presupuesto.honorariosIgv,
     porcentajeDetraccion: 12,
-    margenH3: 0.03,
     tarifaCustodiaUsd: 25,
-    costoInspeccionUsd: 350,
+    costoInspeccionUsd: null,
     fechaFirma: "2026-11-28",
     fechaLimiteH2: "2026-12-12",
     fechaEstEmbarque: "2027-01-09",
@@ -95,7 +92,7 @@ function expediente(cambios: Partial<Expediente> = {}): Expediente {
     cerradoEn: null,
     createdAt: "2026-11-20T12:00:00Z",
     updatedAt: "2026-11-20T12:00:00Z",
-    reservado: { precioTope: 100_000, tcCompraRef: 0.72, vendedorId: "v1", inspectorId: "i1", agenteAduanaId: "a1", notasInternas: null },
+    reservado: { precioTope: 100_000, tcCompraRef: 0.72, vendedorId: "v1", brokerId: "k1", inspectorId: null, agenteAduanaId: "a1", notasInternas: null },
     ...cambios,
   };
 }
@@ -104,7 +101,8 @@ const CONTRAPARTES: Contraparte[] = [
   { id: "v1", tipo: "vendedor", nombre: "Example Motors Ltd.", pais: "Canadá", direccion: "1234 Kingsway, Vancouver, BC V5R 5J4, Canada", contacto: "Mark Lee", email: "sales@example.ca", telefono: "+1 604 000 0000", rucOTaxId: null, datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
   { id: "f1", tipo: "forwarder", nombre: "Example Logistics Inc.", pais: "Canadá", direccion: null, contacto: null, email: "ops@example-logistics.com", telefono: null, rucOTaxId: null, datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
   { id: "a1", tipo: "agente_aduana", nombre: "Agencia Prueba S.A.", pais: "Perú", direccion: null, contacto: "Sectorista", email: "aduana@prueba.test", telefono: null, rucOTaxId: "20999999999", datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
-  { id: "i1", tipo: "inspector", nombre: "Inspector Prueba", pais: "Canadá", direccion: null, contacto: null, email: null, telefono: null, rucOTaxId: null, datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
+  { id: "i1", tipo: "inspector", nombre: "Inspecciones Prueba LLC", pais: "Estados Unidos", direccion: null, contacto: "Inspector de campo", email: "campo@inspecciones.test", telefono: null, rucOTaxId: null, datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
+  { id: "k1", tipo: "broker", nombre: "Example Auto Brokers LLC", pais: "Estados Unidos", direccion: "9800 NW 12th St, Doral, FL 33172, USA", contacto: "Daniel Ortega", email: "deals@example-brokers.com", telefono: "+1 305 000 0000", rucOTaxId: null, datosBancarios: null, bancoVerificadoEn: null, bancoVerificadoPor: null, notas: null },
 ];
 
 const FIJOS = {
@@ -135,7 +133,7 @@ const UNIDADES = [
 ];
 
 /** Lo que el formulario escribe a mano para que las plantillas del libro salgan completas en el render. */
-const A_MANO = { FECHA_AVISO: "2 de febrero de 2027", FECHA_RENDICION: "6 de marzo de 2027" } as const;
+const A_MANO = { FECHA_AVISO: "2 de febrero de 2027" } as const;
 
 function contexto(cambios: Partial<ContextoExpediente> = {}, exp: Partial<Expediente> = {}): ContextoExpediente {
   return {
@@ -206,6 +204,22 @@ function contexto(cambios: Partial<ContextoExpediente> = {}, exp: Partial<Expedi
   };
 }
 
+/** El mismo expediente con un auto usado: inspección, inspector y su costo en el Pago 1. */
+function contextoUsado(): ContextoExpediente {
+  const presupuesto = presupuestar(
+    entradaPorDefecto({ precio: 98_500, monedaCompra: "CAD", tcCompraRef: 0.72, vehicleType: "hev", condition: "usado", origin: "otro", cylinderCapacityCc: 3445, proporcionFlete: 0.5, costoInspeccion: 350 }),
+  );
+  const ctx = contexto({}, { presupuesto, honorariosUsd: presupuesto.honorarios, honorariosBaseUsd: presupuesto.honorariosBase, honorariosIgvUsd: presupuesto.honorariosIgv, fechaInspeccion: "2026-11-24", costoInspeccionUsd: 350, historialRef: "CarFax sin siniestros, un dueño" });
+  ctx.expediente.vehiculo = { ...ctx.expediente.vehiculo, condicion: "usado" };
+  ctx.expediente.reservado = { ...ctx.expediente.reservado!, inspectorId: "i1" };
+  return ctx;
+}
+
+/** Monto del hito en el presupuesto del expediente. */
+function ctxH(ctx: ContextoExpediente, tipo: "H1" | "H2" | "H3" | "H4" | "H5" | "H6"): number {
+  return ctx.expediente.presupuesto!.hitos.find((h) => h.tipo === tipo)!.montoUsd;
+}
+
 function documento(tipo: Documento["tipo"], estado: Documento["estado"]): Documento {
   return {
     id: `${tipo}-${estado}`,
@@ -264,12 +278,18 @@ describe("camposPlantilla", () => {
     expect(campos.VEH_KM).toBe("1,200 km");
     expect(campos.VEH_COMBUSTIBLE).toBe("Híbrido gasolina");
     expect(campos.VEH_CONDICION).toBe("Nuevo");
-    expect(campos.VENDEDOR_CONTACTO).toBe("Mark Lee, sales@example.ca");
+    // El broker ocupa VENDEDOR_*; el dealer, DEALER_*.
+    expect(campos.VENDEDOR_NOMBRE).toBe("Example Auto Brokers LLC");
+    expect(campos.VENDEDOR_CONTACTO).toBe("Daniel Ortega, deals@example-brokers.com");
+    expect(campos.DEALER_NOMBRE).toBe("Example Motors Ltd.");
+    expect(campos.DEALER_CONTACTO).toBe("Mark Lee, sales@example.ca");
     expect(campos.FORWARDER_CONTACTO).toBe("ops@example-logistics.com");
     expect(campos.AGENTE_ADUANA_RUC).toBe("20999999999");
     expect(campos.PRECIO_TOPE).toBe("100,000.00");
     expect(campos.PRECIO_COMPRA_USD).toBe("70,920.00");
-    expect(campos.MARGEN_H3).toBe("3");
+    expect(campos.H1_MONTO).toBe("70,920.00");
+    expect(campos.H5_MONTO).toBe(monto(ctxH(contexto(), "H5")));
+    expect(campos.COMISION_MITAD).not.toBe("");
     expect(campos.TASA_PERCEPCION).toBe("10 %");
     expect(campos.LUXCARS_RUC).toBe(FIJOS.LUXCARS_RUC);
     // Solo quedan vacíos los que arma el libro con cada evento o se escriben a mano al emitir.
@@ -336,6 +356,14 @@ describe("camposPlantilla", () => {
     expect(camposPlantilla(sinClase, {}, FIJOS).faltantes).toContain("VEH_CATEGORIA");
   });
 
+  it("sin broker, el dealer cobra directo y ocupa los campos VENDEDOR_*", () => {
+    const ctx = contexto();
+    ctx.expediente.reservado = { ...ctx.expediente.reservado!, brokerId: null };
+    const { campos } = camposPlantilla(ctx, {}, FIJOS);
+    expect(campos.VENDEDOR_NOMBRE).toBe("Example Motors Ltd.");
+    expect(campos.DEALER_NOMBRE).toBe("Example Motors Ltd.");
+  });
+
   it("adapta razón social, RUC y representante a una persona natural", () => {
     const ctx = contexto();
     ctx.cliente = { ...ctx.cliente!, tipo: "persona", ruc: null, dni: "45678901", representante: null, representanteDni: null, representanteCargo: null, partida: null };
@@ -360,17 +388,71 @@ describe("camposPlantilla", () => {
 });
 
 describe("plantillas", () => {
-  it("son trece: las ocho del paquete de firma y las cinco que nacen del libro, y cada tipo se resuelve", () => {
+  it("son trece: las del acto de firma (contrato, anexos, LOA, poder), las dos instrucciones y las cuatro que nacen del libro", () => {
     expect(PLANTILLAS.map((p) => p.tipo)).toEqual([
-      "contrato", "anexo_a", "anexo_b", "anexo_c", "anexo_d", "loa", "instrucciones_vendedor", "instrucciones_forwarder",
-      "constancia_fondos", "aviso_h3", "liquidacion_definitiva", "acta_entrega", "rendicion",
+      "contrato", "anexo_a", "anexo_b", "anexo_c", "anexo_d", "loa", "poder_inmatriculacion", "instrucciones_vendedor", "instrucciones_forwarder",
+      "constancia_fondos", "aviso_h3", "liquidacion_definitiva", "acta_rendicion",
     ]);
     expect(plantillaDe("contrato")?.version).toMatch(/^contrato@/);
     expect(plantillaDe("bill_of_sale")).toBeNull();
+    expect(plantillaDe("acta_entrega")).toBeNull();
+    expect(plantillaDe("rendicion")).toBeNull();
     expect(TIPOS_DESDE_LIBRO.every((t) => plantillaDe(t) !== null)).toBe(true);
+    // Una sola firma en notaría (contrato, LOA, poder) y una simple a la entrega; los anexos van dentro del contrato.
+    expect(PLANTILLAS.filter((p) => p.seFirma).map((p) => p.tipo)).toEqual(["contrato", "loa", "poder_inmatriculacion", "acta_rendicion"]);
   });
 
-  it("cada plantilla referencia solo campos existentes y las ocho de firma construyen sin faltantes con el expediente completo", () => {
+  it("un auto nuevo no menciona la inspección en ninguna plantilla; ninguna tiene transporte interno ni gastos registrales como línea aparte", () => {
+    const ctx = contexto();
+    for (const plantilla of PLANTILLAS) {
+      const texto = textoDeEstructura(construirDocumento(plantilla, ctx, A_MANO, FIJOS).estructura);
+      expect(texto, plantilla.tipo).not.toMatch(/inspecci|inspection|inspector/i);
+      expect(texto, plantilla.tipo).not.toMatch(/Transporte interno|transporte interno en origen|inland/i);
+      expect(texto, plantilla.tipo).not.toMatch(/Gastos registrales/);
+    }
+    const contratoTexto = textoDeEstructura(construirDocumento(plantillaDe("contrato")!, ctx, {}, FIJOS).estructura);
+    expect(contratoTexto).toContain("Se pagan en dos mitades iguales");
+    expect(contratoTexto).toContain("cinco momentos");
+    expect(contratoTexto).toContain("seis hitos");
+    expect(contratoTexto).toContain("acta de entrega y rendición de cuentas");
+    expect(contratoTexto).toContain("poder especial");
+    expect(contratoTexto).toContain("Example Auto Brokers LLC");
+    // 4.4: la gestión registral está dentro de los honorarios; 5.6: alternativa para los tributos; 5.8: comisión del wire.
+    expect(contratoTexto).toMatch(/4\.4 Los honorarios comprenden[^\n]*homologación o ficha técnica[^\n]*SUNARP[^\n]*placas[^\n]*tarjeta/);
+    expect(contratoTexto).toContain("5.6 Los tributos de importación los paga el Mandante directamente a SUNAT");
+    expect(contratoTexto).toContain("5.8 Si el banco debita de la cuenta Fondos de Clientes una comisión");
+    expect(contratoTexto).toContain("son de cargo exclusivo del Mandante y serán asumidos por él");
+    expect(contratoTexto).toContain("dentro de los dos días hábiles del aviso");
+    const anexoBTexto = textoDeEstructura(construirDocumento(plantillaDe("anexo_b")!, ctx, {}, FIJOS).estructura);
+    expect(anexoBTexto).toContain("cinco pagos, seis hitos");
+    expect(anexoBTexto).toContain("Flete (traslado al puerto y marítimo)");
+    expect(anexoBTexto).toContain("son de cargo exclusivo del Mandante y serán asumidos por él");
+    expect(anexoBTexto).toContain("El sobrante se descuenta del Pago 5");
+    expect(anexoBTexto).toMatch(/H6/);
+    const poder = textoDeEstructura(construirDocumento(plantillaDe("poder_inmatriculacion")!, ctx, {}, FIJOS).estructura);
+    expect(poder).toContain("CONFIRMAR con el notario");
+    expect(poder).toContain("inmatriculación");
+  });
+
+  it("un auto usado trae la inspección en el contrato, el Anexo A, el Anexo B y las instrucciones al vendedor, sin faltantes", () => {
+    const ctx = contextoUsado();
+    const texto = (tipo: Parameters<typeof plantillaDe>[0]) => {
+      const doc = construirDocumento(plantillaDe(tipo)!, ctx, {}, FIJOS);
+      expect(doc.faltantes, String(tipo)).toEqual([]);
+      return textoDeEstructura(doc.estructura);
+    };
+    expect(texto("contrato")).toMatch(/inspecci/i);
+    expect(texto("anexo_a")).toMatch(/inspecci/i);
+    expect(texto("anexo_b")).toContain("Inspección del vehículo usado");
+    expect(texto("anexo_b")).toContain("350.00");
+    expect(texto("instrucciones_vendedor")).toMatch(/inspection/i);
+    // El costo de la inspección va en el Pago 1 y no cambia los honorarios.
+    expect(ctxH(ctx, "H1")).toBe(70_920 + 350);
+    const sinInspeccion = presupuestar(entradaPorDefecto({ precio: 98_500, monedaCompra: "CAD", tcCompraRef: 0.72, vehicleType: "hev", condition: "usado", origin: "otro", cylinderCapacityCc: 3445, proporcionFlete: 0.5 }));
+    expect(ctx.expediente.presupuesto!.honorarios).toBe(sinInspeccion.honorarios);
+  });
+
+  it("cada plantilla referencia solo campos existentes y las de firma e instrucciones construyen sin faltantes con el expediente completo", () => {
     const ctx = contexto();
     for (const plantilla of PLANTILLAS) {
       const doc = construirDocumento(plantilla, ctx, {}, FIJOS);
@@ -383,10 +465,14 @@ describe("plantillas", () => {
     }
   });
 
-  it("todos los campos de la ficha los usa alguna plantilla", () => {
-    const ctx = contexto();
+  it("todos los campos de la ficha los usa alguna plantilla (con un nuevo, un usado y las tres variantes del aviso)", () => {
     const usados = new Set<string>();
-    for (const plantilla of PLANTILLAS) for (const k of construirDocumento(plantilla, ctx, {}, FIJOS).usados) usados.add(k);
+    for (const ctx of [contexto(), contextoUsado(), contextoConLibro()]) {
+      for (const plantilla of PLANTILLAS) {
+        const variantes = plantilla.tipo === "aviso_h3" ? [{ HITO: "H4" }, { HITO: "H5" }, { HITO: "H6" }] : [{}];
+        for (const extra of variantes) for (const k of construirDocumento(plantilla, ctx, extra, FIJOS).usados) usados.add(k);
+      }
+    }
     const sinUsar = CAMPOS.filter((k) => !usados.has(k));
     expect(sinUsar, sinUsar.join(", ")).toEqual([]);
   });
@@ -458,27 +544,28 @@ function mov(cambios: Partial<Movimiento> & Pick<Movimiento, "id" | "tipo" | "mo
   };
 }
 
-/** Un expediente ya en aduana con el libro completo: H1, H2 y H3 depositados, vendedor, forwarder, SUNAT y gastos pagados. */
+/** Un expediente ya liberado con el libro completo: Pagos 1 a 4, el wire al broker con su comisión repuesta, flete, seguro, gastos de aduana y los tributos pagados directo a SUNAT. */
 function contextoConLibro(): ContextoExpediente {
-  const ctx = contexto({}, { etapa: "aduana", damNumero: "118-2027-10-000001", damFecha: "2027-02-09", damCanal: "verde", damFactorConversion: 0.7212, damTcSbs: 3.762, levanteEn: "2027-02-12", placa: "BXX-000", tiveNumero: "T-123", kmEntrega: 1260, fechaEntrega: "2027-03-05" });
+  const ctx = contexto({}, { etapa: "placas", damNumero: "118-2027-10-000001", damFecha: "2027-02-09", damCanal: "verde", damFactorConversion: 0.7212, damTcSbs: 3.762, levanteEn: "2027-02-12", placa: "BXX-000", tiveNumero: "T-123", kmEntrega: 1260, fechaEntrega: "2027-03-05" });
   const p = ctx.expediente.presupuesto!;
-  ctx.hitos = p.hitos.map((h) => ({ tipo: h.tipo, montoEstimadoUsd: h.montoUsd, fechaLimite: h.tipo === "H3" ? "2027-02-03" : null, cuenta: h.cuenta, nota: null }));
+  ctx.hitos = p.hitos.map((h) => ({ tipo: h.tipo, montoEstimadoUsd: h.montoUsd, fechaLimite: h.tipo === "H4" ? "2027-02-10" : h.tipo === "H6" ? "2027-02-22" : null, cuenta: h.cuenta, nota: null }));
   const h = (t: "H1" | "H2" | "H3" | "H4") => ctx.hitos.find((x) => x.tipo === t)!.montoEstimadoUsd;
   ctx.movimientos = [
-    mov({ id: "d1", tipo: "deposito", hito: "H1", cuenta: "operaciones", montoUsd: h("H1"), fecha: "2026-12-01" }),
-    mov({ id: "d2", tipo: "deposito", hito: "H2", montoUsd: h("H2"), fecha: "2026-12-10", documentoRef: "BCP · op. 00123456", declaradoPorCliente: true }),
-    mov({ id: "p1", tipo: "pago", hito: "H2", montoUsd: 70_920, moneda: "CAD", monto: 98_500, tipoCambio: 0.72, concepto: "Precio del vehículo", contraparteId: "v1", documentoRef: "Bill of sale 4411, SWIFT 77", fecha: "2026-12-12" }),
-    mov({ id: "p2", tipo: "pago", hito: "H2", montoUsd: 450, concepto: "Transporte interno en origen", fecha: "2026-12-18" }),
-    mov({ id: "p3", tipo: "pago", hito: "H2", montoUsd: 1_700, concepto: "Flete marítimo y gastos del contenedor", fecha: "2027-01-09" }),
+    mov({ id: "d1", tipo: "deposito", hito: "H1", montoUsd: h("H1"), fecha: "2026-12-01", documentoRef: "BCP · op. 00123456", declaradoPorCliente: true }),
+    mov({ id: "p1", tipo: "pago", hito: "H1", montoUsd: 70_920, moneda: "CAD", monto: 98_500, tipoCambio: 0.72, concepto: "Precio del vehículo (wire al broker)", contraparteId: "k1", documentoRef: "Bill of sale 4411, SWIFT 77", fecha: "2026-12-03" }),
+    mov({ id: "c1", tipo: "pago", montoUsd: 45, concepto: "Comisión bancaria del wire (cargo del banco)", fecha: "2026-12-03" }),
+    mov({ id: "c2", tipo: "ajuste", montoUsd: 45, concepto: "Reposición de la comisión bancaria, por cuenta de Luxcars", fecha: "2026-12-03" }),
+    mov({ id: "d2", tipo: "deposito", hito: "H2", montoUsd: h("H2"), fecha: "2026-12-18" }),
+    mov({ id: "d3", tipo: "deposito", hito: "H3", cuenta: "operaciones", montoUsd: h("H3"), fecha: "2026-12-18" }),
+    // El flete real sale USD 100 por debajo del estimado: ese saldo queda a favor del cliente.
+    mov({ id: "p3", tipo: "pago", hito: "H2", montoUsd: Math.round((h("H2") - 390.5 - 100) * 100) / 100, concepto: "Flete (traslado al puerto y marítimo)", contraparteId: "f1", fecha: "2027-01-09" }),
     mov({ id: "p4", tipo: "pago", hito: "H2", montoUsd: 390.5, concepto: "Seguro de transporte", fecha: "2027-01-09" }),
-    mov({ id: "d3", tipo: "deposito", hito: "H3", montoUsd: h("H3"), fecha: "2027-02-01" }),
-    mov({ id: "t1", tipo: "pago", hito: "H3", montoUsd: 4_404.63, moneda: "PEN", monto: 16_570.22, tipoCambio: 0.2658, concepto: "Ad valorem", documentoRef: "Liquidación de cobranza 001", fecha: "2027-02-10" }),
-    mov({ id: "t2", tipo: "pago", hito: "H3", montoUsd: 14_001.55, moneda: "PEN", monto: 52_673.83, tipoCambio: 0.2658, concepto: "IGV", fecha: "2027-02-10" }),
-    mov({ id: "t3", tipo: "pago", hito: "H3", montoUsd: 9_181.67, moneda: "PEN", monto: 34_541.5, tipoCambio: 0.2658, concepto: "Percepción del IGV", fecha: "2027-02-10" }),
-    mov({ id: "g1", tipo: "pago", hito: "H3", montoUsd: 2_300, concepto: "Agente de aduana", contraparteId: "a1", documentoRef: "Factura F001-123", fecha: "2027-02-12" }),
-    mov({ id: "g2", tipo: "pago", hito: "H3", montoUsd: 180, concepto: "Tasa registral SUNARP", fecha: "2027-02-20" }),
-    mov({ id: "x", tipo: "deposito", hito: "H3", montoUsd: 999, estado: "por_confirmar", fecha: "2027-02-21" }),
-    mov({ id: "z", tipo: "pago", hito: "H3", montoUsd: 5_000, estado: "anulado", fecha: "2027-02-21" }),
+    mov({ id: "d4", tipo: "deposito", hito: "H4", montoUsd: h("H4"), fecha: "2027-02-08" }),
+    mov({ id: "t5", tipo: "deposito", cuenta: "directo", hito: "H5", montoUsd: 27_587.85, moneda: "PEN", monto: 103_785.55, tipoCambio: 0.2658, documentoRef: "Liquidación 118-2027-0001234", tieneComprobante: true, declaradoPorCliente: true, fecha: "2027-02-11" }),
+    mov({ id: "g1", tipo: "pago", hito: "H4", montoUsd: 2_000, concepto: "Agente de aduana", contraparteId: "a1", documentoRef: "Factura F001-123", fecha: "2027-02-12" }),
+    mov({ id: "g2", tipo: "pago", hito: "H4", montoUsd: 150, concepto: "Grúa del puerto", documentoRef: "Factura G-77", fecha: "2027-02-12" }),
+    mov({ id: "x", tipo: "deposito", hito: "H4", montoUsd: 999, estado: "por_confirmar", fecha: "2027-02-21" }),
+    mov({ id: "z", tipo: "pago", hito: "H4", montoUsd: 5_000, estado: "anulado", fecha: "2027-02-21" }),
   ];
   return ctx;
 }
@@ -486,86 +573,146 @@ function contextoConLibro(): ContextoExpediente {
 describe("plantillas que nacen del libro", () => {
   it("la constancia toma fecha, monto, hito, saldos y correlativo del depósito y lo imprime", () => {
     const ctx = contextoConLibro();
-    const deposito = ctx.movimientos.find((m) => m.id === "d2")!;
+    const deposito = ctx.movimientos.find((m) => m.id === "d1")!;
     const campos = datosConstancia(deposito, ctx);
-    expect(campos).toMatchObject({ FECHA_DEPOSITO: "10 de diciembre de 2026", HITO: "H2", SALDO_ANTERIOR: "0.00", CONSTANCIA_NUMERO: "F02", CLIENTE_BANCO_ORIGEN: "BCP", NUMERO_OPERACION: "00123456" });
+    expect(campos).toMatchObject({ FECHA_DEPOSITO: "1 de diciembre de 2026", HITO: "H1", SALDO_ANTERIOR: "0.00", CONSTANCIA_NUMERO: "F01", CLIENTE_BANCO_ORIGEN: "BCP", NUMERO_OPERACION: "00123456" });
     expect(campos.SALDO_NUEVO).toBe(campos.MONTO_DEPOSITO);
     const doc = construirDocumento(plantillaDe("constancia_fondos")!, ctx, campos, FIJOS);
     expect(doc.faltantes).toEqual([]);
     const texto = textoDeEstructura(doc.estructura);
-    expect(texto).toContain("Constancia n.º LC-2026-011-F02");
-    expect(texto).toContain("[X] H2: precio del vehículo");
-    expect(texto).toContain("Example Motors Ltd.");
+    expect(texto).toContain("Constancia n.º LC-2026-011-F01");
+    expect(texto).toContain("[X] H1 (Pago 1): precio del vehículo");
+    // El destino del H1 es el broker.
+    expect(texto).toContain("Example Auto Brokers LLC");
     expect(texto).toContain("BCP");
   });
 
-  it("el aviso H3 recalcula el presupuesto con el precio y el flete reales y da el equivalente en soles", () => {
+  it("aviso del Pago 3 (H4): gastos de aduana según la pro forma del agente, a Fondos de Clientes, al arribo", () => {
     const ctx = contextoConLibro();
-    const campos = datosAvisoH3(ctx, { TC_REFERENCIAL: "3.75" });
-    // El flete pagado (1,700 por la mitad del contenedor) manda sobre el estimado (1,650).
-    expect(campos.EST_FLETE).toBe("1,700.00");
-    expect(campos.EST_INLAND).toBe("450.00");
-    expect(campos.FECHA_LIMITE_H3).toBe("3 de febrero de 2027");
-    expect(campos.H3_SOLES).not.toBe("");
-    const doc = construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...campos, TC_REFERENCIAL: "3.75", FECHA_AVISO: "2 de febrero de 2027" }, FIJOS);
+    const campos = datosAvisoPago(ctx, "H4", { MONTO_AVISO: "2,450.00" });
+    expect(campos).toMatchObject({ HITO: "H4", MONTO_AVISO: "2,450.00", FECHA_LIMITE_PAGO: "10 de febrero de 2027" });
+    // Sin monto escrito, el estimado del hito.
+    expect(datosAvisoPago(ctx, "H4").MONTO_AVISO).toBe(monto(ctxH(ctx, "H4")));
+    expect(montoDelAviso(ctx, "H4", campos)).toBe(2_450);
+    const doc = construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...campos, FECHA_AVISO: "2 de febrero de 2027" }, FIJOS);
     expect(doc.faltantes).toEqual([]);
-    expect(textoDeEstructura(doc.estructura)).toContain("Depósito a más tardar: 3 de febrero de 2027");
-    expect(textoDeEstructura(doc.estructura)).toContain("Al tipo de cambio 3.75");
+    const texto = textoDeEstructura(doc.estructura);
+    expect(texto).toContain("Depósito a más tardar: 10 de febrero de 2027");
+    expect(texto).toContain("USD 2,450.00");
+    expect(texto).toContain('concepto "LC-2026-011 H4"');
   });
 
-  it("la liquidación definitiva lista los tributos y gastos pagados y compara con lo depositado", () => {
+  it("aviso del Pago 4 (H5): tributos exactos de la liquidación, que el cliente paga directo a SUNAT dentro de dos días hábiles", () => {
+    const ctx = contextoConLibro();
+    // Jueves 11 de febrero + dos días hábiles = lunes 15.
+    const campos = datosAvisoPago(ctx, "H5", {}, "2027-02-11");
+    expect(campos).toEqual({ HITO: "H5", FECHA_LIMITE_PAGO: "15 de febrero de 2027" });
+    const extra = { ...campos, LIQUIDACION_NUMERO: "118-2027-0001234", TRIBUTOS_USD: "27,587.85", TRIBUTOS_SOLES: "103,785.55", FECHA_AVISO: "11 de febrero de 2027" };
+    expect(montoDelAviso(ctx, "H5", extra)).toBe(27_587.85);
+    const doc = construirDocumento(plantillaDe("aviso_h3")!, ctx, extra, FIJOS);
+    expect(doc.faltantes).toEqual([]);
+    const texto = textoDeEstructura(doc.estructura);
+    expect(texto).toContain("Liquidación n.º 118-2027-0001234");
+    expect(texto).toContain("S/ 103,785.55");
+    expect(texto).toContain("directamente a SUNAT");
+    expect(texto).toContain("Clave SOL");
+    expect(texto).toContain("son de cargo exclusivo del Mandante y serán asumidos por él");
+    // No se deposita a Luxcars: el aviso no trae la cuenta de Fondos de Clientes.
+    expect(texto).not.toContain(FIJOS.CTA_FONDOS_NUMERO);
+    // Sin los datos de la liquidación, el aviso no se emite.
+    expect(construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...campos, FECHA_AVISO: "11 de febrero de 2027" }, FIJOS).faltantes).toEqual(
+      expect.arrayContaining(["LIQUIDACION_NUMERO", "TRIBUTOS_USD", "TRIBUTOS_SOLES"]),
+    );
+  });
+
+  it("aviso del Pago 5 (H6): la segunda mitad de los honorarios menos el sobrante de aduana", () => {
+    const ctx = contextoConLibro();
+    const p5 = datosPago5(ctx);
+    expect(p5.aduana).toEqual({ recibido: 2_300, pagado: 2_150, saldo: 150 });
+    expect(p5.neto).toBe(Math.round((p5.honorarios - 150) * 100) / 100);
+    const campos = datosAvisoPago(ctx, "H6");
+    expect(campos).toMatchObject({ HITO: "H6", ADUANA_RECIBIDO: "2,300.00", ADUANA_PAGADO: "2,150.00", ADUANA_SALDO: "150.00", PAGO5_NETO: monto(p5.neto), MONTO_AVISO: monto(p5.neto), FECHA_LIMITE_PAGO: "22 de febrero de 2027" });
+    expect(montoDelAviso(ctx, "H6", campos)).toBe(p5.neto);
+    const doc = construirDocumento(plantillaDe("aviso_h3")!, ctx, { ...campos, FECHA_AVISO: "13 de febrero de 2027" }, FIJOS);
+    expect(doc.faltantes).toEqual([]);
+    expect(textoDeEstructura(doc.estructura)).toContain(monto(p5.neto));
+  });
+
+  it("la liquidación definitiva lista los tributos pagados directo, los gastos de aduana y el saldo que pasa al Pago 5", () => {
     const ctx = contextoConLibro();
     const campos = datosLiquidacion(ctx);
     expect(campos.TC_SBS_PAGO).toBe("3.7620");
     expect(campos.FACTOR_CONVERSION).toBe("0.7212");
     expect(campos.FECHA_LEVANTE).toBe("12 de febrero de 2027");
-    expect(campos.H3_PAGADO).toBe("30,067.85");
-    expect(campos.TOTAL_TRIBUTOS_PEN).toBe("103,785.55");
+    expect(campos).toMatchObject({ TOTAL_TRIBUTOS_USD: "27,587.85", TOTAL_TRIBUTOS_PEN: "103,785.55", TOTAL_GASTOS_USD: "2,150.00", ADUANA_RECIBIDO: "2,300.00", ADUANA_PAGADO: "2,150.00", ADUANA_SALDO: "150.00" });
     const doc = construirDocumento(plantillaDe("liquidacion_definitiva")!, ctx, campos, FIJOS);
     expect(doc.faltantes).toEqual([]);
     const texto = textoDeEstructura(doc.estructura);
     expect(texto).toContain("DAM n.º 118-2027-10-000001 del 9 de febrero de 2027");
+    expect(texto).toContain("Pagado directamente por el Mandante a SUNAT");
+    expect(texto).toContain("Liquidación 118-2027-0001234");
     expect(texto).toContain("Agencia Prueba S.A.");
     expect(texto).toContain("Factura F001-123");
-    expect(texto).toContain("[X] Diferencia a favor del Mandante");
+    expect(texto).toContain("Sobrante a favor del Mandante: se descuenta del Pago 5");
     // El anulado y el por confirmar no entran.
     expect(texto).not.toContain("5,000.00");
+    expect(texto).not.toContain("999.00");
   });
 
-  it("el acta marca el H4 acreditado solo cuando el libro lo tiene", () => {
+  it("el acta de entrega y rendición marca el H6 acreditado solo cuando el libro lo tiene, vuelca todo el libro y cuadra con Fondos de Clientes", () => {
     const ctx = contextoConLibro();
-    const sin = construirDocumento(plantillaDe("acta_entrega")!, ctx, datosActa(ctx), FIJOS);
+    const sin = construirDocumento(plantillaDe("acta_rendicion")!, ctx, camposActaRendicion(ctx), FIJOS);
     expect(sin.faltantes).toEqual([]);
     expect(textoDeEstructura(sin.estructura)).toContain("[X] pendiente, el vehículo queda en custodia");
-    expect(sin.campos.H4_ACREDITADO_FECHA).toBe("pendiente");
+    expect(sin.campos.H6_ACREDITADO_FECHA).toBe("pendiente");
+    expect(datosActa(ctx).H6_ACREDITADO_FECHA).toBe("pendiente");
     expect(textoDeEstructura(sin.estructura)).toContain("Placa\nBXX-000");
-    ctx.movimientos.push(mov({ id: "d4", tipo: "deposito", hito: "H4", cuenta: "operaciones", montoUsd: ctx.hitos.find((h) => h.tipo === "H4")!.montoEstimadoUsd, fecha: "2027-03-05" }));
-    const con = construirDocumento(plantillaDe("acta_entrega")!, ctx, datosActa(ctx), FIJOS);
-    expect(textoDeEstructura(con.estructura)).toContain("[X] acreditado el 5 de marzo de 2027");
-  });
-
-  it("la rendición vuelca todo el libro, cuadra el saldo con la devolución y compara con el Anexo B", () => {
-    const ctx = contextoConLibro();
-    ctx.movimientos.push(mov({ id: "d4", tipo: "deposito", hito: "H4", cuenta: "operaciones", montoUsd: ctx.hitos.find((h) => h.tipo === "H4")!.montoEstimadoUsd, fecha: "2027-03-05" }));
-    const sinDevolver = camposRendicion(ctx);
-    expect(sinDevolver.SALDO_RENDICION).toBe("807.35");
-    expect(sinDevolver.DEVOLUCION_MONTO).toBe("");
-    ctx.movimientos.push(mov({ id: "dev", tipo: "devolucion", montoUsd: 807.35, fecha: "2027-03-06", documentoRef: "00999" }));
-    const campos = camposRendicion(ctx);
-    expect(campos.DEVOLUCION_MONTO).toBe("807.35");
+    // Pago 5: el aviso deja el H6 en el neto; el sobrante de aduana pasa a honorarios y el cliente deposita el neto.
+    const p5 = datosPago5(ctx);
+    ctx.hitos = ctx.hitos.map((x) => (x.tipo === "H6" ? { ...x, montoEstimadoUsd: p5.neto } : x));
+    ctx.movimientos.push(
+      mov({ id: "s1", tipo: "pago", montoUsd: 150, concepto: "Sobrante de gastos de aduana aplicado al Pago 5", fecha: "2027-03-05" }),
+      mov({ id: "d6", tipo: "deposito", hito: "H6", cuenta: "operaciones", montoUsd: p5.neto, fecha: "2027-03-05" }),
+    );
+    const sinDevolver = camposActaRendicion(ctx);
+    expect(sinDevolver.H6_ACREDITADO_FECHA).toBe("5 de marzo de 2027");
+    // Recibido (H1 + H2 + H4) menos lo pagado a terceros menos el sobrante aplicado; la comisión del wire se repuso.
+    const recibido = (["H1", "H2", "H4"] as const).reduce((s, t) => s + ctxH(ctx, t), 0);
+    const flete = ctx.movimientos.find((m) => m.id === "p3")!.montoUsd;
+    const pagado = 70_920 + flete + 390.5 + 2_000 + 150;
+    const saldo = Math.round((recibido - pagado - 150) * 100) / 100;
+    expect(saldo).toBe(100);
+    expect(sinDevolver.SALDO_RENDICION).toBe(monto(saldo));
+    expect(saldoCuenta(ctx.movimientos)).toBe(saldo);
+    expect(sinDevolver.TOTAL_DIRECTO).toBe("27,587.85");
+    expect(sinDevolver.COMISIONES_BANCARIAS).toBe("45.00");
+    expect(sinDevolver.DEVOLUCION_MONTO).toBe("pendiente");
+    expect(sinDevolver.DEVOLUCION_FECHA).toBe("pendiente");
+    ctx.movimientos.push(mov({ id: "dev", tipo: "devolucion", montoUsd: saldo, fecha: "2027-03-06", documentoRef: "00999" }));
+    const campos = camposActaRendicion(ctx);
+    expect(campos.DEVOLUCION_MONTO).toBe(sinDevolver.SALDO_RENDICION);
     expect(campos.NUMERO_OPERACION).toBe("00999");
-    expect(campos.CREDITO_FISCAL).toBe("23,183.22");
-    const doc = construirDocumento(plantillaDe("rendicion")!, ctx, { ...campos, FECHA_RENDICION: "6 de marzo de 2027" }, FIJOS);
+    // Crédito fiscal: los tributos pagados directo no traen el detalle, se toma el del Anexo B.
+    const p = ctx.expediente.presupuesto!;
+    expect(campos.CREDITO_FISCAL).toBe(monto(p.igv + p.ipm + p.percepcion));
+    const doc = construirDocumento(plantillaDe("acta_rendicion")!, ctx, campos, FIJOS);
     expect(doc.faltantes).toEqual([]);
     const texto = textoDeEstructura(doc.estructura);
+    expect(texto).toContain("Acta de entrega y rendición de cuentas");
     expect(texto).toContain("Saldo a favor del Mandante");
-    expect(texto).toContain("Example Motors Ltd.");
+    expect(texto).toContain("Example Auto Brokers LLC");
     expect(texto).toContain("Bill of sale 4411, SWIFT 77");
-    expect(texto).toContain("LC-2026-011-F02");
+    expect(texto).toContain("LC-2026-011-F01");
+    expect(texto).toContain("Pagado directamente por el Mandante (Pago 4, tributos a SUNAT)");
+    expect(texto).toContain("Gastos de aduana recibidos (Pago 3)");
+    expect(texto).toContain("Sobrante aplicado al Pago 5");
+    expect(texto).toContain("Comisiones bancarias de los wires al exterior");
     expect(texto).toContain("Total pagado por el Mandante");
+    expect(texto).toContain("[X] acreditado el 5 de marzo de 2027");
+    expect(texto).toContain("Factura 1 (50 %, al release)");
   });
 
-  it("sin libro, las cinco plantillas no lanzan pero declaran faltantes: no se emiten con rayas", () => {
+  it("sin libro, las cuatro plantillas del libro no lanzan pero declaran faltantes: no se emiten con rayas", () => {
     const ctx = contexto();
     for (const tipo of TIPOS_DESDE_LIBRO) {
       const doc = construirDocumento(plantillaDe(tipo)!, ctx, {}, FIJOS);
@@ -584,27 +731,98 @@ describe("ficha de datos (snapshot para mantener el paquete de Claude Docs sincr
 });
 
 describe("compuertas con documentos", () => {
-  it("entra a búsqueda con contrato y LOA firmados aunque la tarea siga pendiente", () => {
+  it("entra a compra con contrato y LOA firmados aunque la tarea siga pendiente (y H1 por tarea)", () => {
     const ctx = contexto(
       {
-        tareas: [tarea("cliente.firmar_contrato_loa", "pendiente"), tarea("luxcars.kyc", "hecha")],
+        tareas: [tarea("cliente.firmar_contrato_loa", "pendiente"), tarea("luxcars.kyc", "hecha"), tarea("luxcars.confirmar_h1", "hecha")],
         documentos: [documento("contrato", "firmado"), documento("loa", "firmado")],
       },
       { etapa: "contrato" },
     );
-    expect(evaluarAvance(ctx, "busqueda", HOY).permitido).toBe(true);
+    expect(evaluarAvance(ctx, "compra", HOY).permitido).toBe(true);
   });
 
   it("no basta el contrato firmado sin la LOA, ni un contrato solo emitido", () => {
-    const base = { tareas: [tarea("luxcars.kyc", "hecha")] };
+    const base = { tareas: [tarea("luxcars.kyc", "hecha"), tarea("luxcars.confirmar_h1", "hecha")] };
     const soloContrato = contexto({ ...base, documentos: [documento("contrato", "firmado")] }, { etapa: "contrato" });
-    expect(evaluarAvance(soloContrato, "busqueda", HOY).faltantes.map((f) => f.clave)).toEqual(["contrato_firmado"]);
+    expect(evaluarAvance(soloContrato, "compra", HOY).faltantes.map((f) => f.clave)).toEqual(["contrato_firmado"]);
     const emitidos = contexto({ ...base, documentos: [documento("contrato", "emitido"), documento("loa", "emitido")] }, { etapa: "contrato" });
-    expect(evaluarAvance(emitidos, "busqueda", HOY).permitido).toBe(false);
+    expect(evaluarAvance(emitidos, "compra", HOY).permitido).toBe(false);
   });
 
   it("la tarea hecha sigue valiendo como evidencia", () => {
-    const ctx = contexto({ tareas: [tarea("cliente.firmar_contrato_loa", "hecha"), tarea("luxcars.kyc", "hecha")] }, { etapa: "contrato" });
-    expect(evaluarAvance(ctx, "busqueda", HOY).permitido).toBe(true);
+    const ctx = contexto({ tareas: [tarea("cliente.firmar_contrato_loa", "hecha"), tarea("luxcars.kyc", "hecha"), tarea("luxcars.confirmar_h1", "hecha")] }, { etapa: "contrato" });
+    expect(evaluarAvance(ctx, "compra", HOY).permitido).toBe(true);
+  });
+});
+
+describe("datos por etapa", () => {
+  it("el mapa plantilla → etapa y el origen de los campos son consistentes con la ficha", () => {
+    expect(plantillasDelMapaExisten()).toBe(true);
+    const cubiertas = new Set(Object.values(PLANTILLAS_POR_ETAPA).flat());
+    for (const p of PLANTILLAS) expect(cubiertas.has(p.tipo), p.tipo).toBe(true);
+    for (const campo of Object.keys(ORIGEN_CAMPO)) expect(esCampo(campo), campo).toBe(true);
+    for (const lista of Object.values(COLUMNAS_COMPUERTA)) for (const c of lista!) expect(ORIGEN_CAMPO[c.campo], c.campo).toBeDefined();
+  });
+
+  it("con el expediente completo en búsqueda no falta nada salvo lo que el libro arma al emitir", () => {
+    const ctx = contexto({}, { etapa: "busqueda" });
+    const r = datosPorEtapa(ctx, FIJOS);
+    expect(r.etapaSiguiente).toBe("contrato");
+    expect(r.documentos.map((d) => d.etapa)).toEqual(["busqueda", "contrato"]);
+    expect(r.faltantes).toEqual([]);
+    expect(r.empresa).toEqual([]);
+    expect(r.contrapartesSinAsignar).toEqual([]);
+  });
+
+  it("detecta lo que falta, dice dónde se guarda y qué documento o compuerta lo pide, sin repetir", () => {
+    const ctx = contexto({}, { etapa: "busqueda", fechaFirma: null, loaVence: null });
+    ctx.cliente = { ...ctx.cliente!, partida: null, actividad: null };
+    ctx.expediente.vehiculo = { ...ctx.expediente.vehiculo, vin: null };
+    const r = datosPorEtapa(ctx, FIJOS);
+    const por = Object.fromEntries(r.faltantes.map((f) => [f.campo, f]));
+    expect(Object.keys(por).sort()).toEqual(["CLIENTE_ACTIVIDAD", "CLIENTE_PARTIDA", "FECHA_FIRMA", "LOA_VENCIMIENTO", "VEH_VIN"]);
+    expect(por.VEH_VIN.origen).toMatchObject({ destino: "expediente", columna: "veh_vin" });
+    expect(por.VEH_VIN.documentos).toContain("anexo_a");
+    expect(por.VEH_VIN.urgente).toBe(true);
+    expect(por.CLIENTE_PARTIDA.origen).toMatchObject({ destino: "cliente", columna: "partida" });
+    expect(por.CLIENTE_PARTIDA.documentos).toEqual(expect.arrayContaining(["contrato", "anexo_c"]));
+    expect(por.FECHA_FIRMA.origen.tipo).toBe("fecha");
+    // Los faltantes de la empresa van aparte, a Configuración.
+    const sinEmpresa = datosPorEtapa(ctx, {});
+    expect(sinEmpresa.empresa).toEqual(expect.arrayContaining(["LUXCARS_RUC", "CTA_FONDOS_NUMERO", "CTA_OPER_NUMERO"]));
+    expect(sinEmpresa.faltantes.map((f) => f.campo)).not.toContain("LUXCARS_RUC");
+  });
+
+  it("en aduana el aviso del Pago 4 pide la DAM pero no los datos de la liquidación (se escriben al emitir); un usado pide inspector", () => {
+    const ctx = contexto({}, { etapa: "aduana", damNumero: null, damFecha: null });
+    const r = datosPorEtapa(ctx, FIJOS);
+    expect(r.documentos).toEqual([{ etapa: "aduana", tipos: ["aviso_h3", "liquidacion_definitiva"] }, { etapa: "placas", tipos: ["aviso_h3"] }]);
+    const por = Object.fromEntries(r.faltantes.map((f) => [f.campo, f]));
+    expect(por.DAM_NUMERO.documentos).toEqual(expect.arrayContaining(["aviso_h3", "liquidacion_definitiva"]));
+    expect(por.DAM_NUMERO.urgente).toBe(true);
+    for (const k of ["LIQUIDACION_NUMERO", "TRIBUTOS_USD", "TRIBUTOS_SOLES", "MONTO_AVISO", "FECHA_AVISO", "FECHA_LIMITE_PAGO"]) expect(Object.keys(por), k).not.toContain(k);
+    // Un usado en búsqueda sin inspector asignado: lo avisa; un nuevo no lo necesita.
+    const usado = contextoUsado();
+    usado.expediente.etapa = "busqueda";
+    usado.expediente.reservado = { ...usado.expediente.reservado!, inspectorId: null };
+    expect(datosPorEtapa(usado, FIJOS).contrapartesSinAsignar).toContain("inspector");
+    expect(datosPorEtapa(contexto({}, { etapa: "busqueda" }), FIJOS).contrapartesSinAsignar).not.toContain("inspector");
+  });
+
+  it("pide las columnas de la compuerta siguiente y avisa de contrapartes sin asignar", () => {
+    const ctx = contexto({}, { etapa: "placas", placa: null, tiveNumero: null, fechaEntrega: null });
+    ctx.expediente.reservado = { ...ctx.expediente.reservado!, agenteAduanaId: null };
+    const r = datosPorEtapa(ctx, FIJOS);
+    const por = Object.fromEntries(r.faltantes.map((f) => [f.campo, f]));
+    expect(por.PLACA.compuertas).toEqual(["tive_placa"]);
+    expect(por.TIVE_NUMERO.compuertas).toEqual(["tive_placa"]);
+    expect(por.PLACA.urgente).toBe(true);
+    // El acta de la etapa siguiente pide la fecha de entrega y el km; el libro arma los totales (no se piden).
+    expect(por.FECHA_ENTREGA.documentos).toEqual(["acta_rendicion"]);
+    expect(Object.keys(por)).not.toContain("TOTAL_RECIBIDO");
+    expect(r.contrapartesSinAsignar).toEqual(["agente_aduana"]);
+    // Sin siguiente etapa no hay compuertas.
+    expect(datosPorEtapa(contexto({}, { etapa: "cerrado" }), FIJOS).etapaSiguiente).toBeNull();
   });
 });

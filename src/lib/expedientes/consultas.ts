@@ -14,6 +14,8 @@ import type {
   Cliente,
   Contraparte,
   ContextoExpediente,
+  CuentaMovimiento,
+  TipoHito,
   DatosBancarios,
   Documento,
   Embarque,
@@ -342,7 +344,8 @@ export async function buscarPerfiles(client: PortalClient, texto: string): Promi
 /** Lo que recibe `crear_expediente(p_datos)`. Columnas en español, como el esquema. */
 export type DatosCrearExpediente = {
   cliente_id: string;
-  etapa?: "prospecto" | "contrato";
+  /** Un expediente nace en prospecto o en búsqueda (27 nov 2026). */
+  etapa?: "prospecto" | "busqueda";
   origen_solicitud_id?: string | null;
   embarque_id?: string | null;
   embarque_nuevo?: {
@@ -378,6 +381,10 @@ export type DatosCrearExpediente = {
   precio_compra_usd?: number | null;
   precio_tope?: number | null;
   tc_compra_ref?: number | null;
+  /** Dealer (emite factura y MSO), broker (recibe el pago) y agente de aduana: contrapartes reservadas. */
+  vendedor_id?: string | null;
+  broker_id?: string | null;
+  agente_aduana_id?: string | null;
   fecha_limite_compra?: string | null;
   pais_origen?: string | null;
   puerto_origen?: string | null;
@@ -385,7 +392,11 @@ export type DatosCrearExpediente = {
   honorarios_usd?: number | null;
   honorarios_base_usd?: number | null;
   honorarios_igv_usd?: number | null;
-  margen_h3?: number;
+  /** Solo usados. */
+  costo_inspeccion_usd?: number | null;
+  inspector_id?: string | null;
+  fecha_firma?: string | null;
+  fecha_release?: string | null;
   fecha_limite_h2?: string | null;
   fecha_est_embarque?: string | null;
   fecha_est_arribo?: string | null;
@@ -759,8 +770,8 @@ export async function listarMovimientos(client: PortalClient, expedienteId: stri
 /** Lo que recibe `registrar_movimiento` para un asiento nuevo. Columnas en español, como el esquema. */
 export type DatosMovimiento = {
   tipo: "deposito" | "pago" | "devolucion" | "ajuste";
-  cuenta: "fondos_clientes" | "operaciones" | "detracciones";
-  hito?: "H1" | "H2" | "H3" | "H4" | null;
+  cuenta: CuentaMovimiento;
+  hito?: TipoHito | null;
   fecha: string;
   moneda: string;
   monto: number;
@@ -769,6 +780,10 @@ export type DatosMovimiento = {
   concepto?: string | null;
   documento_ref?: string | null;
   nota_interna?: string | null;
+  /** Al confirmar un pago directo a SUNAT (moneda PEN): el equivalente en USD según la DAM. */
+  monto_usd?: number | null;
+  /** Pago al exterior desde Fondos de Clientes: comisión que debita el banco y Luxcars repone el mismo día. */
+  comision_bancaria_usd?: number | null;
 };
 
 export type ConstanciaEmitida = { documentoId: string; version: number; urls: { pdf: string | null; docx: string | null } };

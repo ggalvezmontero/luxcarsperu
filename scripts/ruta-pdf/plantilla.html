@@ -31,28 +31,30 @@
   .plazo { text-align: right; font-size: 7.6pt; color: #9e9ea6; max-width: 58mm; padding-top: 1mm; }
   .plazo b { color: #fff; font-weight: 600; }
 
-  main { zoom: 0.93; padding: 3.5mm 15mm 0; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3mm; }
+  main { zoom: 0.9; padding: 3.5mm 15mm 0; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3mm; }
   h2 { font-size: 7pt; letter-spacing: .18em; text-transform: uppercase; color: #6d6d72; font-weight: 600; margin-bottom: 2.2mm; }
   h2::before { content: ""; display: inline-block; width: 6mm; height: 1px; background: #9a9aa2; vertical-align: middle; margin-right: 2.5mm; }
 
   .pasos { border: 1px solid #dcdce1; border-radius: 3.5mm; overflow: hidden; }
-  .paso { display: grid; grid-template-columns: 8mm 44mm 1fr 42mm; gap: 4mm; padding: 2.2mm 4mm; border-top: 1px solid #e6e6ea; align-items: start; }
+  .paso { display: grid; grid-template-columns: 7mm 40mm 1fr 60mm; gap: 3.5mm; padding: 2mm 4mm; border-top: 1px solid #e6e6ea; align-items: start; }
   .paso:first-child { border-top: 0; }
   .n { font-family: "SF Mono", Menlo, monospace; font-size: 8.5pt; color: #8a8a92; padding-top: .6mm; }
   .paso h3 { font-size: 9.2pt; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; }
   .paso .tu { margin-top: 1mm; font-size: 7pt; color: #5b5b63; }
   .paso .tu b { color: #15151a; font-weight: 600; }
   .paso p.txt { font-size: 7.5pt; color: #3a3a41; }
-  .pago { border: 1px solid #d4af37; border-radius: 2.5mm; padding: 2mm 2.8mm; background: #fbf7ea; }
+  .pago { border: 1px solid #d4af37; border-radius: 2.5mm; padding: 1.6mm 2.6mm; background: #fbf7ea; }
   .pago .lab { font-size: 6.6pt; letter-spacing: .16em; text-transform: uppercase; color: #9a761f; font-weight: 600; }
   .pago b { display: block; font-size: 8.4pt; font-weight: 600; margin-top: .8mm; }
   .pago span { display: block; font-size: 7pt; color: #5b5b63; margin-top: .6mm; }
+  .pagos { display: grid; gap: 1.2mm; }
   .sinpago { border: 1px dashed #cfcfd5; border-radius: 2.5mm; padding: 2mm 2.8mm; color: #6d6d72; font-size: 7.2pt; }
   .sinpago .lab { font-size: 6.6pt; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: #8a8a92; display: block; margin-bottom: .8mm; }
 
   .cols2 { display: grid; grid-template-columns: 1.1fr 1fr; gap: 6mm; }
   .cards.c4 { grid-template-columns: repeat(4, 1fr); }
   .cards.c3 { grid-template-columns: repeat(3, 1fr); }
+  .cards.c2 { grid-template-columns: repeat(2, 1fr); }
   .lista.l2 { grid-template-columns: 1fr 1fr; column-gap: 6mm; }
   .cards { display: grid; gap: 1.5mm; }
   .card { border: 1px solid #dcdce1; border-radius: 2.6mm; padding: 1.8mm 3mm; display: grid; grid-template-columns: 6mm 1fr; gap: 2.4mm; align-items: start; }
@@ -76,13 +78,13 @@
         <img class="logo" src="LOGO_SRC" alt="Luxcars" />
         <p class="eyebrow" style="margin-top:4.5mm">Importación a pedido</p>
         <h1>Tu ruta, <em>paso a paso</em></h1>
-        <p class="lead">Cinco pasos, cuatro pagos y tres firmas. Tu dinero en una cuenta separada y cada movimiento visible desde tu cuenta en luxcars.pe.</p>
+        <p class="lead">Cinco pasos, cinco pagos y una sola visita a la notaría. Tu dinero en una cuenta separada, los tributos directo a SUNAT y cada movimiento visible desde tu cuenta en luxcars.pe.</p>
       </div>
       <div class="plazo">
         <b>30 a 60 días</b> desde Estados Unidos según el plan. Desde otros países, el plazo se fija al cotizar. El tramo marítimo depende del calendario de naves.
       </div>
     </div>
-    <div class="kpis"><div class="kpi"><b>5</b><span>pasos</span></div><div class="kpi"><b>4</b><span>pagos con constancia</span></div><div class="kpi"><b>3</b><span>firmas</span></div><div class="kpi"><b>1</b><span>cuenta separada</span></div></div>
+    <div class="kpis"><div class="kpi"><b>5</b><span>pasos</span></div><div class="kpi"><b>5</b><span>pagos con comprobante</span></div><div class="kpi"><b>1</b><span>visita a la notaría</span></div><div class="kpi"><b>1</b><span>cuenta separada</span></div></div>
   </header>
 
   <main>
@@ -97,7 +99,7 @@
     </section>
     <section>
       <h2>Lo que firmas</h2>
-      <div class="cards c3">FIRMAS_HTML</div>
+      <div class="cards c2">FIRMAS_HTML</div>
     </section>
     <section>
       <h2>Tu cuenta en luxcars.pe</h2>

@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * Resumen: compuerta de la próxima etapa con lo que falta, tareas pendientes
- * por responsable (se marcan hechas acá), hitos y fechas.
+ * Resumen: compuerta de la próxima etapa con lo que falta, los datos que
+ * faltan para esta etapa y la siguiente (con formulario en línea), tareas
+ * pendientes por responsable (se marcan hechas acá), los pagos y fechas.
  */
 
 import { Button } from "@/components/Button";
@@ -11,10 +12,11 @@ import { Dato } from "@/components/portal/expedientes/Formulario";
 import { evaluarAvance, siguienteEtapa } from "@/core/expedientes/avance";
 import { definicionEtapa } from "@/core/expedientes/etapas";
 import type { ContextoExpediente, ResponsableTarea, Tarea } from "@/core/expedientes/tipos";
-import { RESPONSABLES_TAREA } from "@/core/expedientes/tipos";
+import { PAGO_POR_HITO, RESPONSABLES_TAREA } from "@/core/expedientes/tipos";
 import { completarTarea } from "@/lib/expedientes/consultas";
-import { HITO_LABEL, RESPONSABLE_LABEL, fecha, hoyIso, usd } from "@/lib/expedientes/formato";
+import { CUENTA_LABEL, HITO_LABEL, PAGO_LABEL, RESPONSABLE_LABEL, fecha, hoyIso, usd } from "@/lib/expedientes/formato";
 import type { PortalClient } from "@/lib/portal/portalClient";
+import { DatosPorEtapaPanel } from "./DatosPorEtapaPanel";
 
 export function PestanaResumen({
   client,
@@ -53,6 +55,8 @@ export function PestanaResumen({
           </PortalPanel>
         ) : null}
 
+        <DatosPorEtapaPanel client={client} ctx={ctx} onResultado={onResultado} />
+
         <PortalPanel title="Tareas pendientes de la etapa" description="Marcar hecha deja constancia en la actividad; las del cliente se ven en su cuenta.">
           {pendientes.length === 0 ? (
             <p className="px-5 py-6 text-sm text-ink-3">No queda nada pendiente en esta etapa.</p>
@@ -63,19 +67,20 @@ export function PestanaResumen({
       </div>
 
       <div className="space-y-6">
-        <PortalPanel title="Hitos de pago">
+        <PortalPanel title="Pagos y hitos">
           {ctx.hitos.length === 0 ? (
             <p className="px-5 py-4 text-sm text-ink-3">Sin presupuesto: el expediente se abrió sin hitos.</p>
           ) : (
             <ul className="divide-y divide-line">
               {ctx.hitos.map((h) => (
                 <li key={h.tipo} className="px-5 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-ink-4">{PAGO_LABEL[PAGO_POR_HITO[h.tipo]].split(" · ")[0]}</p>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm font-medium text-ink">{HITO_LABEL[h.tipo]}</span>
                     <span className="text-sm tabular-nums text-ink">{usd(h.montoEstimadoUsd)}</span>
                   </div>
                   <p className="text-xs text-ink-4">
-                    {h.fechaLimite ? `Límite ${fecha(h.fechaLimite)}` : "Sin fecha límite"} · {h.cuenta === "operaciones" ? "Operaciones" : "Fondos de clientes"}
+                    {h.fechaLimite ? `Límite ${fecha(h.fechaLimite)}` : h.tipo === "H5" ? "Fecha al liquidar SUNAT" : "Sin fecha límite"} · {CUENTA_LABEL[h.cuenta]}
                   </p>
                 </li>
               ))}
@@ -86,7 +91,7 @@ export function PestanaResumen({
         <PortalPanel title="Fechas">
           <div className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-1">
             <Dato label="Firma del contrato">{fecha(e.fechaFirma) || "—"}</Dato>
-            <Dato label="Límite H2">{fecha(e.fechaLimiteH2) || "—"}</Dato>
+            <Dato label="Límite del Pago 2">{fecha(e.fechaLimiteH2) || fecha(e.fechaRelease) || fecha(ctx.embarque?.fechaReleaseEst) || "—"}</Dato>
             <Dato label="Embarque estimado">{fecha(e.fechaEstEmbarque) || "—"}</Dato>
             <Dato label="Arribo estimado">{fecha(e.fechaEstArribo) || fecha(ctx.embarque?.fechaArriboEst) || "—"}</Dato>
             <Dato label="Entrega estimada">{fecha(e.fechaEstEntrega) || "—"}</Dato>

@@ -30,9 +30,9 @@ const pasosHtml = PASOS_RUTA.map((p, i) => `
     <div class="n">${String(i + 1).padStart(2, "0")}</div>
     <div><h3>${esc(p.titulo)}</h3><p class="tu"><b>Tu parte:</b> ${esc(p.tuParte)}</p></div>
     <p class="txt">${esc(p.texto)}</p>
-    ${p.pago
-      ? `<div class="pago"><div class="lab">Pago ${p.pago.numero}</div><b>${esc(p.pago.titulo)}</b><span>${esc(p.pago.detalle)}</span></div>`
-      : `<div class="sinpago"><span class="lab">Sin pago</span>Cotizar no cuesta. Decidimos juntos si conviene traerlo.</div>`}
+    ${p.pagos?.length
+      ? `<div class="pagos">${p.pagos.map((g) => `<div class="pago"><div class="lab">Pago ${g.numero}</div><b>${esc(g.titulo)}</b><span>${esc(g.detalle)}</span></div>`).join("")}</div>`
+      : `<div class="sinpago"><span class="lab">Sin pago</span>Buscar y cotizar no cuesta. Decidimos juntos si conviene traerlo.</div>`}
   </div>`).join("");
 const dineroHtml = DINERO_RUTA.map((d, i) => `<div class="card"><div class="ic">${i + 1}</div><div><h4>${esc(d.titulo)}</h4><p>${esc(d.texto)}</p></div></div>`).join("");
 const firmasHtml = FIRMAS_RUTA.map((f, i) => `<div class="card"><div class="ic">${i + 1}</div><div><h4>${esc(f.titulo)}</h4><p>${esc(f.texto)}</p></div></div>`).join("");

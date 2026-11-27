@@ -51,40 +51,47 @@ export function evaluarAvance(
 
 /**
  * Tareas que nacen al entrar a una etapa, con su fecha límite tomada del
- * expediente. Las que no aplican (p. ej. "elegir consolidado" en un
- * contenedor exclusivo) no se crean.
+ * expediente, el embarque o los hitos. Las que no aplican (p. ej. "elegir
+ * consolidado" en un contenedor exclusivo, "historial" en un auto nuevo) no se
+ * crean.
  */
 export function tareasParaEtapa(etapa: EtapaExpediente, ctx: ContextoExpediente): TareaNueva[] {
   const def = definicionEtapa(etapa);
-  const e = ctx.expediente;
+  const usado = ctx.expediente.vehiculo.condicion === "usado";
   return def.tareas
     .filter((t) => !t.aplica || t.aplica(ctx))
     .map((t, i) => ({
       etapa,
       clave: t.clave,
-      titulo: t.titulo,
-      descripcion: t.descripcion ?? null,
+      titulo: (usado && t.usado?.titulo) || t.titulo,
+      descripcion: (usado && t.usado?.descripcion) || t.descripcion || null,
       responsable: t.responsable,
       estado: t.automatica ? "hecha" : "pendiente",
-      venceEl: t.vence ? fechaDe(t.vence, e) : null,
+      venceEl: t.vence ? fechaDe(t.vence, ctx) : null,
       visibleCliente: t.visibleCliente ?? false,
       orden: i + 1,
     }));
 }
 
-function fechaDe(
-  campo: NonNullable<TareaPlantilla["vence"]>,
-  e: ContextoExpediente["expediente"],
-): string | null {
+function fechaDe(campo: NonNullable<TareaPlantilla["vence"]>, ctx: ContextoExpediente): string | null {
+  const e = ctx.expediente;
+  const hito = (tipo: "H5" | "H6") => ctx.hitos.find((h) => h.tipo === tipo)?.fechaLimite ?? null;
   switch (campo) {
-    case "fecha_limite_h2":
-      return e.fechaLimiteH2;
+    case "fecha_firma":
+      return e.fechaFirma;
+    case "fecha_limite_pago2":
+      return e.fechaLimiteH2 ?? e.fechaRelease ?? ctx.embarque?.fechaReleaseEst ?? null;
     case "fecha_est_arribo":
-      return e.fechaEstArribo;
+      return e.fechaEstArribo ?? ctx.embarque?.fechaArriboEst ?? null;
     case "fecha_est_entrega":
       return e.fechaEstEntrega;
     case "fecha_limite_compra":
       return e.fechaLimiteCompra;
+    case "fecha_limite_h5":
+      // Sin fecha hasta el aviso con la liquidación de SUNAT (lo fija el aviso: dos días hábiles).
+      return hito("H5");
+    case "fecha_limite_h6":
+      return hito("H6") ?? e.levanteEn;
     default:
       return null;
   }

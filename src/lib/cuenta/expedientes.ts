@@ -21,6 +21,7 @@ import type {
   Hito,
   Tarea,
   TipoAprobacion,
+  TipoHito,
 } from "@/core/expedientes/tipos";
 import type {
   EmbarqueClienteRow,
@@ -231,11 +232,14 @@ export async function subirComprobanteCliente(input: { expedienteId: string; arc
 }
 
 export type DeclaracionDeposito = {
-  hito: "H1" | "H2" | "H3" | "H4";
+  hito: TipoHito;
+  /** USD. En el Pago 4 (tributos directo a SUNAT): el monto en dólares de la DAM. */
   monto: number;
   fecha: string;
   banco: string;
   operacion?: string;
+  /** Pago 4: lo pagado en soles a SUNAT (queda como moneda del movimiento). */
+  soles?: number | null;
   comprobante?: File | null;
 };
 
@@ -254,9 +258,10 @@ export async function declararDeposito(client: PortalClient, input: { expediente
   const r = await accionCliente(client, {
     expedienteId: input.expedienteId,
     tipo: "declarar_deposito",
-    payload: { hito: d.hito, monto: d.monto, fecha: d.fecha, banco: d.banco.trim(), operacion: d.operacion?.trim() || undefined, comprobante_path: comprobantePath },
+    payload: { hito: d.hito, monto: d.monto, fecha: d.fecha, banco: d.banco.trim(), operacion: d.operacion?.trim() || undefined, soles: d.soles && d.soles > 0 ? d.soles : undefined, comprobante_path: comprobantePath },
   });
   if (!r.ok) return r;
+  if (d.hito === "H5") return { ok: true, message: "Gracias. Registramos tu pago a SUNAT como pendiente de confirmar: lo revisamos con el comprobante y seguimos con el levante." };
   return { ok: true, message: "Gracias. Registramos tu depósito como pendiente de confirmar: en cuanto se acredite te enviamos la constancia." };
 }
 

@@ -43,12 +43,12 @@ function construir(c: Campos): Estructura {
 
       h2("4. Routing and dates"),
       tabla(["Item", "Detail"], [
-        ["Pickup", `${c.VENDEDOR_DIRECCION}, on ${c.FECHA_RELEASE}. Coordinate with ${c.VENDEDOR_CONTACTO}, ${c.VENDEDOR_TELEFONO}`],
+        ["Pickup", `${c.DEALER_DIRECCION} (dealer: ${c.DEALER_NOMBRE}), on ${c.FECHA_RELEASE}. Coordinate with ${c.DEALER_CONTACTO}; broker: ${c.VENDEDOR_CONTACTO}, ${c.VENDEDOR_TELEFONO}`],
         ["Consolidation warehouse", c.ALMACEN_CONSOLIDACION],
         ["Port of loading", c.PUERTO_ORIGEN],
         ["Port of discharge", `${c.PUERTO_DESTINO} (Callao, Peru)`],
         ["Target sailing", c.FECHA_EST_EMBARQUE],
-        ["Quote", "Inland, warehouse handling, loading and lashing, export documentation, ocean freight and destination charges as separate lines"],
+        ["Quote", "One freight figure covering pickup at the dealer and transport to the port, warehouse handling, loading and lashing, export documentation and ocean freight, with destination charges as separate lines"],
       ], [1.5, 3.5]),
 
       h2("5. Bill of lading requirements"),
@@ -89,7 +89,8 @@ function construir(c: Campos): Estructura {
       tabla(["Who", "Contact"], [
         ["Lux Cars Import S.A.C.", `${c.LUXCARS_REPRESENTANTE}, ${c.LUXCARS_CORREO}, ${c.LUXCARS_TELEFONO} (WhatsApp)`],
         ["Customs broker in Callao", `${c.AGENTE_ADUANA}, ${c.AGENTE_ADUANA_CONTACTO}`],
-        ["Seller", `${c.VENDEDOR_NOMBRE}, ${c.VENDEDOR_CONTACTO}, ${c.VENDEDOR_TELEFONO}`],
+        ["Seller (broker)", `${c.VENDEDOR_NOMBRE}, ${c.VENDEDOR_CONTACTO}, ${c.VENDEDOR_TELEFONO}`],
+        ["Dealer (pickup)", `${c.DEALER_NOMBRE}, ${c.DEALER_CONTACTO}`],
       ], [2, 3]),
       firmas(
         ["Issued by Lux Cars Import S.A.C.", c.LUXCARS_REPRESENTANTE, "Date: ______________"],
@@ -101,7 +102,7 @@ function construir(c: Campos): Estructura {
 
 export const instruccionesForwarder: Plantilla = {
   tipo: "instrucciones_forwarder",
-  version: "instrucciones_forwarder@2026-11-25",
+  version: "instrucciones_forwarder@2026-11-27",
   nombre: "Shipping Instructions (EN)",
   idioma: "en",
   tarea: "luxcars.instrucciones_forwarder",

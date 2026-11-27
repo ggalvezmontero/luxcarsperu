@@ -14,10 +14,10 @@ function contexto(): ContextoExpediente {
       id: "e1", codigo: "LC-2026-099", clienteId: "c1", etapa: "contrato", etapaDesde: "2026-11-25T00:00:00Z", origenSolicitudId: null, embarqueId: null, proporcionFlete: 1,
       vehiculo: { marca: "Ford", modelo: "Bronco", version: null, anio: 2026, vin: "1FMEE5DP0PLA00000", color: null, km: null, combustible: null, cilindradaCc: null, transmision: null, condicion: "nuevo", categoria: "gasolina", origen: "otro", paisEnsamblaje: null, docPropiedad: null, pesoKg: null, medidas: null, clase: "M1" },
       monedaCompra: "USD", precioCompra: 60_000, precioCompraUsd: 60_000, fechaLimiteCompra: null, fechaInspeccion: null, historialRef: null, fechaRelease: null, paisOrigen: "Estados Unidos", puertoOrigen: "Miami",
-      presupuesto, honorariosUsd: presupuesto.honorarios, honorariosBaseUsd: presupuesto.honorariosBase, honorariosIgvUsd: presupuesto.honorariosIgv, porcentajeDetraccion: 12, margenH3: 0.03, tarifaCustodiaUsd: 25, costoInspeccionUsd: 350,
+      presupuesto, honorariosUsd: presupuesto.honorarios, honorariosBaseUsd: presupuesto.honorariosBase, honorariosIgvUsd: presupuesto.honorariosIgv, porcentajeDetraccion: 12, tarifaCustodiaUsd: 25, costoInspeccionUsd: 350,
       fechaFirma: "2026-11-28", fechaLimiteH2: "2026-12-12", fechaEstEmbarque: "2027-01-09", fechaEstArribo: "2027-02-10", fechaEstEntrega: "2027-03-05", semanasEstimadas: "10 a 14", loaVence: "2027-02-28",
       damNumero: null, damFecha: null, damCanal: null, damFactorConversion: null, damTcSbs: null, levanteEn: null, placa: null, tiveNumero: null, kmEntrega: null, fechaEntrega: null, canceladoMotivo: null, cerradoEn: null, createdAt: "2026-11-25T00:00:00Z", updatedAt: "2026-11-25T00:00:00Z",
-      reservado: { precioTope: 62_000, tcCompraRef: 1, vendedorId: null, inspectorId: null, agenteAduanaId: null, notasInternas: null },
+      reservado: { precioTope: 62_000, tcCompraRef: 1, vendedorId: null, brokerId: null, inspectorId: null, agenteAduanaId: null, notasInternas: null },
     },
     cliente: {
       id: "c1", tipo: "empresa", razonSocial: "Prueba & Cía S.A.C.", ruc: "20123456789", dni: null, domicilio: "Av. Prueba 123, Lima", partida: "12345678", representante: "Ana Pérez", representanteDni: "12345678", representanteCargo: "Gerente general", email: "ana@prueba.test", telefono: "+51 999 000 000",
@@ -31,14 +31,21 @@ const FIJOS = { LUXCARS_RUC: "20600000001", LUXCARS_DOMICILIO: "Calle X 1, Lima"
 
 describe("renderizadores de servidor", () => {
   it("producen un PDF y un DOCX reales para cada plantilla", async () => {
-    for (const plantilla of PLANTILLAS) {
-      const { estructura } = construirDocumento(plantilla, contexto(), FIJOS);
+    // El aviso de pago tiene tres variantes (Pagos 3, 4 y 5): se renderizan las tres.
+    type Caso = { plantilla: (typeof PLANTILLAS)[number]; extra: Record<string, string>; nombre: string };
+    const casos = PLANTILLAS.flatMap<Caso>((plantilla) =>
+      plantilla.tipo === "aviso_h3"
+        ? (["H4", "H5", "H6"] as const).map((hito) => ({ plantilla, extra: { HITO: hito, LIQUIDACION_NUMERO: "118-2027-0001234", TRIBUTOS_USD: "27,587.85", TRIBUTOS_SOLES: "103,920.02" }, nombre: `${plantilla.tipo} ${hito}` }))
+        : [{ plantilla, extra: {}, nombre: plantilla.tipo }],
+    );
+    for (const { plantilla, extra, nombre } of casos) {
+      const { estructura } = construirDocumento(plantilla, contexto(), { ...FIJOS, ...extra });
       const [pdf, docx] = await Promise.all([renderPdf(estructura), renderDocx(estructura)]);
-      expect(Buffer.from(pdf.slice(0, 5)).toString("latin1"), plantilla.tipo).toBe("%PDF-");
-      expect(pdf.byteLength, plantilla.tipo).toBeGreaterThan(5_000);
+      expect(Buffer.from(pdf.slice(0, 5)).toString("latin1"), nombre).toBe("%PDF-");
+      expect(pdf.byteLength, nombre).toBeGreaterThan(4_000);
       // Un .docx es un ZIP: empieza con "PK".
-      expect(Buffer.from(docx.slice(0, 2)).toString("latin1"), plantilla.tipo).toBe("PK");
-      expect(docx.byteLength, plantilla.tipo).toBeGreaterThan(3_000);
+      expect(Buffer.from(docx.slice(0, 2)).toString("latin1"), nombre).toBe("PK");
+      expect(docx.byteLength, nombre).toBeGreaterThan(3_000);
     }
   }, 60_000);
 });

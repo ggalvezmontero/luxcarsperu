@@ -69,6 +69,7 @@ export function PestanaVehiculo({
             <Dato label="Origen y puerto">{[e.paisOrigen, e.puertoOrigen].filter(Boolean).join(" · ") || "—"}</Dato>
             <Dato label="Honorarios">{e.honorariosUsd !== null ? `${usd(e.honorariosUsd)} (base ${usd(e.honorariosBaseUsd)} + IGV ${usd(e.honorariosIgvUsd)})` : "—"}</Dato>
             <Dato label="Proporción del flete">{e.proporcionFlete === 1 ? "Exclusivo" : `${Math.round(e.proporcionFlete * 100)} % del contenedor`}</Dato>
+            {v.condicion === "usado" ? <Dato label="Inspección del usado">{e.costoInspeccionUsd !== null ? usd(e.costoInspeccionUsd) : "—"}{e.fechaInspeccion ? ` · ${fecha(e.fechaInspeccion)}` : ""}</Dato> : null}
           </div>
         </PortalPanel>
       </div>
@@ -142,12 +143,12 @@ function DatosAvance({ client, ctx, onResultado }: { client: PortalClient; ctx: 
         <Rejilla columnas={4}>
           <Campo label="Firma del contrato"><Entrada type="date" value={f.fecha_firma} onChange={(x) => set("fecha_firma", x.target.value)} /></Campo>
           <Campo label="LOA vence"><Entrada type="date" value={f.loa_vence} onChange={(x) => set("loa_vence", x.target.value)} /></Campo>
-          <Campo label="Límite H2"><Entrada type="date" value={f.fecha_limite_h2} onChange={(x) => set("fecha_limite_h2", x.target.value)} /></Campo>
-          <Campo label="Inspección"><Entrada type="date" value={f.fecha_inspeccion} onChange={(x) => set("fecha_inspeccion", x.target.value)} /></Campo>
+          <Campo label="Límite del Pago 2" hint="H2 y H3; si queda vacío, el release."><Entrada type="date" value={f.fecha_limite_h2} onChange={(x) => set("fecha_limite_h2", x.target.value)} /></Campo>
+          {e.vehiculo.condicion === "usado" ? <Campo label="Inspección (usado)"><Entrada type="date" value={f.fecha_inspeccion} onChange={(x) => set("fecha_inspeccion", x.target.value)} /></Campo> : null}
           <Campo label="Embarque estimado"><Entrada type="date" value={f.fecha_est_embarque} onChange={(x) => set("fecha_est_embarque", x.target.value)} /></Campo>
           <Campo label="Arribo estimado" hint="Decide el año de la regla de antigüedad."><Entrada type="date" value={f.fecha_est_arribo} onChange={(x) => set("fecha_est_arribo", x.target.value)} /></Campo>
           <Campo label="Entrega estimada"><Entrada type="date" value={f.fecha_est_entrega} onChange={(x) => set("fecha_est_entrega", x.target.value)} /></Campo>
-          <Campo label="Historial (Carfax, AutoCheck…)"><Entrada value={f.historial_ref} onChange={(x) => set("historial_ref", x.target.value)} maxLength={200} /></Campo>
+          <Campo label={e.vehiculo.condicion === "usado" ? "Historial (CarFax, AutoCheck…)" : "MSO sin matricular y recalls"}><Entrada value={f.historial_ref} onChange={(x) => set("historial_ref", x.target.value)} maxLength={200} /></Campo>
           <Campo label="DAM número"><Entrada value={f.dam_numero} onChange={(x) => set("dam_numero", x.target.value)} maxLength={40} /></Campo>
           <Campo label="DAM fecha"><Entrada type="date" value={f.dam_fecha} onChange={(x) => set("dam_fecha", x.target.value)} /></Campo>
           <Campo label="Canal"><Entrada value={f.dam_canal} onChange={(x) => set("dam_canal", x.target.value)} maxLength={20} placeholder="verde / naranja / rojo" /></Campo>
@@ -280,6 +281,7 @@ function Contrapartes({ client, ctx, onResultado }: { client: PortalClient; ctx:
   const [todas, setTodas] = useState<Contraparte[]>([]);
   const [f, setF] = useState({
     vendedor_id: r?.vendedorId ?? "",
+    broker_id: r?.brokerId ?? "",
     inspector_id: r?.inspectorId ?? "",
     agente_aduana_id: r?.agenteAduanaId ?? "",
     forwarder_id: ctx.embarque?.forwarderId ?? "",
@@ -314,6 +316,7 @@ function Contrapartes({ client, ctx, onResultado }: { client: PortalClient; ctx:
     setBusy(true);
     const r1 = await actualizarReservado(client, ctx.expediente.id, {
       vendedor_id: f.vendedor_id || null,
+      broker_id: f.broker_id || null,
       inspector_id: f.inspector_id || null,
       agente_aduana_id: f.agente_aduana_id || null,
     });
@@ -345,7 +348,7 @@ function Contrapartes({ client, ctx, onResultado }: { client: PortalClient; ctx:
     setBusy(false);
     if (r.ok && r.id) {
       await recargar();
-      const clave = nueva.tipo === "vendedor" ? "vendedor_id" : nueva.tipo === "inspector" ? "inspector_id" : nueva.tipo === "agente_aduana" ? "agente_aduana_id" : nueva.tipo === "forwarder" ? "forwarder_id" : null;
+      const clave = nueva.tipo === "vendedor" ? "vendedor_id" : nueva.tipo === "broker" ? "broker_id" : nueva.tipo === "inspector" ? "inspector_id" : nueva.tipo === "agente_aduana" ? "agente_aduana_id" : nueva.tipo === "forwarder" ? "forwarder_id" : null;
       if (clave) setF((p) => ({ ...p, [clave]: r.id as string }));
       setNueva({ tipo: nueva.tipo, nombre: "", pais: "", direccion: "", contacto: "", email: "", telefono: "", ruc_o_tax_id: "" });
     }
@@ -353,11 +356,12 @@ function Contrapartes({ client, ctx, onResultado }: { client: PortalClient; ctx:
   };
 
   return (
-    <PortalPanel title="Contrapartes" description="Vendedor, inspector, agente de aduana y forwarder. Los documentos (Anexo A, LOA, instrucciones) toman de aquí nombre, dirección, contacto y RUC.">
+    <PortalPanel title="Contrapartes" description="Broker (recibe el precio), dealer (emite la factura y el MSO), inspector (solo usados), agente de aduana y forwarder. Los documentos (contrato, Anexo A, LOA, instrucciones) toman de aquí nombre, dirección, contacto y RUC.">
       <div className="space-y-5 px-5 py-4">
         <Rejilla columnas={4}>
-          {selector("Vendedor", "vendedor_id", "vendedor")}
-          {selector("Inspector", "inspector_id", "inspector")}
+          {selector("Broker (recibe el pago)", "broker_id", "broker")}
+          {selector("Dealer (factura y MSO)", "vendedor_id", "vendedor")}
+          {ctx.expediente.vehiculo.condicion === "usado" ? selector("Inspector (usado)", "inspector_id", "inspector") : null}
           {selector("Agente de aduana", "agente_aduana_id", "agente_aduana")}
           {ctx.embarque ? selector("Forwarder (del embarque)", "forwarder_id", "forwarder") : <Dato label="Forwarder">Sin embarque asignado</Dato>}
         </Rejilla>

@@ -88,6 +88,7 @@ export const CUENTA_LABEL_UIF: Record<CuentaMovimiento, string> = {
   fondos_clientes: "Fondos de clientes",
   operaciones: "Operaciones",
   detracciones: "Detracciones",
+  directo: "Pagado directo por el cliente",
 };
 
 export const TIPO_CLIENTE_LABEL_UIF: Record<TipoCliente, string> = {
@@ -99,9 +100,13 @@ export function mesDe(fecha: string): string {
   return fecha.slice(0, 7);
 }
 
-/** Solo las operaciones reales cuentan: ni declaradas sin confirmar ni anuladas, y nunca los ajustes contables. */
-export function cuentaParaUif(m: Pick<Movimiento, "estado" | "tipo">): boolean {
-  return m.estado === "confirmado" && m.tipo !== "ajuste";
+/**
+ * Solo las operaciones reales que pasan por Luxcars cuentan: ni declaradas sin
+ * confirmar ni anuladas, nunca los ajustes contables y nunca lo que el cliente
+ * pagó directo a SUNAT (cuenta `directo`, desde el 27 nov 2026).
+ */
+export function cuentaParaUif(m: Pick<Movimiento, "estado" | "tipo"> & { cuenta?: Movimiento["cuenta"] }): boolean {
+  return m.estado === "confirmado" && m.tipo !== "ajuste" && m.cuenta !== "directo";
 }
 
 function redondear2(n: number): number {

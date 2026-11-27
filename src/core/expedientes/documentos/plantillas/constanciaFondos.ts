@@ -19,26 +19,27 @@ function destinos(c: Campos, ctx: ContextoExpediente): string[][] {
   const hito = (c.HITO || "") as TipoHito | "";
   if (!pre) return [["", "", "", ""]];
   const e = ctx.expediente;
+  if (hito === "H1") {
+    const broker = nombre(e.reservado?.brokerId ?? e.reservado?.vendedorId, "Vendedor (broker)");
+    const filas = [["Precio del vehículo (wire al broker, que paga al dealer)", broker, monto(pre.precioUsd), "Al confirmar el depósito"]];
+    if (pre.costoInspeccion > 0) filas.push(["Inspección del vehículo usado", nombre(e.reservado?.inspectorId, "Inspector"), monto(pre.costoInspeccion), "Ya realizada"]);
+    return filas;
+  }
   if (hito === "H2") {
-    const vendedor = nombre(e.reservado?.vendedorId, "Vendedor del vehículo");
     const forwarder = nombre(ctx.embarque?.forwarderId, "Forwarder");
     return [
-      ["Precio del vehículo", vendedor, monto(pre.precioUsd), fechaEnLetras(e.fechaRelease ?? ctx.embarque?.fechaReleaseEst) || "Al confirmar el depósito"],
-      ["Transporte interno en origen", forwarder, monto(pre.inland), fechaEnLetras(e.fechaRelease ?? ctx.embarque?.fechaReleaseEst) || "Antes del embarque"],
-      ["Flete marítimo y gastos del contenedor", forwarder, monto(pre.flete), fechaEnLetras(e.fechaEstEmbarque ?? ctx.embarque?.fechaZarpeEst) || "Al embarcar"],
+      ["Flete (traslado al puerto y marítimo)", forwarder, monto(pre.flete), fechaEnLetras(e.fechaEstEmbarque ?? ctx.embarque?.fechaZarpeEst) || "Al embarcar"],
       ["Seguro de transporte", nombre(ctx.embarque?.aseguradoraId, "Aseguradora"), monto(pre.seguro), fechaEnLetras(e.fechaEstEmbarque ?? ctx.embarque?.fechaZarpeEst) || "Al embarcar"],
     ];
   }
-  if (hito === "H3") {
+  if (hito === "H4") {
     const agente = nombre(e.reservado?.agenteAduanaId, "Agente de aduana");
     return [
-      ["Tributos de importación (ad valorem, ISC, IGV, IPM y percepción)", "SUNAT", monto(pre.tributos + pre.percepcion), fechaEnLetras(e.fechaEstArribo ?? ctx.embarque?.fechaArriboEst) || "Al numerar la DAM"],
-      ["Gastos de aduana", agente, monto(pre.gastosAduana), fechaEnLetras(e.fechaEstArribo ?? ctx.embarque?.fechaArriboEst) || "Al arribo"],
-      ["Gastos registrales y placas", "SUNARP, notaría, AAP", monto(pre.gastosRegistrales), fechaEnLetras(e.fechaEstEntrega) || "Antes de la entrega"],
+      ["Gastos de aduana: agente, almacenaje, visto bueno y grúa del puerto (reembolsables; el saldo va al Pago 5)", agente, c.MONTO_DEPOSITO, fechaEnLetras(e.fechaEstArribo ?? ctx.embarque?.fechaArriboEst) || "Al arribo"],
     ];
   }
-  if (hito === "H1" || hito === "H4") {
-    return [["Honorarios de LUXCARS (factura por separado)", "LUX CARS IMPORT S.A.C.", hito === "H1" ? c.COMISION_H1 : c.COMISION_H4, "Facturado al acreditarse"]];
+  if (hito === "H3" || hito === "H6") {
+    return [[`Honorarios de LUXCARS, ${hito === "H3" ? "primera" : "segunda"} mitad (factura por separado)`, "LUX CARS IMPORT S.A.C.", c.MONTO_DEPOSITO, "Facturado al acreditarse"]];
   }
   return [["", "", "", ""]];
 }
@@ -51,7 +52,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
     idioma: "es",
     codigoExpediente: c.EXPEDIENTE,
     bloques: [
-      p(`LUX CARS IMPORT S.A.C., RUC ${c.LUXCARS_RUC}, deja constancia de haber recibido de **${c.CLIENTE_RAZON_SOCIAL}**, RUC ${c.CLIENTE_RUC}, en la cuenta Fondos de Clientes indicada en el Anexo D del contrato de mandato del ${c.FECHA_FIRMA}, el siguiente depósito:`),
+      p(`LUX CARS IMPORT S.A.C., RUC ${c.LUXCARS_RUC}, deja constancia de haber recibido de **${c.CLIENTE_RAZON_SOCIAL}**, RUC ${c.CLIENTE_RUC}, en ${c.HITO === "H3" || c.HITO === "H6" ? "la cuenta de Operaciones" : "la cuenta Fondos de Clientes"} indicada en el Anexo D del contrato de mandato del ${c.FECHA_FIRMA}, el siguiente depósito:`),
 
       h2("1. Depósito recibido"),
       tabla(["Campo", "Dato"], [
@@ -60,7 +61,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
         ["Banco y cuenta de origen", c.CLIENTE_BANCO_ORIGEN],
         ["Número de operación", c.NUMERO_OPERACION],
         ["Hito al que corresponde", c.HITO],
-        ["Concepto según el contrato", `${marca("H2")} H2: precio del vehículo, transporte interno, flete y seguro   ${marca("H3")} H3: tributos de importación, gastos de aduana y registrales   ${marca("H1")} H1 / ${marca("H4")} H4: honorarios   [ ] Diferencia comunicada el ______________   [ ] Otro: ______________`],
+        ["Concepto según el contrato", `${marca("H1")} H1 (Pago 1): precio del vehículo   ${marca("H2")} H2 (Pago 2): flete y seguro   ${marca("H3")} H3 (Pago 2): primera mitad de honorarios   ${marca("H4")} H4 (Pago 3): gastos de aduana   ${marca("H6")} H6 (Pago 5): segunda mitad de honorarios   [ ] Diferencia comunicada el ______________   [ ] Otro: ______________`],
       ], [2, 3]),
 
       h2(`2. Saldo del expediente ${c.EXPEDIENTE}`),
@@ -84,7 +85,7 @@ function construir(c: Campos, ctx: ContextoExpediente): Estructura {
 
 export const constanciaFondos: Plantilla = {
   tipo: "constancia_fondos",
-  version: "constancia_fondos@2026-11-25",
+  version: "constancia_fondos@2026-11-27b",
   nombre: "Constancia de recepción de fondos",
   idioma: "es",
   seFirma: false,

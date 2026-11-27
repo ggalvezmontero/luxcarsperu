@@ -67,7 +67,7 @@ export function num(value: number | string | null | undefined): number | null {
 
 const ESTADOS_TAREA: readonly EstadoTarea[] = ["pendiente", "hecha", "no_aplica"];
 const TIPOS_EVENTO: readonly TipoEvento[] = ["etapa", "tarea", "hito", "movimiento", "documento", "aprobacion", "nota", "notificacion", "alerta"];
-const TIPOS_APROBACION: readonly TipoAprobacion[] = ["aprobar_inspeccion", "elegir_consolidado", "declarar_deposito", "conformidad_rendicion", "confirmar_cuentas"];
+const TIPOS_APROBACION: readonly TipoAprobacion[] = ["aprobar_unidad", "aprobar_inspeccion", "elegir_consolidado", "declarar_deposito", "conformidad_rendicion", "confirmar_cuentas"];
 
 export function mapEtapa(value: unknown): EtapaExpediente {
   return pick(value, ETAPAS_EXPEDIENTE, "prospecto");
@@ -263,7 +263,8 @@ export function mapReservado(row: ExpedienteReservadoRow | null | undefined): Ex
     precioTope: num(row.precio_tope),
     tcCompraRef: num(row.tc_compra_ref),
     vendedorId: row.vendedor_id,
-    inspectorId: row.inspector_id,
+    brokerId: row.broker_id ?? null,
+    inspectorId: row.inspector_id ?? null,
     agenteAduanaId: row.agente_aduana_id,
     notasInternas: row.notas_internas,
   };
@@ -307,7 +308,7 @@ export function mapExpediente(row: ExpedienteRow, reservado: ExpedienteReservado
     precioCompra: num(row.precio_compra),
     precioCompraUsd: num(row.precio_compra_usd),
     fechaLimiteCompra: row.fecha_limite_compra ?? null,
-    fechaInspeccion: row.fecha_inspeccion,
+    fechaInspeccion: row.fecha_inspeccion ?? null,
     historialRef: row.historial_ref ?? null,
     fechaRelease: row.fecha_release ?? null,
     paisOrigen: row.pais_origen,
@@ -317,7 +318,6 @@ export function mapExpediente(row: ExpedienteRow, reservado: ExpedienteReservado
     honorariosBaseUsd: num(row.honorarios_base_usd),
     honorariosIgvUsd: num(row.honorarios_igv_usd),
     porcentajeDetraccion: num(row.porcentaje_detraccion),
-    margenH3: num(row.margen_h3) ?? 0,
     tarifaCustodiaUsd: num(row.tarifa_custodia_usd),
     costoInspeccionUsd: num(row.costo_inspeccion_usd),
     fechaFirma: row.fecha_firma,
@@ -416,11 +416,11 @@ export const COLUMNAS = {
   embarque:
     "id, codigo, modalidad, contenedor, forwarder_id, aseguradora_id, almacen_consolidacion, puerto_origen, puerto_destino, fecha_release_est, fecha_release_real, fecha_carga, fecha_zarpe_est, fecha_zarpe_real, fecha_arribo_est, fecha_arribo_real, nave, master_bl, precinto, flete_total_usd, gastos_contenedor_usd, declaracion_exportacion, estado, notas_internas",
   expediente:
-    "id, codigo, cliente_id, etapa, etapa_desde, origen_solicitud_id, embarque_id, proporcion_flete, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_combustible, veh_cilindrada_cc, veh_transmision, veh_condicion, veh_categoria, veh_origen, veh_pais_ensamblaje, veh_doc_propiedad, veh_peso_kg, veh_medidas, veh_clase, moneda_compra, precio_compra, precio_compra_usd, fecha_limite_compra, fecha_inspeccion, historial_ref, fecha_release, pais_origen, puerto_origen, presupuesto, honorarios_usd, honorarios_base_usd, honorarios_igv_usd, porcentaje_detraccion, margen_h3, tarifa_custodia_usd, costo_inspeccion_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, loa_vence, dam_numero, dam_fecha, dam_canal, dam_factor_conversion, dam_tc_sbs, levante_en, placa, tive_numero, km_entrega, fecha_entrega, cancelado_motivo, cerrado_en, created_at, updated_at",
+    "id, codigo, cliente_id, etapa, etapa_desde, origen_solicitud_id, embarque_id, proporcion_flete, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_combustible, veh_cilindrada_cc, veh_transmision, veh_condicion, veh_categoria, veh_origen, veh_pais_ensamblaje, veh_doc_propiedad, veh_peso_kg, veh_medidas, veh_clase, moneda_compra, precio_compra, precio_compra_usd, fecha_limite_compra, fecha_inspeccion, historial_ref, fecha_release, pais_origen, puerto_origen, presupuesto, honorarios_usd, honorarios_base_usd, honorarios_igv_usd, porcentaje_detraccion, tarifa_custodia_usd, costo_inspeccion_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, loa_vence, dam_numero, dam_fecha, dam_canal, dam_factor_conversion, dam_tc_sbs, levante_en, placa, tive_numero, km_entrega, fecha_entrega, cancelado_motivo, cerrado_en, created_at, updated_at",
   /** Columnas de la vista `expediente_cliente` (sin reservado ni margen). */
   expedienteCliente:
     "id, codigo, cliente_id, etapa, etapa_desde, embarque_id, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_combustible, veh_cilindrada_cc, veh_transmision, veh_condicion, veh_categoria, veh_pais_ensamblaje, veh_clase, moneda_compra, precio_compra, precio_compra_usd, fecha_inspeccion, pais_origen, puerto_origen, honorarios_usd, honorarios_base_usd, honorarios_igv_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, dam_numero, dam_fecha, levante_en, placa, tive_numero, fecha_entrega, cancelado_motivo, cerrado_en, created_at, updated_at",
-  reservado: "precio_tope, tc_compra_ref, vendedor_id, inspector_id, agente_aduana_id, notas_internas",
+  reservado: "precio_tope, tc_compra_ref, vendedor_id, broker_id, inspector_id, agente_aduana_id, notas_internas",
   tarea: "id, expediente_id, etapa, clave, titulo, descripcion, responsable, estado, vence_el, hecha_en, visible_cliente, orden",
   tareaCliente: "id, expediente_id, etapa, clave, titulo, descripcion, responsable, estado, vence_el, hecha_en, orden",
   hito: "id, expediente_id, tipo, monto_estimado_usd, fecha_limite, cuenta, nota",

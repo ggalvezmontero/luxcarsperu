@@ -461,10 +461,12 @@ todo admin ve todo. Si hiciera falta un rol intermedio, se agrega al enum y a
 ## 6b. Módulo de expedientes de importación (`/portal/expedientes`, `/cuenta/importaciones`)
 
 Cada importación a pedido es un **expediente**: un cliente, un auto, un mandato
-y once etapas (`prospecto` → `contrato` → `busqueda` → `compra` → `embarque` →
+y once etapas (`prospecto` → `busqueda` → `contrato` → `compra` → `embarque` →
 `transito` → `aduana` → `placas` → `entrega` → `cerrado`, más `cancelado`
-terminal desde cualquiera). Las reglas (compuertas de cada etapa, tareas
-plantilla, hitos H1–H4, libro, alertas, métricas, registro UIF) viven SOLO en
+terminal desde cualquiera; desde el 27 nov 2026 la búsqueda va antes del
+contrato). Las reglas (compuertas de cada etapa, tareas plantilla, seis hitos
+H1–H6 en cinco pagos, libro, datos por etapa, alertas, métricas, registro UIF)
+viven SOLO en
 `src/core/expedientes/` (TypeScript puro, con vitest); las funciones SQL hacen
 la transacción y la UI pinta. Diseño completo en
 `docs/operaciones/portal-expedientes-diseno-2026-11-24.md` (carpeta ignorada
@@ -477,7 +479,8 @@ forwarders, agentes; `datos_bancarios` + verificación telefónica), `embarques`
 (precio tope, TC, contrapartes y notas: solo equipo), `expediente_etapas`
 (historial), `expediente_tareas`, `expediente_hitos`, `expediente_movimientos`
 (el libro: depósito/pago/devolución/ajuste × fondos_clientes/operaciones/
-detracciones × por_confirmar/confirmado/anulado), `expediente_documentos`
+detracciones/directo × por_confirmar/confirmado/anulado; `directo` registra lo
+que el cliente pagó directo a SUNAT, sin constancia), `expediente_documentos`
 (versionados; la ruta del objeto, nunca una URL), `expediente_eventos`,
 `expediente_aprobaciones` (acciones del cliente) y `notificaciones`.
 
@@ -500,8 +503,13 @@ que daba `es_dueno_expediente()`, que sigue existiendo para las RPC).
 `marcar_documento_firmado`, `registrar_zarpe_arribo`, `fijar_reparto_flete`,
 `verificar_banco_contraparte` (SECURITY INVOKER con `uid_sesion()`: aceptan al
 admin por la Data API o al servidor), y `cliente_accion_expediente` (DEFINER,
-valida propiedad; aprobar inspección, elegir consolidado, declarar depósito con
-comprobante, conformidad de la rendición). Trigger
+valida propiedad; aprobar la unidad —en usados, también el informe de
+inspección—, elegir consolidado, confirmar cuentas, declarar un pago H1–H6 con
+comprobante —el Pago 4 en soles a la cuenta `directo`—, conformidad de la
+rendición). `registrar_movimiento` acepta `comision_bancaria_usd` en un pago
+desde Fondos de Clientes y registra el cargo del banco y la reposición de
+Luxcars juntos (el saldo del cliente no cambia); `registrar_documento`
+reemplaza solo el aviso de pago del mismo hito. Trigger
 `expedientes_cerrar_solicitud`: al abrir un expediente desde una
 `solicitudes_compra`, la solicitud queda `cerrada` con la respuesta visible al
 cliente apuntando al código.
@@ -553,6 +561,28 @@ pide los del expediente en el formulario y manda a Configuración los de la
 empresa. `VIN_OTRA_UNIDAD` sale de los otros expedientes del mismo embarque
 (`ctx.unidadesDelEmbarque`; "N/A" si no es consolidado) y `VEH_CATEGORIA` de
 `expedientes.veh_clase` (M1 / N1, obligatoria en el alta).
+
+**Flujo del 27 nov 2026** (migración `20261127150000_expedientes_flujo.sql`):
+la búsqueda no tiene costo y termina con la acción `aprobar_unidad` del
+cliente, compuerta para pasar a contrato. El contrato se firma con la unidad ya
+elegida en una sola visita a la notaría: contrato con Anexos A–D (sin firma
+aparte), LOA y `poder_inmatriculacion`; a la entrega, una sola
+`acta_rendicion` (acta de entrega y rendición de cuentas) con firma simple, más
+la conformidad desde el portal. Cinco pagos, seis hitos, una cuenta por hito
+(`CUENTA_POR_HITO` en `core/expedientes/hitos.ts`): H1 precio (en usados, más
+la inspección), H2 flete y seguro + H3 primera mitad de honorarios, H4 gastos
+de aduana (reembolsables: el saldo se compensa en el H6), H5 tributos pagados
+por el cliente directo a SUNAT (acreditado con cualquier pago confirmado) y H6
+segunda mitad de honorarios neta del saldo de aduana. El tipo de documento
+`aviso_h3` se conserva como el aviso de pago genérico de H4, H5 y H6. El
+broker (contraparte `broker`, `expedientes_reservado.broker_id`) recibe el
+precio completo y ocupa los campos `VENDEDOR_*`; el dealer (`vendedor`) emite
+factura y MSO (`DEALER_*`). La inspección existe solo en usados. La pestaña
+Resumen muestra "Datos que faltan para esta etapa y la siguiente"
+(`core/expedientes/datosPorEtapa.ts`, probado): qué campo falta, qué documento
+o compuerta lo pide y dónde se guarda, con un formulario que escribe por la
+Data API en el expediente, el cliente, el embarque o la contraparte; los de la
+empresa llevan a `/portal/configuracion`.
 
 **Variables de servidor**: `LUXCARS_DOCUMENTOS_JSON` (respaldo de los datos de
 la empresa; lo normal es `/portal/configuracion`),

@@ -62,35 +62,26 @@ describe.skipIf(!ACTIVA)("fase 2 de punta a punta (base y bucket reales)", () =>
       returning id
     `) as unknown as { id: string }[];
     embarqueId = b.id;
-    const presupuesto = {
-      lineas: [], hitos: [
-        { tipo: "H1", montoUsd: 2481.94, cuenta: "operaciones", descripcion: "" },
-        { tipo: "H2", montoUsd: 73490.5, cuenta: "fondos_clientes", descripcion: "" },
-        { tipo: "H3", montoUsd: 31006.72, cuenta: "fondos_clientes", descripcion: "" },
-        { tipo: "H4", montoUsd: 5791.19, cuenta: "operaciones", descripcion: "" },
-      ],
-      motorVersion: "prueba", precioUsd: 70920, inland: 450, fleteBase: 3300, proporcionFlete: 0.5, flete: 1650, seguro: 390.5, cif: 73410.5,
-      adValorem: 4404.63, isc: 0, igv: 12445.82, ipm: 1555.73, percepcion: 9181.67, tributos: 18406.18, gastosAduana: 2300, gastosRegistrales: 180,
-      costoPuestoEnLima: 94116.68, honorarios: 8273.13, honorariosBase: 7011.13, honorariosIgv: 1262, margenH3: 0.03, totalSinPercepcion: 102389.81, totalConPercepcion: 111571.48,
-      tasas: { adValorem: 0.06, isc: 0, igv: 0.16, ipm: 0.02, percepcion: 0.1, seguroTasa: 0.005, seguroFactorAsegurado: 1.1, seguroMinimo: 45, honorariosTramos: [], honorariosMinimo: 5000, honorariosTasaEfectiva: 0.08, igvHonorarios: 0.18 },
-      entrada: {},
-    };
+    const { entradaPorDefecto, presupuestar } = await import("@/core/expedientes/presupuesto");
+    const presupuesto = presupuestar(entradaPorDefecto({ precio: 98500, monedaCompra: "CAD", tcCompraRef: 0.72, vehicleType: "hev", condition: "nuevo", origin: "otro", cylinderCapacityCc: 3445, proporcionFlete: 0.5 }));
     const [e] = (await sql`
       insert into public.expedientes (cliente_id, etapa, embarque_id, proporcion_flete, veh_marca, veh_modelo, veh_version, veh_anio, veh_vin, veh_color, veh_km, veh_cilindrada_cc, veh_condicion, veh_categoria, veh_origen, veh_clase,
         moneda_compra, precio_compra, precio_compra_usd, fecha_limite_compra, pais_origen, puerto_origen, presupuesto, honorarios_usd, honorarios_base_usd, honorarios_igv_usd,
         porcentaje_detraccion, margen_h3, tarifa_custodia_usd, costo_inspeccion_usd, fecha_firma, fecha_limite_h2, fecha_est_embarque, fecha_est_arribo, fecha_est_entrega, semanas_estimadas, loa_vence)
       values (${clienteId}::uuid, 'contrato', ${embarqueId}::uuid, 0.5, 'Toyota', 'Tundra', 'TRD Pro', 2026, '5TFPC5DB1RX000000', 'Blanco', 1200, 3445, 'nuevo', 'hev', 'otro', 'N1',
-        'CAD', 98500, 70920, '2026-12-15', 'Canadá', 'Vancouver', ${JSON.stringify(presupuesto)}::jsonb, 8273.13, 7011.13, 1262,
-        12, 0.03, 25, 350, '2026-11-28', '2026-12-12', '2027-01-09', '2027-02-10', '2027-03-05', '10 a 14', '2027-02-28')
+        'CAD', 98500, 70920, '2026-12-15', 'Canadá', 'Vancouver', ${JSON.stringify(presupuesto)}::jsonb, ${presupuesto.honorarios}, ${presupuesto.honorariosBase}, ${presupuesto.honorariosIgv},
+        12, 0, 25, null, '2026-11-28', '2026-12-12', '2027-01-09', '2027-02-10', '2027-03-05', '10 a 14', '2027-02-28')
       returning id
     `) as unknown as { id: string }[];
     expedienteId = e.id;
+    // El contrato fija el Pago 2 con el release del vehículo.
+    await sql`update public.expedientes set fecha_release = '2026-12-18' where id = ${expedienteId}::uuid`;
     await sql`insert into public.expedientes_reservado (expediente_id, precio_tope, vendedor_id) values (${expedienteId}::uuid, 100000, ${vendedorId}::uuid)`;
-    await sql`insert into public.expediente_hitos (expediente_id, tipo, monto_estimado_usd, cuenta) values
-      (${expedienteId}::uuid, 'H1', 2481.94, 'operaciones'), (${expedienteId}::uuid, 'H2', 73490.50, 'fondos_clientes'),
-      (${expedienteId}::uuid, 'H3', 31006.72, 'fondos_clientes'), (${expedienteId}::uuid, 'H4', 5791.19, 'operaciones')`;
+    for (const h of presupuesto.hitos) {
+      await sql`insert into public.expediente_hitos (expediente_id, tipo, monto_estimado_usd, cuenta) values (${expedienteId}::uuid, ${h.tipo}::public.tipo_hito, ${h.montoUsd}, ${h.cuenta}::public.cuenta_movimiento)`;
+    }
     await sql`insert into public.expediente_tareas (expediente_id, etapa, clave, titulo, responsable) values
-      (${expedienteId}::uuid, 'contrato', 'luxcars.generar_contrato', 'Generar contrato, anexos C y D y LOA', 'luxcars'),
+      (${expedienteId}::uuid, 'contrato', 'luxcars.generar_contrato', 'Generar contrato, anexos A a D, LOA y poder para la inmatriculación', 'luxcars'),
       (${expedienteId}::uuid, 'contrato', 'cliente.firmar_contrato_loa', 'Firmar el contrato y la LOA en notaría', 'cliente')`;
   }, 60_000);
 
@@ -168,7 +159,7 @@ describe.skipIf(!ACTIVA)("fase 2 de punta a punta (base y bucket reales)", () =>
     expect(tarea.estado).toBe("hecha");
     expect(tarea.documento_id).toBe(r.id);
     const eventos = (await sql`select titulo, visible_cliente from public.expediente_eventos where expediente_id = ${expedienteId}::uuid order by created_at`) as unknown as { titulo: string; visible_cliente: boolean }[];
-    expect(eventos.map((e) => e.titulo)).toEqual(["Documento generado: Contrato de mandato · prueba", "Listo: Generar contrato, anexos C y D y LOA"]);
+    expect(eventos.map((e) => e.titulo)).toEqual(["Documento generado: Contrato de mandato · prueba", "Listo: Generar contrato, anexos A a D, LOA y poder para la inmatriculación"]);
 
     // Regenerar: versión 2, la 1 queda reemplazada.
     const [{ r: r2 }] = (await sql`
@@ -191,7 +182,8 @@ describe.skipIf(!ACTIVA)("fase 2 de punta a punta (base y bucket reales)", () =>
     const { evaluarAvance } = await import("@/core/expedientes/avance");
     const ctx2 = (await cargarContextoServidor(expedienteId))!;
     expect(ctx2.documentos.map((d) => [d.tipo, d.version, d.estado, d.tieneFirmado])).toEqual([["contrato", 2, "firmado", true], ["contrato", 1, "reemplazado", false]]);
-    const r3 = evaluarAvance(ctx2, "busqueda");
+    // Búsqueda va antes del contrato desde el 27 nov 2026: la compuerta que pide la firma es la de compra.
+    const r3 = evaluarAvance(ctx2, "compra");
     expect(r3.faltantes.map((f) => f.clave)).toContain("contrato_firmado");
   }, 120_000);
 

@@ -8,7 +8,7 @@
  *
  * Qué hace: lee con `getSql()` los expedientes abiertos, calcula las alertas
  * con el core (`alertas.ts`: hitos y tareas vencidos, año modelo, LOA,
- * documentos sin firma, saldo negativo, cuenta sin vincular, diferencia H3) y
+ * documentos sin firma, saldo negativo, cuenta sin vincular, diferencia del H4) y
  * añade dos que solo se ven mirando varios expedientes: depósitos declarados
  * por confirmar y embarques sin fechas o sin forwarder. Manda UN correo al
  * equipo (`AVISOS_EMAIL` o el correo de contacto) y deja una fila en

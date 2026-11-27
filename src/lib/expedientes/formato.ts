@@ -6,6 +6,7 @@
 import type { BadgeTone } from "@/components/portal/CrmUI";
 import type {
   CuentaMovimiento,
+  NumeroPago,
   EstadoDocumento,
   EstadoHito,
   EstadoMovimiento,
@@ -23,8 +24,8 @@ import type {
 
 export const ETAPA_TONE: Record<EtapaExpediente, BadgeTone> = {
   prospecto: "neutral",
-  contrato: "silver",
   busqueda: "info",
+  contrato: "silver",
   compra: "warn",
   embarque: "info",
   transito: "info",
@@ -66,11 +67,12 @@ export const TIPO_CLIENTE_LABEL: Record<TipoCliente, string> = {
 };
 
 export const CONTRAPARTE_LABEL: Record<TipoContraparte, string> = {
-  vendedor: "Vendedor",
+  vendedor: "Dealer (emite factura y MSO)",
+  broker: "Broker (recibe el pago)",
   forwarder: "Forwarder",
   agente_aduana: "Agente de aduana",
   aseguradora: "Aseguradora",
-  inspector: "Inspector",
+  inspector: "Inspector (usados)",
   notaria: "Notaría",
   deposito: "Depósito",
   gestor: "Gestor",
@@ -104,10 +106,12 @@ export const TIPO_DOCUMENTO_LABEL: Record<TipoDocumento, string> = {
   instrucciones_vendedor: "Instrucciones al vendedor",
   instrucciones_forwarder: "Instrucciones al forwarder",
   constancia_fondos: "Constancia de fondos",
-  aviso_h3: "Aviso de pago H3",
+  aviso_h3: "Aviso de pago (Pagos 3, 4 y 5)",
   liquidacion_definitiva: "Liquidación definitiva",
-  acta_entrega: "Acta de entrega",
-  rendicion: "Rendición de cuentas",
+  acta_entrega: "Acta de entrega (en desuso)",
+  rendicion: "Rendición de cuentas (en desuso)",
+  acta_rendicion: "Acta de entrega y rendición",
+  poder_inmatriculacion: "Poder para la inmatriculación",
   factura_honorarios: "Factura de honorarios",
   bill_of_sale: "Bill of sale",
   documento_propiedad: "Documento de propiedad",
@@ -124,10 +128,21 @@ export const TIPO_DOCUMENTO_LABEL: Record<TipoDocumento, string> = {
 };
 
 export const HITO_LABEL: Record<TipoHito, string> = {
-  H1: "H1 · Honorarios 30 %",
-  H2: "H2 · Compra y flete",
-  H3: "H3 · Tributos y gastos",
-  H4: "H4 · Honorarios 70 %",
+  H1: "H1 · Precio del vehículo",
+  H2: "H2 · Flete y seguro",
+  H3: "H3 · Honorarios 50 %",
+  H4: "H4 · Gastos de aduana",
+  H5: "H5 · Tributos (directo a SUNAT)",
+  H6: "H6 · Honorarios 50 % restante",
+};
+
+/** Los cinco pagos que ve el cliente; el Pago 2 agrupa H2 y H3. */
+export const PAGO_LABEL: Record<NumeroPago, string> = {
+  1: "Pago 1 · El auto (al firmar)",
+  2: "Pago 2 · Flete, seguro y primera mitad de honorarios (al embarcar)",
+  3: "Pago 3 · Gastos de aduana (al arribo)",
+  4: "Pago 4 · Tributos, directo a SUNAT (con la liquidación)",
+  5: "Pago 5 · Segunda mitad de honorarios (con el levante)",
 };
 
 export const TIPO_MOVIMIENTO_LABEL: Record<TipoMovimiento, string> = {
@@ -153,6 +168,7 @@ export const CUENTA_LABEL: Record<CuentaMovimiento, string> = {
   fondos_clientes: "Fondos de clientes",
   operaciones: "Operaciones",
   detracciones: "Detracciones",
+  directo: "Pagado directo por el cliente",
 };
 
 export const ESTADO_HITO_LABEL: Record<EstadoHito, string> = {

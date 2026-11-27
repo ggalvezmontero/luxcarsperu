@@ -19,8 +19,9 @@
  *
  * LA REGLA (texto, campos, qué falta) ES DEL CORE. Acá solo se orquesta:
  * cargar → `emitirDocumento` (construir → 422 si faltan campos → renderizar →
- * subir → `registrar_documento`). Los cinco tipos del libro (constancia,
- * aviso H3, liquidación definitiva, acta, rendición) arman sus campos desde
+ * subir → `registrar_documento`). Los cuatro tipos del libro (constancia,
+ * avisos de pago H4/H5/H6, liquidación definitiva, acta de entrega y
+ * rendición) arman sus campos desde
  * `ledger.ts`, no desde el formulario; la constancia exige `movimientoId`.
  * Los parámetros de la empresa y el tipo de cambio van como `porDefecto` (solo
  * rellenan lo que el expediente dejó vacío); lo del formulario gana sobre todo.
@@ -128,13 +129,16 @@ export async function POST(request: Request, { params }: Contexto) {
     const sql = getSql();
     const filas = sql ? ((await sql`select visible_cliente, titulo from public.expediente_documentos where id = ${r.documentoId}::uuid`) as unknown as { visible_cliente: boolean; titulo: string }[]) : [];
     if (filas[0]?.visible_cliente && cuerpo.avisar !== false) {
-      const plantillaAviso = tipo === "aviso_h3" ? "aviso_h3" : tipo === "liquidacion_definitiva" ? "diferencia_h3" : "documento_disponible";
-      const h3 = ctx.hitos.find((h) => h.tipo === "H3");
+      const plantillaAviso = tipo === "aviso_h3" ? "aviso_pago" : "documento_disponible";
+      // El aviso de pago se manda con el monto y la fecha que el documento dejó en el hito.
+      const hitoAviso = extra.HITO === "H4" || extra.HITO === "H5" || extra.HITO === "H6" ? extra.HITO : null;
+      const despues = hitoAviso ? await cargarContextoServidor(id) : null;
+      const h = hitoAviso ? (despues ?? ctx).hitos.find((x) => x.tipo === hitoAviso) : undefined;
       const a = await avisarPorCorreoSiHayCorreo(
         ctx,
         plantillaAviso,
-        plantillaAviso === "aviso_h3"
-          ? { montoUsd: h3?.montoEstimadoUsd ?? null, fechaLimite: h3?.fechaLimite ?? null, documento: filas[0].titulo }
+        plantillaAviso === "aviso_pago"
+          ? { hito: hitoAviso, montoUsd: h?.montoEstimadoUsd ?? null, fechaLimite: h?.fechaLimite ?? null, documento: filas[0].titulo }
           : { documento: filas[0].titulo },
         sesion.userId,
       );

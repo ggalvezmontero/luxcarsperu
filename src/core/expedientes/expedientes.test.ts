@@ -5,11 +5,11 @@ import { PRICING_CONFIG, oldestImportableModelYear } from "../pricing/pricingCon
 import { alertas } from "./alertas";
 import { evaluarAvance, siguienteEtapa, siguienteTarea, tareasParaEtapa } from "./avance";
 import { formatoCodigo, normalizarCodigo, parsearCodigo } from "./codigo";
-import { ETAPAS, accionDeTarea, definicionEtapa } from "./etapas";
-import { estadoHito, hitosDesde } from "./hitos";
+import { ETAPAS, TAREA_CLIENTE_POR_HITO, TAREA_LUXCARS_POR_HITO, accionDeTarea, definicionEtapa } from "./etapas";
+import { CUENTA_POR_HITO, estadoHito, hitosDesde, sumarDiasHabiles } from "./hitos";
 import { IGV_HONORARIOS, entradaPorDefecto, presupuestar } from "./presupuesto";
 import type { ContextoExpediente, Documento, Expediente, Movimiento, Tarea } from "./tipos";
-import { ETAPAS_CLIENTE, ETAPAS_ORDEN } from "./tipos";
+import { ETAPAS_CLIENTE, ETAPAS_ORDEN, PAGO_POR_HITO, TIPOS_HITO } from "./tipos";
 
 /** 24 de noviembre de 2026 en Lima. */
 const HOY = new Date("2026-11-24T15:00:00Z");
@@ -58,7 +58,6 @@ function expedienteBase(cambios: Partial<Expediente> = {}): Expediente {
     honorariosBaseUsd: null,
     honorariosIgvUsd: null,
     porcentajeDetraccion: null,
-    margenH3: 0,
     tarifaCustodiaUsd: null,
     costoInspeccionUsd: null,
     fechaFirma: null,
@@ -186,30 +185,53 @@ describe("presupuesto", () => {
     expect(p.totalConPercepcion).toBeCloseTo(q.cashRequired, 2);
   });
 
-  it("reparte los hitos: H1 30 %, H4 70 %, H2 = precio + inland + flete + seguro, H3 con margen", () => {
-    const entrada = entradaPorDefecto({
-      precio: 60_000,
-      vehicleType: "gasolina",
-      condition: "usado",
-      origin: "otro",
-      inland: 900,
-      gastosRegistrales: 450,
-      margenH3: 0.05,
-    });
+  it("reparte seis hitos en cinco pagos: H1 precio (más la inspección del usado), H2 flete + seguro, H3 y H6 mitad de honorarios, H4 gastos de aduana, H5 tributos", () => {
+    const entrada = entradaPorDefecto({ precio: 60_000, vehicleType: "gasolina", condition: "usado", origin: "otro", costoInspeccion: 350 });
     const p = presupuestar(entrada);
     const h = Object.fromEntries(p.hitos.map((x) => [x.tipo, x.montoUsd]));
-    expect(h.H1).toBeCloseTo(p.honorarios * 0.3, 1);
-    expect(h.H4).toBeCloseTo(p.honorarios * 0.7, 1);
-    expect(h.H2).toBeCloseTo(60_000 + 900 + p.flete + p.seguro, 1);
-    expect(h.H3).toBeCloseTo((p.tributos + p.percepcion + p.gastosAduana + 450) * 1.05, 1);
+    expect(p.hitos.map((x) => x.tipo)).toEqual(["H1", "H2", "H3", "H4", "H5", "H6"]);
+    expect(h.H1).toBe(60_350);
+    expect(h.H2).toBeCloseTo(p.flete + p.seguro, 1);
+    expect(h.H3).toBeCloseTo(p.honorarios * 0.5, 1);
+    expect(h.H6).toBeCloseTo(p.honorarios * 0.5, 1);
+    expect(h.H3).toBe(h.H6);
+    expect(h.H4).toBeCloseTo(p.gastosAduana, 1);
+    expect(h.H5).toBeCloseTo(p.tributos + p.percepcion, 1);
+    // La inspección va en el Pago 1, no entra al CIF ni a la base de los honorarios.
+    expect(p.cif).toBeCloseTo(60_000 + p.flete + p.seguro, 1);
+    expect(p.costoPuestoEnLima).toBeCloseTo(p.cif + p.tributos + p.gastosAduana, 1);
+    expect(p.totalSinPercepcion).toBeCloseTo(p.costoPuestoEnLima + 350 + p.honorarios, 1);
+    expect(p.costoInspeccion).toBe(350);
+    // Sin transporte interno, sin gastos registrales y sin margen.
+    for (const k of ["inland", "gastosRegistrales", "margenH4", "margenTributos"]) expect(k in p, k).toBe(false);
+    const claves = p.lineas.map((l) => l.clave);
+    expect(claves).not.toContain("inland");
+    expect(claves).not.toContain("gastos_registrales");
+    expect(claves).toContain("inspeccion");
+    expect(p.lineas.find((l) => l.clave === "flete")?.concepto).toBe("Flete (traslado al puerto y marítimo)");
+    expect(p.lineas.find((l) => l.clave === "precio")?.concepto).toBe("Precio del vehículo");
+    expect(p.lineas.find((l) => l.clave === "honorarios")?.concepto).toMatch(/gestión registral y placas incluidas/);
     expect(p.honorariosBase + p.honorariosIgv).toBeCloseTo(p.honorarios, 1);
     expect(p.honorariosBase).toBeCloseTo(p.honorarios / (1 + IGV_HONORARIOS), 1);
+    // Una cuenta por hito: Fondos de Clientes, Operaciones (honorarios) y directo a SUNAT (tributos).
+    for (const x of p.hitos) expect(x.cuenta).toBe(CUENTA_POR_HITO[x.tipo]);
+    expect(p.hitos.filter((x) => x.cuenta === "operaciones").map((x) => x.tipo)).toEqual(["H3", "H6"]);
+    expect(p.hitos.filter((x) => x.cuenta === "directo").map((x) => x.tipo)).toEqual(["H5"]);
+    expect(p.hitos.filter((x) => x.cuenta === "fondos_clientes").map((x) => x.tipo)).toEqual(["H1", "H2", "H4"]);
   });
 
-  it("puede dejar la percepción fuera de H3", () => {
+  it("la inspección solo existe en usados: en un nuevo no hay línea ni costo aunque llegue un monto", () => {
+    const p = presupuestar(entradaPorDefecto({ precio: 60_000, vehicleType: "gasolina", condition: "nuevo", origin: "otro", costoInspeccion: 350 }));
+    expect(p.costoInspeccion).toBe(0);
+    expect(p.lineas.map((l) => l.clave)).not.toContain("inspeccion");
+    expect(p.hitos.find((x) => x.tipo === "H1")?.montoUsd).toBe(60_000);
+    expect(p.hitos.find((x) => x.tipo === "H1")?.descripcion).not.toMatch(/inspecci/i);
+  });
+
+  it("puede dejar la percepción fuera del H5 (tributos)", () => {
     const base = entradaPorDefecto({ precio: 60_000, vehicleType: "gasolina", condition: "usado", origin: "otro" });
-    const con = presupuestar(base).hitos.find((x) => x.tipo === "H3")!.montoUsd;
-    const sin = presupuestar({ ...base, percepcionEnH3: false }).hitos.find((x) => x.tipo === "H3")!.montoUsd;
+    const con = presupuestar(base).hitos.find((x) => x.tipo === "H5")!.montoUsd;
+    const sin = presupuestar({ ...base, percepcionEnTributos: false }).hitos.find((x) => x.tipo === "H5")!.montoUsd;
     expect(con - sin).toBeCloseTo(presupuestar(base).percepcion, 1);
   });
 
@@ -253,15 +275,45 @@ describe("presupuesto", () => {
 describe("hitos", () => {
   const p = presupuestar(entradaPorDefecto({ precio: 60_000, vehicleType: "gasolina", condition: "usado", origin: "otro" }));
 
-  it("toma las fechas del expediente y adelanta H3 una semana al arribo", () => {
-    const hs = hitosDesde(p, { fechaFirma: "2026-12-01", fechaLimiteH2: "2026-12-10", fechaEstArribo: "2027-02-15", fechaEstEntrega: "2027-03-01" });
+  it("fechas: H1 a la firma, H2 y H3 al release, H4 al arribo, H5 sin fecha hasta la liquidación, H6 al levante estimado o arribo + 10", () => {
+    const hs = hitosDesde(p, { fechaFirma: "2026-12-01", fechaReleaseEst: "2026-12-18", fechaEstArribo: "2027-02-15" });
     const por = Object.fromEntries(hs.map((h) => [h.tipo, h]));
     expect(por.H1.fechaLimite).toBe("2026-12-01");
-    expect(por.H2.fechaLimite).toBe("2026-12-10");
-    expect(por.H3.fechaLimite).toBe("2027-02-08");
-    expect(por.H4.fechaLimite).toBe("2027-03-01");
+    expect(por.H2.fechaLimite).toBe("2026-12-18");
+    expect(por.H3.fechaLimite).toBe("2026-12-18");
+    expect(por.H4.fechaLimite).toBe("2027-02-15");
+    expect(por.H5.fechaLimite).toBeNull();
+    expect(por.H6.fechaLimite).toBe("2027-02-25");
+    expect(por.H1.cuenta).toBe("fondos_clientes");
     expect(por.H2.cuenta).toBe("fondos_clientes");
-    expect(por.H1.cuenta).toBe("operaciones");
+    expect(por.H3.cuenta).toBe("operaciones");
+    expect(por.H4.cuenta).toBe("fondos_clientes");
+    expect(por.H5.cuenta).toBe("directo");
+    expect(por.H6.cuenta).toBe("operaciones");
+    // Una fecha límite explícita del Pago 2 manda sobre el release; el levante estimado manda sobre arribo + 10.
+    const con = Object.fromEntries(hitosDesde(p, { fechaLimitePago2: "2026-12-10", fechaReleaseEst: "2026-12-18", fechaEstArribo: "2027-02-15", fechaEstLevante: "2027-02-20" }).map((h) => [h.tipo, h.fechaLimite]));
+    expect(con.H2).toBe("2026-12-10");
+    expect(con.H3).toBe("2026-12-10");
+    expect(con.H6).toBe("2027-02-20");
+    // Cinco pagos agrupan los seis hitos: H2 y H3 van juntos en el Pago 2.
+    expect(TIPOS_HITO.map((h) => PAGO_POR_HITO[h])).toEqual([1, 2, 2, 3, 4, 5]);
+  });
+
+  it("cuenta días hábiles de lunes a viernes para el plazo de los tributos", () => {
+    expect(sumarDiasHabiles("2027-02-10", 2)).toBe("2027-02-12"); // miércoles → viernes
+    expect(sumarDiasHabiles("2027-02-11", 2)).toBe("2027-02-15"); // jueves → lunes
+    expect(sumarDiasHabiles("2027-02-12", 2)).toBe("2027-02-16"); // viernes → martes
+    expect(sumarDiasHabiles("2027-02-13", 2)).toBe("2027-02-16"); // sábado → martes
+  });
+
+  it("el H5 (directo a SUNAT) queda acreditado con el pago confirmado, sea cual sea la cifra exacta", () => {
+    const h5 = hitosDesde(p).find((h) => h.tipo === "H5")!;
+    const pago = (montoUsd: number, estado: Movimiento["estado"] = "confirmado"): Movimiento => ({
+      id: "m", tipo: "deposito", cuenta: "directo", hito: "H5", estado, fecha: "2027-02-12", montoUsd, concepto: null, contraparteId: null,
+    });
+    expect(estadoHito(h5, [])).toBe("pendiente");
+    expect(estadoHito(h5, [pago(h5.montoEstimadoUsd * 0.9, "por_confirmar")])).toBe("pendiente");
+    expect(estadoHito(h5, [pago(h5.montoEstimadoUsd * 0.9)])).toBe("acreditado");
   });
 
   it("deriva el estado del libro: pendiente, parcial, acreditado", () => {
@@ -277,10 +329,44 @@ describe("hitos", () => {
 });
 
 describe("etapas", () => {
-  it("define las nueve etapas del cliente, prospecto y cancelado", () => {
+  it("define las nueve etapas del cliente, prospecto y cancelado, con búsqueda antes de contrato", () => {
     expect(ETAPAS.map((e) => e.clave)).toEqual([...ETAPAS_ORDEN, "cancelado"]);
+    expect(ETAPAS_ORDEN).toEqual(["prospecto", "busqueda", "contrato", "compra", "embarque", "transito", "aduana", "placas", "entrega", "cerrado"]);
     expect(ETAPAS_CLIENTE).toHaveLength(9);
     expect(definicionEtapa("prospecto").nombreCliente).toBeNull();
+    expect(ETAPAS.map((e) => e.orden)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 99]);
+  });
+
+  it("la inspección solo aparece en usados y cada hito tiene su tarea de depósito y de confirmación", () => {
+    const todas = ETAPAS.flatMap((e) => e.tareas);
+    // En un auto nuevo ninguna tarea generada habla de inspección.
+    const nuevo = contexto();
+    for (const e of ETAPAS) {
+      for (const t of tareasParaEtapa(e.clave, nuevo)) expect(`${t.clave} ${t.titulo} ${t.descripcion ?? ""}`, t.clave).not.toMatch(/inspecci/i);
+    }
+    // En un usado, búsqueda trae la inspección y la aprobación incluye el informe.
+    const usado = contexto();
+    usado.expediente.vehiculo = { ...usado.expediente.vehiculo, condicion: "usado" };
+    const busqueda = tareasParaEtapa("busqueda", usado);
+    expect(busqueda.map((t) => t.clave)).toContain("luxcars.inspeccion");
+    expect(busqueda.find((t) => t.clave === "cliente.aprobar_unidad")?.titulo).toMatch(/informe de inspección/);
+    const claves = new Set(todas.map((t) => t.clave));
+    for (const h of TIPOS_HITO) {
+      expect(claves.has(TAREA_CLIENTE_POR_HITO[h]), h).toBe(true);
+      expect(claves.has(TAREA_LUXCARS_POR_HITO[h]), h).toBe(true);
+    }
+    // El depósito del cliente nace en la etapa que corresponde a cada pago.
+    const etapaDe = (clave: string) => ETAPAS.find((e) => e.tareas.some((t) => t.clave === clave))!.clave;
+    expect(etapaDe("cliente.depositar_h1")).toBe("contrato");
+    expect(etapaDe("cliente.depositar_h2")).toBe("embarque");
+    expect(etapaDe("cliente.depositar_h3")).toBe("embarque");
+    expect(etapaDe("cliente.depositar_h4")).toBe("transito");
+    expect(etapaDe("cliente.depositar_h5")).toBe("aduana");
+    expect(etapaDe("cliente.depositar_h6")).toBe("placas");
+    expect(etapaDe("cliente.aprobar_unidad")).toBe("busqueda");
+    expect(etapaDe("luxcars.aviso_pago3")).toBe("transito");
+    expect(etapaDe("luxcars.aviso_tributos")).toBe("aduana");
+    expect(etapaDe("luxcars.aviso_pago5")).toBe("placas");
   });
 
   it("cada etapa intermedia tiene compuerta y tareas plantilla con claves únicas", () => {
@@ -303,9 +389,11 @@ describe("etapas", () => {
   });
 
   it("las acciones del portal apuntan a tareas del cliente", () => {
-    expect(accionDeTarea("cliente.aprobar_inspeccion")).toBe("aprobar_inspeccion");
-    expect(accionDeTarea("cliente.depositar_h2")).toBe("declarar_deposito");
-    expect(accionDeTarea("cliente.pagar_h4")).toBe("declarar_deposito");
+    expect(accionDeTarea("cliente.aprobar_unidad")).toBe("aprobar_unidad");
+    expect(accionDeTarea("cliente.aprobar_inspeccion")).toBeNull();
+    expect(accionDeTarea("cliente.depositar_h1")).toBe("declarar_deposito");
+    expect(accionDeTarea("cliente.depositar_h5")).toBe("declarar_deposito");
+    expect(accionDeTarea("cliente.depositar_h6")).toBe("declarar_deposito");
     expect(accionDeTarea("luxcars.confirmar_h2")).toBeNull();
     expect(accionDeTarea("luxcars.kyc")).toBeNull();
   });
@@ -313,66 +401,82 @@ describe("etapas", () => {
 
 describe("avance", () => {
   it("conoce la etapa siguiente y el final", () => {
-    expect(siguienteEtapa("prospecto")).toBe("contrato");
+    expect(siguienteEtapa("prospecto")).toBe("busqueda");
+    expect(siguienteEtapa("busqueda")).toBe("contrato");
     expect(siguienteEtapa("entrega")).toBe("cerrado");
     expect(siguienteEtapa("cerrado")).toBeNull();
     expect(siguienteEtapa("cancelado")).toBeNull();
   });
 
-  it("permite entrar a contrato con el cliente completo y lo niega sin domicilio", () => {
-    const ok = evaluarAvance(contexto(), "contrato", HOY);
+  it("permite entrar a búsqueda con el cliente completo y lo niega sin domicilio", () => {
+    const ok = evaluarAvance(contexto(), "busqueda", HOY);
     expect(ok.permitido).toBe(true);
     const ctx = contexto();
     ctx.cliente = { ...ctx.cliente!, domicilio: null };
-    const r = evaluarAvance(ctx, "contrato", HOY);
+    const r = evaluarAvance(ctx, "busqueda", HOY);
     expect(r.permitido).toBe(false);
     expect(r.faltantes.map((f) => f.clave)).toEqual(["cliente_completo"]);
   });
 
   it("marca el salto de etapa como faltante", () => {
-    const r = evaluarAvance(contexto(), "busqueda", HOY);
+    const r = evaluarAvance(contexto(), "contrato", HOY);
     expect(r.salto).toBe(true);
     expect(r.faltantes[0].clave).toBe("salto");
   });
 
-  it("para búsqueda exige contrato y LOA firmados (la tarea vale como evidencia) y KYC", () => {
-    const sin = evaluarAvance(contexto({}, { etapa: "contrato" }), "busqueda", HOY);
+  it("para contrato exige la unidad aprobada por el cliente y el presupuesto definitivo", () => {
+    const sin = evaluarAvance(contexto({}, { etapa: "busqueda" }), "contrato", HOY);
     expect(sin.permitido).toBe(false);
-    expect(sin.faltantes.map((f) => f.clave)).toEqual(["contrato_firmado"]);
-    const con = evaluarAvance(contexto({ tareas: [tarea("cliente.firmar_contrato_loa")] }, { etapa: "contrato" }), "busqueda", HOY);
-    expect(con.permitido).toBe(true);
+    expect(sin.faltantes.map((f) => f.clave)).toEqual(["unidad_aprobada", "presupuesto_definitivo"]);
+    const conAprobacion = evaluarAvance(
+      contexto({ aprobaciones: [{ id: "a", tipo: "aprobar_unidad", payload: {}, createdAt: "2026-11-23T00:00:00Z" }], tareas: [tarea("luxcars.presupuesto_definitivo")] }, { etapa: "busqueda" }),
+      "contrato",
+      HOY,
+    );
+    expect(conAprobacion.permitido).toBe(true);
+    // Un usado además necesita el informe de inspección subido.
+    const usado = contexto({ aprobaciones: [{ id: "a", tipo: "aprobar_unidad", payload: {}, createdAt: "2026-11-23T00:00:00Z" }], tareas: [tarea("luxcars.presupuesto_definitivo")] }, { etapa: "busqueda" });
+    usado.expediente.vehiculo = { ...usado.expediente.vehiculo, condicion: "usado" };
+    expect(evaluarAvance(usado, "contrato", HOY).faltantes.map((f) => f.clave)).toEqual(["informe_inspeccion"]);
+    usado.tareas.push(tarea("luxcars.inspeccion"));
+    expect(evaluarAvance(usado, "contrato", HOY).permitido).toBe(true);
+    // La aprobación vieja (inspección) ya no vale.
+    const vieja = evaluarAvance(
+      contexto({ aprobaciones: [{ id: "a", tipo: "aprobar_inspeccion", payload: {}, createdAt: "2026-11-23T00:00:00Z" }], tareas: [tarea("luxcars.presupuesto_definitivo")] }, { etapa: "busqueda" }),
+      "contrato",
+      HOY,
+    );
+    expect(vieja.faltantes.map((f) => f.clave)).toEqual(["unidad_aprobada"]);
+  });
+
+  it("para compra exige contrato y LOA firmados (documento o tarea), KYC, H1 acreditado y año modelo vigente", () => {
+    const vacio = evaluarAvance(contexto({}, { etapa: "contrato" }), "compra", HOY);
+    expect(vacio.faltantes.map((f) => f.clave)).toEqual(["contrato_firmado", "h1_acreditado"]);
+    const sinKyc = contexto({}, { etapa: "contrato" });
+    sinKyc.cliente = { ...sinKyc.cliente!, kycCompleto: false };
+    expect(evaluarAvance(sinKyc, "compra", HOY).faltantes.map((f) => f.clave)).toEqual(["contrato_firmado", "kyc_completo", "h1_acreditado"]);
+    const conTareas = evaluarAvance(contexto({ tareas: [tarea("cliente.firmar_contrato_loa"), tarea("luxcars.kyc"), tarea("luxcars.confirmar_h1")] }, { etapa: "contrato" }), "compra", HOY);
+    expect(conTareas.permitido).toBe(true);
     const firmado = (tipo: "contrato" | "loa"): Documento => ({
       id: tipo, expedienteId: "e1", tipo, version: 1, estado: "firmado", origen: "generado", titulo: tipo, plantillaVersion: null,
       tienePdf: true, tieneDocx: true, tieneFirmado: true, visibleCliente: true, emitidoEn: "2026-11-20T00:00:00Z", firmadoEn: "2026-11-21", createdAt: "2026-11-20T00:00:00Z",
     });
-    const doc = evaluarAvance(contexto({ documentos: [firmado("contrato"), firmado("loa")] }, { etapa: "contrato" }), "busqueda", HOY);
-    expect(doc.permitido).toBe(true);
-  });
-
-  it("para compra exige anexo A, aprobación del cliente, H1 y año modelo vigente", () => {
-    const vacio = evaluarAvance(contexto({}, { etapa: "busqueda" }), "compra", HOY);
-    expect(vacio.faltantes.map((f) => f.clave)).toEqual(["anexo_a_firmado", "inspeccion_aprobada", "h1_acreditado"]);
-    const listo = evaluarAvance(
-      contexto(
-        {
-          tareas: [tarea("luxcars.anexo_a_presupuesto"), tarea("cliente.pagar_h1")],
-          aprobaciones: [{ id: "a", tipo: "aprobar_inspeccion", payload: {}, createdAt: "2026-11-23T00:00:00Z" }],
-        },
-        { etapa: "busqueda" },
-      ),
+    const h1: Movimiento = { id: "m", tipo: "deposito", cuenta: "fondos_clientes", hito: "H1", estado: "confirmado", fecha: "2026-12-01", montoUsd: 91_000, concepto: null, contraparteId: null };
+    const conLibro = evaluarAvance(
+      contexto({ documentos: [firmado("contrato"), firmado("loa")], tareas: [tarea("luxcars.kyc")], hitos: [{ tipo: "H1", montoEstimadoUsd: 91_000, fechaLimite: null, cuenta: "fondos_clientes", nota: null }], movimientos: [h1] }, { etapa: "contrato" }),
       "compra",
       HOY,
     );
-    expect(listo.permitido).toBe(true);
+    expect(conLibro.permitido).toBe(true);
+    // Solo el contrato firmado, sin la LOA, no basta.
+    const soloContrato = evaluarAvance(contexto({ documentos: [firmado("contrato")], tareas: [tarea("luxcars.kyc"), tarea("luxcars.confirmar_h1")] }, { etapa: "contrato" }), "compra", HOY);
+    expect(soloContrato.faltantes.map((f) => f.clave)).toEqual(["contrato_firmado"]);
   });
 
   it("niega la compra de un usado 2025 que llegaría en 2027", () => {
     const ctx = contexto(
-      {
-        tareas: [tarea("luxcars.anexo_a_presupuesto"), tarea("cliente.pagar_h1")],
-        aprobaciones: [{ id: "a", tipo: "aprobar_inspeccion", payload: {}, createdAt: "2026-11-23T00:00:00Z" }],
-      },
-      { etapa: "busqueda", fechaEstArribo: "2027-01-20" },
+      { tareas: [tarea("cliente.firmar_contrato_loa"), tarea("luxcars.kyc"), tarea("luxcars.confirmar_h1")] },
+      { etapa: "contrato", fechaEstArribo: "2027-01-20" },
     );
     ctx.expediente.vehiculo = { ...ctx.expediente.vehiculo, condicion: "usado", anio: 2025 };
     const r = evaluarAvance(ctx, "compra", HOY);
@@ -383,23 +487,42 @@ describe("avance", () => {
     expect(evaluarAvance(ctx, "compra", HOY).permitido).toBe(true);
   });
 
-  it("para tránsito exige el zarpe real del embarque", () => {
-    const ctx = contexto(
-      {
-        tareas: [tarea("luxcars.poliza"), tarea("luxcars.borrador_bl")],
-        embarque: {
-          id: "b", codigo: "EMB-2026-01", modalidad: "exclusivo", contenedor: "c40hc", forwarderId: null, aseguradoraId: null,
-          almacenConsolidacion: null, puertoOrigen: "Miami", puertoDestino: "Callao", fechaReleaseEst: null, fechaReleaseReal: null,
-          fechaCarga: null, fechaZarpeEst: "2026-12-20", fechaZarpeReal: null, fechaArriboEst: "2027-01-10", fechaArriboReal: null,
-          nave: null, masterBl: null, precinto: null, fleteTotalUsd: null, gastosContenedorUsd: null, declaracionExportacion: null,
-          estado: "planificado", notasInternas: null,
-        },
-      },
-      { etapa: "embarque" },
-    );
-    expect(evaluarAvance(ctx, "transito", HOY).faltantes.map((f) => f.clave)).toEqual(["zarpe"]);
+  it("embarque exige pago al broker y bill of sale; tránsito H2 y H3, póliza, BL y zarpe; aduana H4; placas levante y H5; entrega H6; cerrado acta, conformidad y saldo cero", () => {
+    expect(evaluarAvance(contexto({}, { etapa: "compra" }), "embarque", HOY).faltantes.map((f) => f.clave)).toEqual(["pago_vendedor", "bill_of_sale"]);
+    const embarque = {
+      id: "b", codigo: "EMB-2026-01", modalidad: "exclusivo" as const, contenedor: "c40hc" as const, forwarderId: null, aseguradoraId: null,
+      almacenConsolidacion: null, puertoOrigen: "Miami", puertoDestino: "Callao", fechaReleaseEst: null, fechaReleaseReal: null,
+      fechaCarga: null, fechaZarpeEst: "2026-12-20", fechaZarpeReal: null, fechaArriboEst: "2027-01-10", fechaArriboReal: null,
+      nave: null, masterBl: null, precinto: null, fleteTotalUsd: null, gastosContenedorUsd: null, declaracionExportacion: null,
+      estado: "planificado", notasInternas: null,
+    };
+    const ctx = contexto({ tareas: [tarea("luxcars.poliza"), tarea("luxcars.borrador_bl")], embarque }, { etapa: "embarque" });
+    expect(evaluarAvance(ctx, "transito", HOY).faltantes.map((f) => f.clave)).toEqual(["h2_acreditado", "h3_acreditado", "zarpe"]);
+    ctx.tareas.push(tarea("luxcars.confirmar_h2"), tarea("luxcars.confirmar_h3"));
     ctx.embarque!.fechaZarpeReal = "2026-12-21";
     expect(evaluarAvance(ctx, "transito", HOY).permitido).toBe(true);
+
+    expect(evaluarAvance(contexto({}, { etapa: "transito" }), "aduana", HOY).faltantes.map((f) => f.clave)).toEqual(["h4_acreditado", "dam_numerada"]);
+    expect(evaluarAvance(contexto({ tareas: [tarea("luxcars.confirmar_h4")] }, { etapa: "transito", damNumero: "118-2027-10-1" }), "aduana", HOY).permitido).toBe(true);
+
+    expect(evaluarAvance(contexto({}, { etapa: "aduana" }), "placas", HOY).faltantes.map((f) => f.clave)).toEqual(["levante", "h5_acreditado", "liquidacion_definitiva"]);
+    expect(evaluarAvance(contexto({ tareas: [tarea("luxcars.confirmar_h5"), tarea("luxcars.liquidacion_definitiva")] }, { etapa: "aduana", levanteEn: "2027-02-12" }), "placas", HOY).permitido).toBe(true);
+
+    expect(evaluarAvance(contexto({}, { etapa: "placas" }), "entrega", HOY).faltantes.map((f) => f.clave)).toEqual(["tive_placa", "h6_acreditado"]);
+    expect(evaluarAvance(contexto({ tareas: [tarea("luxcars.confirmar_h6")] }, { etapa: "placas", placa: "ABC-123", tiveNumero: "T-1" }), "entrega", HOY).permitido).toBe(true);
+    expect(evaluarAvance(contexto({}, { etapa: "entrega" }), "cerrado", HOY).faltantes.map((f) => f.clave)).toEqual(["acta_firmada", "conformidad_rendicion"]);
+    // Con saldo en Fondos de Clientes no se cierra.
+    const conSaldo = contexto(
+      { tareas: [tarea("luxcars.acta_rendicion")], aprobaciones: [{ id: "c", tipo: "conformidad_rendicion", payload: {}, createdAt: "2027-03-05T00:00:00Z" }], movimientos: [{ id: "m", tipo: "deposito", cuenta: "fondos_clientes", hito: "H1", estado: "confirmado", fecha: "2026-12-01", montoUsd: 100, concepto: null, contraparteId: null }] },
+      { etapa: "entrega" },
+    );
+    expect(evaluarAvance(conSaldo, "cerrado", HOY).faltantes.map((f) => f.clave)).toEqual(["saldo_cero"]);
+    const cerrado = evaluarAvance(
+      contexto({ tareas: [tarea("luxcars.acta_rendicion")], aprobaciones: [{ id: "c", tipo: "conformidad_rendicion", payload: {}, createdAt: "2027-03-05T00:00:00Z" }] }, { etapa: "entrega" }),
+      "cerrado",
+      HOY,
+    );
+    expect(cerrado.permitido).toBe(true);
   });
 
   it("cancelar siempre se permite y desde cerrado no se mueve nada", () => {
@@ -410,14 +533,34 @@ describe("avance", () => {
   it("genera las tareas de la etapa con fechas y omite las que no aplican", () => {
     const sinConsolidado = tareasParaEtapa("embarque", contexto());
     expect(sinConsolidado.map((t) => t.clave)).not.toContain("cliente.elegir_consolidado");
-    const ctx = contexto({}, { fechaLimiteH2: "2026-12-15" });
+    const ctx = contexto({}, { fechaLimiteH2: "2026-12-15", fechaFirma: "2026-12-01", fechaEstArribo: "2027-02-10" });
     ctx.embarque = { ...(contexto().embarque ?? ({} as never)), modalidad: "consolidado" } as never;
     expect(tareasParaEtapa("embarque", ctx).map((t) => t.clave)).toContain("cliente.elegir_consolidado");
-    const compra = tareasParaEtapa("compra", ctx);
-    expect(compra.find((t) => t.clave === "cliente.depositar_h2")?.venceEl).toBe("2026-12-15");
+    const embarque = tareasParaEtapa("embarque", ctx);
+    expect(embarque.find((t) => t.clave === "cliente.depositar_h2")?.venceEl).toBe("2026-12-15");
+    expect(embarque.find((t) => t.clave === "cliente.depositar_h3")?.venceEl).toBe("2026-12-15");
     const contrato = tareasParaEtapa("contrato", ctx);
+    expect(contrato.find((t) => t.clave === "cliente.depositar_h1")?.venceEl).toBe("2026-12-01");
     expect(contrato.find((t) => t.clave === "sistema.abrir_libro")?.estado).toBe("hecha");
     expect(contrato.every((t, i) => t.orden === i + 1)).toBe(true);
+    // Tránsito: el Pago 3 (H4) vence al arribo estimado.
+    expect(tareasParaEtapa("transito", ctx).find((t) => t.clave === "cliente.depositar_h4")?.venceEl).toBe("2027-02-10");
+    // Aduana: el Pago 4 (H5) no tiene fecha hasta que el aviso con la liquidación la fija.
+    expect(tareasParaEtapa("aduana", ctx).find((t) => t.clave === "cliente.depositar_h5")?.venceEl).toBeNull();
+    ctx.hitos = [
+      { tipo: "H5", montoEstimadoUsd: 1, fechaLimite: "2027-02-16", cuenta: "directo", nota: null },
+      { tipo: "H6", montoEstimadoUsd: 1, fechaLimite: "2027-02-20", cuenta: "operaciones", nota: null },
+    ];
+    expect(tareasParaEtapa("aduana", ctx).find((t) => t.clave === "cliente.depositar_h5")?.venceEl).toBe("2027-02-16");
+    // Placas: el Pago 5 (H6) vence en la fecha del hito.
+    expect(tareasParaEtapa("placas", ctx).find((t) => t.clave === "cliente.depositar_h6")?.venceEl).toBe("2027-02-20");
+    // Búsqueda: historial solo en usados; MSO y recalls solo en nuevos.
+    expect(tareasParaEtapa("busqueda", ctx).map((t) => t.clave)).toContain("luxcars.verificar_nuevo");
+    expect(tareasParaEtapa("busqueda", ctx).map((t) => t.clave)).not.toContain("luxcars.historial");
+    ctx.expediente.vehiculo = { ...ctx.expediente.vehiculo, condicion: "usado" };
+    expect(tareasParaEtapa("busqueda", ctx).map((t) => t.clave)).toContain("luxcars.historial");
+    expect(tareasParaEtapa("busqueda", ctx).map((t) => t.clave)).toContain("luxcars.inspeccion");
+    expect(tareasParaEtapa("busqueda", ctx).map((t) => t.clave)).not.toContain("luxcars.verificar_nuevo");
   });
 
   it("propone como siguiente paso la primera tarea pendiente de Luxcars de la etapa", () => {
@@ -450,17 +593,17 @@ describe("alertas", () => {
     expect(alertas(ctx, HOY).map((x) => x.clave)).not.toContain("anio_modelo");
   });
 
-  it("avisa de H2 vencido, tareas vencidas, cliente sin cuenta y LOA por vencer", () => {
+  it("avisa de H1 vencido, tareas vencidas, cliente sin cuenta y LOA por vencer", () => {
     const ctx = contexto(
       {
-        hitos: [{ tipo: "H2", montoEstimadoUsd: 50_000, fechaLimite: "2026-11-20", cuenta: "fondos_clientes", nota: null }],
+        hitos: [{ tipo: "H1", montoEstimadoUsd: 50_000, fechaLimite: "2026-11-20", cuenta: "fondos_clientes", nota: null }],
         tareas: [tarea("cliente.depositar_h2", "pendiente", { venceEl: "2026-11-20" })],
       },
-      { etapa: "compra", loaVence: "2026-12-10" },
+      { etapa: "contrato", loaVence: "2026-12-10" },
     );
     ctx.cliente = { ...ctx.cliente!, userId: null };
     const claves = alertas(ctx, HOY).map((x) => x.clave);
-    expect(claves).toContain("hito_vencido_H2");
+    expect(claves).toContain("hito_vencido_H1");
     expect(claves).toContain("tarea_vencida_cliente.depositar_h2");
     expect(claves).toContain("cliente_sin_cuenta");
     expect(claves).toContain("loa_por_vencer");

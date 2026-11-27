@@ -102,7 +102,7 @@ export async function cargarContextoServidor(expedienteId: string): Promise<Cont
   // Terceros del expediente y los que cobraron algún pago del libro (la rendición los nombra).
   const ids = [
     ...new Set(
-      [r?.vendedor_id, r?.inspector_id, r?.agente_aduana_id, emb?.forwarder_id, emb?.aseguradora_id, ...movimientos.map((m) => m.contraparte_id)].filter(
+      [r?.vendedor_id, r?.broker_id, r?.inspector_id, r?.agente_aduana_id, emb?.forwarder_id, emb?.aseguradora_id, ...movimientos.map((m) => m.contraparte_id)].filter(
         (x): x is string => Boolean(x),
       ),
     ),

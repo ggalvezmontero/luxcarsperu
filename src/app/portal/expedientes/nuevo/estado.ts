@@ -54,6 +54,11 @@ export type CompraForm = {
   precio_tope: string;
   tc_ref: string;
   fecha_limite_compra: string;
+  /** Contrapartes del expediente: dealer (emite factura y MSO) y broker (recibe el pago). */
+  vendedor_id: string;
+  broker_id: string;
+  /** Solo usados. */
+  inspector_id: string;
   pais_origen: string;
   puerto_origen: string;
   modalidad: ModalidadEmbarque;
@@ -74,14 +79,13 @@ export type CompraForm = {
 };
 
 export type PresupuestoForm = {
-  inland: string;
   flete_base: string;
   gastos_aduana: string;
-  gastos_registrales: string;
-  margen_h3: string;
+  /** Solo usados: costo de la inspección en USD (se cobra con el Pago 1). */
+  costo_inspeccion: string;
   perfil: ImporterProfile;
-  percepcion_en_h3: boolean;
-  etapa_inicial: "prospecto" | "contrato";
+  percepcion_en_tributos: boolean;
+  etapa_inicial: "prospecto" | "busqueda";
 };
 
 export type EstadoAlta = {
@@ -118,6 +122,9 @@ export const COMPRA_INICIAL: CompraForm = {
   precio_tope: "",
   tc_ref: "1",
   fecha_limite_compra: "",
+  vendedor_id: "",
+  broker_id: "",
+  inspector_id: "",
   pais_origen: "Estados Unidos",
   puerto_origen: "Miami",
   modalidad: "exclusivo",
@@ -140,14 +147,12 @@ export const COMPRA_INICIAL: CompraForm = {
 export function presupuestoInicial(categoria: VehicleCategoryId): PresupuestoForm {
   const base = entradaPorDefecto({ precio: 0, vehicleType: categoria, condition: "nuevo", origin: "otro" });
   return {
-    inland: "0",
     flete_base: String(Math.round(base.fleteBase)),
     gastos_aduana: String(base.gastosAduana),
-    gastos_registrales: "0",
-    margen_h3: "0",
+    costo_inspeccion: "0",
     perfil: "primera-importacion",
-    percepcion_en_h3: true,
-    etapa_inicial: "prospecto",
+    percepcion_en_tributos: true,
+    etapa_inicial: "busqueda",
   };
 }
 
@@ -204,13 +209,11 @@ export function entradaDesde(estado: EstadoAlta): EntradaPresupuesto {
     origin: v.origen,
     cylinderCapacityCc: leerNumero(v.cilindrada_cc),
     importerProfile: p.perfil,
-    inland: leerNumero(p.inland) ?? 0,
     fleteBase: leerNumero(p.flete_base) ?? 0,
     proporcionFlete: leerNumero(c.proporcion) ?? 1,
     gastosAduana: leerNumero(p.gastos_aduana) ?? 0,
-    gastosRegistrales: leerNumero(p.gastos_registrales) ?? 0,
-    margenH3: (leerNumero(p.margen_h3) ?? 0) / 100,
-    percepcionEnH3: p.percepcion_en_h3,
+    costoInspeccion: v.condicion === "usado" ? leerNumero(p.costo_inspeccion) ?? 0 : 0,
+    percepcionEnTributos: p.percepcion_en_tributos,
   });
 }
 
@@ -263,7 +266,7 @@ export function contextoPrevio(estado: EstadoAlta, embarqueElegido: Embarque | n
     fechaLimiteCompra: c.fecha_limite_compra || null,
     fechaInspeccion: null,
     historialRef: null,
-    fechaRelease: null,
+    fechaRelease: c.embarqueModo === "nuevo" ? c.embarque_fecha_release_est || null : embarqueElegido?.fechaReleaseEst ?? null,
     paisOrigen: c.pais_origen || null,
     puertoOrigen: c.puerto_origen || null,
     presupuesto: null,
@@ -271,9 +274,8 @@ export function contextoPrevio(estado: EstadoAlta, embarqueElegido: Embarque | n
     honorariosBaseUsd: null,
     honorariosIgvUsd: null,
     porcentajeDetraccion: null,
-    margenH3: (leerNumero(estado.presupuesto.margen_h3) ?? 0) / 100,
+    costoInspeccionUsd: v.condicion === "usado" ? leerNumero(estado.presupuesto.costo_inspeccion) ?? 0 : null,
     tarifaCustodiaUsd: null,
-    costoInspeccionUsd: null,
     fechaFirma: null,
     fechaLimiteH2: c.fecha_limite_h2 || null,
     fechaEstEmbarque: c.fecha_est_embarque || null,
@@ -295,7 +297,7 @@ export function contextoPrevio(estado: EstadoAlta, embarqueElegido: Embarque | n
     cerradoEn: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    reservado: null,
+    reservado: { precioTope: leerNumero(c.precio_tope), tcCompraRef: c.moneda === "USD" ? null : tipoDeCambio(c), vendedorId: c.vendedor_id || null, brokerId: c.broker_id || null, inspectorId: c.inspector_id || null, agenteAduanaId: null, notasInternas: null },
   };
   const embarque: Embarque | null =
     c.embarqueModo === "nuevo"
@@ -344,9 +346,9 @@ export function construirDatos(estado: EstadoAlta, presupuesto: Presupuesto, emb
   const ctx = contextoPrevio(estado, embarqueElegido);
   const e = ctx.expediente;
   const hitos = hitosDesde(presupuesto, {
-    fechaLimiteH2: e.fechaLimiteH2,
+    fechaLimitePago2: e.fechaLimiteH2,
+    fechaReleaseEst: e.fechaRelease,
     fechaEstArribo: e.fechaEstArribo,
-    fechaEstEntrega: e.fechaEstEntrega,
   });
   return {
     cliente_id: estado.cliente!.id,
@@ -387,14 +389,18 @@ export function construirDatos(estado: EstadoAlta, presupuesto: Presupuesto, emb
     precio_compra_usd: Math.round(precioUsd(c) * 100) / 100,
     precio_tope: leerNumero(c.precio_tope),
     tc_compra_ref: c.moneda === "USD" ? null : tipoDeCambio(c),
+    vendedor_id: c.vendedor_id || null,
+    broker_id: c.broker_id || null,
     fecha_limite_compra: e.fechaLimiteCompra,
+    fecha_release: e.fechaRelease,
     pais_origen: e.paisOrigen,
     puerto_origen: e.puertoOrigen,
     presupuesto,
     honorarios_usd: presupuesto.honorarios,
     honorarios_base_usd: presupuesto.honorariosBase,
     honorarios_igv_usd: presupuesto.honorariosIgv,
-    margen_h3: presupuesto.margenH3,
+    costo_inspeccion_usd: v.condicion === "usado" ? presupuesto.costoInspeccion : null,
+    inspector_id: v.condicion === "usado" ? c.inspector_id || null : null,
     fecha_limite_h2: e.fechaLimiteH2,
     fecha_est_embarque: e.fechaEstEmbarque,
     fecha_est_arribo: e.fechaEstArribo,

@@ -41,7 +41,7 @@ export function AvisarPanel({ ctx, onCerrar, onHecho }: { ctx: ContextoExpedient
   const tareasCliente = ctx.tareas.filter((t) => t.responsable === "cliente" && t.estado === "pendiente");
   const docsVisibles = ctx.documentos.filter((d) => d.visibleCliente && d.estado !== "reemplazado" && d.estado !== "anulado");
   const hitos = useMemo(() => estadoHitos(ctx.hitos, ctx.movimientos, hoyIso()), [ctx.hitos, ctx.movimientos]);
-  const h3 = ctx.hitos.find((h) => h.tipo === "H3");
+  const conAviso = ctx.hitos.filter((h) => h.tipo === "H4" || h.tipo === "H5" || h.tipo === "H6");
 
   const datos: DatosNotificacion = useMemo(() => ({
     etapa: f.etapa,
@@ -82,7 +82,12 @@ export function AvisarPanel({ ctx, onCerrar, onHecho }: { ctx: ContextoExpedient
 
   const elegirPlantilla = (p: PlantillaNotificacion) => {
     setPlantilla(p);
-    if (p === "aviso_h3" && h3) setF((prev) => ({ ...prev, montoUsd: String(h3.montoEstimadoUsd), fechaLimite: h3.fechaLimite ?? "", hito: "H3" }));
+    if (p === "aviso_pago") {
+      // El aviso que toca según la etapa: Pago 3 en tránsito, Pago 4 en aduana, Pago 5 después.
+      const hito = e.etapa === "transito" || e.etapa === "embarque" ? "H4" : e.etapa === "aduana" ? "H5" : "H6";
+      const h = ctx.hitos.find((x) => x.tipo === hito);
+      setF((prev) => ({ ...prev, hito, montoUsd: h ? String(h.montoEstimadoUsd) : "", fechaLimite: h?.fechaLimite ?? "" }));
+    }
     if (p === "tarea_pendiente" && tareasCliente[0]) setF((prev) => ({ ...prev, tarea: tareasCliente[0].titulo, venceEl: tareasCliente[0].venceEl ?? "", instrucciones: tareasCliente[0].descripcion ?? "" }));
     if (p === "documento_disponible" && docsVisibles[0]) setF((prev) => ({ ...prev, documento: docsVisibles[0].titulo }));
     if (p === "deposito_confirmado") {
@@ -130,7 +135,7 @@ export function AvisarPanel({ ctx, onCerrar, onHecho }: { ctx: ContextoExpedient
             </>
           ) : null}
 
-          {plantilla === "deposito_confirmado" || plantilla === "aviso_h3" || plantilla === "diferencia_h3" ? (
+          {plantilla === "deposito_confirmado" || plantilla === "aviso_pago" ? (
             <Rejilla columnas={3}>
               <Campo label="Monto (USD)"><Entrada value={f.montoUsd} onChange={(ev) => set("montoUsd", ev.target.value.replace(/[^0-9.,]/g, ""))} inputMode="decimal" /></Campo>
               {plantilla === "deposito_confirmado" ? (
@@ -144,7 +149,16 @@ export function AvisarPanel({ ctx, onCerrar, onHecho }: { ctx: ContextoExpedient
                   <Campo label="Fecha de acreditación"><Entrada type="date" value={f.fecha} onChange={(ev) => set("fecha", ev.target.value)} /></Campo>
                 </>
               ) : (
-                <Campo label="Fecha límite"><Entrada type="date" value={f.fechaLimite} onChange={(ev) => set("fechaLimite", ev.target.value)} /></Campo>
+                <>
+                  <Campo label="Pago">
+                    <Selector value={f.hito} onChange={(ev) => { const h = conAviso.find((x) => x.tipo === ev.target.value); set("hito", ev.target.value); if (h) { set("montoUsd", String(h.montoEstimadoUsd)); set("fechaLimite", h.fechaLimite ?? ""); } }}>
+                      <option value="H4">Pago 3 · gastos de aduana</option>
+                      <option value="H5">Pago 4 · tributos a SUNAT</option>
+                      <option value="H6">Pago 5 · honorarios</option>
+                    </Selector>
+                  </Campo>
+                  <Campo label="Fecha límite"><Entrada type="date" value={f.fechaLimite} onChange={(ev) => set("fechaLimite", ev.target.value)} /></Campo>
+                </>
               )}
             </Rejilla>
           ) : null}

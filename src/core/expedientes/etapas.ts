@@ -7,17 +7,35 @@
  * transacción (una etapa a la vez, motivo al forzar); lo que falta para
  * avanzar se decide acá y se muestra en pantalla.
  *
+ * FLUJO DESDE EL 27 NOV 2026 (decisión del dueño, manda sobre el diseño del 24):
+ *   prospecto → busqueda → contrato → compra → embarque → transito → aduana →
+ *   placas → entrega → cerrado (+ cancelado).
+ *   · Primero se busca y se elige el auto SIN COSTO; el contrato se firma con
+ *     la unidad ya elegida. En usados, historial (CarFax) e inspección; en
+ *     nuevos, MSO sin matricular y consulta de recalls por VIN, sin inspección.
+ *   · UNA sola visita a la notaría: contrato con sus anexos A, B, C y D, la LOA
+ *     y el poder para la inmatriculación, en el mismo acto.
+ *   · Cinco pagos, seis hitos (ver hitos.ts): Pago 1 H1 al firmar (precio del
+ *     vehículo); Pago 2 H2 + H3 al release (flete y seguro + 50 % honorarios);
+ *     Pago 3 H4 al arribo (gastos de aduana); Pago 4 H5 cuando SUNAT liquida
+ *     (tributos, directo a SUNAT); Pago 5 H6 al levante (50 % restante, neto
+ *     del saldo de aduana).
+ *   · Inspección SOLO en usados (tarea en búsqueda, informe subido, aprobación
+ *     de la unidad con el informe); en nuevos, MSO sin matricular y recalls.
+ *   · A la entrega UN documento, "Acta de entrega y rendición de cuentas", con
+ *     firma simple; la conformidad también se registra desde el portal.
+ *
  * Evidencia con dos fuentes. Varias compuertas hablan de documentos firmados o
- * de dinero acreditado. Los documentos existen desde la fase 2 (el contrato y
- * la LOA archivados como `firmado` cumplen la compuerta de búsqueda); el libro
- * llega en la fase 3. Mientras la evidencia formal no esté, la misma condición
- * se cumple con la TAREA correspondiente marcada como hecha (p. ej. "contrato y
- * LOA firmados" ← `cliente.firmar_contrato_loa`). Las dos vías valen.
+ * de dinero acreditado. Los documentos archivados como `firmado` y los hitos
+ * acreditados en el libro cumplen la compuerta; mientras la evidencia formal
+ * no esté, la misma condición se cumple con la TAREA correspondiente marcada
+ * como hecha (p. ej. "contrato y LOA firmados" ← `cliente.firmar_contrato_loa`).
+ * Las dos vías valen.
  */
 
 import { oldestImportableModelYear } from "../pricing/pricingConfig";
 import { estadoHito } from "./hitos";
-import { conceptoDe } from "./ledger";
+import { conceptoDe, saldoCuenta } from "./ledger";
 import type {
   ContextoExpediente,
   EstadoTarea,
@@ -45,10 +63,12 @@ export type TareaPlantilla = {
   accion?: TipoAprobacion;
   /** Nace hecha (la hace el sistema al pasar de etapa). */
   automatica?: boolean;
-  /** Fecha límite tomada del expediente. */
-  vence?: "fecha_limite_h2" | "fecha_est_arribo" | "fecha_est_entrega" | "fecha_limite_compra";
-  /** Solo aplica en ciertos expedientes (p. ej. consolidado). */
+  /** Fecha límite tomada del expediente o de los hitos. */
+  vence?: "fecha_firma" | "fecha_limite_pago2" | "fecha_est_arribo" | "fecha_est_entrega" | "fecha_limite_compra" | "fecha_limite_h5" | "fecha_limite_h6";
+  /** Solo aplica en ciertos expedientes (p. ej. consolidado, usado, nuevo). */
   aplica?: (ctx: ContextoExpediente) => boolean;
+  /** Texto distinto cuando el vehículo es usado (p. ej. aprobar la unidad CON el informe de inspección). */
+  usado?: { titulo?: string; descripcion?: string };
 };
 
 /* -------------------------------------------------------------------------- */
@@ -85,13 +105,35 @@ function docPresente(tipo: TipoDocumento, tareaClave: string) {
     documentoEn(ctx, tipo, ["emitido", "firmado"]) || tareaHecha(ctx, tareaClave);
 }
 
-/** Hito acreditado en el libro, o la tarea de confirmación hecha mientras no hay libro. */
-/** Clave de la tarea del cliente que paga cada hito (la misma tabla que `tarea_cliente_de_hito` en SQL). */
+/**
+ * Clave de la tarea del cliente que paga cada hito y de la tarea del equipo
+ * que lo confirma. Son las mismas tablas que `tarea_cliente_de_hito` y
+ * `tarea_luxcars_de_hito` en SQL (`registrar_movimiento` las cierra al
+ * confirmar el depósito).
+ */
 export const TAREA_CLIENTE_POR_HITO: Record<TipoHito, string> = {
-  H1: "cliente.pagar_h1",
+  H1: "cliente.depositar_h1",
   H2: "cliente.depositar_h2",
   H3: "cliente.depositar_h3",
-  H4: "cliente.pagar_h4",
+  H4: "cliente.depositar_h4",
+  H5: "cliente.depositar_h5",
+  H6: "cliente.depositar_h6",
+};
+
+export const TAREA_LUXCARS_POR_HITO: Record<TipoHito, string> = {
+  H1: "luxcars.confirmar_h1",
+  H2: "luxcars.confirmar_h2",
+  H3: "luxcars.confirmar_h3",
+  H4: "luxcars.confirmar_h4",
+  H5: "luxcars.confirmar_h5",
+  H6: "luxcars.confirmar_h6",
+};
+
+/** Tarea del equipo que se cumple al emitir el aviso de pago de cada hito (Pagos 3, 4 y 5). */
+export const TAREA_AVISO_POR_HITO: Partial<Record<TipoHito, string>> = {
+  H4: "luxcars.aviso_pago3",
+  H5: "luxcars.aviso_tributos",
+  H6: "luxcars.aviso_pago5",
 };
 
 /** Hito al que apunta una tarea de pago del cliente, o `null`. */
@@ -100,18 +142,19 @@ export function hitoDeTarea(clave: string): TipoHito | null {
   return null;
 }
 
-function hitoAcreditado(tipo: TipoHito, tareaClave: string) {
+/** Hito acreditado en el libro, o la tarea de confirmación del equipo hecha mientras no hay libro. */
+function hitoAcreditado(tipo: TipoHito) {
   return (ctx: ContextoExpediente) => {
     const hito = ctx.hitos.find((h) => h.tipo === tipo);
     if (hito && ctx.movimientos.length > 0 && estadoHito(hito, ctx.movimientos) === "acreditado") {
       return true;
     }
-    return tareaHecha(ctx, tareaClave);
+    return tareaHecha(ctx, TAREA_LUXCARS_POR_HITO[tipo]);
   };
 }
 
-function aprobacion(tipo: TipoAprobacion) {
-  return (ctx: ContextoExpediente) => ctx.aprobaciones.some((a) => a.tipo === tipo);
+function aprobacion(tipo: TipoAprobacion, tareaClave?: string) {
+  return (ctx: ContextoExpediente) => ctx.aprobaciones.some((a) => a.tipo === tipo) || (tareaClave ? tareaHecha(ctx, tareaClave) : false);
 }
 
 export function clienteCompleto(ctx: ContextoExpediente): boolean {
@@ -146,16 +189,17 @@ export function anioDeNumeracion(ctx: ContextoExpediente, hoy: Date): number {
   return hoy.getFullYear();
 }
 
+/**
+ * Saldo de Fondos de Clientes en cero (lo que el cliente dejó para pagar a
+ * terceros, ya pagado o devuelto). Los honorarios (Operaciones) y lo pagado
+ * directo a SUNAT no son saldo del cliente en custodia.
+ */
 function saldoCero(ctx: ContextoExpediente): boolean {
-  let saldo = 0;
-  for (const m of ctx.movimientos) {
-    if (m.estado !== "confirmado") continue;
-    if (m.tipo === "deposito") saldo += m.montoUsd;
-    else if (m.tipo === "pago" || m.tipo === "devolucion") saldo -= m.montoUsd;
-    else saldo += m.montoUsd;
-  }
-  return Math.abs(saldo) < 0.01;
+  return Math.abs(saldoCuenta(ctx.movimientos, "fondos_clientes")) < 0.01;
 }
+
+export const esUsado = (ctx: ContextoExpediente) => ctx.expediente.vehiculo.condicion === "usado";
+const esNuevo = (ctx: ContextoExpediente) => ctx.expediente.vehiculo.condicion === "nuevo";
 
 /* -------------------------------------------------------------------------- */
 /* Definición de cada etapa                                                   */
@@ -196,67 +240,79 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
     ],
   },
   {
-    clave: "contrato",
+    clave: "busqueda",
     orden: 1,
-    nombreEquipo: "Contrato y KYC",
-    nombreCliente: "Contrato y verificación",
+    nombreEquipo: "Búsqueda y elección del auto",
+    nombreCliente: "Buscando tu auto",
     descripcionCliente:
-      "Preparamos el contrato de mandato, los anexos y la carta de autorización, y verificamos tus datos.",
-    queNecesitamos: "Firmar en notaría y confirmar las cuentas",
+      "Buscamos unidades que cumplan lo acordado, revisamos el historial y, si es usado, lo inspeccionamos. Te traemos la pro forma del vendedor a tu nombre. Sin costo hasta que elijas.",
+    queNecesitamos: "Aprobar la unidad y el precio",
     compuerta: [
       C("cliente_completo", "Cliente creado con datos completos (razón social, RUC o DNI, correo, domicilio y representante si es empresa)", clienteCompleto),
     ],
     tareas: [
-      { clave: "luxcars.kyc", titulo: "Ficha RUC, vigencia de poder, DNI y listas", responsable: "luxcars", descripcion: "Debida diligencia: ficha RUC, vigencia de poder del representante, DNI y consulta de listas (PEP, OFAC, ONU)." },
-      { clave: "luxcars.generar_contrato", titulo: "Generar contrato, anexos C y D y LOA", responsable: "luxcars" },
-      { clave: "cliente.firmar_contrato_loa", titulo: "Firmar el contrato y la LOA en notaría", responsable: "cliente", visibleCliente: true, descripcion: "Te mandamos el contrato y la carta de autorización (LOA). Se firman con firma certificada en notaría; nosotros coordinamos la cita." },
-      { clave: "cliente.confirmar_cuentas", titulo: "Confirmar por teléfono las cuentas de Luxcars", responsable: "cliente", visibleCliente: true, accion: "confirmar_cuentas", descripcion: "Antes de tu primer depósito te llamamos para que confirmes los números de cuenta. Nunca cambiaremos una cuenta por correo o WhatsApp." },
-      { clave: "sistema.abrir_libro", titulo: "Abrir el libro del expediente", responsable: "luxcars", automatica: true },
+      { clave: "luxcars.buscar_unidades", titulo: "Buscar unidades que cumplan el pedido", responsable: "luxcars" },
+      { clave: "luxcars.proforma", titulo: "Pro forma del broker a nombre del cliente", responsable: "luxcars", descripcion: "Precio del vehículo: es el hito H1 (Pago 1)." },
+      { clave: "luxcars.historial", titulo: "Historial de la unidad (CarFax) y gravámenes", responsable: "luxcars", aplica: esUsado },
+      { clave: "luxcars.inspeccion", titulo: "Inspección de la unidad usada y subir el informe", responsable: "luxcars", descripcion: "Solo usados: inspección física por el inspector del expediente. El informe se sube como documento y el cliente lo aprueba con la unidad.", aplica: esUsado },
+      { clave: "luxcars.verificar_nuevo", titulo: "MSO sin matricular y consulta de recalls por VIN", responsable: "luxcars", descripcion: "Unidad nueva: el MSO debe estar sin registrar en ningún estado y la consulta de recalls por VIN no tiene costo.", aplica: esNuevo },
+      { clave: "luxcars.presupuesto_definitivo", titulo: "Presupuesto definitivo (Anexo B) con la unidad elegida", responsable: "luxcars" },
+      {
+        clave: "cliente.aprobar_unidad",
+        titulo: "Aprobar la unidad y el precio",
+        responsable: "cliente",
+        visibleCliente: true,
+        accion: "aprobar_unidad",
+        descripcion: "Revisa la unidad, el MSO sin matricular, la consulta de recalls y el presupuesto definitivo. Con tu aprobación preparamos el contrato con esa unidad para firmarlo en notaría.",
+        usado: {
+          titulo: "Aprobar la unidad, el informe de inspección y el precio",
+          descripcion: "Revisa la unidad, su historial, el informe de inspección y el presupuesto definitivo. Con tu aprobación preparamos el contrato con esa unidad para firmarlo en notaría.",
+        },
+      },
+      { clave: "luxcars.verificar_cuenta_vendedor", titulo: "Verificar por teléfono la cuenta del broker", responsable: "luxcars" },
     ],
   },
   {
-    clave: "busqueda",
+    clave: "contrato",
     orden: 2,
-    nombreEquipo: "Búsqueda e inspección",
-    nombreCliente: "Buscando tu auto",
+    nombreEquipo: "Contrato, KYC y Pago 1",
+    nombreCliente: "Contrato y primer pago",
     descripcionCliente:
-      "Buscamos unidades que cumplan lo acordado, revisamos historial y gravámenes e inspeccionamos la que elijas.",
-    queNecesitamos: "Aprobar la inspección y el precio, y pagar el primer hito",
+      "Preparamos el contrato de mandato con sus anexos, la carta de autorización en inglés y el poder para las placas. Se firma todo en una sola visita a la notaría y haces el Pago 1: el precio del auto.",
+    queNecesitamos: "Firmar en notaría, confirmar las cuentas y hacer el Pago 1",
     compuerta: [
-      C("contrato_firmado", "Contrato y LOA firmados", docFirmado(["contrato", "loa"], "cliente.firmar_contrato_loa")),
-      C("kyc_completo", "KYC completo (ficha RUC, vigencia y listas con fecha)", (ctx) => Boolean(ctx.cliente?.kycCompleto) || tareaHecha(ctx, "luxcars.kyc")),
+      C("unidad_aprobada", "El cliente aprobó la unidad y el precio desde su cuenta", aprobacion("aprobar_unidad", "cliente.aprobar_unidad")),
+      C("presupuesto_definitivo", "Presupuesto definitivo (Anexo B) con la unidad elegida", (ctx) => Boolean(ctx.expediente.presupuesto) || tareaHecha(ctx, "luxcars.presupuesto_definitivo")),
+      C("informe_inspeccion", "Solo usados: informe de inspección subido", (ctx) => esNuevo(ctx) || docPresente("informe_inspeccion", "luxcars.inspeccion")(ctx)),
     ],
     tareas: [
-      { clave: "luxcars.buscar_unidades", titulo: "Buscar unidades que cumplan el pedido", responsable: "luxcars" },
-      { clave: "luxcars.historial", titulo: "Historial, gravámenes y recalls de la unidad", responsable: "luxcars" },
-      { clave: "luxcars.inspeccion", titulo: "Inspección de la unidad (propia o de tercero)", responsable: "luxcars" },
-      { clave: "luxcars.proforma", titulo: "Pro forma del vendedor a nombre del cliente", responsable: "luxcars" },
-      { clave: "luxcars.anexo_a_presupuesto", titulo: "Anexo A (unidad) y presupuesto definitivo (Anexo B)", responsable: "luxcars" },
-      { clave: "cliente.aprobar_inspeccion", titulo: "Aprobar la inspección y el precio", responsable: "cliente", visibleCliente: true, accion: "aprobar_inspeccion", descripcion: "Revisa el informe de inspección y el precio final. Con tu aprobación firmamos el Anexo A y seguimos con la compra." },
-      { clave: "cliente.pagar_h1", titulo: "Pagar el hito H1 (30 % de honorarios) al firmar el Anexo A", responsable: "cliente", visibleCliente: true, accion: "declarar_deposito", descripcion: "Transfiere a la cuenta de Operaciones del Anexo D (la detracción, al Banco de la Nación) y decláralo aquí con el comprobante. Te emitimos la factura al acreditarse." },
-      { clave: "luxcars.verificar_cuenta_vendedor", titulo: "Verificar por teléfono la cuenta del vendedor", responsable: "luxcars" },
-      { clave: "luxcars.instrucciones_vendedor", titulo: "Instrucciones al vendedor", responsable: "luxcars" },
+      { clave: "luxcars.kyc", titulo: "Ficha RUC, vigencia de poder, DNI y listas", responsable: "luxcars", descripcion: "Debida diligencia: ficha RUC, vigencia de poder del representante, DNI y consulta de listas (PEP, OFAC, ONU)." },
+      { clave: "luxcars.generar_contrato", titulo: "Generar contrato, anexos A a D, LOA y poder para la inmatriculación", responsable: "luxcars" },
+      { clave: "cliente.firmar_contrato_loa", titulo: "Firmar en notaría: contrato con sus anexos, LOA y poder", responsable: "cliente", visibleCliente: true, descripcion: "Una sola visita a la notaría: el contrato con sus cuatro anexos, la carta de autorización en inglés (LOA) y el poder para tramitar tus placas. Nosotros coordinamos la cita." },
+      { clave: "cliente.confirmar_cuentas", titulo: "Confirmar por teléfono las cuentas de Luxcars", responsable: "cliente", visibleCliente: true, accion: "confirmar_cuentas", descripcion: "Antes de tu primer depósito te llamamos para que confirmes los números de cuenta. Nunca cambiaremos una cuenta por correo o WhatsApp." },
+      { clave: "cliente.depositar_h1", titulo: "Pago 1: depositar el precio del vehículo (hito H1)", responsable: "cliente", visibleCliente: true, vence: "fecha_firma", accion: "declarar_deposito", descripcion: "Al firmar. Transfiere el precio del vehículo a la cuenta de Fondos de Clientes del Anexo D y decláralo aquí con el comprobante. Al acreditarse te enviamos la constancia.", usado: { titulo: "Pago 1: depositar el precio del vehículo y la inspección (hito H1)" } },
+      { clave: "luxcars.confirmar_h1", titulo: "Confirmar H1 y emitir la constancia de fondos", responsable: "luxcars" },
+      { clave: "luxcars.instrucciones_vendedor", titulo: "Instrucciones de compra y exportación al broker y al dealer", responsable: "luxcars" },
+      { clave: "sistema.abrir_libro", titulo: "Abrir el libro del expediente", responsable: "luxcars", automatica: true },
     ],
   },
   {
     clave: "compra",
     orden: 3,
-    nombreEquipo: "Compra y pago al vendedor",
+    nombreEquipo: "Compra y pago al broker",
     nombreCliente: "Compra de tu auto",
     descripcionCliente:
-      "Con tu depósito pagamos al vendedor, recibimos el bill of sale definitivo y coordinamos la entrega al forwarder.",
-    queNecesitamos: "Depositar el hito H2 antes de la fecha límite",
+      "Con tu Pago 1 giramos el precio completo al broker, que paga al dealer. La factura y el título o MSO salen a tu nombre y coordinamos la entrega al forwarder.",
+    queNecesitamos: "Nada por ahora: te avisamos cuando el auto esté listo para embarcar",
     compuerta: [
-      C("anexo_a_firmado", "Anexo A firmado", docFirmado("anexo_a", "luxcars.anexo_a_presupuesto")),
-      C("inspeccion_aprobada", "Aprobación del cliente de la inspección y el precio", aprobacion("aprobar_inspeccion")),
-      C("h1_acreditado", "H1 acreditado", hitoAcreditado("H1", "cliente.pagar_h1")),
+      C("contrato_firmado", "Contrato y LOA firmados en notaría", docFirmado(["contrato", "loa"], "cliente.firmar_contrato_loa")),
+      C("kyc_completo", "KYC completo (ficha RUC, vigencia y listas con fecha)", (ctx) => Boolean(ctx.cliente?.kycCompleto) || tareaHecha(ctx, "luxcars.kyc")),
+      C("h1_acreditado", "H1 acreditado (Pago 1: precio del vehículo)", hitoAcreditado("H1")),
       C("anio_modelo", "El año modelo cumple la antigüedad máxima a la fecha estimada de numeración de la DAM", anioModeloCumple),
     ],
     tareas: [
-      { clave: "cliente.depositar_h2", titulo: "Depositar el hito H2 (precio del auto, transporte, flete y seguro)", responsable: "cliente", visibleCliente: true, vence: "fecha_limite_h2", accion: "declarar_deposito", descripcion: "Transfiere a la cuenta de Fondos de Clientes que confirmaste por teléfono y decláralo aquí con el comprobante. Al acreditarse te enviamos la constancia." },
-      { clave: "luxcars.confirmar_h2", titulo: "Confirmar H2 y emitir la constancia de fondos", responsable: "luxcars" },
-      { clave: "luxcars.wire_vendedor", titulo: "Wire al vendedor y archivar el SWIFT", responsable: "luxcars" },
-      { clave: "luxcars.bill_of_sale", titulo: "Bill of sale definitivo", responsable: "luxcars" },
+      { clave: "luxcars.wire_vendedor", titulo: "Wire del precio completo al broker y archivar el SWIFT", responsable: "luxcars", descripcion: "La comisión del banco por el wire la repone Luxcars el mismo día (campo «Comisión bancaria» del pago)." },
+      { clave: "luxcars.bill_of_sale", titulo: "Factura o bill of sale y título o MSO del dealer a nombre del cliente", responsable: "luxcars" },
       { clave: "luxcars.doc_propiedad_forwarder", titulo: "Documento de propiedad al forwarder", responsable: "luxcars" },
       { clave: "luxcars.coordinar_release", titulo: "Coordinar el release de la unidad", responsable: "luxcars" },
     ],
@@ -264,22 +320,25 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
   {
     clave: "embarque",
     orden: 4,
-    nombreEquipo: "Exportación y embarque",
+    nombreEquipo: "Exportación, embarque y Pago 2",
     nombreCliente: "Camino al puerto",
     descripcionCliente:
-      "El forwarder recoge tu auto, lo carga con acta y fotos, emite el BL y declara la exportación. La póliza va a tu nombre.",
-    queNecesitamos: "Decidir si esperas al consolidado o embarcas solo, si el grupo se retrasa",
+      "El auto está listo para embarcar: toca el Pago 2 (flete, seguro y la primera mitad de nuestros honorarios). El forwarder lo recoge, lo carga con acta y fotos, emite el BL y declara la exportación. La póliza va a tu nombre.",
+    queNecesitamos: "Hacer el Pago 2 y, si el consolidado se retrasa, decidir si esperas o embarcas solo",
     compuerta: [
-      C("h2_acreditado", "H2 acreditado", hitoAcreditado("H2", "luxcars.confirmar_h2")),
-      C("pago_vendedor", "Pago al vendedor registrado", (ctx) =>
+      C("pago_vendedor", "Pago al broker registrado en el libro", (ctx) =>
         ctx.movimientos.some((m) => m.tipo === "pago" && m.estado === "confirmado" && conceptoDe(m).clave === "precio_vehiculo") ||
         tareaHecha(ctx, "luxcars.wire_vendedor")),
-      C("bill_of_sale", "Bill of sale subido", docPresente("bill_of_sale", "luxcars.bill_of_sale")),
+      C("bill_of_sale", "Factura o bill of sale y título o MSO subidos", docPresente("bill_of_sale", "luxcars.bill_of_sale")),
     ],
     tareas: [
+      { clave: "cliente.depositar_h2", titulo: "Pago 2: depositar flete y seguro (hito H2)", responsable: "cliente", visibleCliente: true, vence: "fecha_limite_pago2", accion: "declarar_deposito", descripcion: "El flete incluye el traslado al puerto y el tramo marítimo. Transfiere a la cuenta de Fondos de Clientes que confirmaste por teléfono y decláralo aquí con el comprobante." },
+      { clave: "cliente.depositar_h3", titulo: "Pago 2: depositar la primera mitad de los honorarios (hito H3)", responsable: "cliente", visibleCliente: true, vence: "fecha_limite_pago2", accion: "declarar_deposito", descripcion: "Transfiere a la cuenta de Operaciones del Anexo D (la detracción, al Banco de la Nación) y decláralo aquí. Te emitimos la factura 1 al acreditarse." },
+      { clave: "luxcars.confirmar_h2", titulo: "Confirmar H2 y emitir la constancia de fondos", responsable: "luxcars" },
+      { clave: "luxcars.confirmar_h3", titulo: "Confirmar H3 y emitir la factura 1 de honorarios (50 %)", responsable: "luxcars" },
       { clave: "luxcars.instrucciones_forwarder", titulo: "Instrucciones al forwarder", responsable: "luxcars" },
       { clave: "luxcars.poliza", titulo: "Póliza de seguro a nombre del cliente", responsable: "luxcars" },
-      { clave: "tercero.inland_acta_carga", titulo: "Transporte interno y acta de carga con fotos", responsable: "tercero" },
+      { clave: "tercero.acta_carga", titulo: "Recojo, traslado al puerto y acta de carga con fotos", responsable: "tercero" },
       { clave: "luxcars.borrador_bl", titulo: "Aprobar el borrador del BL", responsable: "luxcars" },
       { clave: "tercero.declaracion_exportacion", titulo: "Declaración de exportación", responsable: "tercero" },
       {
@@ -296,12 +355,14 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
   {
     clave: "transito",
     orden: 5,
-    nombreEquipo: "Tránsito",
+    nombreEquipo: "Tránsito y Pago 3",
     nombreCliente: "En el mar",
     descripcionCliente:
-      "Tu auto navega hacia el Callao. Mientras, el agente de aduana prepara la DAM anticipada y te enviamos el aviso del hito H3.",
-    queNecesitamos: "Otorgar el mandato electrónico al agente y depositar el hito H3",
+      "Tu auto navega hacia el Callao. Mientras, el agente de aduana prepara la DAM anticipada y te enviamos el aviso del Pago 3 (gastos de aduana) con la pro forma del agente, para depositarlo al arribo.",
+    queNecesitamos: "Otorgar el mandato electrónico al agente y hacer el Pago 3 al arribo",
     compuerta: [
+      C("h2_acreditado", "H2 acreditado (flete y seguro)", hitoAcreditado("H2")),
+      C("h3_acreditado", "H3 acreditado (50 % de honorarios)", hitoAcreditado("H3")),
       C("poliza", "Póliza subida", docPresente("poliza", "luxcars.poliza")),
       C("bl_emitido", "House BL emitido", docPresente("bl", "luxcars.borrador_bl")),
       C("zarpe", "Zarpe registrado en el embarque", (ctx) => Boolean(ctx.embarque?.fechaZarpeReal)),
@@ -309,49 +370,54 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
     tareas: [
       { clave: "luxcars.docs_agente", titulo: "Documentos al agente de aduana", responsable: "luxcars" },
       { clave: "cliente.mandato_electronico", titulo: "Otorgar el mandato electrónico al agente de aduana (Clave SOL)", responsable: "cliente", visibleCliente: true, descripcion: "Entra a SUNAT Operaciones en Línea con tu Clave SOL y autoriza al agente de aduana que te indicamos. Te guiamos por WhatsApp." },
-      { clave: "luxcars.aviso_h3", titulo: "Emitir el aviso de pago H3 con los valores reales", responsable: "luxcars" },
-      { clave: "cliente.depositar_h3", titulo: "Depositar el hito H3 (tributos, aduana y registrales)", responsable: "cliente", visibleCliente: true, vence: "fecha_est_arribo", accion: "declarar_deposito", descripcion: "Debe estar acreditado antes del arribo para numerar la DAM sin demoras. Transfiere el monto del aviso de pago y decláralo aquí con el comprobante." },
-      { clave: "luxcars.confirmar_h3", titulo: "Confirmar H3 y emitir la constancia", responsable: "luxcars" },
+      { clave: "luxcars.aviso_pago3", titulo: "Emitir el aviso del Pago 3 con la pro forma del agente (H4)", responsable: "luxcars" },
+      { clave: "cliente.depositar_h4", titulo: "Pago 3: depositar los gastos de aduana (hito H4)", responsable: "cliente", visibleCliente: true, vence: "fecha_est_arribo", accion: "declarar_deposito", descripcion: "Al arribo al Callao: agente de aduana, almacenaje y grúa del puerto, según la pro forma del agente. Transfiere a Fondos de Clientes y decláralo aquí. Si sobra o falta, se compensa en el Pago 5." },
+      { clave: "luxcars.confirmar_h4", titulo: "Confirmar H4 y emitir la constancia", responsable: "luxcars" },
       { clave: "tercero.numerar_dam", titulo: "Numerar la DAM anticipada", responsable: "tercero" },
     ],
   },
   {
     clave: "aduana",
     orden: 6,
-    nombreEquipo: "Aduana",
+    nombreEquipo: "Aduana, Pago 4 y levante",
     nombreCliente: "Aduana en el Callao",
     descripcionCliente:
-      "Pagamos la liquidación de SUNAT por tu cuenta, se asigna el canal, se obtiene el levante y la grúa lleva el auto al taller.",
-    queNecesitamos: "Nada por ahora: te avisamos si hay una diferencia por el tipo de cambio",
+      "SUNAT liquida la DAM: te enviamos el aviso del Pago 4 con el número de liquidación y el monto exacto en soles, y lo pagas directamente a SUNAT. Luego se asigna el canal, se obtiene el levante y la grúa lleva el auto al taller.",
+    queNecesitamos: "Pagar los tributos directamente a SUNAT dentro de los dos días hábiles del aviso",
     compuerta: [
-      C("h3_acreditado", "H3 acreditado", hitoAcreditado("H3", "luxcars.confirmar_h3")),
+      C("h4_acreditado", "H4 acreditado (gastos de aduana)", hitoAcreditado("H4")),
       C("dam_numerada", "DAM numerada (número registrado en el expediente)", (ctx) => Boolean(ctx.expediente.damNumero)),
     ],
     tareas: [
-      { clave: "tercero.pagar_liquidacion", titulo: "Pagar la liquidación de SUNAT por cuenta del cliente", responsable: "tercero" },
+      { clave: "luxcars.aviso_tributos", titulo: "Emitir el aviso del Pago 4 con la liquidación de SUNAT (H5)", responsable: "luxcars" },
+      { clave: "cliente.depositar_h5", titulo: "Pago 4: pagar los tributos directamente a SUNAT (hito H5)", responsable: "cliente", visibleCliente: true, vence: "fecha_limite_h5", accion: "declarar_deposito", descripcion: "Con tu Clave SOL o en ventanilla bancaria, con el número de liquidación del aviso, en soles. Luego declara aquí «Ya pagué» con el comprobante." },
+      { clave: "luxcars.confirmar_h5", titulo: "Confirmar el pago de tributos (comprobante de SUNAT)", responsable: "luxcars" },
+      { clave: "luxcars.pagar_gastos_aduana", titulo: "Pagar al agente, al almacén y la grúa con el Pago 3 (facturas a nombre del cliente)", responsable: "luxcars" },
       { clave: "luxcars.canal_levante", titulo: "Registrar canal y levante", responsable: "luxcars" },
       { clave: "luxcars.grua", titulo: "Grúa del puerto al taller", responsable: "luxcars" },
-      { clave: "luxcars.liquidacion_definitiva", titulo: "Liquidación definitiva al tipo de cambio de SUNAT", responsable: "luxcars" },
-      { clave: "luxcars.diferencia_h3", titulo: "Cobrar o acreditar la diferencia de H3", responsable: "luxcars" },
+      { clave: "luxcars.liquidacion_definitiva", titulo: "Liquidación definitiva: tributos y gastos de aduana con el saldo para el Pago 5", responsable: "luxcars" },
     ],
   },
   {
     clave: "placas",
     orden: 7,
-    nombreEquipo: "Homologación y placas",
+    nombreEquipo: "Pago 5, homologación y placas",
     nombreCliente: "Homologación y placas",
     descripcionCliente:
-      "Ficha técnica u homologación, inscripción en SUNARP y placas. Con la placa en mano contratas el SOAT y el seguro.",
-    queNecesitamos: "Firmar el formato de inmatriculación y contratar SOAT y seguro",
+      "Con el auto liberado toca el Pago 5: la segunda mitad de nuestros honorarios, neta del sobrante o faltante de los gastos de aduana. Mientras, tramitamos la ficha técnica, la inscripción en SUNARP con tu poder y las placas.",
+    queNecesitamos: "Hacer el Pago 5 y contratar SOAT y seguro cuando te avisemos la placa",
     compuerta: [
       C("levante", "Levante registrado", (ctx) => Boolean(ctx.expediente.levanteEn)),
+      C("h5_acreditado", "H5 acreditado (tributos pagados a SUNAT)", hitoAcreditado("H5")),
       C("liquidacion_definitiva", "Liquidación definitiva emitida", docPresente("liquidacion_definitiva", "luxcars.liquidacion_definitiva")),
     ],
     tareas: [
-      { clave: "tercero.homologacion", titulo: "Ficha técnica u homologación", responsable: "tercero" },
-      { clave: "cliente.firmar_inmatriculacion", titulo: "Firmar el formato de inmatriculación con firma certificada", responsable: "cliente", visibleCliente: true, descripcion: "Es el formulario de SUNARP para la primera inscripción. Se firma ante notario; coordinamos la cita." },
-      { clave: "luxcars.sunarp", titulo: "Inscripción en SUNARP", responsable: "luxcars" },
-      { clave: "luxcars.placas_aap", titulo: "Placas en la AAP", responsable: "luxcars" },
+      { clave: "luxcars.aviso_pago5", titulo: "Emitir el aviso del Pago 5: honorarios netos del saldo de aduana (H6)", responsable: "luxcars" },
+      { clave: "cliente.depositar_h6", titulo: "Pago 5: depositar la segunda mitad de los honorarios (hito H6)", responsable: "cliente", visibleCliente: true, vence: "fecha_limite_h6", accion: "declarar_deposito", descripcion: "El monto del aviso ya descuenta el sobrante de los gastos de aduana (o suma el faltante). Transfiere a la cuenta de Operaciones del Anexo D contra la factura 2 y decláralo aquí." },
+      { clave: "luxcars.confirmar_h6", titulo: "Confirmar H6 y emitir la factura 2 de honorarios (50 %)", responsable: "luxcars" },
+      { clave: "tercero.homologacion", titulo: "Ficha técnica u homologación (a cargo de Luxcars)", responsable: "tercero" },
+      { clave: "luxcars.sunarp", titulo: "Inscripción en SUNARP con el poder para la inmatriculación", responsable: "luxcars" },
+      { clave: "luxcars.placas_aap", titulo: "Placas y tarjeta en la AAP", responsable: "luxcars" },
       { clave: "cliente.soat_seguro", titulo: "Contratar SOAT y seguro vehicular con la placa", responsable: "cliente", visibleCliente: true },
     ],
   },
@@ -361,18 +427,16 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
     nombreEquipo: "Entrega y rendición",
     nombreCliente: "Entrega",
     descripcionCliente:
-      "Te entregamos el auto con acta, la carpeta completa y la rendición de cuentas del expediente.",
-    queNecesitamos: "Pagar el último hito y dar conformidad a la rendición",
+      "Te entregamos el auto con el acta de entrega y rendición de cuentas, la carpeta completa y la devolución del saldo si lo hay.",
+    queNecesitamos: "Firmar el acta con el auto delante y dar conformidad a la rendición",
     compuerta: [
       C("tive_placa", "TIVe y placa registradas", (ctx) => Boolean(ctx.expediente.tiveNumero && ctx.expediente.placa)),
+      C("h6_acreditado", "H6 acreditado (segunda mitad de honorarios)", hitoAcreditado("H6")),
     ],
     tareas: [
-      { clave: "luxcars.factura_2", titulo: "Factura 2 de honorarios (70 %)", responsable: "luxcars" },
-      { clave: "cliente.pagar_h4", titulo: "Pagar el hito H4 (70 % de honorarios)", responsable: "cliente", visibleCliente: true, vence: "fecha_est_entrega", accion: "declarar_deposito", descripcion: "Transfiere a la cuenta de Operaciones del Anexo D contra la factura 2 y decláralo aquí con el comprobante." },
-      { clave: "luxcars.acta_entrega", titulo: "Acta de entrega", responsable: "luxcars" },
-      { clave: "luxcars.rendicion", titulo: "Rendición de cuentas desde el libro", responsable: "luxcars" },
+      { clave: "luxcars.acta_rendicion", titulo: "Acta de entrega y rendición de cuentas desde el libro", responsable: "luxcars" },
       { clave: "luxcars.devolver_saldo", titulo: "Devolver el saldo a favor", responsable: "luxcars" },
-      { clave: "cliente.conformidad_rendicion", titulo: "Dar conformidad a la rendición de cuentas", responsable: "cliente", visibleCliente: true, accion: "conformidad_rendicion", descripcion: "Revisa la rendición: todo lo depositado, todo lo pagado por tu cuenta y el saldo. Con tu conformidad cerramos el expediente." },
+      { clave: "cliente.conformidad_rendicion", titulo: "Dar conformidad a la rendición de cuentas", responsable: "cliente", visibleCliente: true, accion: "conformidad_rendicion", descripcion: "Revisa la rendición: todo lo depositado, todo lo pagado por tu cuenta, lo que pagaste directo a SUNAT y el saldo. Con tu conformidad cerramos el expediente." },
       { clave: "luxcars.carpeta", titulo: "Carpeta de documentos entregada", responsable: "luxcars" },
       { clave: "luxcars.registro_uif", titulo: "Registro de operaciones (UIF)", responsable: "luxcars" },
     ],
@@ -385,10 +449,9 @@ export const ETAPAS: readonly DefinicionEtapa[] = [
     descripcionCliente: "Tu importación terminó. Gracias por confiar en Luxcars.",
     queNecesitamos: "Nada más. Expediente cerrado.",
     compuerta: [
-      C("h4_acreditado", "H4 acreditado", hitoAcreditado("H4", "cliente.pagar_h4")),
-      C("acta_firmada", "Acta de entrega firmada", docFirmado("acta_entrega", "luxcars.acta_entrega")),
-      C("rendicion_emitida", "Rendición de cuentas emitida", docPresente("rendicion", "luxcars.rendicion")),
-      C("saldo_cero", "Saldo del expediente en cero", saldoCero),
+      C("acta_firmada", "Acta de entrega y rendición firmada", docFirmado("acta_rendicion", "luxcars.acta_rendicion")),
+      C("conformidad_rendicion", "Conformidad del cliente a la rendición", aprobacion("conformidad_rendicion", "cliente.conformidad_rendicion")),
+      C("saldo_cero", "Saldo de Fondos de Clientes en cero", saldoCero),
     ],
     tareas: [],
   },

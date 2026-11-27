@@ -736,6 +736,7 @@ export type ExpedienteRow = {
   precio_compra: number | string | null;
   precio_compra_usd: number | string | null;
   fecha_limite_compra?: string | null;
+  /** Solo usados (inspección antes de aprobar la unidad). */
   fecha_inspeccion: string | null;
   historial_ref?: string | null;
   fecha_release?: string | null;
@@ -746,8 +747,8 @@ export type ExpedienteRow = {
   honorarios_base_usd: number | string | null;
   honorarios_igv_usd: number | string | null;
   porcentaje_detraccion?: number | string | null;
-  margen_h3?: number | string | null;
   tarifa_custodia_usd?: number | string | null;
+  /** Solo usados: costo de la inspección (Pago 1). */
   costo_inspeccion_usd?: number | string | null;
   fecha_firma: string | null;
   fecha_limite_h2: string | null;
@@ -777,7 +778,11 @@ export type ExpedienteReservadoRow = {
   expediente_id?: string;
   precio_tope: number | string | null;
   tc_compra_ref: number | string | null;
+  /** Dealer que emite la factura y el MSO. */
   vendedor_id: string | null;
+  /** Broker al que se gira el precio (27 nov 2026). */
+  broker_id?: string | null;
+  /** Solo usados. */
   inspector_id: string | null;
   agente_aduana_id: string | null;
   notas_internas: string | null;

@@ -2,13 +2,14 @@
 
 /**
  * Paso 3: compra y embarque. Moneda, precio y tope, tipo de cambio de
- * referencia, modalidad, embarque existente o nuevo, proporción del flete y
- * las fechas estimadas de las que dependen hitos y alertas.
+ * referencia, dealer y broker, modalidad, embarque existente o nuevo,
+ * proporción del flete y las fechas estimadas de las que dependen hitos y
+ * alertas.
  */
 
 import { PortalPanel } from "@/components/portal/CrmUI";
 import { AreaTexto, Campo, Entrada, Rejilla, Selector } from "@/components/portal/expedientes/Formulario";
-import type { Embarque, ModalidadEmbarque, TipoContenedor } from "@/core/expedientes/tipos";
+import type { Contraparte, Embarque, ModalidadEmbarque, TipoContenedor } from "@/core/expedientes/tipos";
 import { MODALIDADES_EMBARQUE, TIPOS_CONTENEDOR } from "@/core/expedientes/tipos";
 import { CONTENEDOR_LABEL, MODALIDAD_LABEL, fecha, usd } from "@/lib/expedientes/formato";
 import { precioUsd, type CompraForm, type EstadoAlta } from "./estado";
@@ -19,10 +20,12 @@ export function PasoCompra({
   estado,
   actualizar,
   embarques,
+  contrapartes = [],
 }: {
   estado: EstadoAlta;
   actualizar: (cambios: Partial<EstadoAlta> | ((previo: EstadoAlta) => EstadoAlta)) => void;
   embarques: Embarque[];
+  contrapartes?: Contraparte[];
 }) {
   const c = estado.compra;
   const set = <K extends keyof CompraForm>(k: K, valor: CompraForm[K]) =>
@@ -38,7 +41,7 @@ export function PasoCompra({
 
   return (
     <div className="space-y-6">
-      <PortalPanel title="Compra" description="El precio tope y el tipo de cambio de referencia son reservados: el cliente no los ve.">
+      <PortalPanel title="Compra" description="El precio es el de la pro forma del broker (hito H1, Pago 1). El precio tope y el tipo de cambio de referencia son reservados: el cliente no los ve.">
         <div className="px-5 py-4">
           <Rejilla columnas={3}>
             <Campo label="Moneda de compra">
@@ -48,7 +51,7 @@ export function PasoCompra({
                 ))}
               </Selector>
             </Campo>
-            <Campo label={`Precio (${c.moneda})`} requerido hint="El acordado o el estimado de la búsqueda.">
+            <Campo label={`Precio del vehículo (${c.moneda})`} requerido hint="El de la pro forma del broker, o el estimado mientras se busca.">
               <Entrada value={c.precio} onChange={(e) => set("precio", e.target.value.replace(/[^0-9.,]/g, ""))} inputMode="decimal" />
             </Campo>
             <Campo label={`Precio tope (${c.moneda})`} hint="Reservado. Hasta dónde puede llegar la negociación.">
@@ -68,6 +71,32 @@ export function PasoCompra({
             <Campo label="Puerto de salida">
               <Entrada value={c.puerto_origen} onChange={(e) => set("puerto_origen", e.target.value)} maxLength={120} />
             </Campo>
+            <Campo label="Broker (recibe el pago)" hint="Se le gira el precio completo; paga al dealer. Se puede asignar después.">
+              <Selector value={c.broker_id} onChange={(e) => set("broker_id", e.target.value)}>
+                <option value="">— Asignar después —</option>
+                {contrapartes.filter((x) => x.tipo === "broker").map((x) => (
+                  <option key={x.id} value={x.id}>{x.nombre}{x.pais ? ` · ${x.pais}` : ""}</option>
+                ))}
+              </Selector>
+            </Campo>
+            <Campo label="Dealer (emite factura y MSO)" hint="Sin broker, el dealer cobra directo.">
+              <Selector value={c.vendedor_id} onChange={(e) => set("vendedor_id", e.target.value)}>
+                <option value="">— Asignar después —</option>
+                {contrapartes.filter((x) => x.tipo === "vendedor").map((x) => (
+                  <option key={x.id} value={x.id}>{x.nombre}{x.pais ? ` · ${x.pais}` : ""}</option>
+                ))}
+              </Selector>
+            </Campo>
+            {estado.vehiculo.condicion === "usado" ? (
+              <Campo label="Inspector (solo usados)" hint="Inspecciona la unidad antes de que el cliente la apruebe.">
+                <Selector value={c.inspector_id} onChange={(e) => set("inspector_id", e.target.value)}>
+                  <option value="">— Asignar después —</option>
+                  {contrapartes.filter((x) => x.tipo === "inspector").map((x) => (
+                    <option key={x.id} value={x.id}>{x.nombre}{x.pais ? ` · ${x.pais}` : ""}</option>
+                  ))}
+                </Selector>
+              </Campo>
+            ) : null}
           </Rejilla>
         </div>
       </PortalPanel>
@@ -137,7 +166,7 @@ export function PasoCompra({
       <PortalPanel title="Fechas del expediente" description="De acá salen las fechas límite de los hitos y la alerta de año modelo (se evalúa al año del arribo estimado).">
         <div className="space-y-4 px-5 py-4">
           <Rejilla columnas={4}>
-            <Campo label="Fecha límite H2">
+            <Campo label="Fecha límite del Pago 2" hint="Flete, seguro y primera mitad de honorarios (H2 y H3). Si queda vacía, vale el release estimado.">
               <Entrada type="date" value={c.fecha_limite_h2} onChange={(e) => set("fecha_limite_h2", e.target.value)} />
             </Campo>
             <Campo label="Embarque estimado">

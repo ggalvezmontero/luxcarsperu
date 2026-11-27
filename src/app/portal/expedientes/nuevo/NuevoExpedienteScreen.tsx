@@ -14,8 +14,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { Notice, PortalPageHeader } from "@/components/portal/CrmUI";
 import { usePortalSession } from "@/components/portal/portalSession";
-import type { Embarque } from "@/core/expedientes/tipos";
-import { crearExpediente, listarEmbarques } from "@/lib/expedientes/consultas";
+import type { Contraparte, Embarque } from "@/core/expedientes/tipos";
+import { crearExpediente, listarContrapartes, listarEmbarques } from "@/lib/expedientes/consultas";
 import { cn } from "@/lib/utils";
 import { PasoCliente } from "./PasoCliente";
 import { PasoCompra } from "./PasoCompra";
@@ -45,6 +45,7 @@ export function NuevoExpedienteScreen() {
   const { status: sessionStatus, client } = usePortalSession();
   const [estado, setEstado] = useState<EstadoAlta>(ESTADO_INICIAL);
   const [embarques, setEmbarques] = useState<Embarque[]>([]);
+  const [contrapartes, setContrapartes] = useState<Contraparte[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -55,6 +56,9 @@ export function NuevoExpedienteScreen() {
     let cancelled = false;
     void listarEmbarques(client).then((r) => {
       if (!cancelled) setEmbarques(r.embarques);
+    });
+    void listarContrapartes(client).then((lista) => {
+      if (!cancelled) setContrapartes(lista);
     });
     return () => {
       cancelled = true;
@@ -139,7 +143,7 @@ export function NuevoExpedienteScreen() {
         <PasoCliente client={client} estado={estado} actualizar={actualizar} solicitudParam={solicitudParam} />
       ) : null}
       {estado.paso === 2 ? <PasoVehiculo estado={estado} actualizar={actualizar} /> : null}
-      {estado.paso === 3 ? <PasoCompra estado={estado} actualizar={actualizar} embarques={embarques} /> : null}
+      {estado.paso === 3 ? <PasoCompra estado={estado} actualizar={actualizar} embarques={embarques} contrapartes={contrapartes} /> : null}
       {estado.paso === 4 ? <PasoPresupuesto estado={estado} actualizar={actualizar} embarqueElegido={embarqueElegido} /> : null}
 
       {error ? (
