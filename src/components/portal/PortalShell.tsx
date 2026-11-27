@@ -83,6 +83,13 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/portal/cotizaciones",
+    label: "Cotizaciones",
+    hint: "Importación a pedido: cotizar y abrir el expediente",
+    ready: true,
+    icon: <Icon path="M6 3h9l3 3v15H6V3Zm9 0v3h3M9 10h6M9 14h6M9 18h3" />,
+  },
+  {
     href: "/portal/expedientes",
     label: "Expedientes",
     hint: "Importaciones a pedido, etapa por etapa",

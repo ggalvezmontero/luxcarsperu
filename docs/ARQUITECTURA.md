@@ -667,6 +667,22 @@ implementación probada.
 
 ---
 
+## 6c. Cotizaciones de importación a pedido (`/portal/cotizaciones`)
+
+Desde el 28 nov 2026 la cotización que antes se armaba a mano sale del portal.
+
+- **Core** `src/core/cotizaciones/`: `calcularCotizacion` reparte los costos del contenedor (flete, seguro, gastos de aduana y honorarios con IGV) en partes iguales o por porcentaje, con el último auto llevando el resto para cuadrar al centavo. Los tributos salen de `calculateFiscalFees`, `resolveAdValoremRate` y `resolveIscRate` de `src/core/pricing/`, que NO se toca. La percepción (10 % / 3.5 %) va como nota, fuera del total. El seguro y los honorarios se PROPONEN con `InsuranceModule` y `BrokerModule`; se pueden escribir a mano.
+- **Documento** `construirDocumentoCotizacion` arma la misma `Estructura` que los documentos del expediente (PDF y DOCX con `renderPdf`/`renderDocx`). Tiene cuatro secciones: Vehículos, Costo puesto en Lima por auto con total, Calendario de pagos (Pago 1 a 5) y Condiciones. La condición de crédito fiscal y detracción sale solo con importadores empresa. Con varios importadores las filas son "Empresa N" y el calendario es "de cada empresa". El texto coincide con el modelo aprobado de la COT-2026-035.
+- **Base** (`20261128120000_cotizaciones.sql`): tabla `cotizaciones` con `datos` (lo escrito), `resultado` (foto del cálculo) y correlativo `COT-AAAA-NNN` en `cotizacion_correlativos` (2026 arranca en 35). Solo lectura por RLS `(select es_admin())`. Las escrituras van por funciones: `guardar_cotizacion` (solo en borrador), `cambiar_estado_cotizacion` (enviar exige PDF y fija 15 días de vigencia), `clientes_de_cotizacion` (busca por RUC, DNI o correo, o crea la ficha de cada importador) y `aceptar_cotizacion`.
+- **Aceptar** abre un expediente por auto con `crear_expediente`:
+  - Nace en búsqueda. El contrato espera la compuerta `aprobar_unidad`.
+  - El presupuesto se arma con `presupuestoDesdeCotizacion`: las cifras de la cotización, no las del motor. Así el Anexo B y los cinco pagos coinciden con el PDF.
+  - `expedientes.cotizacion_id` / `cotizacion_auto` y `cotizaciones.expediente_ids` guardan el vínculo en los dos sentidos.
+  - Con varios autos, los expedientes quedan en un embarque consolidado nuevo.
+  - Los datos de cada expediente los arma `src/lib/cotizaciones/aExpediente.ts` reutilizando `construirDatos` del asistente de alta.
+- **PDF** en el bucket privado `expedientes`, carpeta `cotizaciones/<id>/`. El admin lo baja por `/api/portal/cotizaciones/[id]/documento`. El cliente ve sus cotizaciones enviadas en `/cuenta` (vista `cotizacion_cliente`: ficha vinculada o correo verificado de su cuenta) y baja el PDF por `/api/cuenta/cotizaciones/[id]`.
+- **Pruebas** `src/core/cotizaciones/cotizaciones.test.ts` (cifras inventadas; el repo es público) y la e2e `E2E_COTIZACIONES=1 npx vitest run src/test/e2e-cotizaciones.test.ts`, que borra lo que crea y repone el correlativo.
+
 ## 7. Sistema de diseño
 
 Tokens en `src/app/globals.css`: `bg-bg` `bg-surface` `bg-surface-2`
