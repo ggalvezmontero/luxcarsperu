@@ -1,10 +1,12 @@
+import { unzipSync, strFromU8 } from "fflate";
 import { describe, expect, it } from "vitest";
 
 import { construirDocumento, PLANTILLAS } from "@/core/expedientes/documentos";
 import type { ContextoExpediente } from "@/core/expedientes/tipos";
 import { entradaPorDefecto, presupuestar } from "@/core/expedientes/presupuesto";
+import { fixtureCompleto } from "./fixture";
 import { renderDocx } from "./renderDocx";
-import { renderPdf } from "./renderPdf";
+import { registrarFuentes, renderPdf } from "./renderPdf";
 
 /** Expediente mínimo: lo que falte sale como línea en blanco o queda en `faltantes`; acá importa que los archivos se construyan. */
 function contexto(): ContextoExpediente {
@@ -29,6 +31,16 @@ function contexto(): ContextoExpediente {
 
 const FIJOS = { LUXCARS_RUC: "20600000001", LUXCARS_DOMICILIO: "Calle X 1, Lima", LUXCARS_PARTIDA: "1", LUXCARS_REPRESENTANTE: "R", LUXCARS_REP_DNI: "1", LUXCARS_CORREO: "a@b.pe", LUXCARS_TELEFONO: "1", CTA_OPER_BANCO: "B", CTA_OPER_NUMERO: "1", CTA_OPER_CCI: "1", CTA_FONDOS_BANCO: "B", CTA_FONDOS_NUMERO: "2", CTA_FONDOS_CCI: "2", CTA_DETRACCION_NUMERO: "3" };
 
+/** Páginas de un PDF de pdfkit: cada una es un objeto `/Type /Page` (no `/Pages`). */
+function paginasPdf(pdf: Uint8Array): number {
+  const texto = Buffer.from(pdf).toString("latin1");
+  return (texto.match(/\/Type\s*\/Page(?![s\w])/g) ?? []).length;
+}
+
+function archivosDocx(docx: Uint8Array): Record<string, Uint8Array> {
+  return unzipSync(docx);
+}
+
 describe("renderizadores de servidor", () => {
   it("producen un PDF y un DOCX reales para cada plantilla", async () => {
     for (const plantilla of PLANTILLAS) {
@@ -41,4 +53,60 @@ describe("renderizadores de servidor", () => {
       expect(docx.byteLength, plantilla.tipo).toBeGreaterThan(3_000);
     }
   }, 60_000);
+
+  it("el PDF del fixture completo se genera, pasa a otra página en el salto y lleva la fuente incrustada", async () => {
+    const pdf = await renderPdf(fixtureCompleto());
+    expect(paginasPdf(pdf)).toBeGreaterThanOrEqual(2);
+    const texto = Buffer.from(pdf).toString("latin1");
+    expect(texto).toMatch(/SourceSerif4/);
+    // Tres imágenes como mínimo: logo (cabecera) y marca de agua en cada página.
+    expect((texto.match(/\/Subtype\s*\/Image/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    // Sin salto, el mismo contenido cabe en menos páginas.
+    const sinSalto = await renderPdf(fixtureCompleto({ bloques: fixtureCompleto().bloques.filter((b) => b.tipo !== "salto") }));
+    expect(paginasPdf(sinSalto)).toBeLessThan(paginasPdf(pdf) + 1);
+  }, 30_000);
+
+  it("el PDF en borrador y sin marca de agua también se generan", async () => {
+    const [borrador, sinMarca] = await Promise.all([
+      renderPdf(fixtureCompleto({ marcaDeAgua: "borrador" })),
+      renderPdf(fixtureCompleto({ marcaDeAgua: null })),
+    ]);
+    const img = (pdf: Uint8Array) => (Buffer.from(pdf).toString("latin1").match(/\/Subtype\s*\/Image/g) ?? []).length;
+    expect(img(borrador)).toBeGreaterThan(img(sinMarca));
+  }, 30_000);
+
+  it("las fuentes se registran una sola vez por proceso", async () => {
+    await renderPdf(fixtureCompleto());
+    await renderPdf(fixtureCompleto({ idioma: "en" }));
+    expect(registrarFuentes()).toBe(1);
+  }, 30_000);
+
+  it("el DOCX trae cabecera con logo y marca de agua detrás del texto, pie con numeración y la fuente incrustada", async () => {
+    const docx = await renderDocx(fixtureCompleto());
+    const archivos = archivosDocx(docx);
+    const nombres = Object.keys(archivos);
+    const header = nombres.filter((n) => /^word\/header\d*\.xml$/.test(n)).map((n) => strFromU8(archivos[n])).join("");
+    const footer = nombres.filter((n) => /^word\/footer\d*\.xml$/.test(n)).map((n) => strFromU8(archivos[n])).join("");
+    const cuerpo = strFromU8(archivos["word/document.xml"]);
+    expect(header).toContain("LUX CARS IMPORT S.A.C.");
+    expect(header).toContain("LC-2026-099");
+    expect(header).toContain("<wp:anchor");
+    expect(header).toContain('behindDoc="1"');
+    expect(header.toUpperCase()).toContain("D4AF37");
+    expect(footer).toContain("PAGE");
+    expect(footer).toContain("NUMPAGES");
+    expect(footer).toContain("www.luxcars.pe");
+    expect(nombres.filter((n) => /^word\/media\/.*\.png$/.test(n)).length).toBeGreaterThanOrEqual(2);
+    expect(nombres.filter((n) => /^word\/fonts\//.test(n)).length).toBeGreaterThanOrEqual(1);
+    expect(cuerpo).toContain('w:type="page"');
+    expect(cuerpo).toContain("Contrato de mandato");
+  }, 30_000);
+
+  it("el DOCX en inglés rotula el pie en inglés", async () => {
+    const docx = await renderDocx(fixtureCompleto({ idioma: "en", titulo: "Letter of authorization" }));
+    const archivos = archivosDocx(docx);
+    const footer = Object.keys(archivos).filter((n) => /^word\/footer\d*\.xml$/.test(n)).map((n) => strFromU8(archivos[n])).join("");
+    expect(footer).toContain("Page ");
+    expect(footer).not.toContain("Página");
+  }, 30_000);
 });

@@ -47,7 +47,41 @@ export type Estructura = {
   /** Va en el pie de cada página. */
   codigoExpediente: string;
   bloques: Bloque[];
+  /**
+   * Portada: "Lima, 28 de noviembre de 2026". Solo si la plantilla lo trae; los
+   * renderizadores no inventan fecha ni lugar.
+   */
+  lugarFecha?: string;
+  /**
+   * Nombre breve para la cabecera y el pie de cada página ("Contrato de
+   * mandato"). Sin él se recorta `titulo`.
+   */
+  tituloCorto?: string;
+  /**
+   * Marca de agua de cada página: el isotipo tenue (por defecto), el isotipo
+   * más el texto diagonal "BORRADOR", o ninguna (`null`).
+   */
+  marcaDeAgua?: MarcaDeAgua;
 };
+
+export type MarcaDeAgua = "isotipo" | "borrador" | null;
+
+/**
+ * Párrafos de cláusula: "4.3 El Mandante…". Separa la numeración del texto
+ * para que los renderizadores la pongan en sangría francesa (el número al
+ * margen, el texto alineado). Devuelve `null` si el párrafo no empieza así.
+ */
+export function partirNumeracion(texto: Texto): { numero: string; resto: Texto } | null {
+  const m = /^(\d{1,2}(?:\.\d{1,2}){1,3}\.?)\s+(\S[\s\S]*)$/.exec(texto);
+  return m ? { numero: m[1], resto: m[2] } : null;
+}
+
+/** El título breve para cabecera y pie: `tituloCorto`, o `titulo` recortado. */
+export function tituloCortoDe(estructura: Estructura, maximo = 60): string {
+  if (estructura.tituloCorto) return estructura.tituloCorto;
+  const t = estructura.titulo;
+  return t.length > maximo ? `${t.slice(0, maximo - 1).trimEnd()}…` : t;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Constructores cortos para las plantillas                                   */
@@ -104,7 +138,7 @@ export function textoPlano(texto: Texto): string {
 
 /** Todo el texto del documento, plano, en orden. Para pruebas y para buscar. */
 export function textoDeEstructura(estructura: Estructura): string {
-  const partes: string[] = [estructura.titulo, estructura.subtitulo ?? ""];
+  const partes: string[] = [estructura.titulo, estructura.subtitulo ?? "", estructura.lugarFecha ?? ""];
   for (const b of estructura.bloques) {
     switch (b.tipo) {
       case "titulo":

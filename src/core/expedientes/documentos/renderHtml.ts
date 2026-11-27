@@ -3,9 +3,14 @@
  * (vista previa antes de generar, vista del cliente) y en pruebas. Devuelve un
  * fragmento (sin <html>) con clases `doc-*` que la pantalla estiliza; todo el
  * texto va escapado.
+ *
+ * Refleja la jerarquía del PDF y del DOCX (cabecera con razón social y
+ * expediente, portada centrada, numerales en sangría francesa, notas con filete,
+ * firmas de dos en dos) sin cargar fuentes ni imágenes: los estilos están en
+ * `src/app/globals.css`, utilidad `papel-doc`.
  */
 
-import { partirInline, type Bloque, type Estructura, type Texto, type Tramo } from "./estructura";
+import { partirInline, partirNumeracion, tituloCortoDe, type Bloque, type Estructura, type Texto, type Tramo } from "./estructura";
 
 function escapar(texto: string): string {
   return texto
@@ -32,8 +37,11 @@ function bloqueHtml(b: Bloque): string {
       const nivel = b.nivel + 1; // el h1 lo ocupa el título del documento
       return `<h${nivel} class="doc-h${b.nivel}">${inlineHtml(b.texto)}</h${nivel}>`;
     }
-    case "parrafo":
+    case "parrafo": {
+      const num = b.alineacion === "centro" ? null : partirNumeracion(b.texto);
+      if (num) return `<p class="doc-p doc-p-numerado"><span class="doc-num">${escapar(num.numero)}</span>${inlineHtml(num.resto)}</p>`;
       return `<p class="doc-p${b.alineacion === "centro" ? " doc-centro" : ""}">${inlineHtml(b.texto)}</p>`;
+    }
     case "nota":
       return `<p class="doc-nota">${inlineHtml(b.texto)}</p>`;
     case "salto":
@@ -66,10 +74,18 @@ function bloqueHtml(b: Bloque): string {
   }
 }
 
-/** Fragmento HTML del documento completo, con título y subtítulo. */
+/**
+ * Fragmento HTML del documento completo: cabecera de página (una sola vez en la
+ * vista previa; en el PDF y el DOCX se repite en cada hoja), portada con título,
+ * subtítulo y lugar y fecha, y los bloques.
+ */
 export function renderHtml(estructura: Estructura): string {
-  const cabecera = `<header class="doc-cabecera"><h1 class="doc-titulo">${escapar(estructura.titulo)}</h1>${
+  const en = estructura.idioma === "en";
+  const cabecera = `<div class="doc-pagina-cabecera"><span class="doc-pagina-empresa">LUX CARS IMPORT S.A.C. · RUC 20615410935</span><span class="doc-pagina-expediente">${
+    en ? "File" : "Expediente"
+  } ${escapar(estructura.codigoExpediente)} · ${escapar(tituloCortoDe(estructura))}</span></div>`;
+  const portada = `<header class="doc-cabecera"><h1 class="doc-titulo">${escapar(estructura.titulo)}</h1>${
     estructura.subtitulo ? `<p class="doc-subtitulo">${inlineHtml(estructura.subtitulo)}</p>` : ""
-  }</header>`;
-  return `<article class="doc" lang="${estructura.idioma}">${cabecera}${estructura.bloques.map(bloqueHtml).join("")}</article>`;
+  }${estructura.lugarFecha ? `<p class="doc-lugar-fecha">${escapar(estructura.lugarFecha)}</p>` : ""}</header>`;
+  return `<article class="doc${estructura.marcaDeAgua === "borrador" ? " doc-borrador" : ""}" lang="${estructura.idioma}">${cabecera}${portada}${estructura.bloques.map(bloqueHtml).join("")}</article>`;
 }
